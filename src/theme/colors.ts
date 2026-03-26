@@ -1,0 +1,57 @@
+export const colors = {
+  primary: {
+    DEFAULT: "#0f0fbd",
+    light: "#2e2ed9",
+    dark: "#0a0a8c",
+  },
+  accent: {
+    DEFAULT: "#ff6b00",
+    light: "#ff8533",
+    dark: "#cc5500",
+  },
+  background: {
+    light: "#f6f6f8",
+    dark: "#101022",
+  },
+  navy: "#0f0fbd",
+  royal: "#2e2ed9",
+  emerald: {
+    DEFAULT: "#10b981",
+    50: '#ecfdf5',
+    100: '#d1fae5',
+    200: '#a7f3d0',
+    300: '#6ee7b7',
+    400: '#34d399',
+    500: '#10b981',
+    600: '#059669',
+    700: '#047857',
+    800: '#065f46',
+    900: '#064e3b',
+  },
+  orange: {
+    50: '#fff7ed',
+    100: '#ffedd5',
+    200: '#fed7aa',
+    300: '#fdba74',
+    400: '#fb923c',
+    500: '#f97316',
+    600: '#ea580c',
+    700: '#c2410c',
+    800: '#9a3412',
+    900: '#7c2d12',
+  },
+  purple: {
+    500: '#a855f7',
+    600: '#9333ea',
+  },
+  border: "#e2e8f0",
+  text: {
+    primary: "#1e293b",
+    secondary: "#64748b",
+    inverse: "#ffffff",
+  },
+  error: "#ef4444",
+  success: "#10b981",
+  warning: "#f59e0b",
+  info: "#3b82f6"
+};

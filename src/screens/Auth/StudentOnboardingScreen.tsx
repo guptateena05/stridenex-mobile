@@ -1,0 +1,940 @@
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  View, Text, StyleSheet, ScrollView, TouchableOpacity
+} from 'react-native';
+import { AnimatedAuthLayout } from '@/components/layout/AnimatedAuthLayout';
+import { Input } from '@/components/Shared/Input';
+import { Button } from '@/components/Shared/Button';
+import { useNavigation, useRoute } from '@react-navigation/native';
+import { sendEmailOTP, verifyEmailOTP, sendMobileOTP, verifyMobileOTP, createStudent } from '@/api/onboarding.services';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { colors } from '@/theme/colors';
+import { typography } from '@/theme/typography';
+import { spacing } from '@/theme/spacing';
+import DynamicForm from '@/components/forms/DynamicForm';
+import { FormField } from '@/components/forms/DynamicField';
+
+const API_BASE_URL = "https://devstridenex.quantcloud.in";
+
+// Type definitions
+interface DepartmentOption {
+  value: string;
+  label: string;
+  academicYears: string;
+  semester: string;
+}
+
+interface DynamicFormDataType {
+  state: string;
+  district: string;
+  college: string;
+  stream: string;
+  courses: string[];
+  course: string;
+  department: string;
+  academicYear: string;
+  semester: string;
+  dateOfBirth: string;
+  gender: string;
+  skills: string[];
+  careerInterest: string[];
+  resume: any;
+  linkedinUrl: string;
+  githubUrl: string;
+}
+
+const StudentOnboardingScreen = () => {
+  const router = useRoute<any>();
+  const navigation = useNavigation<any>();
+  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+  const [emailTimer, setEmailTimer] = useState(0);
+  const [mobileTimer, setMobileTimer] = useState(0);
+  const fetchedFieldsRef = useRef<Set<string>>(new Set());
+
+  const [email, setEmail] = useState("");
+  const [emailOtp, setEmailOtp] = useState("");
+  const [emailOtpSent, setEmailOtpSent] = useState(false);
+  const [emailVerified, setEmailVerified] = useState(false);
+
+  const [mobile, setMobile] = useState("");
+  const [mobileOtp, setMobileOtp] = useState("");
+  const [mobileOtpSent, setMobileOtpSent] = useState(false);
+  const [mobileVerified, setMobileVerified] = useState(false);
+
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+
+  const [departmentOptions, setDepartmentOptions] = useState<DepartmentOption[]>([]);
+
+  const [dynamicFormData, setDynamicFormData] = useState<DynamicFormDataType>({
+    state: "", district: "", college: "", stream: "", courses: [], course: "", department: "",
+    academicYear: "1", semester: "", dateOfBirth: "", gender: "Male", skills: [], careerInterest: [],
+    resume: null, linkedinUrl: "", githubUrl: ""
+  });
+
+  // Timer effects
+  useEffect(() => {
+    let interval: ReturnType<typeof setInterval> | undefined;
+    if (emailTimer > 0) {
+      interval = setInterval(() => {
+        setEmailTimer(prev => prev - 1);
+      }, 1000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [emailTimer]);
+
+  useEffect(() => {
+    let interval: ReturnType<typeof setInterval> | undefined;
+    if (mobileTimer > 0) {
+      interval = setInterval(() => {
+        setMobileTimer(prev => prev - 1);
+      }, 1000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [mobileTimer]);
+
+  useEffect(() => {
+    AsyncStorage.getItem('userEmail').then(val => val && setEmail(val));
+    AsyncStorage.getItem('userFirstName').then(val => val && setFirstName(val));
+    AsyncStorage.getItem('userLastName').then(val => val && setLastName(val));
+  }, []);
+
+  // Auto-populate academic year when department changes
+  useEffect(() => {
+    if (dynamicFormData.department) {
+      const selectedDept = departmentOptions.find(
+        d => d.value === dynamicFormData.department
+      );
+      if (selectedDept?.academicYears) {
+        setDynamicFormData(prev => ({
+          ...prev,
+          academicYear: `${selectedDept.academicYears} Years`
+        }));
+      }
+    }
+  }, [dynamicFormData.department, departmentOptions]);
+
+  const handleSendEmailOTP = async () => {
+    if (!email) { setError("Please enter email"); return; }
+    setError(""); setSuccess(""); setLoading(true);
+    try {
+      const res = await sendEmailOTP(email);
+      const msg = res?.message as any;
+      if (msg?.status === "success" || msg?.message === "OTP sent to email successfully" || msg === "OTP sent successfully") {
+        setSuccess("OTP sent to email successfully");
+        setEmailOtpSent(true);
+        setEmailTimer(120);
+      } else {
+        setError(msg?.message || (typeof msg === 'string' ? msg : "Failed to send email OTP"));
+      }
+    } catch (e: any) {
+      setError(e?.response?.data?.message?.message || e?.response?.data?.message || e.message || "Error");
+    } finally { setLoading(false); }
+  };
+
+  const handleVerifyEmail = async () => {
+    setError(""); setSuccess(""); setLoading(true);
+    try {
+      const res = await verifyEmailOTP(email, emailOtp);
+      if (res?.message === "Email verified successfully") {
+        setEmailVerified(true);
+        setSuccess("Email verified successfully");
+      } else {
+        setError(res?.message || "Invalid OTP");
+      }
+    } catch (e: any) {
+      setError(e?.response?.data?.message || "Verification failed");
+    } finally { setLoading(false); }
+  };
+
+  const handleSendMobileOTP = async () => {
+    if (mobile.length !== 10) { setError("Enter 10 digit mobile number"); return; }
+    setError(""); setSuccess(""); setLoading(true);
+    try {
+      const res = await sendMobileOTP(mobile);
+      if (res?.message === "OTP sent successfully") {
+        setSuccess("OTP sent successfully");
+        setMobileOtpSent(true);
+        setMobileTimer(120);
+      } else {
+        setError(res?.message || "Failed to send OTP");
+      }
+    } catch (e: any) {
+      setError(e?.response?.data?.message || "Error");
+    } finally { setLoading(false); }
+  };
+
+  const handleVerifyMobile = async () => {
+    setError(""); setSuccess(""); setLoading(true);
+    try {
+      const res = await verifyMobileOTP(mobile, mobileOtp);
+      if (res?.message === "Mobile number verified successfully") {
+        setMobileVerified(true);
+        setSuccess("Mobile verified successfully");
+      } else {
+        setError(res?.message || "Invalid OTP");
+      }
+    } catch (e: any) {
+      setError(e?.response?.data?.message || "Verification failed");
+    } finally { setLoading(false); }
+  };
+
+  const step3Fields: FormField[] = [
+    {
+      fieldname: "state",
+      label: "State",
+      fieldtype: "Data",
+      required: true,
+      placeholder: "Select State",
+      layout: "full",
+      apiEndpoint: `${API_BASE_URL}/api/method/stridenex_app.api_stridenex_app.college.master.get_master_data`,
+      apiParams: {
+        doctype: "State"
+      },
+      mapOptions: (data) => {
+        console.log("State data received in mapOptions:", data); // This should be the array
+
+        // 'data' is already the array, so just map it directly
+        return data.map((state: any) => ({
+          value: state.name,
+          label: state.name
+        }));
+      }
+    },
+    {
+      fieldname: "district",
+      label: "District",
+      fieldtype: "Data",
+      required: true,
+      placeholder: "Select District",
+      layout: "full",
+      apiEndpoint: `${API_BASE_URL}/api/method/stridenex_app.api_stridenex_app.college.master.get_master_data`,
+      apiParams: dynamicFormData.state ? {
+        doctype: "District",
+        fields: ["name", "district_name"],
+        filters: [["state", "=", dynamicFormData.state]],
+        order_by: "district_name asc",
+        limit_page_length: 1000
+      } : undefined,
+      mapOptions: (data) => {
+        console.log("District data in mapOptions:", data);
+        // data is the array from the response
+        return data.map((district: any) => ({
+          value: district.name,
+          label: district.district_name || district.name
+        }));
+      },
+      disabled: !dynamicFormData.state
+    },
+    {
+      fieldname: "stream",
+      label: "Stream",
+      fieldtype: "Data",
+      required: true,
+      placeholder: "Select Stream",
+      layout: "full",
+      apiEndpoint: `${API_BASE_URL}/api/method/stridenex_app.api_stridenex_app.college.master.get_master_data`,
+      apiParams: {
+        doctype: "Stream"
+      },
+      mapOptions: (data) => {
+        console.log("Stream data received in mapOptions:", data);
+        return data.map((stream: any) => ({
+          value: stream.name,
+          label: stream.name
+        }));
+      }
+    },
+
+    {
+      fieldname: "college",
+      label: "College",
+      fieldtype: "Data",
+      required: true,
+      placeholder: "Select College",
+      layout: "full",
+      // Only enable when stream, state, and district are selected
+      apiEndpoint: (dynamicFormData.stream && dynamicFormData.state && dynamicFormData.district)
+        ? `${API_BASE_URL}/api/method/stridenex_app.api_stridenex_app.student.masters.get_colleges_by_stream`
+        : undefined,
+      apiParams: (dynamicFormData.stream && dynamicFormData.state && dynamicFormData.district) ? {
+        stream: dynamicFormData.stream,
+        state: dynamicFormData.state,
+        district: dynamicFormData.district
+      } : undefined,
+      mapOptions: (data) => {
+        console.log("College data received in mapOptions:", data);
+
+        // Handle the response structure: { message: "...", data: [...] }
+        const colleges = data.data || data || [];
+
+        return colleges.map((college: any) => ({
+          value: college.name,
+          label: college.college_name || college.name
+        }));
+      },
+      disabled: !(dynamicFormData.stream && dynamicFormData.state && dynamicFormData.district) // Disable until all filters are selected
+    },
+    {
+      fieldname: "courses",
+      label: "Courses Type",
+      fieldtype: "Data",
+      required: true,
+      placeholder: "Select courses",
+      layout: "full",
+      multiSelect: true,
+      apiEndpoint: `${API_BASE_URL}/api/method/stridenex_app.api_stridenex_app.college.master.get_master_data`,
+      apiParams: {
+        doctype: "Course Type"  // Note the space in "Course Type"
+      },
+      mapOptions: (data) => {
+        console.log("Courses Type data received in mapOptions:", data);
+
+        // Handle the response structure (similar to state)
+        const courses = data.data || data || [];
+
+        return courses.map((course: any) => ({
+          value: course.name,
+          label: course.course_type || course.name
+        }));
+      }
+    },
+    {
+      fieldname: "course",
+      label: "Course",
+      fieldtype: "Data",
+      required: true,
+      placeholder: "Select Course",
+      layout: "full",
+      // Only enable when college is selected
+      apiEndpoint: dynamicFormData.college
+        ? `${API_BASE_URL}/api/method/stridenex_app.api_stridenex_app.college.master.get_master_data`
+        : undefined,
+      apiParams: dynamicFormData.college ? {
+        doctype: "Courses",
+        fields: ["name", "course_name"], // Add fields if needed
+        filters: [["college", "=", dynamicFormData.college]], // Use array format like district field
+        order_by: "course_name asc",
+        limit_page_length: 1000
+      } : undefined,
+      mapOptions: (data) => {
+        console.log("Course data received in mapOptions:", data);
+        const courses = data.data || data || [];
+
+        return courses.map((course: any) => ({
+          value: course.name,
+          label: course.course_name || course.name
+        }));
+      },
+      disabled: !dynamicFormData.college
+    },
+
+    {
+      fieldname: "department",
+      label: "Department",
+      fieldtype: "Data",
+      required: true,
+      placeholder: "Select department",
+      layout: "full",
+      apiEndpoint: `${API_BASE_URL}/api/method/stridenex_app.api_stridenex_app.college.master.get_master_data`,
+      apiParams: {
+        doctype: "College Department",
+        fields: ["name", "academic_years", "semester"]
+      },
+      mapOptions: (data) => {
+        console.log("Department data received in mapOptions:", data);
+
+        const departments = data.data || data || [];
+
+        const deptOptions = departments.map((dept: any) => ({
+          value: dept.name,
+          label: dept.name,
+          academicYears: dept.academic_years,
+          semester: dept.semester  // Make sure this is included
+        }));
+
+        console.log("Mapped department options:", deptOptions);
+
+        setDepartmentOptions(deptOptions);
+
+        return deptOptions.map(({ value, label }: { value: string; label: string }) => ({ value, label }));
+      },
+      disabled: false
+    },
+
+    {
+      fieldname: "academicYear",
+      label: "Academic Year",
+      fieldtype: "Data",
+      required: false,
+      placeholder: "Academic years",
+      layout: "full",
+      read_only: true
+    },
+
+
+    {
+      fieldname: "semester",
+      label: "Semester",
+      fieldtype: "Data",
+      required: true,
+      placeholder: "Select Semester",
+      layout: "full",
+      apiEndpoint: dynamicFormData.department
+        ? `${API_BASE_URL}/api/method/stridenex_app.api_stridenex_app.student.masters.get_semester`
+        : undefined,
+      apiParams: dynamicFormData.department ? {
+        semester: departmentOptions.find(d => d.value === dynamicFormData.department)?.semester || ""
+      } : undefined,
+      mapOptions: (data) => {
+        console.log("Semester data received:", data);
+
+        // Handle the response structure: { message: "...", data: [...] }
+        const semesters = data.data || data || [];
+
+        // Map each semester object to { value, label } format
+        return semesters.map((sem: any) => ({
+          value: sem.name,
+          label: sem.name  // Use the name as both value and label
+        }));
+      },
+      disabled: !dynamicFormData.department
+    },
+    {
+      fieldname: "dateOfBirth",
+      label: "Date of Birth",
+      fieldtype: "Date",
+      required: true,
+      placeholder: "DD/MM/YYYY",
+      layout: "full",
+      inputClassName: "uppercase"
+    },
+    {
+      fieldname: "gender",
+      label: "Gender",
+      fieldtype: "Select",
+      required: false,
+      placeholder: "Select Gender",
+      layout: "full",
+      options: ["Male", "Female", "Other", "Prefer not to say"]
+    },
+
+    {
+      fieldname: "skills",
+      label: "Skills",
+      fieldtype: "Data",
+      required: false,
+      placeholder: "Select skills",
+      layout: "full",
+      multiSelect: true, // This makes it multi-select
+      apiEndpoint: `${API_BASE_URL}/api/method/stridenex_app.api_stridenex_app.college.master.get_master_data`,
+      apiParams: {
+        doctype: "Student Skill" // Updated doctype
+      },
+      mapOptions: (data) => {
+        console.log("Skills data received:", data);
+        const items = data.data || data || [];
+        return items.map((item: any) => ({
+          value: item.name,
+          label: item.name || item.skill_name
+        }));
+      }
+    },
+    {
+      fieldname: "careerInterest",
+      label: "Career Interest",
+      fieldtype: "Data",
+      required: false,
+      placeholder: "Select career interests",
+      layout: "full",
+      multiSelect: true, // This makes it multi-select
+      apiEndpoint: `${API_BASE_URL}/api/method/stridenex_app.api_stridenex_app.college.master.get_master_data`,
+      apiParams: {
+        doctype: "Student Career Interest" // Updated doctype
+      },
+      mapOptions: (data) => {
+        console.log("Career Interest data received:", data);
+        const items = data.data || data || [];
+        return items.map((item: any) => ({
+          value: item.name,
+          label: item.name || item.career_interest_name
+        }));
+      }
+    },
+
+    {
+      fieldname: "resume",
+      label: "Resume (PDF only)",
+      fieldtype: "File",
+      required: false,
+      placeholder: "Upload your resume (PDF)",
+      layout: "full",
+      accept: ".pdf",
+    },
+    {
+      fieldname: "linkedinUrl",
+      label: "LinkedIn Profile URL",
+      fieldtype: "Data",
+      required: false,
+      placeholder: "https://linkedin.com/in/username",
+      layout: "full",
+      inputClassName: "font-mono text-sm"
+    },
+    {
+      fieldname: "githubUrl",
+      label: "GitHub Profile URL",
+      fieldtype: "Data",
+      required: false,
+      placeholder: "https://github.com/username",
+      layout: "full",
+      inputClassName: "font-mono text-sm"
+    }
+  ];
+
+  const validateStep3 = (data: DynamicFormDataType) => {
+    const errs: Record<string, string> = {};
+    const requiredFields: (keyof DynamicFormDataType)[] = ['state', 'district', 'college', 'department', 'stream', 'course', 'semester', 'dateOfBirth'];
+    requiredFields.forEach(f => {
+      if (!data[f] || data[f].toString().trim() === '') errs[f as string] = 'This field is required';
+    });
+    if (!data.courses || data.courses.length === 0) errs.courses = 'Please select at least one course type';
+    if (!data.skills || data.skills.length === 0) errs.skills = 'Please select at least one skill';
+    if (!data.careerInterest || data.careerInterest.length === 0) errs.careerInterest = 'Please select at least one career interest';
+
+    setFormErrors(errs);
+    return Object.keys(errs).length === 0;
+  };
+
+  const handleFinalSubmit = async (data: DynamicFormDataType) => {
+    if (!validateStep3(data)) {
+      setError("Please fix the validation errors before submitting.");
+      return;
+    }
+
+    setLoading(true);
+    setError("");
+    setSuccess("");
+
+    try {
+      // Format mobile number with country code
+      const formattedMobile = `+91-${mobile}`;
+
+      // Format courses type as array of objects
+      const coursesTypeArray = (data.courses || []).map((course: string) => ({
+        course_type: course
+      }));
+
+      // Format skills as array of objects
+      const skillsArray = (data.skills || []).map((skill: string) => ({
+        skill: skill
+      }));
+
+      // Format career interests as array of objects
+      const careerInterestArray = (data.careerInterest || []).map((interest: string) => ({
+        career_interest: interest
+      }));
+
+      // Extract just the number from academicYear (e.g., "2 Years" -> "2")
+      let academicYearValue = data.academicYear || "1";
+      const numericMatch = academicYearValue.match(/\d+/);
+      academicYearValue = numericMatch ? numericMatch[0] : "1";
+
+      // Prepare payload matching web portal format
+      const payload = {
+        first_name: firstName || "Test",
+        last_name: lastName || "User",
+        mobile_no: formattedMobile,
+        email_id: email,
+        stream: data.stream || "Engineering",
+        courses_type: coursesTypeArray.length > 0 ? coursesTypeArray : [{ course_type: "PG" }],
+        college: data.college || "DRK",
+        course: data.course || "BA",
+        department: data.department || "Dispatch",
+        academic_year: academicYearValue,
+        semester: data.semester || "1",
+        date_of_birth: data.dateOfBirth, // Already in YYYY-MM-DD format from handleDateConfirm
+        skill: skillsArray.length > 0 ? skillsArray : [{ skill: "Creativity & innovation" }],
+        career_interest: careerInterestArray.length > 0 ? careerInterestArray : [{ career_interest: "Biotechnology / Genetics" }],
+        github: data.githubUrl || "",
+        linkedin: data.linkedinUrl || "",
+        resume: data.resume || null // File object from document picker
+      };
+
+      console.log("Submitting payload:", payload);
+
+      // Call the createStudent service
+      const responseData = await createStudent(payload);
+
+      console.log("Registration response:", responseData);
+
+      // Check if registration was successful
+      if (responseData?.status === 200 || responseData?.message === "Student registered successfully") {
+        setSuccess(responseData?.message || "Student registered successfully!");
+
+        // Clear onboarding-specific AsyncStorage items
+        await AsyncStorage.multiRemove(["userEmail", "userFirstName", "userLastName"]);
+
+        // Clear any errors
+        setError("");
+        setFormErrors({});
+
+        // Redirect to login page after a short delay
+        setTimeout(() => {
+          navigation.navigate("Login");
+        }, 1500);
+      } else {
+        // Handle error response
+        const errorMsg = responseData?.message ||
+          responseData?.error ||
+          "Registration failed. Please try again.";
+        setError(errorMsg);
+      }
+    } catch (err: any) {
+    console.error("Error submitting onboarding data:", err);
+
+    if (err?.response?.status === 409) {
+      setError("This email is already registered. Please login instead.");
+      // Optional: Redirect to login after 2 seconds
+      setTimeout(() => {
+        navigation.navigate("Login");
+      }, 2000);
+    } else {
+      const errorMessage = err?.response?.data?.message ||
+        err?.response?.data?.error ||
+        err?.message ||
+        "An error occurred during registration";
+      setError(errorMessage);
+    }
+  }finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUpdateFormData = (newData: Partial<DynamicFormDataType>, resetFields: string[] = []) => {
+    setDynamicFormData(prev => {
+      const baseUpdate: Partial<DynamicFormDataType> = {
+        state: newData.state ?? prev.state,
+        district: newData.district ?? prev.district,
+        college: newData.college ?? prev.college,
+        department: newData.department ?? prev.department,
+        academicYear: newData.academicYear ?? prev.academicYear,
+        stream: newData.stream ?? prev.stream,
+        course: newData.course ?? prev.course,
+        semester: newData.semester ?? prev.semester,
+        dateOfBirth: newData.dateOfBirth ?? prev.dateOfBirth,
+        courses: newData.courses ?? prev.courses,
+        skills: newData.skills ?? prev.skills,
+        careerInterest: newData.careerInterest ?? prev.careerInterest,
+        gender: newData.gender ?? prev.gender,
+        resume: newData.resume ?? prev.resume,
+        linkedinUrl: newData.linkedinUrl ?? prev.linkedinUrl,
+        githubUrl: newData.githubUrl ?? prev.githubUrl
+      };
+
+      const resetValues = resetFields.reduce((acc, field) => {
+        acc[field as keyof DynamicFormDataType] = "" as any;
+        return acc;
+      }, {} as Partial<DynamicFormDataType>);
+
+      return { ...prev, ...baseUpdate, ...resetValues };
+    });
+  };
+
+  return (
+    <AnimatedAuthLayout
+      title="Complete Your Profile"
+      subtitle={`Step ${step} of 3 - Verify your details to gain access`}
+    >
+      <View style={styles.container}>
+        {/* Progress Bar */}
+        <View style={styles.progressContainer}>
+          {[1, 2, 3].map((num, index) => (
+            <React.Fragment key={num}>
+              <View style={[styles.circle, step >= num ? styles.activeCircle : styles.inactiveCircle]}>
+                <Text style={[styles.circleText, step >= num ? styles.activeText : styles.inactiveText]}>{num}</Text>
+              </View>
+              {index < 2 && <View style={[styles.line, step > num ? styles.activeLine : styles.inactiveLine]} />}
+            </React.Fragment>
+          ))}
+        </View>
+
+        {error ? <Text style={styles.errorText}>{error}</Text> : null}
+        {success ? <Text style={styles.successText}>{success}</Text> : null}
+
+        {step === 1 && (
+          <View>
+            <Input
+              label="Email Address"
+              value={email}
+              onChangeText={setEmail}
+              autoCapitalize="none"
+              keyboardType="email-address"
+              editable={!emailVerified}
+            />
+
+            {!emailOtpSent && !emailVerified && (
+              <Button
+                title={emailTimer > 0 ? `Resend in ${emailTimer}s` : "Send OTP"}
+                onPress={handleSendEmailOTP}
+                loading={loading}
+                disabled={!email || emailTimer > 0}
+                style={styles.orangeBtn}
+              />
+            )}
+
+            {emailOtpSent && !emailVerified && (
+              <>
+                <Input
+                  label="Verification Code"
+                  value={emailOtp}
+                  onChangeText={setEmailOtp}
+                  keyboardType="number-pad"
+                  placeholder="Enter 6-digit code"
+                />
+                <Button
+                  title="Verify Code"
+                  onPress={handleVerifyEmail}
+                  style={styles.orangeBtn}
+                  loading={loading}
+                  disabled={emailOtp.length !== 6}
+                />
+              </>
+            )}
+
+            {emailVerified && (
+              <Button
+                title="Continue to Mobile Verification"
+                onPress={() => { setStep(2); setError(""); setSuccess(""); }}
+                style={styles.orangeBtn}
+              />
+            )}
+
+            <TouchableOpacity onPress={() => navigation.navigate('Login')} style={styles.skipContainer}>
+              <Text style={styles.skipTextBtn}>Skip Onboarding</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {step === 2 && (
+          <View>
+            <Input
+              label="Mobile Number"
+              value={mobile}
+              onChangeText={setMobile}
+              keyboardType="number-pad"
+              maxLength={10}
+              editable={!mobileVerified}
+            />
+
+            {!mobileOtpSent && !mobileVerified && (
+              <Button
+                title={mobileTimer > 0 ? `Resend in ${mobileTimer}s` : "Send OTP"}
+                onPress={handleSendMobileOTP}
+                loading={loading}
+                disabled={mobile.length !== 10 || mobileTimer > 0}
+                style={styles.orangeBtn}
+              />
+            )}
+
+            {mobileOtpSent && !mobileVerified && (
+              <>
+                <Input
+                  label="Verification Code"
+                  value={mobileOtp}
+                  onChangeText={setMobileOtp}
+                  keyboardType="number-pad"
+                  placeholder="Enter 6-digit code"
+                />
+                <Button
+                  title="Verify Code"
+                  onPress={handleVerifyMobile}
+                  style={styles.orangeBtn}
+                  loading={loading}
+                  disabled={mobileOtp.length !== 6}
+                />
+              </>
+            )}
+
+            {mobileVerified && (
+              <Button
+                title="Continue to Profile"
+                onPress={() => { setStep(3); setError(""); setSuccess(""); }}
+                style={styles.orangeBtn}
+              />
+            )}
+
+            <View style={styles.backButtonContainer}>
+              <Button
+                title="Back to Email Verification"
+                onPress={() => setStep(1)}
+                variant="outline"
+              />
+            </View>
+          </View>
+        )}
+
+        {step === 3 && (
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.scrollContent}
+            style={styles.scrollView}
+          >
+            <DynamicForm
+              fields={step3Fields}
+              initialValues={dynamicFormData}
+              onChange={(data: DynamicFormDataType) => {
+                const changedField = Object.keys(data).find(
+                  key => data[key as keyof DynamicFormDataType] !== dynamicFormData[key as keyof DynamicFormDataType]
+                );
+
+                if (changedField) {
+                  const fieldDependencies: Record<string, string[]> = {
+                    state: ["district", "college", "department", "academicYear", "course", "semester"],
+                    district: ["college", "department", "academicYear", "course", "semester"],
+                    stream: ["college", "department", "academicYear", "course", "semester"],
+                    college: ["department", "academicYear", "course", "semester"],
+                    department: ["semester"],
+                    course: ["semester"]
+                  };
+
+                  const fieldsToReset = fieldDependencies[changedField] || [];
+                  handleUpdateFormData(data, fieldsToReset);
+
+                  setFormErrors(prev => {
+                    const newErrors = { ...prev };
+                    delete newErrors[changedField];
+                    if (fieldDependencies[changedField]) {
+                      fieldDependencies[changedField].forEach(field => {
+                        delete newErrors[field];
+                      });
+                    }
+                    return newErrors;
+                  });
+
+                  if (changedField === "state" || changedField === "district" ||
+                    changedField === "stream" || changedField === "college") {
+                    fetchedFieldsRef.current.delete('department');
+                    fetchedFieldsRef.current.delete('course');
+                    fetchedFieldsRef.current.delete('semester');
+                  } else if (changedField === "department") {
+                    fetchedFieldsRef.current.delete('semester');
+                  }
+                } else {
+                  setDynamicFormData(data);
+                }
+              }}
+              onSubmit={handleFinalSubmit}
+              buttonLabel="Finish Onboarding"
+              loading={loading}
+              errors={formErrors}
+            />
+            <View style={styles.backButtonContainer}>
+              <Button
+                title="Back to Mobile Verification"
+                onPress={() => setStep(2)}
+                variant="outline"
+              />
+            </View>
+          </ScrollView>
+        )}
+      </View>
+    </AnimatedAuthLayout>
+  );
+};
+
+export default StudentOnboardingScreen;
+
+const styles = StyleSheet.create({
+  container: { width: '100%', flex: 1 },
+  progressContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.xl
+  },
+  circle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2
+  },
+  activeCircle: {
+    backgroundColor: colors.accent.DEFAULT,
+    borderColor: colors.accent.DEFAULT
+  },
+  inactiveCircle: {
+    backgroundColor: 'transparent',
+    borderColor: colors.border
+  },
+  circleText: {
+    fontSize: 16,
+    fontWeight: 'bold'
+  },
+  activeText: {
+    color: 'white'
+  },
+  inactiveText: {
+    color: colors.text.secondary
+  },
+  line: {
+    height: 2,
+    flex: 1,
+    marginHorizontal: 8
+  },
+  activeLine: {
+    backgroundColor: colors.accent.DEFAULT
+  },
+  inactiveLine: {
+    backgroundColor: colors.border
+  },
+  errorText: {
+    color: colors.error,
+    marginBottom: spacing.md,
+    textAlign: 'center',
+    fontFamily: typography.fontFamily.display
+  },
+  successText: {
+    color: colors.success,
+    marginBottom: spacing.md,
+    textAlign: 'center',
+    fontFamily: typography.fontFamily.display,
+    fontWeight: 'bold'
+  },
+  orangeBtn: {
+    backgroundColor: colors.accent.DEFAULT,
+    marginTop: spacing.md
+  },
+  skipContainer: {
+    marginTop: spacing.lg,
+    alignItems: 'center',
+    padding: spacing.sm
+  },
+  skipTextBtn: {
+    color: colors.accent.DEFAULT,
+    fontWeight: '600',
+    fontSize: typography.fontSize.sm
+  },
+  backButtonContainer: {
+    marginTop: spacing.md,
+    marginBottom: spacing.xl
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingBottom: spacing.xl,
+  },
+
+});
