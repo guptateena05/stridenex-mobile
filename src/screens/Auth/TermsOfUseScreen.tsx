@@ -1,10 +1,12 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { colors } from '@/theme/colors';
 import { typography } from '@/theme/typography';
 import { spacing, borderRadius } from '@/theme/spacing';
 import { ChevronLeft, ShieldCheck } from 'lucide-react-native';
+import circularLogo from '@/assets/images/circularLogo.jpg';
 
 const SECTIONS = [
   {
@@ -12,22 +14,15 @@ const SECTIONS = [
     title: "1. ACCEPTANCE OF TERMS",
     body: `1.1 By accessing, browsing, registering on, or using the Platform in any manner, you acknowledge that you have read, understood, and agree to be legally bound by these Terms, our Privacy Policy, and all applicable laws and regulations.
 
+1.2 If you do not agree to these Terms, you must immediately discontinue use of the Platform.
 
-              1.2 If you do not agree to these Terms, you must immediately discontinue use of the Platform.
-
-
-              1.3 These Terms constitute a legally binding agreement between you ("User", "you", or "your") and StrideNex.`
+1.3 These Terms constitute a legally binding agreement between you ("User", "you", or "your") and StrideNex.`
   },
   {
     id: "section-2",
     title: "2. MODIFICATIONS TO TERMS",
     body: `2.1 StrideNex reserves the right to modify, amend, or update these Terms at any time at its sole discretion without prior notice.
 
-
-              2.2 Any modifications will be effective immediately upon posting on the Platform with a revised "Last Updated" date. We may also notify you via email or in-platform notifications.
-
-
-              2.3 Your continued use of the Platform after such modifications constitutes your acceptance of the revised Terms. You are advised to review these Terms periodically.
 
 
               2.4 If you do not agree to any modifications, you must cease using the Platform immediately.`
@@ -345,25 +340,37 @@ const SECTIONS = [
     id: "section-26",
     title: "26. ACKNOWLEDGMENT",
     body: `By using the Platform, you acknowledge that you have read, understood, and agree to be bound by these Terms of Use and our Privacy Policy.
-              
 
-
-              © 2026 StrideNex Private Limited. All rights reserved.`
+© 2026 StrideNex Private Limited. All rights reserved.`
   },
 ];
 
 export const TermsOfUseScreen = () => {
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
+  
+  const headerPaddingTop = insets.top > 0 ? insets.top : Platform.OS === 'ios' ? 20 : 10;
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <View style={styles.safeArea}>
       <View style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-            <ChevronLeft color={colors.navy} size={24} />
+        <View style={[styles.header, { paddingTop: headerPaddingTop }]}>
+          <TouchableOpacity
+            onPress={() => {
+  console.log('Pressed back');
+  navigation.goBack();
+}}
+            style={styles.backBtn}
+            hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
+            activeOpacity={0.7}
+          >
+            <ChevronLeft color={colors.navy} size={28} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Terms of Use</Text>
-          <View style={{width: 24}} />
+          <View style={styles.headerCenter}>
+            <Image source={circularLogo} style={styles.headerLogo} resizeMode="contain" />
+            <Text style={styles.headerTitle}>Terms of Use</Text>
+          </View>
+          <View style={styles.headerRightSpacer} />
         </View>
 
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
@@ -386,34 +393,43 @@ export const TermsOfUseScreen = () => {
           </View>
         </ScrollView>
       </View>
-    </SafeAreaView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background.light },
   container: { flex: 1 },
-  header: { 
+  header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingVertical: spacing.md, paddingHorizontal: spacing.lg,
-    backgroundColor: '#fff', 
-    borderBottomWidth: 1, borderBottomColor: colors.border,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 3, elevation: 3
+    paddingBottom: spacing.md, paddingHorizontal: spacing.lg,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)', 
+    borderBottomLeftRadius: 32, borderBottomRightRadius: 32,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 12, elevation: 8,
+    zIndex: 10
   },
-  backBtn: { padding: spacing.xs, marginLeft: -spacing.xs },
+  headerCenter: { flexDirection: 'row', alignItems: 'center', flex: 1, justifyContent: 'center' },
+  headerRightSpacer: { width: 44 },
+  headerLogo: { width: 32, height: 32, borderRadius: 16, marginRight: spacing.sm },
+  backBtn: {
+    width: 44, height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(15, 15, 189, 0.05)',
+    alignItems: 'center', justifyContent: 'center'
+  },
   headerTitle: { fontSize: typography.fontSize.lg, color: colors.navy, fontWeight: typography.fontWeight.bold, fontFamily: typography.fontFamily.display },
-  scrollContent: { padding: spacing.lg, paddingBottom: spacing['3xl'] },
+  scrollContent: { padding: spacing.lg, paddingTop: spacing.xl, paddingBottom: spacing['3xl'] },
   heroSection: { alignItems: 'center', marginBottom: spacing.xl, paddingHorizontal: spacing.md },
   iconWrapper: { width: 64, height: 64, borderRadius: 32, backgroundColor: 'rgba(255,107,0,0.1)', alignItems: 'center', justifyContent: 'center', marginBottom: spacing.md },
   heroTitle: { fontSize: typography.fontSize['2xl'], fontWeight: typography.fontWeight.bold, color: colors.navy, marginBottom: spacing.sm, textAlign: 'center', fontFamily: typography.fontFamily.display },
   heroSub: { fontSize: typography.fontSize.sm, color: colors.text.secondary, textAlign: 'center', lineHeight: 20, marginBottom: spacing.md },
   lastUpdated: { fontSize: typography.fontSize.xs, color: colors.text.secondary, fontWeight: typography.fontWeight.medium, textTransform: 'uppercase', letterSpacing: 1 },
-  
-  contentCard: { 
-    backgroundColor: '#fff', 
-    borderRadius: borderRadius['2xl'], 
+
+  contentCard: {
+    backgroundColor: '#fff',
+    borderRadius: borderRadius['2xl'],
     padding: spacing.xl,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 15, elevation: 5 
+    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 15, elevation: 5
   },
   sectionBlock: { marginBottom: spacing.xl, paddingBottom: spacing.xl, borderBottomWidth: 1, borderBottomColor: colors.border },
   lastSection: { marginBottom: 0, paddingBottom: 0, borderBottomWidth: 0 },

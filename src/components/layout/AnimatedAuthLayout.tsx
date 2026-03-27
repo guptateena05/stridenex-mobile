@@ -1,10 +1,11 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, KeyboardAvoidingView, ScrollView, Platform, Animated, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, KeyboardAvoidingView, ScrollView, Platform, Animated, TouchableOpacity, Image } from 'react-native';
 import { Home } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import { colors } from '@/theme/colors';
 import { spacing, borderRadius } from '@/theme/spacing';
 import { typography } from '@/theme/typography';
+import circularLogo from '@/assets/images/circularLogo.jpg';
 
 interface AuthLayoutProps {
   children: React.ReactNode;
@@ -65,7 +66,11 @@ export const AnimatedAuthLayout = ({
           <View style={styles.contentWrapper}>
             <View style={styles.brandContainer}>
               <View style={styles.logoContainer}>
-                <Text style={styles.logoText}>SN</Text>
+                <Image 
+                  source={circularLogo} 
+                  style={styles.logoImage} 
+                  resizeMode="cover"
+                />
               </View>
               <View>
                 <Text style={styles.appName}>{appName}</Text>
@@ -162,21 +167,20 @@ const styles = StyleSheet.create({
   logoContainer: {
     width: 56,
     height: 56,
-    borderRadius: borderRadius.md,
-    backgroundColor: colors.navy,
+    borderRadius: 28, // Circular
+    backgroundColor: '#fff',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: spacing.md,
-    shadowColor: colors.navy,
-    shadowOpacity: 0.3,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
     shadowRadius: 5,
     elevation: 3,
+    overflow: 'hidden',
   },
-  logoText: {
-    color: '#fff',
-    fontFamily: typography.fontFamily.display,
-    fontWeight: 'bold',
-    fontSize: 24,
+  logoImage: {
+    width: '100%',
+    height: '100%',
   },
   appName: {
     fontSize: typography.fontSize['2xl'],

@@ -1,10 +1,19 @@
 import React from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, LinkingOptions } from '@react-navigation/native';
 import AuthNavigator  from './AuthNavigator';
 import { DashboardNavigator } from './DashboardNavigator';
 import { useAuth } from '@/context/AuthContext';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, View, Platform } from 'react-native';
 import { colors } from '@/theme/colors';
+
+const linking: LinkingOptions<any> = {
+  prefixes: ['stridenex://'],
+  config: {
+    screens: {
+      Login: 'login',
+    },
+  },
+};
 
 const RootNavigator = () => {
   const { isAuthenticated, role, loading } = useAuth();
@@ -18,7 +27,7 @@ const RootNavigator = () => {
   }
 
   return (
-    <NavigationContainer>
+    <NavigationContainer linking={linking}>
       {isAuthenticated ? (
         <DashboardNavigator role={role || undefined} />
       ) : (

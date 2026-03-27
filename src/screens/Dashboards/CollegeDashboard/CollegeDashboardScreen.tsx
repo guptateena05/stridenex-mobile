@@ -26,9 +26,9 @@ const StatCard = ({ title, value, change, icon: Icon, color }: any) => (
 export const CollegeDashboardScreen = () => {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.welcomeText}>Welcome back, Institute Admin!</Text>
+      <Text style={styles.welcomeText}>Welcome back</Text>
       
-      <View style={styles.gridContainer}>
+      {/* <View style={styles.gridContainer}>
         <View style={styles.row}>
           <StatCard title="Total Students" value="2,450" change="98% onboarded" icon={Users} color={colors.info || '#3b82f6'} />
           <StatCard title="Students Placed" value="845" change="+120 this month" icon={Award} color={colors.success || '#10b981'} />
@@ -74,7 +74,7 @@ export const CollegeDashboardScreen = () => {
           </View>
           <Text style={styles.statusBadge}>Active</Text>
         </View>
-      </Card>
+      </Card> */}
       
     </ScrollView>
   );

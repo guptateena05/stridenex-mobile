@@ -1,10 +1,12 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { colors } from '@/theme/colors';
 import { typography } from '@/theme/typography';
 import { spacing, borderRadius } from '@/theme/spacing';
 import { ChevronLeft, ShieldCheck } from 'lucide-react-native';
+import circularLogo from '@/assets/images/circularLogo.jpg';
 
 const SECTIONS = [
   {
@@ -12,78 +14,51 @@ const SECTIONS = [
     title: "1. PERSONAL DATA WE COLLECT",
     body: `We may collect the following categories of personal data from you:
 
-
-
-              
-                1.1 Identity and Contact Information
-                • Full name
+1.1 Identity and Contact Information
+• Full name
 • Email address
 • Phone number (mobile and/or landline)
 • Organization or institution name
 • Residential or correspondence address
 • Date of birth or age
 
-
-              
-
-              
-                1.2 Account Information
-                • Username and login credentials
+1.2 Account Information
+• Username and login credentials
 • User profile details (education, skills, interests, career goals)
 • Preferences and settings
 • Profile photograph (if provided)
 
-
-              
-
-              
-                1.3 Educational and Professional Data
-                • Academic qualifications and credentials
+1.3 Educational and Professional Data
+• Academic qualifications and credentials
 • Educational institution details
 • Work experience and employment history
 • Skills, certifications, and specializations
 • Career aspirations and learning goals
 • Project submissions, assignments, and assessment data
 
-
-              
-
-              
-                1.4 Transaction and Payment Data
-                • Subscription details and purchase history
+1.4 Transaction and Payment Data
+• Subscription details and purchase history
 • Payment method information (processed securely via third-party payment gateways)
 • Billing and invoicing information
 • Transaction identifiers and timestamps
 
-
-              
-
-              
-                1.5 Technical and Device Data
-                • IP address and geolocation data
+1.5 Technical and Device Data
+• IP address and geolocation data
 • Browser type, version, and language settings
 • Operating system and device information (type, model, manufacturer)
 • Device identifiers (IMEI, MAC address, device ID)
 • Usage logs, access times, and session data
 • Cookies, web beacons, and similar tracking technologies
 
-
-              
-
-              
-                1.6 Communication and Interaction Data
-                • Emails, messages, and support queries sent to us
+1.6 Communication and Interaction Data
+• Emails, messages, and support queries sent to us
 • Feedback, reviews, ratings, and testimonials
 • Survey responses
 • Chat transcripts and call recordings (with your consent)
 • User-generated content submitted on the Platform
 
-
-              
-
-              
-                1.7 AI Interaction Data
-                • Input queries, prompts, and commands provided to AI systems
+1.7 AI Interaction Data
+• Input queries, prompts, and commands provided to AI systems
 • AI-generated recommendations, skill paths, and outputs
 • Usage patterns and interaction history with AI features
 • Learning progress, performance analytics, and assessment results`
@@ -92,35 +67,20 @@ const SECTIONS = [
     id: "section-2",
     title: "2. HOW WE COLLECT DATA",
     body: `2.1 Information You Provide Directly
-              We collect personal data when you:
+We collect personal data when you register, create an account, subscribe to services, complete forms, or contact support.
 
+2.2 Information Collected Automatically
+Certain technical and usage data is collected automatically through:
 
-              1. Register or create an account on the Platform
-2. Subscribe to our services or purchase products
-3. Complete forms, surveys, or questionnaires
-4. Contact our support team or customer service
-5. Submit User Content (projects, assignments, feedback)
-6. Participate in webinars, events, or community forums
-7. Communicate with us via email, phone, or chat
-
-
-
-              2.2 Information Collected Automatically
-              Certain technical and usage data is collected automatically through:
-
-
-              • Cookies, web beacons, and similar tracking technologies
+• Cookies, web beacons, and similar tracking technologies
 • Analytics tools (e.g., Google Analytics, Mixpanel)
 • Server logs and access logs
 • AI interaction monitoring and learning analytics
 
+2.3 Information from Third Parties
+We may receive personal data from:
 
-
-              2.3 Information from Third Parties
-              We may receive personal data from:
-
-
-              • Third-party service providers (payment processors, cloud hosting partners, analytics providers)
+• Third-party service providers (payment processors, cloud hosting partners, analytics providers)
 • Educational institutions or employers partnered with us
 • Social media platforms (if you link your account or use social login)
 • Publicly available sources (with your consent or as permitted by law)`
@@ -130,43 +90,33 @@ const SECTIONS = [
     title: "3. PURPOSE OF PROCESSING",
     body: `We process personal data for the following purposes:
 
-
-
-              3.1 Service Delivery and Platform Operations
-              1. To provide, operate, maintain, and improve our AI-driven products and services
+3.1 Service Delivery and Platform Operations
+1. To provide, operate, maintain, and improve our AI-driven products and services
 2. To create and manage user accounts
 3. To personalize your experience and deliver customized content, recommendations, and skill paths
 4. To process transactions, manage subscriptions, and issue invoices
 5. To send transactional communications (order confirmations, account notifications, service updates)
 
-
-
-              3.2 AI and Machine Learning
-              1. To train, test, and improve AI models and algorithms
+3.2 AI and Machine Learning
+1. To train, test, and improve AI models and algorithms
 2. To generate personalized skill development paths and career recommendations
 3. To analyze learning patterns and optimize educational content
 4. To provide adaptive learning experiences based on user performance
 
-
-
-              3.3 Communication and Marketing
-              1. To communicate service updates, new features, and product announcements
+3.3 Communication and Marketing
+1. To communicate service updates, new features, and product announcements
 2. To send promotional offers, newsletters, and marketing communications (with your consent)
 3. To conduct surveys and request feedback
 4. To respond to inquiries and provide customer support
 
-
-
-              3.4 Security, Fraud Prevention, and Compliance
-              1. To ensure the security, integrity, and safety of the Platform
+3.4 Security, Fraud Prevention, and Compliance
+1. To ensure the security, integrity, and safety of the Platform
 2. To detect, prevent, and investigate fraudulent, abusive, or illegal activity
 3. To enforce our Terms of Use and other policies
 4. To comply with legal obligations, court orders, or regulatory requirements
 
-
-
-              3.5 Analytics and Research
-              1. To analyze usage trends, user behavior, and Platform performance
+3.5 Analytics and Research
+1. To analyze usage trends, user behavior, and Platform performance
 2. To conduct research and development for product improvement
 3. To generate aggregated, anonymized data for business intelligence and reporting`
   },
@@ -175,42 +125,22 @@ const SECTIONS = [
     title: "4. LEGAL BASIS FOR PROCESSING",
     body: `We process personal data based on the following legal grounds under the PDPP Act and applicable laws:
 
+4.1 Consent
+We process personal data with your explicit, informed, and freely given consent, which you may withdraw at any time.
 
+4.2 Contractual Necessity
+Processing is necessary to perform our contractual obligations to you (e.g., providing services, processing payments).
 
-              
-                4.1 Consent
-                We process personal data with your explicit, informed, and freely given consent, which you may withdraw at any time.
+4.3 Legal Obligations
+Processing is required to comply with applicable laws, regulations, court orders, or government requests.
 
-
-              
-
-              
-                4.2 Contractual Necessity
-                Processing is necessary to perform our contractual obligations to you (e.g., providing services, processing payments).
-
-
-              
-
-              
-                4.3 Legal Obligations
-                Processing is required to comply with applicable laws, regulations, court orders, or government requests.
-
-
-              
-
-              
-                4.4 Legitimate Business Interests
-                Processing is necessary for our legitimate business interests, such as fraud prevention, network security, product improvement, or business analytics, provided such interests are not overridden by your fundamental rights.`
+4.4 Legitimate Business Interests
+Processing is necessary for our legitimate business interests, such as fraud prevention, network security, product improvement, or business analytics, provided such interests are not overridden by your fundamental rights.`
   },
   {
     id: "section-5",
     title: "5. DATA SHARING AND DISCLOSURE",
     body: `We may share personal data with the following categories of recipients:
-
-
-
-              5.1 Service Providers and Processors
-              We engage trusted third-party service providers to perform functions on our behalf, including:
 
 
               • Cloud hosting and infrastructure providers (e.g., Amazon Web Services, Microsoft Azure, Google Cloud)
@@ -594,114 +524,49 @@ const SECTIONS = [
   },
   {
     id: "section-18",
-    title: "18. UPDATES TO THIS PRIVACY POLICY",
-    body: `18.1 Right to Modify
-              We reserve the right to update, amend, or modify this Privacy Policy from time to time to reflect changes in our practices, legal requirements, or business operations.
-
-
-
-              18.2 Notification of Changes
-              When we make material changes to this Privacy Policy, we will:
-
-
-              • Update the 'Last Updated' date at the top of this Policy
-• Post a notice on the Platform
-• Notify you via email or in-app notification (where applicable)
-• Request your renewed consent where required by law
-
-
-
-              18.3 Acceptance of Changes
-              Your continued use of the Platform after any changes to this Privacy Policy constitutes your acceptance of the revised Policy. If you do not agree to the changes, you must discontinue use of the Platform.
-
-
-
-              18.4 Version History
-              Previous versions of this Privacy Policy are available upon request by contacting info@stridenex.ai.`
+    title: "18. UPDATES TO THIS POLICY",
+    body: `We may update this policy periodically. Your continued use constitutes acceptance of the revised policy.`
   },
   {
     id: "section-19",
     title: "19. CONSENT AND ACCEPTANCE",
-    body: `By registering, accessing, or using the Platform, you expressly consent to:
-
-
-              • The collection, processing, storage, use, disclosure, and transfer of your personal data as described in this Privacy Policy
-• The use of cookies and tracking technologies as described in Section 12
-• Cross-border data transfers as described in Section 6
-• AI-driven processing and automated decision-making as described in Section 15
-
-
-
-              You acknowledge that:
-
-
-              • You have read and understood this Privacy Policy
-• You voluntarily provide your personal data
-• Processing of your personal data is necessary to provide our services
-• Your information may be transferred, processed, and stored outside India in accordance with applicable safeguards`
+    body: `By using the Platform, you consent to the collection and processing of your personal data as described in this Privacy Policy.`
   },
   {
     id: "section-20",
     title: "20. CONTACT INFORMATION",
-    body: `If you have any questions, concerns, requests, or feedback regarding this Privacy Policy or our data practices, please contact us at:
-
-
-
-              
-                StrideNex Private Limited
-
-
-                Registered Office: [Full Address], Pune, Maharashtra, India
-
-
-                Email: info@stridenex.ai
-
-
-                Grievance Officer Email: grievance@stridenex.ai
-
-
-                Phone: [Insert Contact Number]
-
-
-                Website: www.stridenex.ai`
+    body: `StrideNex Private Limited. Email: info@stridenex.ai. Website: www.stridenex.ai`
   },
   {
     id: "section-21",
     title: "21. DATA PROTECTION AUTHORITY",
-    body: `If you believe your data protection rights have been violated, you have the right to lodge a complaint with the Data Protection Board of India established under the Digital Personal Data Protection Act, 2023.
-
-
-
-              
-                Data Protection Board of India
-                [Address will be notified by the Government of India]
-
-
-                Website: [To be published by the Government]
-
-
-              
-
-              
-                © 2026 StrideNex Private Limited. All rights reserved.
-
-
-                By using the Platform, you acknowledge that you have read, understood, and consent to this Privacy Policy.`
+    body: `You have the right to lodge a complaint with the Data Protection Board of India. © 2026 StrideNex Private Limited.`
   },
 ];
 
 export const PrivacyPolicyScreen = () => {
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
+
+  const headerPaddingTop = insets.top > 0 ? insets.top : Platform.OS === 'ios' ? 20 : 10;
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <View style={styles.safeArea}>
       <View style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-            <ChevronLeft color={colors.navy} size={24} />
+        <View style={[styles.header, { paddingTop: headerPaddingTop }]}>
+          <TouchableOpacity 
+            onPress={() => navigation.canGoBack() ? navigation.goBack() : navigation.navigate('Signup' as never)} 
+            style={styles.backBtn}
+            hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
+            activeOpacity={0.7}
+          >
+            <ChevronLeft color={colors.navy} size={28} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Privacy Policy</Text>
-          <View style={{width: 24}} />
+          <View style={styles.headerCenter}>
+            <Image source={circularLogo} style={styles.headerLogo} resizeMode="contain" />
+            <Text style={styles.headerTitle}>Privacy Policy</Text>
+          </View>
+          <View style={styles.headerRightSpacer} />
         </View>
 
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
@@ -724,7 +589,7 @@ export const PrivacyPolicyScreen = () => {
           </View>
         </ScrollView>
       </View>
-    </SafeAreaView>
+    </View>
   );
 };
 
@@ -733,14 +598,23 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   header: { 
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingVertical: spacing.md, paddingHorizontal: spacing.lg,
-    backgroundColor: '#fff', 
-    borderBottomWidth: 1, borderBottomColor: colors.border,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 3, elevation: 3
+    paddingBottom: spacing.md, paddingHorizontal: spacing.lg,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)', 
+    borderBottomLeftRadius: 32, borderBottomRightRadius: 32,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 12, elevation: 8,
+    zIndex: 10
   },
-  backBtn: { padding: spacing.xs, marginLeft: -spacing.xs },
+  headerCenter: { flexDirection: 'row', alignItems: 'center', flex: 1, justifyContent: 'center' },
+  headerRightSpacer: { width: 44 },
+  headerLogo: { width: 32, height: 32, borderRadius: 16, marginRight: spacing.sm },
+  backBtn: { 
+    width: 44, height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(15, 15, 189, 0.05)',
+    alignItems: 'center', justifyContent: 'center'
+  },
   headerTitle: { fontSize: typography.fontSize.lg, color: colors.navy, fontWeight: typography.fontWeight.bold, fontFamily: typography.fontFamily.display },
-  scrollContent: { padding: spacing.lg, paddingBottom: spacing['3xl'] },
+  scrollContent: { padding: spacing.lg, paddingTop: spacing.xl, paddingBottom: spacing['3xl'] },
   heroSection: { alignItems: 'center', marginBottom: spacing.xl, paddingHorizontal: spacing.md },
   iconWrapper: { width: 64, height: 64, borderRadius: 32, backgroundColor: 'rgba(255,107,0,0.1)', alignItems: 'center', justifyContent: 'center', marginBottom: spacing.md },
   heroTitle: { fontSize: typography.fontSize['2xl'], fontWeight: typography.fontWeight.bold, color: colors.navy, marginBottom: spacing.sm, textAlign: 'center', fontFamily: typography.fontFamily.display },

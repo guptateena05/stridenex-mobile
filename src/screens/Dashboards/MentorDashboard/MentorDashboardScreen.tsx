@@ -28,7 +28,7 @@ export const MentorDashboardScreen = () => {
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.welcomeText}>Welcome back, Mentor!</Text>
       
-      <View style={styles.gridContainer}>
+      {/* <View style={styles.gridContainer}>
         <View style={styles.row}>
           <StatCard title="Total Students" value="48" change="+3 this week" icon={Users} color={colors.success || '#10b981'} />
           <StatCard title="Active Sessions" value="12" change="4 upcoming" icon={Clock} color={colors.accent.DEFAULT} />
@@ -93,7 +93,7 @@ export const MentorDashboardScreen = () => {
           </View>
           <Text style={styles.payoutAmt}>₹22,100</Text>
         </View>
-      </Card>
+      </Card> */}
       
     </ScrollView>
   );

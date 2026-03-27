@@ -1,6 +1,7 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Linking } from 'react-native';
-import { Mail, Phone, MapPin, Facebook, Linkedin, Instagram } from 'lucide-react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Linking, Image } from 'react-native';
+import circularLogo from '@/assets/images/circularLogo.jpg';
+import { Mail, Phone, MapPin, Globe, Share2, Info } from 'lucide-react-native';
 import { colors } from '@/theme/colors';
 import { spacing } from '@/theme/spacing';
 import { typography } from '@/theme/typography';
@@ -16,7 +17,11 @@ export const PublicFooter = () => {
             <View style={styles.brandSection}>
                 <View style={styles.logoFlex}>
                     <View style={styles.logoBadge}>
-                        <Text style={styles.logoText}>SN</Text>
+                        <Image 
+                            source={circularLogo} 
+                            style={styles.logoImage} 
+                            resizeMode="cover"
+                        />
                     </View>
                     <View>
                         <Text style={styles.title}>StrideNex</Text>
@@ -40,6 +45,17 @@ export const PublicFooter = () => {
                         <MapPin color={colors.success || '#10b981'} size={16} />
                         <Text style={styles.contactText}>Pune, (MH) India 411038</Text>
                     </View>
+                </View>
+                <View style={styles.socialIconsContainer}>
+                    <TouchableOpacity style={styles.socialIcon} onPress={() => Linking.openURL('https://stridenex.ai')}>
+                        <Globe color={colors.text.inverse} size={20} />
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.socialIcon} onPress={() => Linking.openURL('https://linkedin.com/company/stridenex')}>
+                        <Share2 color={colors.text.inverse} size={20} />
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.socialIcon} onPress={() => Linking.openURL('https://instagram.com/stridenex')}>
+                        <Info color={colors.text.inverse} size={20} />
+                    </TouchableOpacity>
                 </View>
             </View>
 
@@ -67,9 +83,13 @@ export const PublicFooter = () => {
             <View style={styles.bottomBar}>
                 <Text style={styles.copyright}>© {new Date().getFullYear()} StrideNex. All rights reserved.</Text>
                 <View style={styles.legalLinks}>
-                    <Text style={styles.legalLink}>Privacy</Text>
+                    <TouchableOpacity onPress={() => navigation.navigate('PrivacyPolicy')}>
+                        <Text style={styles.legalLink}>Privacy</Text>
+                    </TouchableOpacity>
                     <Text style={styles.dot}>•</Text>
-                    <Text style={styles.legalLink}>Terms</Text>
+                    <TouchableOpacity onPress={() => navigation.navigate('TermsOfUse')}>
+                        <Text style={styles.legalLink}>Terms</Text>
+                    </TouchableOpacity>
                 </View>
             </View>
         </View>
@@ -84,8 +104,20 @@ const styles = StyleSheet.create({
     },
     brandSection: { marginBottom: spacing.xl },
     logoFlex: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.md },
-    logoBadge: { width: 44, height: 44, backgroundColor: '#fff', borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginRight: spacing.sm },
-    logoText: { color: colors.navy, fontWeight: '900', fontSize: 18, fontFamily: typography.fontFamily.display },
+    logoBadge: { 
+        width: 44, 
+        height: 44, 
+        backgroundColor: '#fff', 
+        borderRadius: 22, // Circular
+        alignItems: 'center', 
+        justifyContent: 'center', 
+        marginRight: spacing.sm,
+        overflow: 'hidden'
+    },
+    logoImage: {
+        width: '100%',
+        height: '100%',
+    },
     title: { color: '#fff', fontSize: 20, fontWeight: '900', fontFamily: typography.fontFamily.display },
     subtitle: { color: '#94a3b8', fontSize: 12 },
     desc: { color: '#cbd5e1', fontSize: 14, lineHeight: 22, marginBottom: spacing.lg },
@@ -101,5 +133,20 @@ const styles = StyleSheet.create({
     copyright: { color: '#64748b', fontSize: 12, marginBottom: spacing.sm },
     legalLinks: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
     legalLink: { color: '#64748b', fontSize: 12 },
-    dot: { color: '#64748b' }
+    dot: { color: '#64748b' },
+    socialIconsContainer: {
+        flexDirection: 'row',
+        gap: spacing.md,
+        marginTop: spacing.lg,
+    },
+    socialIcon: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: '#1e293b',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: '#334155',
+    }
 });

@@ -13,11 +13,12 @@ export type AuthStackParamList = {
   Login: undefined;
   Signup: undefined;
   StudentOnboarding: undefined;
-  CollegeOnboarding: undefined;
-  IndustryOnboarding: undefined;
-  MentorOnboarding: undefined;
+  // CollegeOnboarding: undefined;
+  // IndustryOnboarding: undefined;
+  // MentorOnboarding: undefined;
   TermsOfUse: undefined;
   PrivacyPolicy: undefined;
+  WebOnboarding: { url: string };
 };
 
 export type DashboardStackParamList = {

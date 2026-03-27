@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Linking } from 'react-native';
 import { Input } from '@/components/Shared/Input';
 import { Button } from '@/components/Shared/Button';
 import { Checkbox } from '@/components/Shared/Checkbox';
@@ -30,10 +30,10 @@ export const SignupScreen = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [selectedRole, setSelectedRole] = useState<UserRole>('student');
   const [acceptTerms, setAcceptTerms] = useState(false);
-  
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  
+
   const navigation = useNavigation<any>();
 
   const validatePasswordStrength = (pass: string) => {
@@ -77,24 +77,26 @@ export const SignupScreen = () => {
         },
         { headers: { "Content-Type": "application/json", Accept: "application/json" } }
       );
-      
+
       const data = response.data;
       if (data?.message === "User created successfully") {
         await AsyncStorage.setItem("userEmail", email);
         await AsyncStorage.setItem("userFirstName", firstName);
         await AsyncStorage.setItem("userLastName", lastName);
 
-        const onboardingMap: Record<UserRole, string> = {
-          student: 'StudentOnboarding',
-          college: 'CollegeOnboarding',
-          industry: 'IndustryOnboarding',
-          mentor: 'MentorOnboarding',
-        };
-        navigation.navigate(onboardingMap[selectedRole]);
+        if (selectedRole === 'student') {
+          navigation.navigate('StudentOnboarding');
+        } else {
+          const webOnboardingUrl = `http://testwebstridenex.quantcloud.in/onboarding/${selectedRole}?source=mobile`;
+
+          navigation.navigate('WebOnboarding', {
+            url: webOnboardingUrl
+          });
+        }
       } else {
         setError(data?.message?.error || data?.message || "Signup failed");
       }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       setError(err?.response?.data?.message || err?.message || "An error occurred during signup");
     } finally {
@@ -109,7 +111,7 @@ export const SignupScreen = () => {
     >
       <View style={styles.formContainer}>
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
-        
+
         <Input label="First Name" placeholder="Enter first name" value={firstName} onChangeText={setFirstName} />
         <Input label="Last Name" placeholder="Enter last name" value={lastName} onChangeText={setLastName} />
 
@@ -122,18 +124,18 @@ export const SignupScreen = () => {
           {roles.map(role => {
             const isSelected = selectedRole === role.id;
             return (
-               <TouchableOpacity 
-                 key={role.id}
-                 style={[styles.roleCard, isSelected && { borderColor: role.color, backgroundColor: 'rgba(0,0,0,0.02)' }]}
-                 onPress={() => setSelectedRole(role.id as UserRole)}
-                 activeOpacity={0.7}
-               >
-                 <View style={[styles.iconContainer, { backgroundColor: isSelected ? role.color : role.color + '20' }]}>
-                   <role.Icon size={16} color={isSelected ? '#fff' : role.color} />
-                 </View>
-                 <Text style={styles.roleTitle}>{role.label}</Text>
-                 <Text style={styles.roleDesc}>{role.description}</Text>
-               </TouchableOpacity>
+              <TouchableOpacity
+                key={role.id}
+                style={[styles.roleCard, isSelected && { borderColor: role.color, backgroundColor: 'rgba(0,0,0,0.02)' }]}
+                onPress={() => setSelectedRole(role.id as UserRole)}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.iconContainer, { backgroundColor: isSelected ? role.color : role.color + '20' }]}>
+                  <role.Icon size={16} color={isSelected ? '#fff' : role.color} />
+                </View>
+                <Text style={styles.roleTitle}>{role.label}</Text>
+                <Text style={styles.roleDesc}>{role.description}</Text>
+              </TouchableOpacity>
             )
           })}
         </View>
@@ -146,7 +148,7 @@ export const SignupScreen = () => {
         </View>
 
         <Button title="Create Account" onPress={handleSignup} loading={loading} variant="accent" style={styles.submitBtn} />
-        
+
         <View style={styles.loginLinkRow}>
           <Text style={styles.termsText}>Already have an account? </Text>
           <TouchableOpacity onPress={() => navigation.navigate('Login')}>

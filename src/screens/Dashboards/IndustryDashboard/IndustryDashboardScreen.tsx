@@ -28,7 +28,7 @@ export const IndustryDashboardScreen = () => {
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.welcomeText}>Welcome back, HR Manager!</Text>
       
-      <View style={styles.gridContainer}>
+      {/* <View style={styles.gridContainer}>
         <View style={styles.row}>
           <StatCard title="Active Job Posts" value="12" change="+2 this week" icon={Briefcase} color={colors.primary.DEFAULT} />
           <StatCard title="Total Applications" value="845" change="+120 new" icon={FileText} color={colors.accent.DEFAULT} />
@@ -105,7 +105,7 @@ export const IndustryDashboardScreen = () => {
             <View style={[styles.funnelBarFill, { width: '7%', backgroundColor: colors.success || '#10b981' }]} />
           </View>
         </View>
-      </Card>
+      </Card> */}
       
     </ScrollView>
   );
