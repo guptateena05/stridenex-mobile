@@ -1,141 +1,133 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
-import { Card } from '@/components/Shared/Card';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '@/theme/colors';
 import { typography } from '@/theme/typography';
-import { spacing, borderRadius } from '@/theme/spacing';
-import { TrendingUp, Award, Briefcase, Bot, Bell } from 'lucide-react-native';
-
-const StatCard = ({ title, value, change, icon: Icon, color }: any) => (
-  <View style={[styles.statCard, { borderBottomColor: color }]}>
-    <View style={styles.statHeader}>
-      <Text style={styles.statTitle}>{title}</Text>
-      <View style={[styles.iconBox, { backgroundColor: color + '20' }]}>
-        <Icon color={color} size={16} />
-      </View>
-    </View>
-    <Text style={styles.statValue}>{value}</Text>
-    {change && (
-      <View style={styles.changeBadge}>
-        <Text style={styles.changeText}>{change}</Text>
-      </View>
-    )}
-  </View>
-);
+import { spacing } from '@/theme/spacing';
+import { useAuth } from '@/context/AuthContext';
+import { RoleBannerWidget } from '@/components/dashboard/RoleBannerWidget';
+import { StatsCard } from '@/components/dashboard/StatsCard';
+import { LearningActivityHeatmap } from '@/components/dashboard/LearningActivityHeatmap';
+import { AICoachCard } from '@/components/dashboard/AICoachCard';
+import { SkillsCard } from '@/components/dashboard/SkillsCard';
+import { AlertsAgendaCard } from '@/components/dashboard/AlertsAgendaCard';
+import { TrendingUp, Award, Briefcase, Bot } from 'lucide-react-native';
 
 export const StudentDashboardScreen = () => {
+  const { userFullName, role } = useAuth();
+
+  const stats = [
+    { title: 'Employability Score', value: '73/100', change: '+8 this month', icon: TrendingUp, color: colors.accent.DEFAULT },
+    { title: 'Path Completion', value: '58%', change: '+12 this week', icon: Award, color: colors.primary.DEFAULT },
+    { title: 'Applications Sent', value: '3', change: '1 shortlisted', icon: Briefcase, color: colors.info || '#3b82f6' },
+    { title: 'AI Sessions', value: '12', change: '+4 assessments', icon: Bot, color: colors.success || '#10b981' },
+  ];
+
+  const skills = [
+    { name: 'Python', percentage: 78 },
+    { name: 'SQL', percentage: 85 },
+    { name: 'Machine Learning', percentage: 61 },
+    { name: 'Data Visualization', percentage: 55 },
+    { name: 'Problem Solving', percentage: 80 },
+  ];
+
+  const alerts = [
+    { type: 'warning' as const, message: 'Razorpay deadline in 3 days', detail: 'Your match: 76% — apply now' },
+    { type: 'success' as const, message: 'Shortlisted at TCS iON!', detail: 'Interview: Feb 28, 3:00 PM' },
+    { type: 'danger' as const, message: 'Habit Risk: LinkedIn', detail: '2 consecutive misses — streak at risk!' },
+  ];
+
+  const agenda = [
+    { icon: 'education', text: 'ML Module Ch.2 — due Feb 25' },
+    { icon: 'call', text: 'Mentor: Kavya Reddy — Feb 27 4PM' },
+    { icon: 'write', text: 'AI Assessment: ML — Feb 28' },
+  ];
+
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.welcomeText}>Welcome back, Student!</Text>
-      
-      {/* <View style={styles.gridContainer}>
-        <View style={styles.row}>
-          <StatCard title="Employability Score" value="73/100" change="+8 this month" icon={TrendingUp} color={colors.accent.DEFAULT} />
-          <StatCard title="Path Completion" value="58%" change="+12 this week" icon={Award} color={colors.primary.DEFAULT} />
+    <SafeAreaView style={styles.safeArea} edges={['bottom']}>
+      <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <View style={styles.header}>
+          <Text style={styles.welcomeText}>Welcome back,</Text>
+          <Text style={styles.userNameText}>{userFullName || 'John Smith'}! 👋</Text>
         </View>
-        <View style={styles.row}>
-          <StatCard title="Applications Sent" value="3" change="1 shortlisted" icon={Briefcase} color={colors.info || '#3b82f6'} />
-          <StatCard title="AI Sessions" value="12" change="+4 assessments" icon={Bot} color={colors.success || '#10b981'} />
-        </View>
-      </View>
 
-      <Card style={styles.card}>
-        <Text style={styles.cardTitle}>Learning Activity</Text>
-        <View style={styles.heatmapMock}>
-          {Array.from({length: 28}).map((_, i) => (
-            <View key={i} style={[styles.heatBox, { opacity: Math.max(0.1, Math.random()) }]} />
-          ))}
-        </View>
-        <Text style={styles.cardSubText}>42 Lessons | 87 Problems Solved | 68 Hrs</Text>
-      </Card>
+        <RoleBannerWidget 
+          role={(role as any) || 'Student'} 
+          fullName={userFullName || 'John Smith'} 
+          subtitle="B.Tech CSE • 3rd Year • VJTI Mumbai"
+          progress={78}
+        />
 
-      <Card style={[styles.card, { backgroundColor: colors.navy }]}>
-        <View style={styles.coachHeader}>
-          <Bot color="#fff" size={24} />
-          <Text style={styles.coachTitle}>AI Career Coach</Text>
-        </View>
-        <Text style={styles.coachText}>
-          Great SQL progress! 🚀 You are top 15% in your cohort. Start your ML module next.
-        </Text>
-        <View style={styles.taskBox}>
-          <Text style={styles.taskText}>Task: Sklearn Ch.2 + solve 2 problems.</Text>
-        </View>
-      </Card>
-
-      <Card style={styles.card}>
-        <Text style={styles.cardTitle}>Top Skills</Text>
-        <View style={styles.skillRow}>
-          <Text style={styles.skillName}>Python</Text>
-          <View style={styles.skillBarBg}>
-            <View style={[styles.skillBarFill, { width: '78%', backgroundColor: colors.accent.DEFAULT }]} />
+        <View style={styles.statsGrid}>
+          <View style={styles.statsRow}>
+            <StatsCard {...stats[0]} />
+            <StatsCard {...stats[1]} />
           </View>
-          <Text style={styles.skillPerc}>78%</Text>
-        </View>
-        <View style={styles.skillRow}>
-          <Text style={styles.skillName}>SQL</Text>
-          <View style={styles.skillBarBg}>
-            <View style={[styles.skillBarFill, { width: '85%', backgroundColor: colors.primary.DEFAULT }]} />
+          <View style={styles.statsRow}>
+            <StatsCard {...stats[2]} />
+            <StatsCard {...stats[3]} />
           </View>
-          <Text style={styles.skillPerc}>85%</Text>
         </View>
-        <View style={styles.skillRow}>
-          <Text style={styles.skillName}>ML</Text>
-          <View style={styles.skillBarBg}>
-            <View style={[styles.skillBarFill, { width: '61%', backgroundColor: colors.info || '#3b82f6' }]} />
-          </View>
-          <Text style={styles.skillPerc}>61%</Text>
-        </View>
-      </Card>
 
-      <Card style={styles.card}>
-        <View style={styles.alertsHeader}>
-          <Bell color={colors.navy} size={20} />
-          <Text style={styles.cardTitle}> Alerts & Agenda</Text>
+        <LearningActivityHeatmap data={{ lessons: 142, problems: 287, studyTime: 168 }} />
+
+        <AICoachCard 
+          message="Great SQL progress! 🚀 You are top 15% in your cohort. Start your ML module next."
+          task="Sklearn Ch.2 (45 min) + solve 2 classification problems."
+        />
+
+        <View style={styles.gridRow}>
+           <SkillsCard skills={skills} />
         </View>
-        <View style={[styles.alertItem, { borderLeftColor: colors.warning || '#f59e0b' }]}>
-          <Text style={styles.alertTitle}>Razorpay deadline in 3 days</Text>
-          <Text style={styles.alertSub}>Your match: 76% — apply now</Text>
-        </View>
-        <View style={[styles.alertItem, { borderLeftColor: colors.success || '#10b981' }]}>
-          <Text style={styles.alertTitle}>Shortlisted at TCS iON!</Text>
-          <Text style={styles.alertSub}>Interview: Feb 28, 3:00 PM</Text>
-        </View>
-      </Card> */}
-      
-    </ScrollView>
+
+        <AlertsAgendaCard alerts={alerts} agenda={agenda} />
+        
+        <View style={styles.footerSpacer} />
+      </ScrollView>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background.light || '#fcfcfc' },
-  content: { padding: spacing.md, paddingBottom: 40 },
-  welcomeText: { fontSize: typography.fontSize.xl, fontWeight: typography.fontWeight.bold, color: colors.navy, marginBottom: spacing.lg, fontFamily: typography.fontFamily.display },
-  gridContainer: { marginBottom: spacing.md },
-  row: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: spacing.md },
-  statCard: { flex: 1, backgroundColor: '#fff', borderRadius: borderRadius.xl, padding: spacing.md, marginHorizontal: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2, borderBottomWidth: 3 },
-  statHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: spacing.sm },
-  statTitle: { fontSize: typography.fontSize.xs, color: colors.text.secondary, flex: 1 },
-  iconBox: { padding: 4, borderRadius: 6 },
-  statValue: { fontSize: typography.fontSize.xl, fontWeight: 'bold', color: colors.navy, marginBottom: 4 },
-  changeBadge: { backgroundColor: colors.background.light || '#f1f5f9', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, alignSelf: 'flex-start' },
-  changeText: { fontSize: 10, color: colors.text.secondary, fontWeight: '500' },
-  card: { marginBottom: spacing.md, padding: spacing.md, borderRadius: borderRadius.xl, backgroundColor: '#fff' },
-  cardTitle: { fontSize: typography.fontSize.lg, fontWeight: 'bold', color: colors.navy, marginBottom: spacing.md, fontFamily: typography.fontFamily.display },
-  cardSubText: { fontSize: typography.fontSize.sm, color: colors.text.secondary, marginTop: spacing.md, textAlign: 'center' },
-  heatmapMock: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, justifyContent: 'center' },
-  heatBox: { width: '12%', aspectRatio: 1, backgroundColor: colors.accent.DEFAULT, borderRadius: 4 },
-  coachHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.md },
-  coachTitle: { color: '#fff', fontSize: typography.fontSize.lg, fontWeight: 'bold', marginLeft: spacing.md, fontFamily: typography.fontFamily.display },
-  coachText: { color: 'rgba(255,255,255,0.9)', fontSize: typography.fontSize.sm, lineHeight: 22 },
-  taskBox: { backgroundColor: 'rgba(255,255,255,0.15)', padding: spacing.md, borderRadius: borderRadius.md, marginTop: spacing.lg },
-  taskText: { color: '#fff', fontSize: typography.fontSize.sm, fontWeight: 'bold' },
-  skillRow: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.md },
-  skillName: { width: 50, fontSize: typography.fontSize.sm, color: colors.text.primary, fontWeight: '500' },
-  skillBarBg: { flex: 1, height: 8, backgroundColor: colors.background.light || '#f1f5f9', borderRadius: 4, marginHorizontal: spacing.sm },
-  skillBarFill: { height: '100%', borderRadius: 4 },
-  skillPerc: { width: 30, fontSize: typography.fontSize.xs, color: colors.text.secondary, textAlign: 'right', fontWeight: 'bold' },
-  alertsHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.xs },
-  alertItem: { backgroundColor: colors.background.light || '#f1f5f9', padding: spacing.md, borderRadius: borderRadius.md, borderLeftWidth: 4, marginBottom: spacing.sm },
-  alertTitle: { fontSize: typography.fontSize.sm, fontWeight: 'bold', color: colors.text.primary, marginBottom: 2 },
-  alertSub: { fontSize: typography.fontSize.xs, color: colors.text.secondary }
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+  },
+  container: {
+    flex: 1,
+  },
+  content: {
+    padding: spacing.md,
+    paddingBottom: spacing.xl,
+  },
+  header: {
+    marginBottom: spacing.md,
+    paddingHorizontal: 4,
+  },
+  welcomeText: {
+    fontSize: typography.fontSize.sm,
+    color: colors.text.secondary,
+    fontWeight: '500',
+  },
+  userNameText: {
+    fontSize: typography.fontSize['2xl'],
+    fontWeight: 'bold',
+    color: '#1E293B',
+    fontFamily: typography.fontFamily.display,
+  },
+  statsGrid: {
+    marginBottom: spacing.sm,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: spacing.sm,
+    marginHorizontal: -4,
+  },
+  gridRow: {
+    marginBottom: spacing.sm,
+  },
+  footerSpacer: {
+    height: spacing.xl,
+  }
 });

@@ -51,8 +51,13 @@ export const LoginScreen = () => {
           else if (lowerRoles.some((r: string) => r.includes('mentor'))) userRole = 'Mentor';
         }
 
+        const userDetails = {
+          full_name: data.full_name || '',
+          username: username
+        };
+
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await login(userRole as any, token);
+        await login(userRole as any, token, userDetails);
       } else {
         setError(data.message || 'Login failed');
       }

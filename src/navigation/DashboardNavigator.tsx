@@ -11,6 +11,12 @@ import { colors } from '@/theme/colors';
 const Tab = createBottomTabNavigator();
 
 export const DashboardNavigator = ({ role = 'Student' }: { role?: string }) => {
+  if (role === 'Student') {
+    // Lazy require to avoid circular dependency
+    const { StudentDrawerNavigator } = require('./StudentDrawerNavigator');
+    return <StudentDrawerNavigator />;
+  }
+
   // Theme coloring for active tabs based on module
   let activeColor = colors.accent.DEFAULT;
   if (role === 'Mentor') activeColor = colors.success || '#10b981';
@@ -35,39 +41,30 @@ export const DashboardNavigator = ({ role = 'Student' }: { role?: string }) => {
         }
       }}
     >
-      {role === 'Student' && (
-        <>
-          <Tab.Screen name="Overview" component={StudentDashboardScreen} options={{ tabBarIcon: ({ color, size }) => <Home color={color} size={size} /> }} />
-          <Tab.Screen name="Courses" component={StudentDashboardScreen} options={{ tabBarIcon: ({ color, size }) => <BookOpen color={color} size={size} /> }} />
-          <Tab.Screen name="Internships" component={StudentDashboardScreen} options={{ tabBarIcon: ({ color, size }) => <Briefcase color={color} size={size} /> }} />
-          <Tab.Screen name="Profile" component={StudentDashboardScreen} options={{ tabBarIcon: ({ color, size }) => <User color={color} size={size} /> }} />
-        </>
-      )}
-
       {role === 'Mentor' && (
         <>
-          <Tab.Screen name="Overview" component={MentorDashboardScreen} options={{ tabBarIcon: ({ color, size }) => <Home color={color} size={size} /> }} />
-          <Tab.Screen name="Students" component={MentorDashboardScreen} options={{ tabBarIcon: ({ color, size }) => <Users color={color} size={size} /> }} />
-          <Tab.Screen name="Sessions" component={MentorDashboardScreen} options={{ tabBarIcon: ({ color, size }) => <BookOpen color={color} size={size} /> }} />
-          <Tab.Screen name="Profile" component={MentorDashboardScreen} options={{ tabBarIcon: ({ color, size }) => <User color={color} size={size} /> }} />
+          <Tab.Screen name="Overview" component={MentorDashboardScreen} options={{ tabBarIcon: ({ color, size }: any) => <Home color={color} size={size} /> }} />
+          <Tab.Screen name="Students" component={MentorDashboardScreen} options={{ tabBarIcon: ({ color, size }: any) => <Users color={color} size={size} /> }} />
+          <Tab.Screen name="Sessions" component={MentorDashboardScreen} options={{ tabBarIcon: ({ color, size }: any) => <BookOpen color={color} size={size} /> }} />
+          <Tab.Screen name="Profile" component={MentorDashboardScreen} options={{ tabBarIcon: ({ color, size }: any) => <User color={color} size={size} /> }} />
         </>
       )}
 
       {role === 'College' && (
         <>
-          <Tab.Screen name="Overview" component={CollegeDashboardScreen} options={{ tabBarIcon: ({ color, size }) => <Home color={color} size={size} /> }} />
-          <Tab.Screen name="Students" component={CollegeDashboardScreen} options={{ tabBarIcon: ({ color, size }) => <Users color={color} size={size} /> }} />
-          <Tab.Screen name="NEP & UGC" component={CollegeDashboardScreen} options={{ tabBarIcon: ({ color, size }) => <BookOpen color={color} size={size} /> }} />
-          <Tab.Screen name="Settings" component={CollegeDashboardScreen} options={{ tabBarIcon: ({ color, size }) => <Settings color={color} size={size} /> }} />
+          <Tab.Screen name="Overview" component={CollegeDashboardScreen} options={{ tabBarIcon: ({ color, size }: any) => <Home color={color} size={size} /> }} />
+          <Tab.Screen name="Students" component={CollegeDashboardScreen} options={{ tabBarIcon: ({ color, size }: any) => <Users color={color} size={size} /> }} />
+          <Tab.Screen name="NEP & UGC" component={CollegeDashboardScreen} options={{ tabBarIcon: ({ color, size }: any) => <BookOpen color={color} size={size} /> }} />
+          <Tab.Screen name="Settings" component={CollegeDashboardScreen} options={{ tabBarIcon: ({ color, size }: any) => <Settings color={color} size={size} /> }} />
         </>
       )}
 
       {role === 'Industry' && (
         <>
-          <Tab.Screen name="Overview" component={IndustryDashboardScreen} options={{ tabBarIcon: ({ color, size }) => <Home color={color} size={size} /> }} />
-          <Tab.Screen name="Jobs" component={IndustryDashboardScreen} options={{ tabBarIcon: ({ color, size }) => <Briefcase color={color} size={size} /> }} />
-          <Tab.Screen name="Analytics" component={IndustryDashboardScreen} options={{ tabBarIcon: ({ color, size }) => <BarChart color={color} size={size} /> }} />
-          <Tab.Screen name="Plans" component={IndustryDashboardScreen} options={{ tabBarIcon: ({ color, size }) => <User color={color} size={size} /> }} />
+          <Tab.Screen name="Overview" component={IndustryDashboardScreen} options={{ tabBarIcon: ({ color, size }: any) => <Home color={color} size={size} /> }} />
+          <Tab.Screen name="Jobs" component={IndustryDashboardScreen} options={{ tabBarIcon: ({ color, size }: any) => <Briefcase color={color} size={size} /> }} />
+          <Tab.Screen name="Analytics" component={IndustryDashboardScreen} options={{ tabBarIcon: ({ color, size }: any) => <BarChart color={color} size={size} /> }} />
+          <Tab.Screen name="Plans" component={IndustryDashboardScreen} options={{ tabBarIcon: ({ color, size }: any) => <User color={color} size={size} /> }} />
         </>
       )}
     </Tab.Navigator>

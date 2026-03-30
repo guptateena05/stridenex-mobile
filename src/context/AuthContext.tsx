@@ -6,8 +6,10 @@ type Role = 'Student' | 'Mentor' | 'College' | 'Industry' | null;
 
 interface AuthContextType {
   role: Role;
+  userFullName: string | null;
+  userName: string | null;
   isAuthenticated: boolean;
-  login: (role: Role, token: string) => Promise<void>;
+  login: (role: Role, token: string, userDetails?: { full_name?: string; username?: string }) => Promise<void>;
   logout: () => Promise<void>;
   loading: boolean;
 }
@@ -16,6 +18,8 @@ export const AuthContext = createContext<AuthContextType>({} as AuthContextType)
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [role, setRole] = useState<Role>(null);
+  const [userFullName, setUserFullName] = useState<string | null>(null);
+  const [userName, setUserName] = useState<string | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -24,9 +28,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       try {
         const token = await AsyncStorage.getItem('token');
         const storedRole = await AsyncStorage.getItem('role');
+        const storedFullName = await AsyncStorage.getItem('userFullName');
+        const storedUserName = await AsyncStorage.getItem('userName');
         if (token && storedRole) {
           setIsAuthenticated(true);
           setRole(storedRole as Role);
+          setUserFullName(storedFullName);
+          setUserName(storedUserName);
         }
       } catch (e) {
         console.error("Failed to fetch auth state", e);
@@ -37,11 +45,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     checkAuth();
   }, []);
 
-  const login = async (newRole: Role, token: string) => {
+  const login = async (newRole: Role, token: string, userDetails?: { full_name?: string; username?: string }) => {
     try {
       await AsyncStorage.setItem('token', token);
       if (newRole) {
         await AsyncStorage.setItem('role', newRole);
+      }
+      if (userDetails?.full_name) {
+        await AsyncStorage.setItem('userFullName', userDetails.full_name);
+        setUserFullName(userDetails.full_name);
+      }
+      if (userDetails?.username) {
+        await AsyncStorage.setItem('userName', userDetails.username);
+        setUserName(userDetails.username);
       }
       setRole(newRole);
       setIsAuthenticated(true);
@@ -69,7 +85,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
       await AsyncStorage.removeItem('token');
       await AsyncStorage.removeItem('role');
+      await AsyncStorage.removeItem('userFullName');
+      await AsyncStorage.removeItem('userName');
       setRole(null);
+      setUserFullName(null);
+      setUserName(null);
       setIsAuthenticated(false);
     } catch (e) {
       console.error("Failed to clear auth state", e);
@@ -77,7 +97,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ role, isAuthenticated, login, logout, loading }}>
+    <AuthContext.Provider value={{ role, userFullName, userName, isAuthenticated, login, logout, loading }}>
       {children}
     </AuthContext.Provider>
   );
