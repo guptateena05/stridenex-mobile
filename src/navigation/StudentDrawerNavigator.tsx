@@ -21,6 +21,14 @@ import {
 } from 'lucide-react-native';
 
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
+import { StudentPathScreen } from '@/screens/Dashboards/StudentDashboard/StudentPathScreen';
+import { StudentCommunityScreen } from '@/screens/Dashboards/StudentDashboard/StudentCommunityScreen';
+import { StudentInternshipScreen } from '@/screens/Dashboards/StudentDashboard/StudentInternshipScreen';
+import { StudentHabitsScreen } from '@/screens/Dashboards/StudentDashboard/StudentHabitsScreen';
+import { StudentMentorsScreen } from '@/screens/Dashboards/StudentDashboard/StudentMentorsScreen';
+import { StudentEventsScreen } from '@/screens/Dashboards/StudentDashboard/StudentEventsScreen';
+import { StudentStoriesScreen } from '@/screens/Dashboards/StudentDashboard/StudentStoriesScreen';
+import { StudentPlansScreen } from '@/screens/Dashboards/StudentDashboard/StudentPlansScreen';
 
 const Drawer = createDrawerNavigator();
 
@@ -73,56 +81,56 @@ export const StudentDrawerNavigator = () => {
       />
       <Drawer.Screen
         name="Path"
-        component={DummyScreen}
+        component={StudentPathScreen}
         options={{
           drawerIcon: ({ color, size }) => <Navigation color={color} size={size} />
         }}
       />
       <Drawer.Screen
         name="Community"
-        component={DummyScreen}
+        component={StudentCommunityScreen}
         options={{
           drawerIcon: ({ color, size }) => <Users color={color} size={size} />
         }}
       />
       <Drawer.Screen
         name="Internships"
-        component={DummyScreen}
+        component={StudentInternshipScreen}
         options={{
           drawerIcon: ({ color, size }) => <Briefcase color={color} size={size} />
         }}
       />
       <Drawer.Screen
         name="Habits"
-        component={DummyScreen}
+        component={StudentHabitsScreen}
         options={{
           drawerIcon: ({ color, size }) => <PieChart color={color} size={size} />
         }}
       />
       <Drawer.Screen
         name="Mentors"
-        component={DummyScreen}
+        component={StudentMentorsScreen}
         options={{
           drawerIcon: ({ color, size }) => <UserSquare2 color={color} size={size} />
         }}
       />
       <Drawer.Screen
         name="Events"
-        component={DummyScreen}
+        component={StudentEventsScreen}
         options={{
           drawerIcon: ({ color, size }) => <Calendar color={color} size={size} />
         }}
       />
       <Drawer.Screen
         name="Stories"
-        component={DummyScreen}
+        component={StudentStoriesScreen}
         options={{
           drawerIcon: ({ color, size }) => <History color={color} size={size} />
         }}
       />
       <Drawer.Screen
         name="Plans"
-        component={DummyScreen}
+        component={StudentPlansScreen}
         options={{
           drawerIcon: ({ color, size }) => <BookOpen color={color} size={size} />
         }}
