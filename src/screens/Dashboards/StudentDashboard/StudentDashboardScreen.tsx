@@ -13,74 +13,84 @@ import { SkillsCard } from '@/components/dashboard/SkillsCard';
 import { AlertsAgendaCard } from '@/components/dashboard/AlertsAgendaCard';
 import { TrendingUp, Award, Briefcase, Bot } from 'lucide-react-native';
 
+import { Svg, Defs, LinearGradient as SvgGradient, Stop, Rect, Circle } from 'react-native-svg';
+import Animated, { FadeInUp, FadeInRight } from 'react-native-reanimated';
+
 export const StudentDashboardScreen = () => {
   const { userFullName, role } = useAuth();
 
   const stats = [
-    { title: 'Employability Score', value: '73/100', change: '+8 this month', icon: TrendingUp, color: colors.accent.DEFAULT },
-    { title: 'Path Completion', value: '58%', change: '+12 this week', icon: Award, color: colors.primary.DEFAULT },
-    { title: 'Applications Sent', value: '3', change: '1 shortlisted', icon: Briefcase, color: colors.info || '#3b82f6' },
-    { title: 'AI Sessions', value: '12', change: '+4 assessments', icon: Bot, color: colors.success || '#10b981' },
+    { title: 'Score', value: '73/100', icon: TrendingUp, color: colors.accent.DEFAULT },
+    { title: 'Goal', value: '58%', icon: Award, color: colors.primary.DEFAULT },
+    { title: 'Active', value: '3', icon: Briefcase, color: colors.info || '#3b82f6' },
+    { title: 'Sessions', value: '12', icon: Bot, color: colors.success || '#10b981' },
   ];
 
   const skills = [
     { name: 'Python', percentage: 78 },
     { name: 'SQL', percentage: 85 },
-    { name: 'Machine Learning', percentage: 61 },
-    { name: 'Data Visualization', percentage: 55 },
-    { name: 'Problem Solving', percentage: 80 },
+    { name: 'ML', percentage: 61 },
+    { name: 'Viz', percentage: 55 },
   ];
 
   const alerts = [
-    { type: 'warning' as const, message: 'Razorpay deadline in 3 days', detail: 'Your match: 76% — apply now' },
-    { type: 'success' as const, message: 'Shortlisted at TCS iON!', detail: 'Interview: Feb 28, 3:00 PM' },
-    { type: 'danger' as const, message: 'Habit Risk: LinkedIn', detail: '2 consecutive misses — streak at risk!' },
+    { type: 'warning' as const, message: 'Upcoming Deadline', detail: 'Razorpay • 3 days left' },
+    { type: 'success' as const, message: 'Project Approved', detail: 'TCS • Interview: Feb 28' },
   ];
 
   const agenda = [
-    { icon: 'education', text: 'ML Module Ch.2 — due Feb 25' },
-    { icon: 'call', text: 'Mentor: Kavya Reddy — Feb 27 4PM' },
-    { icon: 'write', text: 'AI Assessment: ML — Feb 28' },
+    { icon: 'education', text: 'ML Module Ch.2 — Today' },
+    { icon: 'call', text: 'Mentor call — Feb 27 4PM' },
   ];
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['bottom']}>
       <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
-          <Text style={styles.welcomeText}>Welcome back,</Text>
-          <Text style={styles.userNameText}>{userFullName || 'John Smith'}! 👋</Text>
+        <Animated.View entering={FadeInUp.delay(200)}>
+          <RoleBannerWidget 
+            fullName={userFullName || 'John Smith'} 
+            date="Monday, 30 March"
+            role={role || 'Student Dashboard'}
+            progress={78}
+          />
+        </Animated.View>
+
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Overview</Text>
         </View>
 
-        <RoleBannerWidget 
-          role={(role as any) || 'Student'} 
-          fullName={userFullName || 'John Smith'} 
-          subtitle="B.Tech CSE • 3rd Year • VJTI Mumbai"
-          progress={78}
-        />
+        <Animated.View entering={FadeInRight.delay(300)} style={styles.statsRow}>
+          {stats.map((stat, i) => (
+            <StatsCard key={i} {...stat} />
+          ))}
+        </Animated.View>
 
-        <View style={styles.statsGrid}>
-          <View style={styles.statsRow}>
-            <StatsCard {...stats[0]} />
-            <StatsCard {...stats[1]} />
-          </View>
-          <View style={styles.statsRow}>
-            <StatsCard {...stats[2]} />
-            <StatsCard {...stats[3]} />
-          </View>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Strategic Learning</Text>
         </View>
 
-        <LearningActivityHeatmap data={{ lessons: 142, problems: 287, studyTime: 168 }} />
+        <Animated.View entering={FadeInUp.delay(400)}>
+          <LearningActivityHeatmap data={{ lessons: 142, problems: 287, studyTime: 168 }} />
+        </Animated.View>
 
-        <AICoachCard 
-          message="Great SQL progress! 🚀 You are top 15% in your cohort. Start your ML module next."
-          task="Sklearn Ch.2 (45 min) + solve 2 classification problems."
-        />
+        <Animated.View entering={FadeInUp.delay(500)}>
+          <AICoachCard 
+            message="Your SQL velocity is impressive. 🚀 You've unlocked the next 'Strategic Learning' path."
+            task="Optimize Ch.4 Joins + solving 3 advanced queries."
+          />
+        </Animated.View>
 
-        <View style={styles.gridRow}>
-           <SkillsCard skills={skills} />
+        <Animated.View entering={FadeInUp.delay(600)}>
+          <SkillsCard skills={skills} />
+        </Animated.View>
+
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Communications</Text>
         </View>
 
-        <AlertsAgendaCard alerts={alerts} agenda={agenda} />
+        <Animated.View entering={FadeInUp.delay(700)}>
+          <AlertsAgendaCard alerts={alerts} agenda={agenda} />
+        </Animated.View>
         
         <View style={styles.footerSpacer} />
       </ScrollView>
@@ -97,37 +107,43 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    padding: spacing.md,
-    paddingBottom: spacing.xl,
+    paddingHorizontal: 20,
+    paddingTop: 32,
+    paddingBottom: 40,
   },
   header: {
-    marginBottom: spacing.md,
-    paddingHorizontal: 4,
-  },
-  welcomeText: {
-    fontSize: typography.fontSize.sm,
-    color: colors.text.secondary,
-    fontWeight: '500',
+    marginBottom: 28,
   },
   userNameText: {
-    fontSize: typography.fontSize['2xl'],
-    fontWeight: 'bold',
-    color: '#1E293B',
+    fontSize: 32,
+    fontWeight: '900',
+    color: '#0F172A',
     fontFamily: typography.fontFamily.display,
+    letterSpacing: -1,
   },
-  statsGrid: {
-    marginBottom: spacing.sm,
+  todayText: {
+    fontSize: 14,
+    color: '#64748B',
+    fontWeight: '600',
+    marginTop: 6,
+  },
+  sectionHeader: {
+    marginBottom: 20,
+    marginTop: 36,
+  },
+  sectionTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#334155',
+    textTransform: 'uppercase',
+    letterSpacing: 1.2,
   },
   statsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: spacing.sm,
-    marginHorizontal: -4,
-  },
-  gridRow: {
-    marginBottom: spacing.sm,
+    paddingVertical: 4,
   },
   footerSpacer: {
-    height: spacing.xl,
+    height: 60,
   }
 });

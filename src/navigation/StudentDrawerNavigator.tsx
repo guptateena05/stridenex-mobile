@@ -1,22 +1,23 @@
 import React from 'react';
 import { createDrawerNavigator } from '@react-navigation/drawer';
 import { StudentDashboardScreen } from '@/screens/Dashboards/StudentDashboard/StudentDashboardScreen';
+import { StudentSkillsScreen } from '@/screens/Dashboards/StudentDashboard/StudentSkillsScreen';
 import { CustomDrawerContent } from '@/components/dashboard/CustomDrawerContent';
 import { colors } from '@/theme/colors';
 import { typography } from '@/theme/typography';
 import { View, Text, StyleSheet } from 'react-native';
-import { 
-  LayoutDashboard, 
-  Zap, 
-  Navigation, 
-  Users, 
-  Briefcase, 
-  PieChart, 
-  UserSquare2, 
-  Calendar, 
-  BookOpen, 
-  History, 
-  Video 
+import {
+  LayoutDashboard,
+  Zap,
+  Navigation,
+  Users,
+  Briefcase,
+  PieChart,
+  UserSquare2,
+  Calendar,
+  BookOpen,
+  History,
+  Video
 } from 'lucide-react-native';
 
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
@@ -56,82 +57,82 @@ export const StudentDrawerNavigator = () => {
         }
       }}
     >
-      <Drawer.Screen 
-        name="Overview" 
-        component={StudentDashboardScreen} 
-        options={{ 
-          drawerIcon: ({ color, size }) => <LayoutDashboard color={color} size={size} /> 
-        }} 
+      <Drawer.Screen
+        name="Overview"
+        component={StudentDashboardScreen}
+        options={{
+          drawerIcon: ({ color, size }) => <LayoutDashboard color={color} size={size} />
+        }}
       />
-      <Drawer.Screen 
-        name="Skills" 
-        component={DummyScreen} 
-        options={{ 
-          drawerIcon: ({ color, size }) => <Zap color={color} size={size} /> 
-        }} 
+      <Drawer.Screen
+        name="Skills"
+        component={StudentSkillsScreen}
+        options={{
+          drawerIcon: ({ color, size }) => <Zap color={color} size={size} />
+        }}
       />
-      <Drawer.Screen 
-        name="Path" 
-        component={DummyScreen} 
-        options={{ 
-          drawerIcon: ({ color, size }) => <Navigation color={color} size={size} /> 
-        }} 
+      <Drawer.Screen
+        name="Path"
+        component={DummyScreen}
+        options={{
+          drawerIcon: ({ color, size }) => <Navigation color={color} size={size} />
+        }}
       />
-      <Drawer.Screen 
-        name="Community" 
-        component={DummyScreen} 
-        options={{ 
-          drawerIcon: ({ color, size }) => <Users color={color} size={size} /> 
-        }} 
+      <Drawer.Screen
+        name="Community"
+        component={DummyScreen}
+        options={{
+          drawerIcon: ({ color, size }) => <Users color={color} size={size} />
+        }}
       />
-      <Drawer.Screen 
-        name="Internships" 
-        component={DummyScreen} 
-        options={{ 
-          drawerIcon: ({ color, size }) => <Briefcase color={color} size={size} /> 
-        }} 
+      <Drawer.Screen
+        name="Internships"
+        component={DummyScreen}
+        options={{
+          drawerIcon: ({ color, size }) => <Briefcase color={color} size={size} />
+        }}
       />
-      <Drawer.Screen 
-        name="Habits" 
-        component={DummyScreen} 
-        options={{ 
-          drawerIcon: ({ color, size }) => <PieChart color={color} size={size} /> 
-        }} 
+      <Drawer.Screen
+        name="Habits"
+        component={DummyScreen}
+        options={{
+          drawerIcon: ({ color, size }) => <PieChart color={color} size={size} />
+        }}
       />
-      <Drawer.Screen 
-        name="Mentors" 
-        component={DummyScreen} 
-        options={{ 
-          drawerIcon: ({ color, size }) => <UserSquare2 color={color} size={size} /> 
-        }} 
+      <Drawer.Screen
+        name="Mentors"
+        component={DummyScreen}
+        options={{
+          drawerIcon: ({ color, size }) => <UserSquare2 color={color} size={size} />
+        }}
       />
-      <Drawer.Screen 
-        name="Events" 
-        component={DummyScreen} 
-        options={{ 
-          drawerIcon: ({ color, size }) => <Calendar color={color} size={size} /> 
-        }} 
+      <Drawer.Screen
+        name="Events"
+        component={DummyScreen}
+        options={{
+          drawerIcon: ({ color, size }) => <Calendar color={color} size={size} />
+        }}
       />
-      <Drawer.Screen 
-        name="Stories" 
-        component={DummyScreen} 
-        options={{ 
-          drawerIcon: ({ color, size }) => <History color={color} size={size} /> 
-        }} 
+      <Drawer.Screen
+        name="Stories"
+        component={DummyScreen}
+        options={{
+          drawerIcon: ({ color, size }) => <History color={color} size={size} />
+        }}
       />
-      <Drawer.Screen 
-        name="Plans" 
-        component={DummyScreen} 
-        options={{ 
-          drawerIcon: ({ color, size }) => <BookOpen color={color} size={size} /> 
-        }} 
+      <Drawer.Screen
+        name="Plans"
+        component={DummyScreen}
+        options={{
+          drawerIcon: ({ color, size }) => <BookOpen color={color} size={size} />
+        }}
       />
-      <Drawer.Screen 
-        name="Shorts" 
-        component={DummyScreen} 
-        options={{ 
-          drawerIcon: ({ color, size }) => <Video color={color} size={size} /> 
-        }} 
+      <Drawer.Screen
+        name="Shorts"
+        component={DummyScreen}
+        options={{
+          drawerIcon: ({ color, size }) => <Video color={color} size={size} />
+        }}
       />
     </Drawer.Navigator>
   );

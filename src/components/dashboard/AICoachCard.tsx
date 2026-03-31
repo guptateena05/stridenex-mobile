@@ -12,31 +12,24 @@ interface AICoachCardProps {
 
 export const AICoachCard = ({ message, task }: AICoachCardProps) => (
   <View style={styles.card}>
-    <View style={styles.gradientOverlay} />
     <View style={styles.content}>
       <View style={styles.header}>
-        <View style={styles.botIconWrapper}>
-          <View style={styles.pulseRing} />
-          <View style={styles.iconBox}>
-            <Bot color="#fff" size={20} />
-          </View>
+        <View style={styles.iconBox}>
+          <Bot color="#F97316" size={22} />
         </View>
         <View>
-          <Text style={styles.title}>AI Career Coach</Text>
-          <Text style={styles.subtitle}>Personalized Guidance</Text>
+          <Text style={styles.title}>Career Insights</Text>
+          <View style={styles.liveBadge}>
+            <Text style={styles.liveText}>ANALYSIS LIVE</Text>
+          </View>
         </View>
       </View>
       
       <Text style={styles.message}>{message}</Text>
       
-      <View style={styles.taskBox}>
-        <View style={styles.taskHeader}>
-          <Text style={styles.taskLabel}>NEXT MILESTONE</Text>
-          <View style={styles.priorityBadge}>
-            <Text style={styles.priorityText}>High Priority</Text>
-          </View>
-        </View>
-        <Text style={styles.taskText}>{task}</Text>
+      <View style={styles.actionBox}>
+        <Text style={styles.actionLabel}>RECOMMENDED ACTION</Text>
+        <Text style={styles.actionText}>{task}</Text>
       </View>
     </View>
   </View>
@@ -44,109 +37,78 @@ export const AICoachCard = ({ message, task }: AICoachCardProps) => (
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#0F172A',
-    borderRadius: 24,
-    marginBottom: 16,
-    overflow: 'hidden',
-    position: 'relative',
+    backgroundColor: '#fff',
+    borderRadius: 28,
+    marginBottom: 24,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  gradientOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(255, 107, 0, 0.05)', // Subtle Stridenex orange hint
+    borderColor: '#F1F5F9',
+    shadowColor: '#64748B',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.05,
+    shadowRadius: 16,
+    elevation: 3,
   },
   content: {
     padding: 20,
-    zIndex: 1,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 16,
   },
-  botIconWrapper: {
-    position: 'relative',
-    marginRight: 12,
-  },
-  pulseRing: {
-    position: 'absolute',
+  iconBox: {
     width: 44,
     height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(255, 107, 0, 0.2)',
-    top: -4,
-    left: -4,
-  },
-  iconBox: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: colors.accent.DEFAULT,
+    borderRadius: 14,
+    backgroundColor: '#FFF7ED',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
+    marginRight: 14,
+    borderWidth: 1,
+    borderColor: '#FFEDD5',
   },
   title: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '800',
+    color: '#0F172A',
+    fontSize: 17,
+    fontWeight: '700',
     fontFamily: typography.fontFamily.display,
   },
-  subtitle: {
-    color: 'rgba(255, 255, 255, 0.5)',
-    fontSize: 10,
-    fontWeight: '600',
-    textTransform: 'uppercase',
+  liveBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 2,
+  },
+  liveText: {
+    fontSize: 8,
+    fontWeight: '800',
+    color: '#94A3B8',
     letterSpacing: 1,
   },
   message: {
-    color: 'rgba(219, 234, 254, 0.9)', // Light blue-ish white
-    fontSize: 14,
+    color: '#475569',
+    fontSize: 15,
     lineHeight: 22,
-    marginBottom: 20,
+    marginBottom: 18,
     fontWeight: '500',
   },
-  taskBox: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+  actionBox: {
+    backgroundColor: '#F8FAFC',
     padding: 16,
-    borderRadius: 16,
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderColor: '#F1F5F9',
   },
-  taskHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  taskLabel: {
-    color: colors.accent.DEFAULT,
-    fontSize: 10,
+  actionLabel: {
+    color: '#F97316',
+    fontSize: 9,
     fontWeight: '800',
-    letterSpacing: 1.2,
+    letterSpacing: 1,
+    marginBottom: 6,
   },
-  priorityBadge: {
-    backgroundColor: 'rgba(255, 107, 0, 0.2)',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  priorityText: {
-    color: colors.accent.DEFAULT,
-    fontSize: 8,
-    fontWeight: '800',
-    textTransform: 'uppercase',
-  },
-  taskText: {
-    color: '#fff',
+  actionText: {
+    color: '#1E293B',
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '700',
     lineHeight: 20,
   },
 });

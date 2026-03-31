@@ -2,8 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { colors } from '@/theme/colors';
 import { typography } from '@/theme/typography';
-import { spacing, borderRadius } from '@/theme/spacing';
-import { Bell, Calendar, BookOpen, Clock } from 'lucide-react-native';
+import { Bell, BookOpen, Video, Clock, MessageSquare, Calendar } from 'lucide-react-native';
 
 interface Alert {
   type: 'warning' | 'success' | 'danger';
@@ -23,51 +22,48 @@ interface AlertsAgendaCardProps {
 
 export const AlertsAgendaCard = ({ alerts, agenda }: AlertsAgendaCardProps) => {
   const getIcon = (iconName: string) => {
+    const iconSize = 18;
     switch (iconName) {
-      case 'education': return <BookOpen size={14} color={colors.text.secondary} />;
-      case 'call': return <Clock size={14} color={colors.text.secondary} />;
-      case 'write': return <Calendar size={14} color={colors.text.secondary} />;
-      default: return <Bell size={14} color={colors.text.secondary} />;
-    }
-  };
-
-  const getColor = (type: string) => {
-    switch (type) {
-      case 'warning': return colors.warning || '#f59e0b';
-      case 'success': return colors.success || '#10b981';
-      case 'danger': return colors.error || '#ef4444';
-      default: return colors.primary.DEFAULT;
+      case 'education': return <BookOpen size={iconSize} color="#6366F1" />;
+      case 'call': return <Clock size={iconSize} color="#F97316" />;
+      default: return <Video size={iconSize} color="#10B981" />;
     }
   };
 
   return (
-    <View style={styles.card}>
-      <View style={styles.section}>
-        <View style={styles.header}>
-          <Bell size={20} color={colors.navy} />
-          <Text style={styles.title}>Alerts</Text>
-        </View>
-        {alerts.map((alert, index) => (
-          <View key={index} style={[styles.alertItem, { borderLeftColor: getColor(alert.type) }]}>
-            <Text style={styles.alertMsg}>{alert.message}</Text>
-            <Text style={styles.alertDetail}>{alert.detail}</Text>
+    <View style={styles.container}>
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>Priority Inbox</Text>
+      </View>
+      <View style={styles.alertsList}>
+        {alerts.map((alert, i) => (
+          <View key={i} style={styles.alertCard}>
+            <View style={styles.alertIconBox}>
+               <Bell color={alert.type === 'warning' ? '#F97316' : '#10B981'} size={20} />
+            </View>
+            <View style={styles.alertContent}>
+              <Text style={styles.alertMsg}>{alert.message}</Text>
+              <Text style={styles.alertDetail}>{alert.detail}</Text>
+            </View>
           </View>
         ))}
       </View>
 
-      <View style={styles.divider} />
-
-      <View style={styles.section}>
-        <View style={styles.header}>
-          <Calendar size={20} color={colors.navy} />
-          <Text style={styles.title}>Upcoming Agenda</Text>
-        </View>
-        {agenda.map((item, index) => (
-          <View key={index} style={styles.agendaItem}>
-            <View style={styles.agendaIconBox}>
-              {getIcon(item.icon)}
+      <View style={[styles.sectionHeader, { marginTop: 32 }]}>
+        <Text style={styles.sectionTitle}>Learning Pipeline</Text>
+      </View>
+      <View style={styles.timelineContainer}>
+        {agenda.map((item, i) => (
+          <View key={i} style={styles.timelineItem}>
+            <View style={styles.timelineContent}>
+              <View style={styles.agendaIconBox}>
+                {getIcon(item.icon)}
+              </View>
+              <View style={styles.agendaTextContainer}>
+                <Text style={styles.agendaText}>{item.text}</Text>
+                <Text style={styles.agendaSub}>Status: Scheduled</Text>
+              </View>
             </View>
-            <Text style={styles.agendaText}>{item.text}</Text>
           </View>
         ))}
       </View>
@@ -76,71 +72,105 @@ export const AlertsAgendaCard = ({ alerts, agenda }: AlertsAgendaCardProps) => {
 };
 
 const styles = StyleSheet.create({
-  card: {
+  container: {
+    marginBottom: 40,
+  },
+  sectionHeader: {
+    marginBottom: 16,
+  },
+  sectionTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#334155',
+    textTransform: 'uppercase',
+    letterSpacing: 1.2,
+  },
+  alertsList: {
+    gap: 12,
+  },
+  alertCard: {
     backgroundColor: '#fff',
-    borderRadius: borderRadius.xl,
-    padding: spacing.lg,
-    marginBottom: spacing.md,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  section: {
-    marginBottom: spacing.md,
-  },
-  header: {
+    borderRadius: 28,
+    padding: 16,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
-    marginBottom: spacing.md,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+    shadowColor: '#64748B',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.04,
+    shadowRadius: 12,
+    elevation: 2,
   },
-  title: {
-    fontSize: typography.fontSize.base,
-    fontWeight: 'bold',
-    color: colors.navy,
-    fontFamily: typography.fontFamily.display,
+  alertIconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: '#F8FAFC',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 16,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
   },
-  alertItem: {
-    backgroundColor: '#f8fafc',
-    padding: spacing.md,
-    borderRadius: borderRadius.md,
-    borderLeftWidth: 4,
-    marginBottom: spacing.sm,
+  alertContent: {
+    flex: 1,
   },
   alertMsg: {
-    fontSize: typography.fontSize.sm,
-    fontWeight: 'bold',
-    color: colors.text.primary,
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#1E293B',
     marginBottom: 2,
   },
   alertDetail: {
-    fontSize: 11,
-    color: colors.text.secondary,
+    fontSize: 12,
+    color: '#94A3B8',
+    fontWeight: '600',
   },
-  divider: {
-    height: 1,
-    backgroundColor: '#f1f5f9',
-    marginVertical: spacing.md,
+  timelineContainer: {
+    gap: 12,
   },
-  agendaItem: {
+  timelineItem: {
+    flexDirection: 'row',
+  },
+  timelineContent: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.md,
-    marginBottom: spacing.sm,
+    backgroundColor: '#fff',
+    padding: 16,
+    borderRadius: 28,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+    shadowColor: '#64748B',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.04,
+    shadowRadius: 10,
+    elevation: 2,
   },
   agendaIconBox: {
-    width: 28,
-    height: 28,
-    borderRadius: 6,
-    backgroundColor: '#f1f5f9',
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: '#F8FAFC',
     alignItems: 'center',
     justifyContent: 'center',
+    marginRight: 16,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+  },
+  agendaTextContainer: {
+    flex: 1,
   },
   agendaText: {
-    fontSize: typography.fontSize.sm,
-    color: colors.text.primary,
-    fontWeight: '500',
+    fontSize: 15,
+    color: '#1E293B',
+    fontWeight: '700',
+  },
+  agendaSub: {
+    fontSize: 11,
+    color: '#94A3B8',
+    fontWeight: '600',
+    marginTop: 2,
   },
 });
