@@ -29,6 +29,7 @@ import { StudentMentorsScreen } from '@/screens/Dashboards/StudentDashboard/Stud
 import { StudentEventsScreen } from '@/screens/Dashboards/StudentDashboard/StudentEventsScreen';
 import { StudentStoriesScreen } from '@/screens/Dashboards/StudentDashboard/StudentStoriesScreen';
 import { StudentPlansScreen } from '@/screens/Dashboards/StudentDashboard/StudentPlansScreen';
+import { StudentShortsScreen } from '@/screens/Dashboards/StudentDashboard/StudentShortsScreen';
 
 const Drawer = createDrawerNavigator();
 
@@ -137,7 +138,7 @@ export const StudentDrawerNavigator = () => {
       />
       <Drawer.Screen
         name="Shorts"
-        component={DummyScreen}
+        component={StudentShortsScreen}
         options={{
           drawerIcon: ({ color, size }) => <Video color={color} size={size} />
         }}
