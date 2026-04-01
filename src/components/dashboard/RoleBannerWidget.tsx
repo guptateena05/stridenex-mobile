@@ -8,17 +8,24 @@ interface RoleBannerWidgetProps {
   date: string;
   role: string;
   progress: number;
+  theme?: 'orange' | 'purple';
 }
 
-export const RoleBannerWidget = ({ fullName, date, role, progress }: RoleBannerWidgetProps) => {
+export const RoleBannerWidget = ({ fullName, date, role, progress, theme = 'orange' }: RoleBannerWidgetProps) => {
+  const isPurple = theme === 'purple';
+  const gradStart = isPurple ? '#A855F7' : '#FB923C';
+  const gradEnd = isPurple ? '#7E22CE' : '#EA580C';
+  const shadowColor = isPurple ? '#7E22CE' : '#EA580C';
+  const iconColor = isPurple ? '#9333EA' : '#EA580C';
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: gradStart, shadowColor }]}>
       <View style={StyleSheet.absoluteFill}>
         <Svg height="100%" width="100%">
           <Defs>
             <SvgGradient id="headerGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-              <Stop offset="0%" stopColor="#FB923C" stopOpacity="1" />
-              <Stop offset="100%" stopColor="#EA580C" stopOpacity="1" />
+              <Stop offset="0%" stopColor={gradStart} stopOpacity="1" />
+              <Stop offset="100%" stopColor={gradEnd} stopOpacity="1" />
             </SvgGradient>
           </Defs>
           <Rect x="0" y="0" width="100%" height="100%" fill="url(#headerGrad)" rx={32} />
@@ -37,7 +44,7 @@ export const RoleBannerWidget = ({ fullName, date, role, progress }: RoleBannerW
             </View>
           </View>
           <View style={styles.avatar}>
-            <User color="#EA580C" size={24} />
+            <User color={iconColor} size={24} />
           </View>
         </View>
 

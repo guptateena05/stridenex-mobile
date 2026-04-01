@@ -17,11 +17,15 @@ export const DashboardNavigator = ({ role = 'Student' }: { role?: string }) => {
     return <StudentDrawerNavigator />;
   }
 
+  if (role === 'Industry') {
+    const { IndustryDrawerNavigator } = require('./IndustryDrawerNavigator');
+    return <IndustryDrawerNavigator />;
+  }
+
   // Theme coloring for active tabs based on module
   let activeColor = colors.accent.DEFAULT;
   if (role === 'Mentor') activeColor = colors.success || '#10b981';
   else if (role === 'College') activeColor = colors.info || '#3b82f6';
-  else if (role === 'Industry') activeColor = colors.primary.DEFAULT;
 
   return (
     <Tab.Navigator
@@ -56,15 +60,6 @@ export const DashboardNavigator = ({ role = 'Student' }: { role?: string }) => {
           <Tab.Screen name="Students" component={CollegeDashboardScreen} options={{ tabBarIcon: ({ color, size }: any) => <Users color={color} size={size} /> }} />
           <Tab.Screen name="NEP & UGC" component={CollegeDashboardScreen} options={{ tabBarIcon: ({ color, size }: any) => <BookOpen color={color} size={size} /> }} />
           <Tab.Screen name="Settings" component={CollegeDashboardScreen} options={{ tabBarIcon: ({ color, size }: any) => <Settings color={color} size={size} /> }} />
-        </>
-      )}
-
-      {role === 'Industry' && (
-        <>
-          <Tab.Screen name="Overview" component={IndustryDashboardScreen} options={{ tabBarIcon: ({ color, size }: any) => <Home color={color} size={size} /> }} />
-          <Tab.Screen name="Jobs" component={IndustryDashboardScreen} options={{ tabBarIcon: ({ color, size }: any) => <Briefcase color={color} size={size} /> }} />
-          <Tab.Screen name="Analytics" component={IndustryDashboardScreen} options={{ tabBarIcon: ({ color, size }: any) => <BarChart color={color} size={size} /> }} />
-          <Tab.Screen name="Plans" component={IndustryDashboardScreen} options={{ tabBarIcon: ({ color, size }: any) => <User color={color} size={size} /> }} />
         </>
       )}
     </Tab.Navigator>
