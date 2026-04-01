@@ -17,6 +17,7 @@ import {
   TrendingUp
 } from 'lucide-react-native';
 import Animated, { FadeInUp, FadeInRight } from 'react-native-reanimated';
+import { StatsCard } from '@/components/dashboard/StatsCard';
 
 const statsData = [
   { id: 1, title: "APPLIED", value: 14, icon: Send, color: "#3B82F6", bg: "rgba(59, 130, 246, 0.08)" },
@@ -111,22 +112,18 @@ export const StudentInternshipScreen = () => {
           <Text style={styles.subtitle}>Find and apply to matching roles</Text>
         </Animated.View>
 
-        {/* Stats Grid */}
-        <View style={styles.statsGrid}>
-           {statsData.map((stat, index) => (
-             <Animated.View 
-               key={stat.id} 
-               entering={FadeInRight.delay(200 + index * 100)}
-               style={styles.statCard}
-             >
-                <View style={[styles.statIconContainer, { backgroundColor: stat.bg }]}>
-                   <stat.icon size={16} color={stat.color} />
-                </View>
-                <Text style={styles.statValue}>{stat.value}</Text>
-                <Text style={styles.statTitle}>{stat.title}</Text>
-             </Animated.View>
+        {/* Stats Row */}
+        <Animated.View entering={FadeInRight.delay(200)} style={styles.statsRow}>
+           {statsData.map((stat) => (
+             <StatsCard 
+               key={stat.id}
+               title={stat.title}
+               value={stat.value}
+               icon={stat.icon}
+               color={stat.color}
+             />
            ))}
-        </View>
+        </Animated.View>
 
         {/* Matching Internships Section */}
         <View style={styles.sectionHeader}>
@@ -210,78 +207,44 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   header: {
-    marginBottom: 24,
+    marginBottom: 16,
     paddingHorizontal: 4,
   },
   headerBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 4,
     backgroundColor: 'rgba(255, 107, 0, 0.08)',
     alignSelf: 'flex-start',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 8,
-    marginBottom: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    marginBottom: 6,
   },
   headerBadgeText: {
-    fontSize: 9,
-    fontWeight: '900',
+    fontSize: 8,
+    fontWeight: '800',
     color: colors.accent.DEFAULT,
-    letterSpacing: 1,
+    letterSpacing: 0.5,
   },
   title: {
-    fontSize: 32,
-    fontWeight: '900',
+    fontSize: 22,
+    fontWeight: '800',
     color: '#0F172A',
     fontFamily: typography.fontFamily.display,
-    letterSpacing: -1,
+    letterSpacing: -0.5,
   },
   subtitle: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#64748B',
-    fontWeight: '600',
-    marginTop: 4,
+    fontWeight: '500',
+    marginTop: 2,
   },
-  statsGrid: {
+  statsRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
+    justifyContent: 'space-between',
+    paddingVertical: 4,
     marginBottom: 32,
-  },
-  statCard: {
-    width: (Dimensions.get('window').width - 32 - 10) / 2,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 16,
-    borderWidth: 1.5,
-    borderColor: '#F1F5F9',
-    shadowColor: '#64748B',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.03,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  statIconContainer: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 12,
-  },
-  statValue: {
-    fontSize: 22,
-    fontWeight: '900',
-    color: '#1E293B',
-    marginBottom: 2,
-  },
-  statTitle: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#94A3B8',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
   },
   sectionHeader: {
     flexDirection: 'row',
