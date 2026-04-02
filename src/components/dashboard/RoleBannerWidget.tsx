@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { User, ShieldCheck, Calendar } from 'lucide-react-native';
+import { User, ShieldCheck, Calendar, Users, Award, Briefcase, Target } from 'lucide-react-native';
 import { Svg, Defs, LinearGradient as SvgGradient, Stop, Rect, Circle } from 'react-native-svg';
 
 interface RoleBannerWidgetProps {
@@ -8,15 +8,41 @@ interface RoleBannerWidgetProps {
   date: string;
   role: string;
   progress: number;
-  theme?: 'orange' | 'purple';
+  theme?: 'orange' | 'purple' | 'mentor';
+  metrics?: { label: string; value: string | number; iconName?: 'Users' | 'Calendar' | 'Award' | 'Briefcase' | 'Target' }[];
 }
 
-export const RoleBannerWidget = ({ fullName, date, role, progress, theme = 'orange' }: RoleBannerWidgetProps) => {
+export const RoleBannerWidget = ({ fullName, date, role, progress, theme = 'orange', metrics }: RoleBannerWidgetProps) => {
   const isPurple = theme === 'purple';
-  const gradStart = isPurple ? '#A855F7' : '#FB923C';
-  const gradEnd = isPurple ? '#7E22CE' : '#EA580C';
-  const shadowColor = isPurple ? '#7E22CE' : '#EA580C';
-  const iconColor = isPurple ? '#9333EA' : '#EA580C';
+  const isMentor = theme === 'mentor';
+  
+  let gradStart = '#FB923C';
+  let gradEnd = '#EA580C';
+  let shadowColor = '#EA580C';
+  let iconColor = '#EA580C';
+
+  if (isPurple) {
+    gradStart = '#A855F7';
+    gradEnd = '#7E22CE';
+    shadowColor = '#7E22CE';
+    iconColor = '#9333EA';
+  } else if (isMentor) {
+    gradStart = '#4c1d95'; // violet-900
+    gradEnd = '#2e1065';   // violet-950
+    shadowColor = '#2e1065';
+    iconColor = '#4c1d95';
+  }
+
+  const getIcon = (iconName?: string) => {
+    switch(iconName) {
+      case 'Users': return <Users size={16} color={iconColor} />;
+      case 'Calendar': return <Calendar size={16} color={iconColor} />;
+      case 'Award': return <Award size={16} color={iconColor} />;
+      case 'Briefcase': return <Briefcase size={16} color={iconColor} />;
+      case 'Target': return <Target size={16} color={iconColor} />;
+      default: return null;
+    }
+  };
 
   return (
     <View style={[styles.container, { backgroundColor: gradStart, shadowColor }]}>
@@ -36,7 +62,7 @@ export const RoleBannerWidget = ({ fullName, date, role, progress, theme = 'oran
 
       <View style={styles.content}>
         <View style={styles.topSection}>
-          <View>
+          <View style={{ flex: 1, paddingRight: 16 }}>
             <Text style={styles.greeting}>Hello, {fullName.split(' ')[0]}!</Text>
             <View style={styles.dateRow}>
               <Calendar size={12} color="rgba(255, 255, 255, 0.8)" />
@@ -48,15 +74,29 @@ export const RoleBannerWidget = ({ fullName, date, role, progress, theme = 'oran
           </View>
         </View>
 
-        <View style={styles.bottomCard}>
-          <View style={styles.progressHeader}>
-            <Text style={styles.progressLabel}>Course Completion</Text>
-            <Text style={styles.progressVal}>{progress}%</Text>
+        {metrics && metrics.length > 0 ? (
+          <View style={styles.metricsRow}>
+            {metrics.map((m, i) => (
+              <View key={i} style={styles.metricBox}>
+                <View style={styles.metricValRow}>
+                  <Text style={styles.metricVal}>{m.value}</Text>
+                  {getIcon(m.iconName)}
+                </View>
+                <Text style={styles.metricLabel}>{m.label}</Text>
+              </View>
+            ))}
           </View>
-          <View style={styles.progressBarBg}>
-            <View style={[styles.progressBarFill, { width: `${progress}%` }]} />
+        ) : (
+          <View style={styles.bottomCard}>
+            <View style={styles.progressHeader}>
+              <Text style={styles.progressLabel}>Course Completion</Text>
+              <Text style={styles.progressVal}>{progress}%</Text>
+            </View>
+            <View style={styles.progressBarBg}>
+              <View style={[styles.progressBarFill, { width: `${progress}%` }]} />
+            </View>
           </View>
-        </View>
+        )}
       </View>
     </View>
   );
@@ -150,4 +190,37 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 3,
   },
+  metricsRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 8,
+  },
+  metricBox: {
+    flex: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    borderRadius: 12,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.25)',
+    alignItems: 'center',
+  },
+  metricValRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: 4,
+  },
+  metricVal: {
+    fontSize: 16,
+    fontWeight: '900',
+    color: '#fff',
+  },
+  metricLabel: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: 'rgba(255, 255, 255, 0.9)',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    textAlign: 'center',
+  }
 });

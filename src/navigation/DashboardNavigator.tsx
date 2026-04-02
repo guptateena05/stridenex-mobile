@@ -22,10 +22,14 @@ export const DashboardNavigator = ({ role = 'Student' }: { role?: string }) => {
     return <IndustryDrawerNavigator />;
   }
 
+  if (role === 'Mentor') {
+    const { MentorDrawerNavigator } = require('./MentorDrawerNavigator');
+    return <MentorDrawerNavigator />;
+  }
+
   // Theme coloring for active tabs based on module
   let activeColor = colors.accent.DEFAULT;
-  if (role === 'Mentor') activeColor = colors.success || '#10b981';
-  else if (role === 'College') activeColor = colors.info || '#3b82f6';
+  if (role === 'College') activeColor = colors.info || '#3b82f6';
 
   return (
     <Tab.Navigator
@@ -45,14 +49,7 @@ export const DashboardNavigator = ({ role = 'Student' }: { role?: string }) => {
         }
       }}
     >
-      {role === 'Mentor' && (
-        <>
-          <Tab.Screen name="Overview" component={MentorDashboardScreen} options={{ tabBarIcon: ({ color, size }: any) => <Home color={color} size={size} /> }} />
-          <Tab.Screen name="Students" component={MentorDashboardScreen} options={{ tabBarIcon: ({ color, size }: any) => <Users color={color} size={size} /> }} />
-          <Tab.Screen name="Sessions" component={MentorDashboardScreen} options={{ tabBarIcon: ({ color, size }: any) => <BookOpen color={color} size={size} /> }} />
-          <Tab.Screen name="Profile" component={MentorDashboardScreen} options={{ tabBarIcon: ({ color, size }: any) => <User color={color} size={size} /> }} />
-        </>
-      )}
+      {/* No bottom tabs for Mentor now */}
 
       {role === 'College' && (
         <>

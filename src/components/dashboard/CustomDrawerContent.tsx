@@ -41,7 +41,7 @@ export const CustomDrawerContent = (props: DrawerContentComponentProps) => {
   };
 
   let headerBg = colors.accent.DEFAULT;
-  if (role === 'Mentor') headerBg = colors.success || '#10b981';
+  if (role === 'Mentor') headerBg = '#2e1065';
   else if (role === 'College') headerBg = colors.info || '#3b82f6';
   else if (role === 'Industry') headerBg = colors.purple[600] || '#9333ea';
 
