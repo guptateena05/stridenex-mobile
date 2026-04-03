@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, Alert } from 'react-native';
 import { DrawerContentComponentProps, DrawerItemList, DrawerItem } from '@react-navigation/drawer';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -18,7 +19,9 @@ import {
   History, 
   CreditCard, 
   Play,
-  LogOut
+  LogOut,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react-native';
 
 export const CustomDrawerContent = (props: DrawerContentComponentProps) => {
@@ -42,8 +45,11 @@ export const CustomDrawerContent = (props: DrawerContentComponentProps) => {
 
   let headerBg = colors.accent.DEFAULT;
   if (role === 'Mentor') headerBg = '#2e1065';
-  else if (role === 'College') headerBg = colors.info || '#3b82f6';
+  else if (role === 'College') headerBg = '#10b981';
   else if (role === 'Industry') headerBg = colors.purple[600] || '#9333ea';
+
+  const [nepExpanded, setNepExpanded] = useState(false);
+  const nepTabs = ["NEP Dashboard", "NEP 2020", "UGC 2026", "Grievance Engine", "Portfolio Locker", "ABC Credits", "Equity Audit", "NEP Reports"];
 
   return (
     <View style={styles.container}>
@@ -62,7 +68,50 @@ export const CustomDrawerContent = (props: DrawerContentComponentProps) => {
       </View>
 
       <ScrollView style={styles.scrollArea} contentContainerStyle={styles.scrollContent}>
-        <DrawerItemList {...props} />
+        {role === 'College' ? (
+          props.state.routes.map((route, i) => {
+            const focused = i === props.state.index;
+            const { title, drawerIcon, drawerActiveTintColor, drawerInactiveTintColor, drawerActiveBackgroundColor, drawerLabelStyle, drawerItemStyle } = props.descriptors[route.key].options;
+            const isNepParent = route.name === 'NEP & UGC 2026';
+            const isNepChild = nepTabs.includes(route.name);
+
+            if (isNepChild && !nepExpanded) return null;
+
+            return (
+              <View key={route.key}>
+                <DrawerItem
+                  label={({ focused, color }) => (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flex: 1, paddingRight: 4 }}>
+                      <Text style={[drawerLabelStyle, { color, fontSize: 13, fontWeight: '700' }]}>
+                        {title !== undefined ? title : route.name}
+                      </Text>
+                      {isNepParent && (
+                        <View style={{ opacity: 0.5 }}>
+                          {nepExpanded ? <ChevronUp size={16} color={color} /> : <ChevronDown size={16} color={color} />}
+                        </View>
+                      )}
+                    </View>
+                  )}
+                  icon={drawerIcon}
+                  focused={focused}
+                  activeTintColor={drawerActiveTintColor || '#10b981'}
+                  inactiveTintColor={drawerInactiveTintColor || colors.text.secondary}
+                  activeBackgroundColor={drawerActiveBackgroundColor || 'rgba(16, 185, 129, 0.1)'}
+                  style={[drawerItemStyle, isNepChild && { marginTop: 0, marginBottom: 2, marginLeft: 44 }]}
+                  onPress={() => {
+                    if (isNepParent) {
+                      setNepExpanded(!nepExpanded);
+                    } else {
+                      props.navigation.navigate(route.name);
+                    }
+                  }}
+                />
+              </View>
+            );
+          })
+        ) : (
+          <DrawerItemList {...props} />
+        )}
       </ScrollView>
 
       <View style={[styles.footer, { paddingBottom: insets.bottom + spacing.md }]}>

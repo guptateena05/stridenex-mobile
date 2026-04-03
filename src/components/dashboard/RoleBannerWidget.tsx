@@ -8,13 +8,14 @@ interface RoleBannerWidgetProps {
   date: string;
   role: string;
   progress: number;
-  theme?: 'orange' | 'purple' | 'mentor';
+  theme?: 'orange' | 'purple' | 'mentor' | 'college';
   metrics?: { label: string; value: string | number; iconName?: 'Users' | 'Calendar' | 'Award' | 'Briefcase' | 'Target' }[];
 }
 
 export const RoleBannerWidget = ({ fullName, date, role, progress, theme = 'orange', metrics }: RoleBannerWidgetProps) => {
   const isPurple = theme === 'purple';
   const isMentor = theme === 'mentor';
+  const isCollege = theme === 'college' || role?.toLowerCase() === 'college';
   
   let gradStart = '#FB923C';
   let gradEnd = '#EA580C';
@@ -31,6 +32,11 @@ export const RoleBannerWidget = ({ fullName, date, role, progress, theme = 'oran
     gradEnd = '#2e1065';   // violet-950
     shadowColor = '#2e1065';
     iconColor = '#4c1d95';
+  } else if (isCollege) {
+    gradStart = '#10b981'; // emerald-500
+    gradEnd = '#047857';   // emerald-700
+    shadowColor = '#047857';
+    iconColor = '#10b981';
   }
 
   const getIcon = (iconName?: string) => {

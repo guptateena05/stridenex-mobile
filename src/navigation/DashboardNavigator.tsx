@@ -27,9 +27,13 @@ export const DashboardNavigator = ({ role = 'Student' }: { role?: string }) => {
     return <MentorDrawerNavigator />;
   }
 
+  if (role === 'College') {
+    const { CollegeDrawerNavigator } = require('./CollegeDrawerNavigator');
+    return <CollegeDrawerNavigator />;
+  }
+
   // Theme coloring for active tabs based on module
   let activeColor = colors.accent.DEFAULT;
-  if (role === 'College') activeColor = colors.info || '#3b82f6';
 
   return (
     <Tab.Navigator
@@ -49,16 +53,7 @@ export const DashboardNavigator = ({ role = 'Student' }: { role?: string }) => {
         }
       }}
     >
-      {/* No bottom tabs for Mentor now */}
-
-      {role === 'College' && (
-        <>
-          <Tab.Screen name="Overview" component={CollegeDashboardScreen} options={{ tabBarIcon: ({ color, size }: any) => <Home color={color} size={size} /> }} />
-          <Tab.Screen name="Students" component={CollegeDashboardScreen} options={{ tabBarIcon: ({ color, size }: any) => <Users color={color} size={size} /> }} />
-          <Tab.Screen name="NEP & UGC" component={CollegeDashboardScreen} options={{ tabBarIcon: ({ color, size }: any) => <BookOpen color={color} size={size} /> }} />
-          <Tab.Screen name="Settings" component={CollegeDashboardScreen} options={{ tabBarIcon: ({ color, size }: any) => <Settings color={color} size={size} /> }} />
-        </>
-      )}
+      <Tab.Screen name="Overview" component={StudentDashboardScreen} options={{ tabBarIcon: ({ color, size }: any) => <Home color={color} size={size} /> }} />
     </Tab.Navigator>
   );
 };
