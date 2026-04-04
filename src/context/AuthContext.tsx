@@ -1,6 +1,6 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { BASE_URL } from '@/api/api.services';
+import { api, BASE_URL } from '@/api/api.services';
 
 type Role = 'Student' | 'Mentor' | 'College' | 'Industry' | null;
 
@@ -71,11 +71,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       const token = await AsyncStorage.getItem('token');
       if (token && token !== 'dummy-token') {
         try {
-          await fetch(`${BASE_URL}method/stridenex_app.api_stridenex_app.app.logout`, {
-            method: 'POST',
+          await api.post('method/stridenex_app.api_stridenex_app.app.logout', {}, {
             headers: {
-              'Accept': 'application/json',
-              'Content-Type': 'application/json',
               'Authorization': `token ${token}`
             }
           });

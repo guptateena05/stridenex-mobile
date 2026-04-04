@@ -59,7 +59,7 @@ export const IndustryDashboardScreen = () => {
             <Text style={styles.subtitle}>Here is your recruitment overview today</Text>
           </Animated.View>
 
-          <Animated.View entering={FadeInUp.delay(150)} style={{ marginBottom: 24 }}>
+          <Animated.View entering={FadeInUp.delay(150)} style={{ marginBottom: 12 }}>
             <RoleBannerWidget 
               fullName={userFullName || 'HR Team'} 
               date="Wednesday, 01 April"
@@ -190,7 +190,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   statWrapper: {
-    width: '50%',
+    width: '25%',
     paddingHorizontal: 4,
     marginBottom: 8,
   },

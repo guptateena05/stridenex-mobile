@@ -66,7 +66,7 @@ export const MentorDashboardScreen = () => {
           </Animated.View>
 
           {/* Banner */}
-          <Animated.View entering={FadeInUp.delay(100)} style={{ marginBottom: 24 }}>
+          <Animated.View entering={FadeInUp.delay(100)} style={{ marginBottom: 12 }}>
             <RoleBannerWidget 
               fullName={userFullName || 'Mentorship Team'} 
               date="Wednesday, 01 April"

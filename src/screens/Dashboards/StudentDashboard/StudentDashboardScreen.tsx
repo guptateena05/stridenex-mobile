@@ -131,7 +131,7 @@ const styles = StyleSheet.create({
   },
   sectionHeader: {
     marginBottom: 20,
-    marginTop: 36,
+    marginTop: 12,
   },
   sectionTitle: {
     fontSize: 15,
@@ -147,7 +147,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   statWrapper: {
-    width: '50%',
+    width: '25%',
     paddingHorizontal: 4,
     marginBottom: 8,
   },

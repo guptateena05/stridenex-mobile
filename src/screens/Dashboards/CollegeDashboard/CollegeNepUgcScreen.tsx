@@ -182,7 +182,7 @@ const styles = StyleSheet.create({
   reportBtnText: { color: '#FFF', fontSize: 12, fontWeight: '700' },
 
   // Legacy Compliance styles
-  scoreBannerLegacy: { padding: 20, borderRadius: 20, backgroundColor: '#0F172A', marginBottom: 24, borderWidth: 0 },
+  scoreBannerLegacy: { padding: 20, borderRadius: 20, backgroundColor: '#0F172A', marginBottom: 12, borderWidth: 0 },
   scoreContentLegacy: { flexDirection: 'row', alignItems: 'center', gap: 20 },
   scoreCircleLegacy: { width: 70, height: 70, borderRadius: 35, borderWidth: 4, borderColor: '#10B981', alignItems: 'center', justifyContent: 'center' },
   scoreValueLegacy: { fontSize: 24, fontWeight: '800', color: '#FFF' },

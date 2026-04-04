@@ -80,7 +80,7 @@ export const CollegeOverviewScreen = () => {
           <Text style={styles.subtitle}>Direct institutional oversight and key performance metrics</Text>
         </Animated.View>
 
-        <View style={{ marginBottom: 24 }}>
+        <View style={{ marginBottom: 12 }}>
           <RoleBannerWidget 
             role="College Administrator"
             fullName="Mohan Kumar" 
@@ -228,7 +228,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   statWrapper: {
-    width: '50%',
+    width: '25%',
     paddingHorizontal: 4,
     marginBottom: 8,
   },

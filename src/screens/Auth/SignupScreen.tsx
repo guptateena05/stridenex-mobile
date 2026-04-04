@@ -1,16 +1,15 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Linking } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Input } from '@/components/Shared/Input';
 import { Button } from '@/components/Shared/Button';
 import { Checkbox } from '@/components/Shared/Checkbox';
 import { AnimatedAuthLayout } from '@/components/layout/AnimatedAuthLayout';
-import { BASE_URL } from '@/api/api.services';
+import { api, BASE_URL } from '@/api/api.services';
 import { colors } from '@/theme/colors';
 import { typography } from '@/theme/typography';
 import { spacing, borderRadius } from '@/theme/spacing';
 import { GraduationCap, Users, Building2, Briefcase } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
-import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type UserRole = "student" | "mentor" | "college" | "industry";
@@ -66,16 +65,15 @@ export const SignupScreen = () => {
     ];
 
     try {
-      const response = await axios.post(
-        `${BASE_URL}method/stridenex_app.api_stridenex_app.app.signup`,
+      const response = await api.post(
+        'method/stridenex_app.api_stridenex_app.app.signup',
         {
           first_name: firstName,
           last_name: lastName,
           email,
           password,
           role: rolePayload,
-        },
-        { headers: { "Content-Type": "application/json", Accept: "application/json" } }
+        }
       );
 
       const data = response.data;
@@ -116,8 +114,8 @@ export const SignupScreen = () => {
         <Input label="Last Name" placeholder="Enter last name" value={lastName} onChangeText={setLastName} />
 
         <Input label="Email" placeholder="name@college.edu" value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" />
-        <Input label="Password" placeholder="Create a password" value={password} onChangeText={setPassword} secureTextEntry />
-        <Input label="Confirm Password" placeholder="Confirm your password" value={confirmPassword} onChangeText={setConfirmPassword} secureTextEntry />
+        <Input label="Password" placeholder="Create a password" value={password} onChangeText={setPassword} isPassword />
+        <Input label="Confirm Password" placeholder="Confirm your password" value={confirmPassword} onChangeText={setConfirmPassword} isPassword />
 
         <Text style={styles.roleLabel}>I want to join as</Text>
         <View style={styles.rolesGrid}>

@@ -5,11 +5,10 @@ import { Button } from '@/components/Shared/Button';
 import { Checkbox } from '@/components/Shared/Checkbox';
 import { AnimatedAuthLayout } from '@/components/layout/AnimatedAuthLayout';
 import { useAuth } from '@/context/AuthContext';
-import { BASE_URL } from '@/api/api.services';
+import { api, BASE_URL } from '@/api/api.services';
 import { colors } from '@/theme/colors';
 import { typography } from '@/theme/typography';
 import { spacing } from '@/theme/spacing';
-import axios from 'axios';
 import { useNavigation } from '@react-navigation/native';
 
 export const LoginScreen = () => {
@@ -31,12 +30,11 @@ export const LoginScreen = () => {
     setError('');
 
     try {
-      const response = await axios.post(
-        `${BASE_URL}method/stridenex_app.api_stridenex_app.app.login`,
-        { usr: username, pwd: password },
-        { headers: { 'Content-Type': 'application/json' } }
+      const response = await api.post(
+        'method/stridenex_app.api_stridenex_app.app.login',
+        { usr: username, pwd: password }
       );
-
+      console.log('Login response:', response.data);
       const data = response.data;
 
       if (data.message === "Logged In") {
@@ -63,6 +61,7 @@ export const LoginScreen = () => {
       }
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
+      console.error('Login error:', err);
       setError(err?.response?.data?.message || err?.message || 'An error occurred during login');
     } finally {
       setLoading(false);
@@ -89,7 +88,7 @@ export const LoginScreen = () => {
           placeholder="••••••••"
           value={password}
           onChangeText={setPassword}
-          secureTextEntry
+          isPassword
         />
 
         <View style={styles.optionsRow}>
