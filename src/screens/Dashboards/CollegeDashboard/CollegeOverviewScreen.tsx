@@ -2,7 +2,6 @@ import React from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { colors } from '@/theme/colors';
 import { typography } from '@/theme/typography';
-import { spacing, borderRadius } from '@/theme/spacing';
 import { StatsCard } from '@/components/dashboard/StatsCard';
 import { Card } from '@/components/Shared/Card';
 import { RoleBannerWidget } from '@/components/dashboard/RoleBannerWidget';
@@ -12,18 +11,15 @@ import {
   TrendingUp,
   AlertTriangle,
   Building2,
-  Award,
-  Calendar,
   Target,
   Database,
-  Code,
   MessageSquare,
-  Briefcase,
-  Clock,
-  ArrowUp,
   LayoutDashboard,
   Cloud,
-  Activity
+  Activity,
+  Award,
+  Briefcase,
+  Clock
 } from 'lucide-react-native';
 
 const collegeStats = [
@@ -94,16 +90,17 @@ export const CollegeOverviewScreen = () => {
           />
         </View>
 
-        {/* Stats Row (4-in-a-row) */}
-        <Animated.View entering={FadeInRight.delay(150)} style={styles.statsRow}>
+        {/* Stats Grid */}
+        <Animated.View entering={FadeInRight.delay(150)} style={styles.statsGrid}>
           {collegeStats.map((stat, i) => (
-             <StatsCard 
-              key={i} 
-              title={stat.title.split(' ')[0]} // Shorten titles to fit
-              value={stat.value} 
-              icon={stat.icon} 
-              color={i === 0 ? "#3B82F6" : i === 1 ? "#10B981" : i === 2 ? "#EF4444" : "#F59E0B"} 
-            />
+             <View key={i} style={styles.statWrapper}>
+                <StatsCard 
+                  title={stat.title.split(' ')[0]} 
+                  value={stat.value} 
+                  icon={stat.icon} 
+                  color={i === 0 ? "#3B82F6" : i === 1 ? "#10B981" : i === 2 ? "#EF4444" : "#F59E0B"} 
+                />
+             </View>
           ))}
         </Animated.View>
 
@@ -224,7 +221,17 @@ const styles = StyleSheet.create({
   headerBadgeText: { fontSize: 8, fontWeight: '800', color: '#059669', letterSpacing: 0.5 },
   title: { fontSize: 22, fontWeight: '800', color: '#0F172A', fontFamily: typography.fontFamily.display, letterSpacing: -0.5 },
   subtitle: { fontSize: 12, color: '#64748B', fontWeight: '500', marginTop: 2 },
-  statsRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4, marginBottom: 24 },
+  statsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginHorizontal: -4,
+    paddingVertical: 4,
+  },
+  statWrapper: {
+    width: '50%',
+    paddingHorizontal: 4,
+    marginBottom: 8,
+  },
   sectionCard: { backgroundColor: '#FFF', borderRadius: 20, padding: 20, marginBottom: 16, borderWidth: 1, borderColor: '#E2E8F0' },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 20, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
   sectionTitle: { fontSize: 15, fontWeight: '800', color: '#1E293B' },

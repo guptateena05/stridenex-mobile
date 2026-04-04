@@ -70,16 +70,17 @@ export const IndustryDashboardScreen = () => {
           </Animated.View>
         </View>
 
-        {/* Stats Row */}
-        <Animated.View entering={FadeInRight.delay(200)} style={styles.statsRow}>
+        {/* Stats Grid */}
+        <Animated.View entering={FadeInRight.delay(200)} style={styles.statsGrid}>
           {industryStats.map((stat) => (
-             <StatsCard 
-               key={stat.id}
-               title={stat.title} 
-               value={stat.value} 
-               icon={stat.icon} 
-               color={stat.color} 
-             />
+             <View key={stat.id} style={styles.statWrapper}>
+               <StatsCard 
+                 title={stat.title} 
+                 value={stat.value} 
+                 icon={stat.icon} 
+                 color={stat.color} 
+               />
+             </View>
           ))}
         </Animated.View>
 
@@ -181,7 +182,18 @@ const styles = StyleSheet.create({
   title: { fontSize: 22, fontWeight: '800', color: '#0F172A', fontFamily: typography.fontFamily.display, letterSpacing: -0.5 },
   subtitle: { fontSize: 12, color: '#64748B', fontWeight: '500', marginTop: 2 },
   
-  statsRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4, paddingHorizontal: 16 },
+  statsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginHorizontal: -4,
+    paddingVertical: 4,
+    paddingHorizontal: 16,
+  },
+  statWrapper: {
+    width: '50%',
+    paddingHorizontal: 4,
+    marginBottom: 8,
+  },
 
   sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 16 },
   sectionTitle: { fontSize: 18, fontWeight: '800', color: '#1E293B' },

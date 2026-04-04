@@ -7,7 +7,7 @@ import { Card } from '@/components/Shared/Card';
 import { StatsCard } from '@/components/dashboard/StatsCard';
 import { 
   Download, FileText, BarChart, FileJson, 
-  Zap, RefreshCcw, Clock,
+  Zap, RefreshCcw, Clock, Briefcase,
   FileCheck2, ShieldCheck, ChevronRight
 } from 'lucide-react-native';
 
@@ -27,6 +27,8 @@ const reports = [
   { id: "REP-004", target: "ABC Credit Summary Report", desc: "Student-wise credit accumulation for NAD", lastSync: "1h ago", formats: ["Excel", "CSV"], status: "Ready", icon: FileJson, color: "#10B981" },
   { id: "REP-005", target: "OBE Attainment Analytics", desc: "Course-LO mapping and attainment levels", lastSync: "3d ago", formats: ["Excel"], status: "In Queue", icon: BarChart, color: "#64748B" },
   { id: "REP-006", target: "Holistic Progress Batch Export", desc: "Bulk HPC export — print-ready bundle", lastSync: "4h ago", formats: ["PDF (bulk)"], status: "Ready", icon: FileText, color: "#10B981" },
+  { id: "REP-007", target: "Industry Collaboration MoU Report", desc: "Active partnerships, intern outcomes, co-curriculum", lastSync: "5h ago", formats: ["PDF"], status: "Ready", icon: Briefcase, color: "#10B981" },
+  { id: "REP-008", target: "Grievance Resolution Report", desc: "Monthly stats, SLA compliance, anonymised data", lastSync: "1h ago", formats: ["PDF"], status: "Ready", icon: ShieldCheck, color: "#10B981" },
 ];
 
 export const CollegeReportsScreen = () => {

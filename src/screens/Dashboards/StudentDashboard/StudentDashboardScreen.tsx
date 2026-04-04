@@ -59,9 +59,11 @@ export const StudentDashboardScreen = () => {
           <Text style={styles.sectionTitle}>Overview</Text>
         </View>
 
-        <Animated.View entering={FadeInRight.delay(300)} style={styles.statsRow}>
+        <Animated.View entering={FadeInRight.delay(300)} style={styles.statsGrid}>
           {stats.map((stat, i) => (
-            <StatsCard key={i} {...stat} />
+             <View key={i} style={styles.statWrapper}>
+                <StatsCard {...stat} />
+             </View>
           ))}
         </Animated.View>
 
@@ -138,10 +140,16 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 1.2,
   },
-  statsRow: {
+  statsGrid: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    marginHorizontal: -4,
     paddingVertical: 4,
+  },
+  statWrapper: {
+    width: '50%',
+    paddingHorizontal: 4,
+    marginBottom: 8,
   },
   footerSpacer: {
     height: 60,

@@ -9,20 +9,34 @@ import {
   FileText, Target, Users, BarChart, Briefcase, Calendar, 
   CheckSquare, Download, ShieldCheck, AlertCircle, Clock, 
   TrendingUp, FolderKanban, CheckCircle2, RefreshCcw, Link2,
-  ChevronRight, ArrowUpRight, ShieldAlert, Award, Zap
+  ChevronRight, ArrowUpRight, ShieldAlert, Award, Zap,
+  Eye, ShieldOff, XCircle, AlertOctagon, AlertTriangle
 } from 'lucide-react-native';
 import Animated, { FadeInUp, FadeInRight } from 'react-native-reanimated';
 
 const complianceMetrics = [
-  { id: 1, title: 'Holistic', value: '62%', status: 'Action', color: '#F59E0B', icon: FileText },
+  { id: 1, title: 'Holistic Cards', value: '62%', status: 'Action', color: '#F59E0B', icon: FileText },
   { id: 2, title: 'ABC Sync', value: '78%', status: 'Healthy', color: '#10B981', icon: Target },
-  { id: 3, title: 'Equity', value: '40%', status: 'Critical', color: '#EF4444', icon: Users },
+  { id: 3, title: 'Equity (EOC)', value: '40%', status: 'Critical', color: '#EF4444', icon: Users },
   { id: 4, title: 'UDISE+', value: '85%', status: 'Healthy', color: '#10B981', icon: BarChart },
+  { id: 5, title: 'OBE Mapping', value: '55%', status: 'Action', color: '#F59E0B', icon: Target },
+  { id: 6, title: 'Grievance SLA', value: '48%', status: 'Action', color: '#F59E0B', icon: FileText },
+  { id: 7, title: 'Faculty CPD', value: '74%', status: 'Healthy', color: '#10B981', icon: Users },
+  { id: 8, title: 'NAAC Portfolio', value: '68%', status: 'Action', color: '#F59E0B', icon: Briefcase },
+];
+
+const quickActions = [
+  { task: "Submit ABC credit data to DigiLocker", status: "Pending", color: "#64748B", icon: Target },
+  { task: "Generate Holistic Progress Cards (batch)", status: "Ready", color: "#10B981", icon: FileText },
+  { task: "Resolve 2 grievance cases (SLA at risk)", status: "Urgent", color: "#EF4444", icon: CheckSquare },
+  { task: "Upload SWAYAM certificates", status: "Ready", color: "#10B981", icon: Briefcase },
 ];
 
 const deadlines = [
   { id: 1, date: 'Mar 15', task: 'NAAC Self-Study Report Submission', priority: 'High', color: '#EF4444' },
-  { id: 2, date: 'Mar 20', task: 'ABC Credit Data Portal Upload', priority: 'Medium', color: '#F59E0B' }
+  { id: 2, date: 'Mar 20', task: 'ABC Credit Data Portal Upload', priority: 'Medium', color: '#F59E0B' },
+  { id: 3, date: 'Apr 1', task: 'UGC Equity Annual Report', priority: 'High', color: '#EF4444' },
+  { id: 4, date: 'Apr 15', task: 'UDISE+ Data Finalization', priority: 'Medium', color: '#F59E0B' },
 ];
 
 export const CollegeNepUgcScreen = ({ route }: any) => {
@@ -34,6 +48,7 @@ export const CollegeNepUgcScreen = ({ route }: any) => {
   if (tab === 'Portfolio Locker') return <PortfolioLockerView />;
   if (tab === 'ABC Credits') return <AbcCreditsView />;
   if (tab === 'Equity Audit') return <EquityAuditView />;
+  if (tab === 'Reports' || tab === 'NEP Reports') return <ReportsView />;
 
   return (
     <View style={styles.container}>
@@ -59,18 +74,18 @@ export const CollegeNepUgcScreen = ({ route }: any) => {
 
         {/* Score Banner */}
         <Animated.View entering={FadeInUp.delay(100)}>
-          <Card style={styles.scoreBanner}>
-            <View style={styles.scoreContent}>
-               <View style={styles.scoreCircle}>
-                  <Text style={styles.scoreValue}>64</Text>
-                  <Text style={styles.scoreLabel}>OVERALL</Text>
+          <Card style={styles.scoreBannerLegacy}>
+            <View style={styles.scoreContentLegacy}>
+               <View style={styles.scoreCircleLegacy}>
+                  <Text style={styles.scoreValueLegacy}>64</Text>
+                  <Text style={styles.scoreLabelLegacy}>OVERALL</Text>
                </View>
-               <View style={styles.scoreInfo}>
-                  <Text style={styles.bannerTitle}>Institutional Score</Text>
-                  <Text style={styles.bannerSub}>Aggregate compliance across NEP, UGC, and NAAC mandates.</Text>
-                  <View style={styles.bannerTrend}>
+               <View style={styles.scoreInfoLegacy}>
+                  <Text style={styles.bannerTitleLegacy}>Institutional Score</Text>
+                  <Text style={styles.bannerSubLegacy}>Aggregate compliance across NEP, UGC, and NAAC mandates.</Text>
+                  <View style={styles.bannerTrendLegacy}>
                      <TrendingUp size={12} color="#10B981" />
-                     <Text style={styles.trendText}>+4.2% since last audit</Text>
+                     <Text style={styles.trendTextLegacy}>+4.2% since last audit</Text>
                   </View>
                </View>
             </View>
@@ -82,29 +97,50 @@ export const CollegeNepUgcScreen = ({ route }: any) => {
            <Text style={styles.sectionLabel}>CRITICAL PILLARS</Text>
         </View>
 
-        <Animated.View entering={FadeInRight.delay(150)} style={styles.statsRow}>
+        <Animated.View entering={FadeInRight.delay(150)} style={styles.metricsGrid}>
           {complianceMetrics.map((stat, i) => (
-             <StatsCard 
-               key={i} 
-               title={stat.title} 
-               value={stat.value} 
-               icon={stat.icon} 
-               color={stat.color} 
-             />
+             <View key={i} style={styles.metricWrapper}>
+                <Card style={styles.metricCard}>
+                   <View style={styles.metricTop}>
+                      <View style={[styles.iconBox, { backgroundColor: stat.color + '10' }]}>
+                         <stat.icon size={16} color={stat.color} />
+                      </View>
+                      <View style={[styles.statusBadge, { backgroundColor: stat.color + '15' }]}>
+                         <Text style={[styles.statusBadgeText, { color: stat.color }]}>{stat.status.toUpperCase()}</Text>
+                      </View>
+                   </View>
+                   <Text style={styles.metricVal}>{stat.value}</Text>
+                   <Text style={styles.metricLabel} numberOfLines={1}>{stat.title}</Text>
+                   <View style={styles.progressBar}>
+                      <View style={[styles.progressFill, { width: stat.value as any, backgroundColor: stat.color }]} />
+                   </View>
+                </Card>
+             </View>
           ))}
         </Animated.View>
 
-        {/* Analyst Insight Card */}
-        <Card style={styles.insightCard}>
-           <View style={styles.insightTop}>
-              <View style={styles.insightIconBox}>
-                 <Zap color="#059669" size={16} />
+
+
+        {/* Quick Actions */}
+        <View style={styles.sectionTitleRow}>
+           <Text style={styles.sectionLabel}>QUICK ACTIONS</Text>
+        </View>
+
+        <Card style={styles.ledgerCard}>
+           {quickActions.map((action, idx) => (
+              <View key={idx} style={[styles.ledgerRow, idx === quickActions.length - 1 && styles.noBorder]}>
+                 <View style={[styles.iconBox, { backgroundColor: action.color + '10', marginRight: 12 }]}>
+                    <action.icon size={16} color={action.color} />
+                 </View>
+                 <View style={styles.ledgerMain}>
+                    <Text style={styles.ledgerTask}>{action.task}</Text>
+                    <View style={[styles.statusBadge, { backgroundColor: action.status === 'Ready' || action.status === 'Urgent' ? action.color + '15' : '#F1F5F9', marginTop: 4, alignSelf: 'flex-start' }]}>
+                       <Text style={[styles.statusBadgeText, { color: action.status === 'Ready' || action.status === 'Urgent' ? action.color : '#64748B' }]}>{action.status.toUpperCase()}</Text>
+                    </View>
+                 </View>
+                 <ChevronRight size={14} color="#CBD5E1" />
               </View>
-              <View style={{ flex: 1 }}>
-                 <Text style={styles.insightText}>Analyst Recommendation</Text>
-                 <Text style={styles.insightMeta}>Immediate update required for **Pillar 3 (Equity)**. Compliance gap detected in EOC committee formation.</Text>
-              </View>
-           </View>
+           ))}
         </Card>
 
         {/* Upcoming Mandates Ledger */}
@@ -145,34 +181,66 @@ const styles = StyleSheet.create({
   reportBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#059669', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, gap: 6 },
   reportBtnText: { color: '#FFF', fontSize: 12, fontWeight: '700' },
 
-  // Score Banner
-  scoreBanner: { padding: 20, borderRadius: 20, backgroundColor: '#0F172A', marginBottom: 24, borderWidth: 0 },
+  // Legacy Compliance styles
+  scoreBannerLegacy: { padding: 20, borderRadius: 20, backgroundColor: '#0F172A', marginBottom: 24, borderWidth: 0 },
+  scoreContentLegacy: { flexDirection: 'row', alignItems: 'center', gap: 20 },
+  scoreCircleLegacy: { width: 70, height: 70, borderRadius: 35, borderWidth: 4, borderColor: '#10B981', alignItems: 'center', justifyContent: 'center' },
+  scoreValueLegacy: { fontSize: 24, fontWeight: '800', color: '#FFF' },
+  scoreLabelLegacy: { fontSize: 8, fontWeight: '800', color: '#10B981' },
+  scoreInfoLegacy: { flex: 1 },
+  bannerTitleLegacy: { fontSize: 18, fontWeight: '800', color: '#FFF', marginBottom: 4 },
+  bannerSubLegacy: { fontSize: 11, color: '#94A3B8', lineHeight: 15 },
+  bannerTrendLegacy: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8 },
+  trendTextLegacy: { fontSize: 10, fontWeight: '700', color: '#10B981' },
+
+  scoreBanner: { borderRadius: 24, padding: 16 },
   scoreContent: { flexDirection: 'row', alignItems: 'center', gap: 20 },
-  scoreCircle: { width: 70, height: 70, borderRadius: 35, borderWidth: 4, borderColor: '#10B981', alignItems: 'center', justifyContent: 'center' },
-  scoreValue: { fontSize: 24, fontWeight: '800', color: '#FFF' },
-  scoreLabel: { fontSize: 8, fontWeight: '800', color: '#10B981' },
+  scoreGaugeContainer: { width: 80, height: 80, alignItems: 'center', justifyContent: 'center' },
+  scoreCircleLarge: { width: 70, height: 70, borderRadius: 35, borderWidth: 6, alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFF' },
+  scoreValueBig: { fontSize: 24, fontWeight: '900', color: '#0F172A' },
+  scoreLabelSmall: { fontSize: 8, fontWeight: '800', color: '#64748B' },
   scoreInfo: { flex: 1 },
-  bannerTitle: { fontSize: 18, fontWeight: '800', color: '#FFF', marginBottom: 4 },
-  bannerSub: { fontSize: 11, color: '#94A3B8', lineHeight: 15 },
-  bannerTrend: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8 },
-  trendText: { fontSize: 10, fontWeight: '700', color: '#10B981' },
+  bannerTitle: { fontSize: 18, fontWeight: '800', color: '#0F172A', marginBottom: 4 },
+  bannerSub: { fontSize: 11, color: '#64748B', lineHeight: 15, fontWeight: '500' },
+  statusBadgeRow: { flexDirection: 'row', marginTop: 8 },
+  
+  metricHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  metricValLarge: { fontSize: 28, fontWeight: '900', letterSpacing: -1 },
+  metricLabelLong: { fontSize: 12, fontWeight: '700', marginTop: 4 },
+  targetRow: { marginTop: 6, paddingTop: 6, borderTopWidth: 1, borderTopColor: '#F1F5F9' },
+  targetLabel: { fontSize: 10, fontWeight: '800', color: '#94A3B8' },
+
+  sectionValue: { fontSize: 11, fontWeight: '700', color: '#0F172A' },
+  dot: { width: 8, height: 8, borderRadius: 4 },
+  impactValPremium: { fontSize: 16, fontWeight: '900' },
+  progressBarWrapper: { marginTop: 10 },
+  footerRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 16, paddingTop: 16, borderTopWidth: 1, borderTopColor: '#F1F5F9' },
+  footerText: { fontSize: 10, fontWeight: '700', color: '#94A3B8' },
+
+  primaryActionBtnWide: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, backgroundColor: '#0F172A', paddingVertical: 18, borderRadius: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 4 },
+  primaryActionTextLarge: { color: '#FFF', fontWeight: '800', fontSize: 15 },
+  secondaryActionBtnWide: { alignItems: 'center', paddingVertical: 18, borderRadius: 16, borderWidth: 1, borderColor: '#E2E8F0', backgroundColor: '#FFF', marginTop: 4 },
+  secondaryActionTextLarge: { color: '#64748B', fontWeight: '800', fontSize: 15 },
+
+  slaTimeBox: { width: 60, alignItems: 'center', justifyContent: 'center', marginRight: 12, backgroundColor: '#F8FAFC', paddingVertical: 8, borderRadius: 12 },
 
   // Section Headers
   sectionTitleRow: { marginBottom: 12, marginTop: 8 },
   sectionLabel: { fontSize: 10, fontWeight: '800', color: '#64748B', letterSpacing: 1 },
 
-  // Metrics Grid
-  metricsGrid: { flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: -6 },
-  metricWrapper: { width: '50%', paddingHorizontal: 6, marginBottom: 12 },
-  metricCard: { padding: 16, borderRadius: 20, backgroundColor: '#FFF' },
-  metricTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-  iconBox: { width: 32, height: 32, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  statusBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
-  statusBadgeText: { fontSize: 8, fontWeight: '800' },
-  metricVal: { fontSize: 22, fontWeight: '800', color: '#0F172A', marginBottom: 4 },
-  metricLabel: { fontSize: 11, fontWeight: '600', color: '#64748B', marginBottom: 12 },
-  progressBar: { height: 4, backgroundColor: '#F1F5F9', borderRadius: 2, overflow: 'hidden' },
-  progressFill: { height: '100%', borderRadius: 2 },
+   // Metrics Grid
+   metricsGrid: { flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: -4 },
+    metricWrapper: { width: '50%', paddingHorizontal: 4, marginBottom: 12 },
+    metricCard: { padding: 16, borderRadius: 20, backgroundColor: '#FFF', borderWidth: 1, borderColor: '#F1F5F9' },
+    metricTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+    iconBox: { width: 32, height: 32, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+    statusDot: { width: 4, height: 4, borderRadius: 2 },
+    statusBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
+    statusBadgeText: { fontSize: 8, fontWeight: '800' },
+    metricVal: { fontSize: 22, fontWeight: '800', color: '#0F172A', marginBottom: 4 },
+    metricLabel: { fontSize: 11, fontWeight: '600', color: '#64748B', marginBottom: 12 },
+    progressBar: { height: 4, backgroundColor: '#F1F5F9', borderRadius: 2, overflow: 'hidden' },
+   progressFill: { height: '100%', borderRadius: 2 },
 
   // Ledger Components
   ledgerCard: { padding: 0, borderRadius: 20, backgroundColor: '#FFF', overflow: 'hidden', marginBottom: 16 },
@@ -182,7 +250,6 @@ const styles = StyleSheet.create({
   ledgerMain: { flex: 1 },
   ledgerHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 },
   ledgerTask: { fontSize: 14, fontWeight: '700', color: '#1E293B' },
-  metricValLarge: { fontSize: 16, fontWeight: '800' },
   ledgerMeta: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   ledgerDate: { fontSize: 11, color: '#64748B', fontWeight: '500' },
   actionIconBox: { width: 28, height: 28, borderRadius: 8, borderWidth: 1, borderColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center' },
@@ -198,7 +265,15 @@ const styles = StyleSheet.create({
   statusStayedTitle: { fontSize: 14, fontWeight: '800', color: '#92400E' },
   statusStayedDesc: { fontSize: 12, color: '#64748B', lineHeight: 18 },
   
-  slaTimeBox: { width: 50, alignItems: 'center', justifyContent: 'center', marginRight: 12, backgroundColor: '#F8FAFC', paddingVertical: 8, borderRadius: 12 },
+  newBadgeFloating: { position: 'absolute', top: -8, right: 12, backgroundColor: '#10B981', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6, zIndex: 10, shadowColor: '#10B981', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 4, elevation: 3 },
+  newBadgeText: { fontSize: 8, fontWeight: '900', color: '#FFF', letterSpacing: 0.5 },
+
+  penaltyCard: { flexDirection: 'row', alignItems: 'center', gap: 16, padding: 16, backgroundColor: '#FFF', borderColor: '#FEE2E2', borderWidth: 1, borderRadius: 16 },
+  penaltyIconColumn: { flexShrink: 0 },
+  penaltyContent: { flex: 1 },
+  penaltyTitle: { fontSize: 14, fontWeight: '800', color: '#1E293B', marginBottom: 2 },
+  penaltyDesc: { fontSize: 11, color: '#64748B', fontWeight: '500', lineHeight: 15 },
+  
   slaTimeVal: { fontSize: 16, fontWeight: '800', color: '#0F172A' },
   slaTimeUnit: { fontSize: 8, fontWeight: '800', color: '#64748B', textTransform: 'uppercase' },
   configBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, backgroundColor: '#F1F5F9' },
@@ -264,7 +339,7 @@ const styles = StyleSheet.create({
   impactHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
   impactLabel: { fontSize: 13, fontWeight: '700', color: '#1E293B' },
   impactVal: { fontSize: 14, fontWeight: '800' },
-  progressBarLarge: { height: 8, backgroundColor: '#F1F5F9', borderRadius: 4, overflow: 'hidden' },
+  progressBarLarge: { height: 4, backgroundColor: '#F1F5F9', borderRadius: 4, overflow: 'hidden' },
   actionRowGroup: { gap: 12, marginTop: 16 },
   primaryActionBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#0F172A', paddingVertical: 16, borderRadius: 16 },
   primaryActionText: { color: '#FFF', fontWeight: '800', fontSize: 14 },
@@ -281,10 +356,54 @@ const styles = StyleSheet.create({
 
 const Nep2020View = () => {
   const pillars = [
-    { title: "Progress Cards", val: "62%", status: "Action", color: "#F59E0B", icon: FileText },
-    { title: "Credits Bank", val: "78%", status: "Healthy", color: "#10B981", icon: Target },
-    { title: "OBE System", val: "55%", status: "Issue", color: "#F59E0B", icon: BarChart },
-    { title: "Equity Score", val: "40%", status: "Critical", color: "#EF4444", icon: Users }
+    {
+      title: "360° Holistic Progress Cards",
+      docRef: "NEP 2020 §4.34",
+      val: "62%",
+      status: "Action Needed",
+      color: "#F59E0B",
+      icon: FileText,
+      points: [
+        { label: "Self-assessment module", status: "Done" },
+        { label: "Faculty rubrics config", status: "Done" },
+        { label: "Peer-assessment rollout", status: "Pending" },
+        { label: "Psychomotor tracking", status: "Pending" }
+      ]
+    },
+    {
+      title: "Academic Bank of Credits (ABC)",
+      docRef: "NEP 2020 §10.10",
+      val: "78%",
+      status: "On Track",
+      color: "#10B981",
+      icon: Target,
+      points: [
+        { label: "ABC API v2.1 connected", status: "Done" },
+        { label: "Auto-sync on completion", status: "Done" },
+        { label: "Cross-institution testing", status: "Pending" }
+      ]
+    },
+    {
+      title: "Outcome-Based Education (OBE)",
+      docRef: "UGC OBE 2022",
+      val: "55%",
+      status: "Action Needed",
+      color: "#F59E0B",
+      icon: BarChart,
+      points: [
+        { label: "CSE course-LO mapping", status: "Done" },
+        { label: "Attainment engine", status: "Done" },
+        { label: "ECE/Mech mapping", status: "Pending" },
+        { label: "Continuous reporting", status: "Pending" }
+      ]
+    }
+  ];
+
+  const alignments = [
+    { dept: "Computer Science", mapped: "44/48", progress: 92, color: "#10B981" },
+    { dept: "Electronics", mapped: "36/42", progress: 86, color: "#10B981" },
+    { dept: "Mechanical", mapped: "28/38", progress: 74, color: "#F59E0B" },
+    { dept: "Civil", mapped: "22/35", progress: 63, color: "#EF4444" },
   ];
 
   return (
@@ -295,57 +414,111 @@ const Nep2020View = () => {
             <FileText size={10} color="#059669" />
             <Text style={styles.headerBadgeText}>NEP 2020 MANDATE</Text>
           </View>
-          <Text style={styles.title}>National Policy</Text>
-          <Text style={styles.subtitle}>Institutional compliance with NEP 2020 core pillars</Text>
+          <Text style={styles.title}>Implementation Index</Text>
+          <Text style={styles.subtitle}>Institutional alignment with NEP 2020 framework</Text>
         </Animated.View>
 
-        <Animated.View entering={FadeInRight.delay(100)} style={styles.statsRow}>
-          {pillars.map((p, i) => (
-             <StatsCard 
-               key={i} 
-               title={p.title.split(' ')[0]} 
-               value={p.val} 
-               icon={p.icon} 
-               color={p.color} 
-             />
-          ))}
+        {/* Implementation Index Banner */}
+        <Animated.View entering={FadeInUp.delay(100)}>
+          <Card style={[styles.scoreBanner, { backgroundColor: '#F8FAFC', marginBottom: 24, borderLeftWidth: 4, borderLeftColor: '#0F172A', shadowOpacity: 0.05, elevation: 2 }]}>
+            <View style={styles.scoreContent}>
+               <View style={styles.scoreGaugeContainer}>
+                  <View style={[styles.scoreCircleLarge, { borderColor: '#0F172A', borderWidth: 4 }]}>
+                     <Text style={styles.scoreValueBig}>65</Text>
+                     <Text style={styles.scoreLabelSmall}>ALIGN</Text>
+                  </View>
+               </View>
+               <View style={styles.scoreInfo}>
+                  <Text style={[styles.bannerTitle, { color: '#1E293B' }]}>Policy Alignment Index</Text>
+                  <Text style={styles.bannerSub}>Institutional readiness across NEP 2020 core pillars.</Text>
+                  <View style={styles.statusBadgeRow}>
+                     <View style={[styles.statusBadge, { backgroundColor: '#F1F5F9' }]}>
+                        <CheckCircle2 size={10} color="#64748B" />
+                        <Text style={[styles.statusBadgeText, { color: '#64748B', marginLeft: 4 }]}>AUDIT READY</Text>
+                     </View>
+                  </View>
+               </View>
+            </View>
+          </Card>
         </Animated.View>
 
         <View style={styles.sectionTitleRow}>
-           <Text style={styles.sectionLabel}>COMPLIANCE LEDGER</Text>
+           <Text style={styles.sectionLabel}>CORE PILLARS</Text>
+        </View>
+
+        {pillars.map((p, i) => (
+          <Animated.View key={i} entering={FadeInUp.delay(i * 100)}>
+            <Card style={[styles.ledgerCard, { marginBottom: 16, borderLeftWidth: 1, borderColor: '#F1F5F9' }]}>
+              <View style={{ padding: 16 }}>
+                <View style={styles.ledgerHeaderRow}>
+                   <View style={{ flex: 1 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                         <View style={[styles.iconBox, { backgroundColor: '#F8FAFC', width: 32, height: 32 }]}>
+                            <p.icon size={16} color={p.color} />
+                         </View>
+                         <Text style={styles.ledgerTask}>{p.title}</Text>
+                      </View>
+                      <Text style={[styles.headerBadgeText, { marginTop: 6, color: '#94A3B8', marginLeft: 42 }]}>{p.docRef}</Text>
+                   </View>
+                   <View style={{ alignItems: 'flex-end' }}>
+                      <Text style={[styles.metricValLarge, { color: '#1E293B', fontSize: 18 }]}>{p.val}</Text>
+                      <View style={[styles.statusBadge, { backgroundColor: '#F1F5F9', marginTop: 4 }]}>
+                         <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: p.color, marginRight: 6 }} />
+                         <Text style={[styles.statusBadgeText, { color: '#64748B' }]}>{p.status.toUpperCase()}</Text>
+                      </View>
+                   </View>
+                </View>
+
+                <View style={[styles.progressBarSmall, { height: 3, marginVertical: 12, marginLeft: 42 }]}>
+                   <View style={[styles.progressFill, { width: p.val as any, backgroundColor: p.color }]} />
+                </View>
+
+                <View style={{ gap: 8, marginTop: 4, marginLeft: 42 }}>
+                  {p.points.map((point, idx) => (
+                    <View key={idx} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                       <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: point.status === 'Done' ? '#10B981' : '#CBD5E1' }} />
+                       <Text style={[styles.ledgerDate, { flex: 1, color: point.status === 'Done' ? '#475569' : '#94A3B8' }]}>{point.label}</Text>
+                       {point.status === 'Done' && <CheckCircle2 size={10} color="#10B981" />}
+                    </View>
+                  ))}
+                </View>
+              </View>
+            </Card>
+          </Animated.View>
+        ))}
+
+        <View style={styles.sectionTitleRow}>
+           <Text style={styles.sectionLabel}>NHEQF ALIGNMENT BY DEPT</Text>
         </View>
 
         <Card style={styles.ledgerCard}>
-          {pillars.map((p, i) => (
-            <View key={i} style={[styles.ledgerRow, i === pillars.length - 1 && styles.noBorder]}>
-              <View style={[styles.priorityIndicator, { backgroundColor: p.color }]} />
-              <View style={styles.ledgerMain}>
-                <View style={styles.ledgerHeaderRow}>
-                   <Text style={styles.ledgerTask}>{p.title}</Text>
-                   <Text style={[styles.metricValLarge, { color: '#1E293B' }]}>{p.val}</Text>
-                </View>
-                <View style={styles.ledgerMeta}>
-                   <View style={[styles.statusBadge, { backgroundColor: p.color + '15' }]}>
-                      <Text style={[styles.statusBadgeText, { color: p.color }]}>{p.status.toUpperCase()}</Text>
-                   </View>
-                   <Text style={styles.ledgerDate}>Target: 100% Compliance</Text>
-                </View>
-                <View style={styles.progressBarSmall}>
-                   <View style={[styles.progressFill, { width: p.val as any, backgroundColor: p.color }]} />
-                </View>
-              </View>
-              <TouchableOpacity style={styles.actionIconBox}>
-                 <ArrowUpRight size={14} color="#64748B" />
-              </TouchableOpacity>
-            </View>
-          ))}
+           <View style={{ padding: 16 }}>
+              {alignments.map((align, idx) => (
+                 <View key={idx} style={{ marginBottom: 16 }}>
+                    <View style={styles.impactHeader}>
+                       <Text style={styles.impactLabel}>{align.dept}</Text>
+                       <View style={{ alignItems: 'flex-end' }}>
+                          <Text style={[styles.impactValPremium, { color: align.color, fontSize: 14 }]}>{align.progress}%</Text>
+                          <Text style={[styles.ledgerDate, { fontSize: 9 }]}>{align.mapped} mapped</Text>
+                       </View>
+                    </View>
+                    <View style={[styles.progressBarLarge, { height: 3, marginTop: 8 }]}>
+                       <View style={[styles.progressFill, { width: (align.progress + '%') as any, backgroundColor: align.color }]} />
+                    </View>
+                 </View>
+              ))}
+           </View>
         </Card>
 
-        <Card style={styles.infoHighlightCard}>
-           <ShieldAlert size={20} color="#92400E" />
-           <View style={{ flex: 1 }}>
-              <Text style={styles.infoHighlightTitle}>Regulatory Alert</Text>
-              <Text style={styles.infoHighlightSub}>Upcoming audit window for Pillar 3 (OBE) opens on April 15, 2025. Ensure all data is ready.</Text>
+        <Card style={[styles.insightCard, { marginTop: 20 }]}>
+           <View style={styles.insightTop}>
+              <View style={[styles.insightIconBox, { backgroundColor: '#FEF3C7' }]}>
+                 <ShieldAlert color="#92400E" size={16} />
+              </View>
+              <View style={{ flex: 1 }}>
+                 <Text style={[styles.insightText, { color: '#92400E' }]}>Regulatory Window Alert</Text>
+                 <Text style={styles.insightMeta}>Upcoming audit window for Pillar 3 (OBE) opens on **April 15, 2025**. Institutional data readiness is currently at **74%**.</Text>
+              </View>
            </View>
         </Card>
       </ScrollView>
@@ -354,11 +527,45 @@ const Nep2020View = () => {
 };
 
 const Ugc2026View = () => {
+  const setupItems = [
+    {
+      title: "Equal Opportunity Centre (EOC)",
+      status: "Not Established",
+      color: "#EF4444",
+      icon: "🏛️",
+      isNew: true,
+      bullets: ["Central hub for equity policies", "Financial support for students"]
+    },
+    {
+      title: "Equity Committee",
+      status: "Partially Done",
+      color: "#F59E0B",
+      icon: Users,
+      isNew: false,
+      bullets: ["Monthly meeting cadence", "SC/ST/OBC/Women/PwD reps"]
+    },
+    {
+      title: "Equity Squads",
+      status: "Not Started",
+      color: "#EF4444",
+      icon: Eye,
+      isNew: false,
+      bullets: ["Mobile squads: labs, canteen", "Real-time violation reporting"]
+    }
+  ];
+
   const slas = [
-    { time: "24 Hours", desc: "Equity Committee Formation", status: "Healthy", color: "#10B981" },
-    { time: "15 Days", desc: "Investigation Report Submission", status: "Target", color: "#F59E0B" },
-    { time: "7 Days", desc: "Institutional Action Resolution", status: "Target", color: "#F59E0B" },
-    { time: "30 Days", desc: "Regulatory Appeal Window", status: "Healthy", color: "#10B981" }
+    { time: "24h", desc: "Equity Committee Formation", status: "Healthy", color: "#10B981" },
+    { time: "15d", desc: "Investigation Report Submission", status: "Target", color: "#F59E0B" },
+    { time: "7d", desc: "Institutional Action Resolution", status: "Target", color: "#F59E0B" },
+    { time: "30d", desc: "Regulatory Appeal Window", status: "Healthy", color: "#10B981" }
+  ];
+
+  const penalties = [
+    { title: "Grants Debarment", desc: "UGC funding schemes suspended.", icon: ShieldOff, color: "#EF4444" },
+    { title: "Degree Suspension", desc: "Right to award degrees revoked.", icon: Award, color: "#F59E0B" },
+    { title: "Recognition Removal", desc: "Delisted from HEI list.", icon: XCircle, color: "#EF4444" },
+    { title: "Legal Liability", desc: "Officers face criminal action.", icon: AlertOctagon, color: "#EF4444" },
   ];
 
   return (
@@ -376,21 +583,60 @@ const Ugc2026View = () => {
         <Card style={styles.statusStayedCard}>
            <View style={styles.statusStayedTop}>
               <ShieldAlert size={18} color="#92400E" />
-              <Text style={styles.statusStayedTitle}>Legal Status: Stayed by SC</Text>
+              <Text style={styles.statusStayedTitle}>Legal Status: Stayed by Supreme Court</Text>
            </View>
-           <Text style={styles.statusStayedDesc}>Current mandates are under supreme court stay until Aug 2025. Proactive planning is recommended.</Text>
+           <Text style={styles.statusStayedDesc}>Stayed Jan 2026; 2012 Regulations remain in force. Proactive planning ensures no future disruption.</Text>
         </Card>
 
+        {/* Setup Grid */}
         <View style={styles.sectionTitleRow}>
-           <Text style={styles.sectionLabel}>TIMELINE LEDGER</Text>
+           <Text style={styles.sectionLabel}>SETUP MANDATORY UNITS</Text>
+        </View>
+
+        <View style={{ gap: 16 }}>
+           {setupItems.map((item, idx) => (
+              <Animated.View key={idx} entering={FadeInUp.delay(idx * 100)}>
+                 <Card style={[styles.ledgerCard, { borderLeftWidth: 4, borderLeftColor: item.color, position: 'relative', overflow: 'visible' }]}>
+                    {item.isNew && (
+                       <View style={styles.newBadgeFloating}>
+                          <Text style={styles.newBadgeText}>NEW</Text>
+                       </View>
+                    )}
+                    <View style={{ padding: 16 }}>
+                       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
+                             <View style={[styles.iconBox, { backgroundColor: '#F8FAFC', width: 36, height: 36 }]}>
+                                {typeof item.icon === 'string' ? <Text style={{ fontSize: 16 }}>{item.icon}</Text> : <item.icon size={18} color="#64748B" />}
+                             </View>
+                             <Text style={[styles.ledgerTask, { flex: 1 }]} numberOfLines={1}>{item.title}</Text>
+                          </View>
+                          <View style={[styles.statusBadge, { backgroundColor: item.color + '15', marginLeft: 8 }]}>
+                             <Text style={[styles.statusBadgeText, { color: item.color }]}>{item.status.toUpperCase()}</Text>
+                          </View>
+                       </View>
+                       <View style={{ paddingLeft: 48 }}>
+                          {item.bullets.map((bullet, i) => (
+                             <Text key={i} style={[styles.ledgerDate, { marginBottom: 4 }]}>• {bullet}</Text>
+                          ))}
+                          <TouchableOpacity style={[styles.configBtn, { alignSelf: 'flex-start', marginTop: 12, backgroundColor: '#0F172A' }]}>
+                             <Text style={[styles.configBtnText, { color: '#FFF' }]}>Setup Now</Text>
+                          </TouchableOpacity>
+                       </View>
+                    </View>
+                 </Card>
+              </Animated.View>
+           ))}
+        </View>
+
+        <View style={styles.sectionTitleRow}>
+           <Text style={styles.sectionLabel}>MANDATORY SLA TIMELINES</Text>
         </View>
 
         <Card style={styles.ledgerCard}>
           {slas.map((sla, i) => (
             <View key={i} style={[styles.ledgerRow, i === slas.length - 1 && styles.noBorder]}>
               <View style={styles.slaTimeBox}>
-                 <Text style={styles.slaTimeVal}>{sla.time.split(' ')[0]}</Text>
-                 <Text style={styles.slaTimeUnit}>{sla.time.split(' ')[1]}</Text>
+                 <Text style={styles.slaTimeVal}>{sla.time}</Text>
               </View>
               <View style={styles.ledgerMain}>
                 <Text style={styles.ledgerTask}>{sla.desc}</Text>
@@ -406,6 +652,30 @@ const Ugc2026View = () => {
             </View>
           ))}
         </Card>
+
+        {/* Penalties Section */}
+        <View style={styles.sectionTitleRow}>
+           <Text style={styles.sectionLabel}>PENALTIES FOR NON-COMPLIANCE</Text>
+        </View>
+
+        <View style={{ gap: 12 }}>
+           {penalties.map((penalty, idx) => (
+              <Animated.View key={idx} entering={FadeInRight.delay(idx * 100)}>
+                 <Card style={styles.penaltyCard}>
+                    <View style={styles.penaltyIconColumn}>
+                       <View style={[styles.iconBox, { backgroundColor: '#FEF2F2', width: 40, height: 40 }]}>
+                          {typeof penalty.icon === 'string' ? <Text style={{ fontSize: 18 }}>{penalty.icon}</Text> : <penalty.icon size={20} color="#EF4444" />}
+                       </View>
+                    </View>
+                    <View style={styles.penaltyContent}>
+                       <Text style={styles.penaltyTitle}>{penalty.title}</Text>
+                       <Text style={styles.penaltyDesc}>{penalty.desc}</Text>
+                    </View>
+                    <ShieldAlert size={14} color="#EF4444" opacity={0.3} />
+                 </Card>
+              </Animated.View>
+           ))}
+        </View>
       </ScrollView>
     </View>
   );
@@ -415,14 +685,24 @@ const GrievanceEngineView = () => {
   const topStats = [
     { label: "Open", value: "4", icon: AlertCircle, color: "#EF4444" },
     { label: "At Risk", value: "2", icon: Clock, color: "#F59E0B" },
-    { label: "Resolved", value: "18", icon: CheckSquare, color: "#10B981" },
-    { label: "Uptime", value: "91%", icon: TrendingUp, color: "#10B981" }
+    { label: "Resolved", value: "18", icon: CheckCircle2, color: "#10B981" },
+    { label: "Rate", value: "91%", icon: TrendingUp, color: "#3B82F6" }
   ];
 
+  const analytics = [
+    { label: 'Discrimination', value: '32%', color: '#EF4444' },
+    { label: 'Academic Bias', value: '24%', color: '#F59E0B' },
+    { label: 'Infrastructure', value: '20%', color: '#3B82F6' },
+    { label: 'Hostel', value: '16%', color: '#10B981' },
+  ];
+
+  const chartData = [30, 45, 25, 60, 80, 40, 35];
+
   const grievances = [
-    { id: "GRV-001", type: "Discrimination", status: "Review", risk: "Critical", filed: "Feb 20", elapsed: "3d", color: "#F59E0B" },
-    { id: "GRV-002", type: "Hostel Facility", status: "Resolved", risk: "None", filed: "Feb 18", elapsed: "14d", color: "#10B981" },
-    { id: "GRV-003", type: "Academic Bias", status: "Escalated", risk: "SLA At Risk", filed: "Feb 15", elapsed: "18d", color: "#EF4444" },
+    { id: "GRV-001", type: "Discrimination", status: "Review", risk: "CRITICAL", filed: "Feb 20", elapsed: "3d", color: "#EF4444" },
+    { id: "GRV-002", type: "Hostel Facility", status: "Resolved", risk: "NONE", filed: "Feb 18", elapsed: "14d", color: "#10B981" },
+    { id: "GRV-003", type: "Academic Bias", status: "Escalated", risk: "SLA AT RISK", filed: "Feb 15", elapsed: "18d", color: "#F59E0B" },
+    { id: "GRV-004", type: "Infrastructure", status: "Pending", risk: "SLA AT RISK", filed: "Feb 22", elapsed: "1d", color: "#F59E0B" },
   ];
 
   return (
@@ -448,6 +728,40 @@ const GrievanceEngineView = () => {
              />
           ))}
         </Animated.View>
+
+        <View style={styles.sectionTitleRow}>
+           <Text style={styles.sectionLabel}>GRIEVANCE ANALYTICS</Text>
+        </View>
+
+        <Card style={[styles.ledgerCard, { padding: 20 }]}>
+           <View style={{ flexDirection: 'row', alignItems: 'flex-end', height: 100, gap: 8, borderBottomWidth: 1, borderBottomColor: '#F1F5F9', paddingBottom: 8, marginBottom: 20 }}>
+              {chartData.map((h, i) => (
+                 <View 
+                    key={i} 
+                    style={{ 
+                       flex: 1, 
+                       height: (h + '%') as any, 
+                       backgroundColor: '#F59E0B', 
+                       borderTopLeftRadius: 4, 
+                       borderTopRightRadius: 4,
+                       opacity: 0.8
+                    }} 
+                 />
+              ))}
+           </View>
+
+           <View style={{ gap: 12 }}>
+              {analytics.map((item, i) => (
+                 <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                    <Text style={[styles.ledgerTask, { width: 100, fontSize: 12 }]}>{item.label}</Text>
+                    <View style={[styles.progressBarLarge, { flex: 1, height: 6 }]}>
+                       <View style={[styles.progressFill, { width: item.value as any, backgroundColor: item.color }]} />
+                    </View>
+                    <Text style={[styles.ledgerDate, { width: 30, textAlign: 'right' }]}>{item.value}</Text>
+                 </View>
+              ))}
+           </View>
+        </Card>
 
         <Card style={styles.helplineCard}>
            <View style={styles.helplineIcon}>
@@ -476,9 +790,12 @@ const GrievanceEngineView = () => {
                     </View>
                     <Text style={styles.ledgerTask}>{grv.status}</Text>
                     <View style={styles.ledgerMeta}>
-                       <Text style={styles.ledgerDate}>Filed: {grv.filed}</Text>
+                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                          <Clock size={10} color="#64748B" />
+                          <Text style={styles.ledgerDate}>{grv.elapsed} elapsed</Text>
+                       </View>
                        <View style={styles.ledgerDot} />
-                       <Text style={[styles.priorityLabel, { color: grv.elapsed === '3d' ? '#F59E0B' : '#64748B' }]}>{grv.elapsed} elapsed</Text>
+                       <Text style={[styles.typeBadgeText, { color: grv.risk === 'NONE' ? '#10B981' : '#EF4444' }]}>{grv.risk}</Text>
                     </View>
                  </View>
                  <TouchableOpacity style={styles.reviewBtn}>
@@ -501,10 +818,10 @@ const PortfolioLockerView = () => {
   ];
 
   const portfolios = [
-    { title: "SWAYAM/MOOCs", naac: "C3.1", items: "1,240", status: "Synced", icon: Award, color: "#10B981" },
-    { title: "Intern Reports", naac: "C1.2", items: "847", status: "Synced", icon: Briefcase, color: "#10B981" },
-    { title: "Research Logs", naac: "C3.2", items: "312", status: "Syncing", icon: BarChart, color: "#F59E0B" },
-    { title: "Certifications", naac: "C3.3", items: "2,104", status: "Synced", icon: ShieldCheck, color: "#10B981" },
+    { title: "SWAYAM/MOOCs", naac: "C3.1", items: "1,240", size: "4.2 GB", status: "Synced", icon: Award, color: "#10B981" },
+    { title: "Intern Reports", naac: "C1.2", items: "847", size: "12.8 GB", status: "Synced", icon: Briefcase, color: "#10B981" },
+    { title: "Research Logs", naac: "C3.2", items: "312", size: "28.4 GB", status: "Syncing", icon: BarChart, color: "#F59E0B" },
+    { title: "Certifications", naac: "C3.3", items: "2,104", size: "1.8 GB", status: "Synced", icon: ShieldCheck, color: "#10B981" },
   ];
 
   return (
@@ -531,11 +848,14 @@ const PortfolioLockerView = () => {
           ))}
         </Animated.View>
 
-        <Card style={styles.lockerInfoCard}>
-           <ShieldCheck size={20} color="#065F46" />
+        <Card style={[styles.lockerInfoCard, { backgroundColor: '#F8FAFC', borderColor: '#E2E8F0', padding: 16 }]}>
+           <ShieldCheck size={18} color="#64748B" />
            <View style={{ flex: 1 }}>
-              <Text style={styles.lockerInfoTitle}>Automated Hashing Active</Text>
-              <Text style={styles.lockerInfoSub}>All evidence is auto-tagged and encrypted for institutional integrity.</Text>
+              <Text style={[styles.lockerInfoTitle, { color: '#0F172A' }]}>Automated Hashing Active</Text>
+              <Text style={styles.lockerInfoSub}>All evidence is auto-tagged and encrypted for integrity.</Text>
+           </View>
+           <View style={[styles.statusBadge, { backgroundColor: '#ECFDF5' }]}>
+              <Text style={[styles.statusBadgeText, { color: '#10B981' }]}>ENCRYPTED</Text>
            </View>
         </Card>
 
@@ -546,23 +866,30 @@ const PortfolioLockerView = () => {
         <View style={styles.portfolioGrid}>
            {portfolios.map((item, idx) => (
               <View key={idx} style={styles.portfolioCol}>
-                 <Card style={styles.portfolioCard}>
+                 <Card style={[styles.portfolioCard, { borderColor: '#F1F5F9', borderBottomWidth: 2, borderBottomColor: '#F1F5F9' }]}>
                     <View style={styles.portfolioTop}>
-                       <View style={[styles.iconBox, { backgroundColor: item.color + '10' }]}>
-                          <item.icon size={16} color={item.color} />
+                       <View style={[styles.iconBox, { backgroundColor: '#F8FAFC', width: 32, height: 32, borderRadius: 8 }]}>
+                          <item.icon size={16} color={item.status === 'Synced' ? '#64748B' : item.color} />
                        </View>
-                       <View style={[styles.statusBadgeSmall, { backgroundColor: item.color + '15' }]}>
-                          <Text style={[styles.statusBadgeTextSmall, { color: item.color }]}>{item.status.toUpperCase()}</Text>
-                       </View>
-                    </View>
-                    <Text style={styles.portfolioTitle} numberOfLines={1}>{item.title}</Text>
-                    <Text style={styles.portfolioNaac}>NAAC: {item.naac}</Text>
-                    <View style={styles.portfolioStats}>
-                       <View>
-                          <Text style={styles.statValSmall}>{item.items}</Text>
-                          <Text style={styles.statLabelMini}>FILES</Text>
+                       <View style={[styles.statusBadgeSmall, { backgroundColor: '#F1F5F9' }]}>
+                          <Text style={[styles.statusBadgeTextSmall, { color: '#64748B' }]}>{item.status.toUpperCase()}</Text>
                        </View>
                     </View>
+                    <Text style={[styles.portfolioTitle, { color: '#1E293B' }]} numberOfLines={1}>{item.title}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 }}>
+                       <Text style={[styles.portfolioNaac, { color: '#94A3B8' }]}>CRITERIA</Text>
+                       <Text style={[styles.portfolioNaac, { fontWeight: '600', color: '#64748B' }]}>{item.naac}</Text>
+                    </View>
+                     <View style={styles.portfolioStats}>
+                        <View>
+                           <Text style={styles.statValSmall}>{item.items}</Text>
+                           <Text style={styles.statLabelMini}>ASSETS</Text>
+                        </View>
+                        <View style={{ alignItems: 'flex-end' }}>
+                           <Text style={[styles.statValSmall, { color: '#1E293B' }]}>{item.size}</Text>
+                           <Text style={styles.statLabelMini}>DATA</Text>
+                        </View>
+                     </View>
                  </Card>
               </View>
            ))}
@@ -574,10 +901,11 @@ const PortfolioLockerView = () => {
 
 const AbcCreditsView = () => {
   const departments = [
-    { name: "Computer Science", registered: "420", credits: "8,420", sync: "Healthy", color: "#10B981" },
-    { name: "Electronics", registered: "380", credits: "7,600", sync: "Healthy", color: "#10B981" },
-    { name: "MBA", registered: "180", credits: "3,240", sync: "Audit", color: "#F59E0B" },
-    { name: "Mechanical", registered: "340", credits: "6,120", sync: "Healthy", color: "#10B981" },
+    { name: "Computer Science", registered: "420", credits: "8,420", exit: "12 students", sync: "Synced", syncColor: "#10B981" },
+    { name: "Electronics", registered: "380", credits: "7,600", exit: "8 students", sync: "Synced", syncColor: "#10B981" },
+    { name: "Mechanical", registered: "340", credits: "6,120", exit: "5 students", sync: "Synced", syncColor: "#10B981" },
+    { name: "MBA", registered: "180", credits: "3,240", exit: "3 students", sync: "Issues", syncColor: "#F59E0B" },
+    { name: "Civil", registered: "290", credits: "4,350", exit: "2 students", sync: "Synced", syncColor: "#10B981" },
   ];
 
   return (
@@ -599,25 +927,35 @@ const AbcCreditsView = () => {
           <StatsCard title="Issues" value="41" icon={AlertCircle} color="#F59E0B" />
         </Animated.View>
 
-        <Card style={styles.ledgerCard}>
-           <View style={styles.apiConnectionRow}>
+        {/* Integration Status Banners */}
+        <View style={{ gap: 12, marginBottom: 20 }}>
+           <Card style={[styles.apiConnectionRow, { backgroundColor: '#F8FAFC', borderColor: '#F1F5F9' }]}>
               <CheckCircle2 size={16} color="#10B981" />
               <View style={{ flex: 1 }}>
-                 <Text style={styles.apiTitle}>NAD API Connected</Text>
-                 <Text style={styles.apiSub}>v2.1 — Last healthy sync 2h ago</Text>
+                 <Text style={[styles.apiTitle, { color: '#1E293B' }]}>API Protocol: Active</Text>
+                 <Text style={[styles.apiSub, { color: '#64748B' }]}>NAD Endpoint v2.1 — Refreshed 2h ago</Text>
               </View>
-              <View style={styles.liveIndicator} />
-           </View>
-           <View style={styles.apiDivider} />
-           <TouchableOpacity style={styles.apiConnectionRow}>
+              <View style={[styles.liveIndicator, { backgroundColor: '#10B981' }]} />
+           </Card>
+           
+           <Card style={[styles.apiConnectionRow, { backgroundColor: '#F8FAFC', borderColor: '#F1F5F9' }]}>
+              <Zap size={16} color="#3B82F6" />
+              <View style={{ flex: 1 }}>
+                 <Text style={[styles.apiTitle, { color: '#1E293B' }]}>Automated Synchronization</Text>
+                 <Text style={[styles.apiSub, { color: '#64748B' }]}>Course completion triggers active</Text>
+              </View>
+              <View style={[styles.liveIndicator, { backgroundColor: '#3B82F6' }]} />
+           </Card>
+
+           <TouchableOpacity style={[styles.apiConnectionRow, { backgroundColor: '#FFFBEB', borderColor: '#FEF3C7' }]}>
               <AlertCircle size={16} color="#F59E0B" />
               <View style={{ flex: 1 }}>
-                 <Text style={styles.apiTitle}>41 Pending Syncs</Text>
-                 <Text style={styles.apiSub}>Mismatch detected in batch #84</Text>
+                 <Text style={[styles.apiTitle, { color: '#92400E' }]}>Sync Exception: 41 Nodes</Text>
+                 <Text style={[styles.apiSub, { color: '#D97706' }]}>Data mismatch detected in batch #84</Text>
               </View>
-              <ChevronRight size={14} color="#CBD5E1" />
+              <ChevronRight size={14} color="#F59E0B" />
            </TouchableOpacity>
-        </Card>
+        </View>
 
         <View style={styles.sectionTitleRow}>
            <Text style={styles.sectionLabel}>DEPARTMENTAL STATUS</Text>
@@ -627,15 +965,18 @@ const AbcCreditsView = () => {
            {departments.map((dept, idx) => (
               <View key={idx} style={[styles.ledgerRow, idx === departments.length - 1 && styles.noBorder]}>
                  <View style={styles.ledgerMain}>
-                    <Text style={styles.ledgerTask}>{dept.name}</Text>
+                    <Text style={[styles.ledgerTask, { color: '#1E293B' }]}>{dept.name}</Text>
                     <View style={styles.ledgerMeta}>
                        <Text style={styles.ledgerDate}>Reg: {dept.registered}</Text>
                        <View style={styles.ledgerDot} />
-                       <Text style={[styles.priorityLabel, { color: '#059669' }]}>{dept.credits} Credits</Text>
+                       <Text style={[styles.priorityLabel, { color: '#64748B' }]}>{dept.credits} Credits</Text>
+                       <View style={styles.ledgerDot} />
+                       <Text style={styles.ledgerDate}>{dept.exit} out</Text>
                     </View>
                  </View>
-                 <View style={[styles.statusBadge, { backgroundColor: dept.color + '15' }]}>
-                    <Text style={[styles.statusBadgeText, { color: dept.color }]}>{dept.sync.toUpperCase()}</Text>
+                 <View style={[styles.statusBadge, { backgroundColor: '#F1F5F9' }]}>
+                    <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: dept.syncColor, marginRight: 6 }} />
+                    <Text style={[styles.statusBadgeText, { color: '#64748B' }]}>{dept.sync.toUpperCase()}</Text>
                  </View>
               </View>
            ))}
@@ -647,17 +988,18 @@ const AbcCreditsView = () => {
 
 const EquityAuditView = () => {
   const topStats = [
-    { label: "SC Cluster", value: "12%", icon: Users, color: "#F59E0B" },
-    { label: "ST Cluster", value: "6.6%", icon: Users, color: "#F59E0B" },
-    { label: "OBC Pool", value: "30%", icon: Users, color: "#10B981" },
-    { label: "PwD Acc.", value: "1.6%", icon: ShieldCheck, color: "#EF4444" }
+    { label: "SC Cluster", value: "12%", target: "Target: 15%", status: "Below target", icon: AlertCircle, color: "#F59E0B" },
+    { label: "ST Cluster", value: "6.6%", target: "Target: 7.5%", status: "Below target", icon: AlertCircle, color: "#F59E0B" },
+    { label: "OBC Pool", value: "30%", target: "Target: 27%", status: "Met target", icon: CheckCircle2, color: "#10B981" },
+    { label: "PwD Acc.", value: "1.6%", target: "Target: 3%", status: "Below target", icon: AlertCircle, color: "#EF4444" }
   ];
 
   const indicators = [
-    { label: "Admission Equity", progress: 68, color: "#EF4444" },
+    { label: "Admission Equity", progress: 68, color: "#F59E0B" },
     { label: "Hostel Fairness", progress: 82, color: "#10B981" },
-    { label: "Faculty Multi-diversity", progress: 45, color: "#EF4444" },
-    { label: "Barrier-Free Infrastructure", progress: 58, color: "#F59E0B" },
+    { label: "Scholarship Distribution", progress: 74, color: "#3B82F6" },
+    { label: "Faculty Representation", progress: 45, color: "#EF4444" },
+    { label: "Grievance Resolution", progress: 58, color: "#F59E0B" },
   ];
 
   return (
@@ -672,44 +1014,170 @@ const EquityAuditView = () => {
           <Text style={styles.subtitle}>Institutional diversity and inclusion monitoring</Text>
         </Animated.View>
 
-        <Animated.View entering={FadeInRight.delay(100)} style={styles.statsRow}>
-          {topStats.map((stat, i) => (
-             <StatsCard 
-               key={i} 
-               title={stat.label} 
-               value={stat.value} 
-               icon={stat.icon} 
-               color={stat.color} 
-             />
-          ))}
+        {/* AI Analyst Insight Card */}
+        <Animated.View entering={FadeInRight.delay(100)}>
+           <Card style={[styles.insightCard, { backgroundColor: '#ECFDF5', borderColor: '#D1FAE5' }]}>
+              <View style={styles.insightTop}>
+                 <View style={[styles.insightIconBox, { backgroundColor: '#FFF' }]}>
+                    <Zap color="#059669" size={16} />
+                 </View>
+                 <View style={{ flex: 1 }}>
+                    <Text style={styles.insightText}>Equity Insight Summary</Text>
+                    <Text style={styles.insightMeta}>The **Institutional Equity Index** has improved by **2.8%**. Critical gap identified in **Faculty Representation (45%)** and **PwD Access (1.6%)**. Corrective measures recommended.</Text>
+                 </View>
+              </View>
+           </Card>
         </Animated.View>
+
+        {/* Global Diversity Score Banner */}
+        <Animated.View entering={FadeInUp.delay(150)}>
+          <Card style={[styles.scoreBanner, { backgroundColor: '#FFF', marginBottom: 24, padding: 20, borderTopWidth: 4, borderTopColor: '#F59E0B' }]}>
+            <View style={styles.scoreContent}>
+               <View style={styles.scoreGaugeContainer}>
+                  <View style={[styles.scoreCircleLarge, { borderColor: '#F59E0B' }]}>
+                     <Text style={styles.scoreValueBig}>72</Text>
+                     <Text style={styles.scoreLabelSmall}>SCORE</Text>
+                  </View>
+               </View>
+               <View style={styles.scoreInfo}>
+                  <Text style={styles.bannerTitle}>Diversity Compliance</Text>
+                  <Text style={styles.bannerSub}>Aggregate index across Admission, Faculty, and Facilities.</Text>
+                  <View style={styles.statusBadgeRow}>
+                     <View style={[styles.statusBadge, { backgroundColor: '#D1FAE5' }]}>
+                        <TrendingUp size={10} color="#059669" />
+                        <Text style={[styles.statusBadgeText, { color: '#059669', marginLeft: 4 }]}>ON TRACK</Text>
+                     </View>
+                  </View>
+               </View>
+            </View>
+          </Card>
+        </Animated.View>
+
+        <View style={styles.metricsGrid}>
+          {topStats.map((stat, i) => (
+             <View key={i} style={styles.metricWrapper}>
+                <Card style={[styles.metricCard, { borderBottomWidth: 4, borderBottomColor: stat.color + '40' }]}>
+                   <View style={styles.metricHeader}>
+                      <View style={[styles.iconBox, { backgroundColor: stat.color + '10' }]}>
+                         <stat.icon size={16} color={stat.color} />
+                      </View>
+                      {stat.status === 'Met target' ? <CheckCircle2 size={12} color="#10B981" /> : <AlertTriangle size={12} color={stat.color} />}
+                   </View>
+                   <Text style={[styles.metricValLarge, { color: '#0F172A', marginTop: 8 }]}>{stat.value}</Text>
+                   <Text style={[styles.metricLabelLong, { color: '#64748B' }]}>{stat.label}</Text>
+                   <View style={styles.targetRow}>
+                      <Text style={styles.targetLabel}>{stat.target}</Text>
+                   </View>
+                </Card>
+             </View>
+          ))}
+        </View>
 
         <View style={styles.sectionTitleRow}>
            <Text style={styles.sectionLabel}>IMPACT INDICATORS</Text>
+           <Text style={styles.sectionValue}>5 Metrics Tracked</Text>
         </View>
 
         <Card style={styles.ledgerCard}>
-           {indicators.map((ind, idx) => (
-              <View key={idx} style={[styles.impactRow, idx === indicators.length - 1 && styles.noBorder]}>
-                 <View style={styles.impactHeader}>
-                    <Text style={styles.impactLabel}>{ind.label}</Text>
-                    <Text style={[styles.impactVal, { color: ind.color }]}>{ind.progress}%</Text>
+           <View style={{ padding: 16 }}>
+              {indicators.map((ind, idx) => (
+                 <View key={idx} style={{ marginBottom: 20 }}>
+                    <View style={styles.impactHeader}>
+                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                          <View style={[styles.dot, { backgroundColor: ind.progress < 50 ? '#EF4444' : ind.progress < 75 ? '#F59E0B' : '#10B981' }]} />
+                          <Text style={styles.impactLabel}>{ind.label}</Text>
+                       </View>
+                       <Text style={[styles.impactValPremium, { color: ind.color }]}>{ind.progress}%</Text>
+                    </View>
+                    <View style={styles.progressBarWrapper}>
+                       <View style={[styles.progressBarLarge, { height: 4, backgroundColor: '#F1F5F9' }]}>
+                          <View style={[styles.progressFill, { width: (ind.progress + '%') as any, backgroundColor: ind.color }]} />
+                       </View>
+                    </View>
                  </View>
-                 <View style={styles.progressBarLarge}>
-                    <View style={[styles.progressFill, { width: (ind.progress + '%') as any, backgroundColor: ind.color }]} />
-                 </View>
+              ))}
+              <View style={styles.footerRow}>
+                 <Clock size={10} color="#94A3B8" />
+                 <Text style={styles.footerText}>Certified Audit: March 12, 2024</Text>
               </View>
-           ))}
+           </View>
         </Card>
 
         <View style={styles.actionRowGroup}>
-           <TouchableOpacity style={styles.primaryActionBtn}>
-              <Download size={16} color="#FFF" />
-              <Text style={styles.primaryActionText}>Generate UGC Report</Text>
+           <TouchableOpacity style={styles.primaryActionBtnWide}>
+              <Download size={18} color="#FFF" />
+              <Text style={styles.primaryActionTextLarge}>Generate Equity Report</Text>
            </TouchableOpacity>
-           <TouchableOpacity style={styles.secondaryActionBtn}>
-              <Text style={styles.secondaryActionText}>Export to Excel</Text>
+           <TouchableOpacity style={styles.secondaryActionBtnWide}>
+              <Text style={styles.secondaryActionTextLarge}>Export Audit Data (.xlsx)</Text>
            </TouchableOpacity>
+        </View>
+      </ScrollView>
+    </View>
+  );
+};
+
+const ReportsView = () => {
+  const reports = [
+    { target: "NEP 2020 Compliance Report", desc: "HPC, ABC, OBE, Equity — all pillars", formats: "PDF / Word", status: "Ready", color: "#10B981", icon: BarChart },
+    { target: "UGC 2026 Equity Readiness", desc: "EOC status, grievance SLA data", formats: "PDF", status: "Pending", color: "#F59E0B", icon: ShieldCheck },
+    { target: "NAAC Self-Study Report Pack", desc: "Pre-formatted NAAC 2024 template", formats: "Word / PDF", status: "Ready", color: "#F59E0B", icon: FileText },
+    { target: "ABC Credit Summary Report", desc: "Student-wise credit for NAD sub.", formats: "Excel / CSV", status: "Ready", color: "#10B981", icon: Target },
+    { target: "OBE Attainment Analytics", desc: "Course-LO mapping by department", formats: "Excel", status: "Pending", color: "#EF4444", icon: BarChart },
+    { target: "Holistic Progress Card Batch", desc: "Bulk generate HPC for all students", formats: "PDF (bulk)", status: "Ready", color: "#10B981", icon: Award },
+    { target: "Industry MoU Report", desc: "Active partnerships, intern outcomes", formats: "PDF", status: "Ready", color: "#10B981", icon: Briefcase },
+    { target: "Grievance Resolution Report", desc: "Monthly stats, SLA compliance data", formats: "PDF", status: "Ready", color: "#10B981", icon: CheckCircle2 },
+  ];
+
+  return (
+    <View style={styles.container}>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <Animated.View entering={FadeInUp.delay(50)} style={styles.header}>
+          <View style={styles.headerBadge}>
+            <FileText size={10} color="#059669" />
+            <Text style={styles.headerBadgeText}>DOCUMENT ENGINE</Text>
+          </View>
+          <Text style={styles.title}>Compliance Reports</Text>
+          <Text style={styles.subtitle}>Generate and download regulatory documentation</Text>
+        </Animated.View>
+
+        <View style={{ gap: 16 }}>
+           {reports.map((report, idx) => (
+              <Animated.View key={idx} entering={FadeInUp.delay(idx * 50)}>
+                 <Card style={styles.ledgerCard}>
+                    <View style={{ padding: 16 }}>
+                       <View style={{ flexDirection: 'row', gap: 16 }}>
+                          <View style={[styles.iconBox, { backgroundColor: '#F8FAFC', width: 44, height: 44 }]}>
+                             <report.icon size={20} color={report.status === 'Ready' ? report.color : '#64748B'} />
+                          </View>
+                          <View style={{ flex: 1 }}>
+                             <Text style={styles.ledgerTask}>{report.target}</Text>
+                             <Text style={styles.ledgerDate}>{report.desc}</Text>
+                             
+                             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 12 }}>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                   <Text style={[styles.ledgerDate, { fontSize: 10, fontWeight: '700' }]}>{report.formats}</Text>
+                                   <View style={[styles.statusBadge, { backgroundColor: report.color + '15' }]}>
+                                      <Text style={[styles.statusBadgeText, { color: report.color }]}>{report.status.toUpperCase()}</Text>
+                                   </View>
+                                </View>
+                                {report.status === 'Ready' ? (
+                                   <TouchableOpacity style={[styles.configBtn, { backgroundColor: '#F59E0B', borderColor: '#F59E0B' }]}>
+                                      <Download size={12} color="#FFF" style={{ marginRight: 4 }} />
+                                      <Text style={[styles.configBtnText, { color: '#FFF' }]}>Download</Text>
+                                   </TouchableOpacity>
+                                ) : (
+                                   <TouchableOpacity style={styles.configBtn}>
+                                      <Text style={styles.configBtnText}>Configure</Text>
+                                   </TouchableOpacity>
+                                )}
+                             </View>
+                          </View>
+                       </View>
+                    </View>
+                 </Card>
+              </Animated.View>
+           ))}
         </View>
       </ScrollView>
     </View>

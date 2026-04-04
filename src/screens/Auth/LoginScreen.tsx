@@ -26,7 +26,7 @@ export const LoginScreen = () => {
       setError('Please enter both username and password');
       return;
     }
-    
+
     setLoading(true);
     setError('');
 
@@ -38,11 +38,11 @@ export const LoginScreen = () => {
       );
 
       const data = response.data;
-      
+
       if (data.message === "Logged In") {
         const { api_key, api_secret } = data.key_details || {};
         const token = api_key && api_secret ? `${api_key}:${api_secret}` : 'dummy-token';
-        
+
         let userRole = 'Student';
         if (data.roles && Array.isArray(data.roles)) {
           const lowerRoles = data.roles.map((r: string) => r.toLowerCase());
@@ -61,7 +61,7 @@ export const LoginScreen = () => {
       } else {
         setError(data.message || 'Login failed');
       }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       setError(err?.response?.data?.message || err?.message || 'An error occurred during login');
     } finally {
@@ -76,7 +76,7 @@ export const LoginScreen = () => {
     >
       <View style={styles.formContainer}>
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
-        
+
         <Input
           label="Email or Username"
           placeholder="student@college.edu"
@@ -93,7 +93,7 @@ export const LoginScreen = () => {
         />
 
         <View style={styles.optionsRow}>
-          <Checkbox 
+          <Checkbox
             checked={rememberMe}
             onCheckedChange={setRememberMe}
             label="Remember me"
@@ -101,16 +101,16 @@ export const LoginScreen = () => {
           <Button
             title="Forgot password?"
             variant="link"
-            onPress={() => {}}
+            onPress={() => { }}
             style={styles.forgotBtn}
           />
         </View>
 
-        <Button 
-          title="Sign In" 
-          onPress={handleLogin} 
-          loading={loading} 
-          variant="accent" 
+        <Button
+          title="Sign In"
+          onPress={handleLogin}
+          loading={loading}
+          variant="accent"
           style={styles.signInButton}
         />
 

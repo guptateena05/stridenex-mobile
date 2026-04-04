@@ -83,7 +83,7 @@ export const CollegeDrawerNavigator = () => {
         initialParams={{ tab: 'Dashboard' }}
         options={{ title: 'Dashboard', drawerIcon: ({ color, size }) => <LayoutDashboard color={color} size={size} /> }}
       />
-      {/* <Drawer.Screen
+      <Drawer.Screen
         name="NEP 2020"
         component={CollegeNepUgcScreen}
         initialParams={{ tab: 'NEP 2020' }}
@@ -123,7 +123,7 @@ export const CollegeDrawerNavigator = () => {
         name="NEP Reports"
         component={CollegeReportsScreen}
         options={{ title: 'Reports', drawerIcon: ({ color, size }) => <BarChart color={color} size={size} /> }}
-      /> */}
+      />
 
       {/* Main Tabs cont... */}
       <Drawer.Screen
