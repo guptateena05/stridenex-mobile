@@ -9,7 +9,7 @@ import * as DocumentPicker from '@react-native-documents/picker';
 import { colors } from '@/theme/colors';
 import { typography } from '@/theme/typography';
 import { spacing } from '@/theme/spacing';
-import axios from 'axios';
+import { api } from '@/api/api.services';
 
 export interface FormField {
   fieldname: string;
@@ -39,10 +39,11 @@ interface DynamicFieldProps {
   field: FormField;
   value: any;
   onChange: (name: string, value: any) => void;
+  onCreateCustomValue?: (value: string) => Promise<void>;
   error?: string;
 }
 
-export default function DynamicField({ field, value, onChange, error }: DynamicFieldProps) {
+export default function DynamicField({ field, value, onChange, onCreateCustomValue, error }: DynamicFieldProps) {
   const [options, setOptions] = useState<Array<{ value: string; label: string }>>([]);
   const [filteredOptions, setFilteredOptions] = useState<Array<{ value: string; label: string }>>([]);
   const [loading, setLoading] = useState(false);
@@ -85,15 +86,10 @@ export default function DynamicField({ field, value, onChange, error }: DynamicF
       let responseData;
 
       if (field.apiEndpoint.includes('master.get_master_data')) {
-        response = await axios.post(field.apiEndpoint, field.apiParams || {}, {
-          headers: {
-            "Content-Type": "application/json",
-            "Accept": "application/json"
-          }
-        });
+        response = await api.post(field.apiEndpoint, field.apiParams || {});
         responseData = response.data;
       } else {
-        response = await axios.get(field.apiEndpoint, { params: field.apiParams });
+        response = await api.get(field.apiEndpoint, { params: field.apiParams });
         responseData = response.data;
       }
 
@@ -105,6 +101,10 @@ export default function DynamicField({ field, value, onChange, error }: DynamicF
         data = responseData.data;
       } else if (responseData.message && Array.isArray(responseData.message)) {
         data = responseData.message;
+      } else if (responseData.message && responseData.message.data && Array.isArray(responseData.message.data)) {
+        data = responseData.message.data;
+      } else if (responseData.message && responseData.message.message && Array.isArray(responseData.message.message)) {
+        data = responseData.message.message;
       }
 
       if (data.length > 0) {
@@ -112,10 +112,14 @@ export default function DynamicField({ field, value, onChange, error }: DynamicF
         if (field.mapOptions) {
           mappedOptions = field.mapOptions(data);
         } else {
-          mappedOptions = data.map((item: any) => ({
-            value: item.name || item.value,
-            label: item.label || item.name || item.district_name
-          }));
+          mappedOptions = data.map((item: any) => {
+            const val = item.name || item.value || item.specialization || item.skill || item.designation || item.round || item.domain || item.sub_domain || (typeof item === 'string' ? item : '');
+            const lbl = item.label || item.name || item.specialization || item.skill || item.designation || item.round || item.domain || item.sub_domain || item.district_name || (typeof item === 'string' ? item : '');
+            return {
+              value: val,
+              label: lbl
+            };
+          });
         }
         setOptions(mappedOptions);
         setFilteredOptions(mappedOptions);
@@ -143,6 +147,12 @@ export default function DynamicField({ field, value, onChange, error }: DynamicF
       setFilteredOptions(filtered);
     }
   }, [searchTerm, options]);
+
+  useEffect(() => {
+    if (field.apiEndpoint && value && !fetchedRef.current) {
+      fetchOptions();
+    }
+  }, [field.apiEndpoint, value]);
 
   const handleDropdownClick = () => {
     if (field.read_only || field.disabled) return;
@@ -177,21 +187,41 @@ export default function DynamicField({ field, value, onChange, error }: DynamicF
     }
   };
 
-  const handleAddCustomValue = () => {
+  const handleAddCustomValue = async () => {
     if (customValue.trim()) {
       const customOptionValue = customValue.trim();
+
+      if (onCreateCustomValue) {
+        setLoading(true);
+        try {
+          await onCreateCustomValue(customOptionValue);
+        } catch (err: any) {
+          console.error("Error creating custom value:", err);
+          Alert.alert("Error", err?.message || `Failed to create custom ${field.label}`);
+          return; // Don't add if creation fails
+        } finally {
+          setLoading(false);
+        }
+      }
+
       const newOption = { value: customOptionValue, label: customValue.trim() };
       const exists = options.some(opt => opt.value === customOptionValue);
       if (!exists) {
         setOptions(prev => [...prev, newOption]);
         setFilteredOptions(prev => [...prev, newOption]);
       }
-      const currentValues = Array.isArray(value) ? value : [];
-      if (!currentValues.includes(customOptionValue)) {
-        onChange(field.fieldname, [...currentValues, customOptionValue]);
+      if (field.multiSelect) {
+        const currentValues = Array.isArray(value) ? value : [];
+        if (!currentValues.includes(customOptionValue)) {
+          onChange(field.fieldname, [...currentValues, customOptionValue]);
+        }
+      } else {
+        onChange(field.fieldname, customOptionValue);
+        setIsOpen(false);
       }
       setCustomValue('');
       setShowCustomInput(false);
+      setSearchTerm('');
     }
   };
 
@@ -199,18 +229,17 @@ export default function DynamicField({ field, value, onChange, error }: DynamicF
     if (!value) return field.placeholder || `Select ${field.label}`;
     const selected = options.find(opt => opt.value === value);
     if (selected) return selected.label;
-    if (field.fieldtype === 'Select' && field.options) {
-      return value;
-    }
+    if (value) return value; // Show raw value if option not found yet
     return field.placeholder || `Select ${field.label}`;
   };
 
   const getSelectedLabels = () => {
     if (!Array.isArray(value) || value.length === 0) return [];
-    if (field.apiEndpoint) {
-      return options.filter(opt => value.includes(opt.value));
-    }
-    return value.map(v => ({ value: v, label: v }));
+
+    return value.map(v => {
+      const found = options.find(opt => opt.value === v);
+      return found || { value: v, label: v };
+    });
   };
 
   const handleDateConfirm = (date: Date) => {
@@ -225,44 +254,44 @@ export default function DynamicField({ field, value, onChange, error }: DynamicF
   };
 
   const handleFilePick = async () => {
-  if (field.read_only) return;
+    if (field.read_only) return;
 
-  try {
-    const result = await DocumentPicker.pick({
-      type: [DocumentPicker.types.pdf],
-      allowMultiSelection: false,
-    });
+    try {
+      const result = await DocumentPicker.pick({
+        type: [DocumentPicker.types.pdf],
+        allowMultiSelection: false,
+      });
 
-    if (result) {
-      const file = Array.isArray(result) ? result[0] : result;
+      if (result) {
+        const file = Array.isArray(result) ? result[0] : result;
 
-      if (file.size && file.size > 5 * 1024 * 1024) {
-        Alert.alert('File Size Error', 'File size should be less than 5MB');
-        return;
+        if (file.size && file.size > 5 * 1024 * 1024) {
+          Alert.alert('File Size Error', 'File size should be less than 5MB');
+          return;
+        }
+
+        // Store file object with proper structure for FormData
+        const fileObject = {
+          uri: file.uri,
+          type: file.type || 'application/pdf',
+          name: file.name || 'document.pdf',
+          size: file.size,
+        };
+
+        const fileNameValue = file.name ? file.name : 'document.pdf';
+        setFileName(fileNameValue);
+        onChange(field.fieldname, fileObject); // Store the properly structured file object
+        Alert.alert('Success', 'PDF file selected successfully');
       }
-
-      // Store file object with proper structure for FormData
-      const fileObject = {
-        uri: file.uri,
-        type: file.type || 'application/pdf',
-        name: file.name || 'document.pdf',
-        size: file.size,
-      };
-      
-      const fileNameValue = file.name ? file.name : 'document.pdf';
-      setFileName(fileNameValue);
-      onChange(field.fieldname, fileObject); // Store the properly structured file object
-      Alert.alert('Success', 'PDF file selected successfully');
+    } catch (err: any) {
+      if (err.code === 'DOCUMENT_PICKER_CANCELED' || err.code === 'CANCELED') {
+        console.log('User cancelled file picker');
+      } else {
+        console.error('Error picking file:', err);
+        Alert.alert('Error', 'Failed to pick file. Please try again.');
+      }
     }
-  } catch (err: any) {
-    if (err.code === 'DOCUMENT_PICKER_CANCELED' || err.code === 'CANCELED') {
-      console.log('User cancelled file picker');
-    } else {
-      console.error('Error picking file:', err);
-      Alert.alert('Error', 'Failed to pick file. Please try again.');
-    }
-  }
-};
+  };
 
   if (field.hidden) return null;
 
@@ -373,25 +402,32 @@ export default function DynamicField({ field, value, onChange, error }: DynamicF
                   placeholder="Type here..."
                   placeholderTextColor={textSecondary}
                   autoFocus
+                  editable={!loading}
                 />
                 <View style={styles.customInputButtons}>
-                  <TouchableOpacity
-                    style={[styles.cancelButton, { borderColor, backgroundColor: backgroundColor }]}
-                    onPress={() => setShowCustomInput(false)}
-                  >
-                    <Text style={[styles.cancelButtonText, { color: textSecondary }]}>Cancel</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[
-                      styles.addButton,
-                      { backgroundColor: accentColor, flex: 1, marginLeft: 10 },
-                      !customValue.trim() && { opacity: 0.5 }
-                    ]}
-                    onPress={handleAddCustomValue}
-                    disabled={!customValue.trim()}
-                  >
-                    <Text style={styles.addButtonText}>Add</Text>
-                  </TouchableOpacity>
+                  {loading ? (
+                    <ActivityIndicator size="small" color={accentColor} style={{ flex: 1 }} />
+                  ) : (
+                    <>
+                      <TouchableOpacity
+                        style={[styles.cancelButton, { borderColor, backgroundColor: backgroundColor }]}
+                        onPress={() => setShowCustomInput(false)}
+                      >
+                        <Text style={[styles.cancelButtonText, { color: textSecondary }]}>Cancel</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[
+                          styles.addButton,
+                          { backgroundColor: accentColor, flex: 1, marginLeft: 10 },
+                          !customValue.trim() && { opacity: 0.5 }
+                        ]}
+                        onPress={handleAddCustomValue}
+                        disabled={!customValue.trim() || loading}
+                      >
+                        <Text style={styles.addButtonText}>Add</Text>
+                      </TouchableOpacity>
+                    </>
+                  )}
                 </View>
               </View>
             )}
@@ -623,6 +659,47 @@ export default function DynamicField({ field, value, onChange, error }: DynamicF
               </View>
             ) : null}
           </View>
+        );
+
+      case 'Int':
+      case 'Float':
+      case 'Currency':
+        return (
+          <TextInput
+            style={[
+              styles.input,
+              { borderColor: error ? errorColor : borderColor, backgroundColor, color: textPrimary },
+              field.read_only && { backgroundColor: '#f5f5f5', opacity: 0.6 }
+            ]}
+            placeholder={field.placeholder}
+            placeholderTextColor={textSecondary}
+            value={value !== undefined && value !== null ? String(value) : ''}
+            onChangeText={(val) => {
+              const numVal = field.fieldtype === 'Int' ? parseInt(val, 10) : parseFloat(val);
+              onChange(field.fieldname, isNaN(numVal) ? (val === '' ? null : val) : numVal);
+            }}
+            editable={!field.read_only}
+            keyboardType="numeric"
+            maxLength={field.maxLength}
+          />
+        );
+
+      case 'Phone':
+        return (
+          <TextInput
+            style={[
+              styles.input,
+              { borderColor: error ? errorColor : borderColor, backgroundColor, color: textPrimary },
+              field.read_only && { backgroundColor: '#f5f5f5', opacity: 0.6 }
+            ]}
+            placeholder={field.placeholder}
+            placeholderTextColor={textSecondary}
+            value={value || ''}
+            onChangeText={(val) => onChange(field.fieldname, val)}
+            editable={!field.read_only}
+            keyboardType="phone-pad"
+            maxLength={field.maxLength}
+          />
         );
 
       case 'Text':

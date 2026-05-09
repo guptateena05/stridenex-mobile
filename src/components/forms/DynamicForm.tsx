@@ -8,6 +8,7 @@ import { spacing } from '@/theme/spacing';
 export interface DynamicFormProps {
   fields: FormField[];
   onSubmit: (data: any) => void;
+  onCreateCustomValue?: (fieldName: string, value: string) => Promise<void>;
   buttonLabel?: string;
   loading?: boolean;
   onChange?: (data: any) => void;
@@ -18,6 +19,7 @@ export interface DynamicFormProps {
 const DynamicForm: React.FC<DynamicFormProps> = ({
   fields,
   onSubmit,
+  onCreateCustomValue,
   buttonLabel = 'Submit',
   loading = false,
   onChange,
@@ -27,17 +29,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
   const [formData, setFormData] = useState<Record<string, any>>(initialValues);
 
   useEffect(() => {
-    setFormData((prev) => {
-      let hasChanges = false;
-      const newData = { ...prev };
-      for (const key in initialValues) {
-        if (initialValues[key] !== prev[key]) {
-          hasChanges = true;
-          newData[key] = initialValues[key];
-        }
-      }
-      return hasChanges ? newData : prev;
-    });
+    setFormData(initialValues || {});
   }, [initialValues]);
 
   const handleChange = (name: string, value: any) => {
@@ -80,6 +72,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
                     field={f}
                     value={formData[f.fieldname]}
                     onChange={handleChange}
+                    onCreateCustomValue={onCreateCustomValue ? (val) => onCreateCustomValue(f.fieldname, val) : undefined}
                     error={errors?.[f.fieldname]}
                   />
                 </View>
@@ -107,6 +100,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
                 field={f}
                 value={formData[f.fieldname]}
                 onChange={handleChange}
+                onCreateCustomValue={onCreateCustomValue ? (val) => onCreateCustomValue(f.fieldname, val) : undefined}
                 error={errors?.[f.fieldname]}
               />
             </View>
