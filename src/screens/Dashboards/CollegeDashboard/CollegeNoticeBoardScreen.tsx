@@ -26,20 +26,20 @@ export const CollegeNoticeBoardScreen = () => {
         
         {/* Header */}
         <Animated.View entering={FadeInUp.delay(50)} style={styles.header}>
-          <View style={styles.headerBadge}>
-            <Bell size={10} color="#059669" />
-            <Text style={styles.headerBadgeText}>NOTICE BOARD</Text>
-          </View>
-          <View style={styles.headerTitleRow}>
-            <View>
-               <Text style={styles.title}>Announcements</Text>
-               <Text style={styles.subtitle}>Institutional events and digital notices</Text>
-            </View>
-            <TouchableOpacity style={styles.createBtn}>
-               <Plus size={16} color="#FFF" />
-               <Text style={styles.createBtnText}>Post</Text>
-            </TouchableOpacity>
-          </View>
+           <View style={styles.headerRow}>
+              <View style={styles.headerTitleGroup}>
+                 <Text style={styles.title}>Announcements</Text>
+                 <View style={styles.headerBadge}>
+                    <Bell size={10} color="#059669" />
+                    <Text style={styles.headerBadgeText}>NOTICE BOARD</Text>
+                 </View>
+              </View>
+              <TouchableOpacity style={styles.createBtn}>
+                 <Plus size={16} color="#FFF" />
+                 <Text style={styles.createBtnText}>Post</Text>
+              </TouchableOpacity>
+           </View>
+           <Text style={styles.subtitle}>Institutional events and digital notices</Text>
         </Animated.View>
 
         {/* Featured Events Section */}
@@ -140,12 +140,13 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8FAFC' },
   content: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 40 },
   
-  header: { marginBottom: 24, paddingHorizontal: 4 },
-  headerBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(5, 150, 105, 0.08)', alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, marginBottom: 8 },
+  header: { marginBottom: 12, paddingHorizontal: 4 },
+  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 },
+  headerTitleGroup: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  headerBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(5, 150, 105, 0.08)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
   headerBadgeText: { fontSize: 8, fontWeight: '800', color: '#059669', letterSpacing: 0.5 },
-  headerTitleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   title: { fontSize: 22, fontWeight: '800', color: '#0F172A', fontFamily: typography.fontFamily.display, letterSpacing: -0.5 },
-  subtitle: { fontSize: 12, color: '#64748B', fontWeight: '500', marginTop: 2 },
+  subtitle: { fontSize: 12, color: '#64748B', fontWeight: '500' },
   
   createBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#0F172A', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 12 },
   createBtnText: { fontSize: 12, fontWeight: '800', color: '#FFF' },

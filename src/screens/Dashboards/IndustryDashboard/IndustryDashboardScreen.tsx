@@ -110,11 +110,13 @@ export const IndustryDashboardScreen = () => {
       >
         <View style={styles.content}>
           <Animated.View entering={FadeInUp.delay(100)} style={styles.header}>
-            <View style={styles.headerBadge}>
-              <LayoutDashboard size={10} color={colors.purple[600]} />
-              <Text style={styles.headerBadgeText}>DASHBOARD SUMMARY</Text>
+            <View style={styles.headerRow}>
+              <Text style={styles.title}>Overview</Text>
+              <View style={styles.headerBadge}>
+                <LayoutDashboard size={10} color={colors.purple[600]} />
+                <Text style={styles.headerBadgeText}>DASHBOARD SUMMARY</Text>
+              </View>
             </View>
-            <Text style={styles.title}>Overview</Text>
             <Text style={styles.subtitle}>Here is your recruitment overview today</Text>
           </Animated.View>
 
@@ -238,22 +240,23 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { paddingHorizontal: 16, paddingTop: 24 },
   contentBottom: { paddingHorizontal: 16, marginTop: 24 },
-  header: { marginBottom: 16, paddingHorizontal: 4 },
-  headerBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(147, 51, 234, 0.08)', alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, marginBottom: 6 },
+  header: { marginBottom: 12, paddingHorizontal: 4 },
+  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 },
+  headerBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(147, 51, 234, 0.08)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
   headerBadgeText: { fontSize: 8, fontWeight: '800', color: colors.purple[600], letterSpacing: 0.5 },
   title: { fontSize: 22, fontWeight: '800', color: '#0F172A', fontFamily: typography.fontFamily.display, letterSpacing: -0.5 },
-  subtitle: { fontSize: 12, color: '#64748B', fontWeight: '500', marginTop: 2 },
+  subtitle: { fontSize: 12, color: '#64748B', fontWeight: '500' },
   
   statsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    marginHorizontal: -4,
+    marginHorizontal: -2,
     paddingVertical: 4,
     paddingHorizontal: 16,
   },
   statWrapper: {
     width: '25%',
-    paddingHorizontal: 4,
+    paddingHorizontal: 0,
     marginBottom: 8,
   },
 

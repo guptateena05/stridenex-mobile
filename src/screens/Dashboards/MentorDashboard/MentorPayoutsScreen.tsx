@@ -42,11 +42,13 @@ export const MentorPayoutsScreen = () => {
         
         {/* Header */}
         <Animated.View entering={FadeInUp.delay(50)} style={styles.header}>
-          <View style={styles.headerBadge}>
-            <Banknote size={10} color="#4c1d95" />
-            <Text style={styles.headerBadgeText}>EARNINGS & BILLING</Text>
+          <View style={styles.headerRow}>
+            <Text style={styles.title}>Payouts</Text>
+            <View style={styles.headerBadge}>
+              <Banknote size={10} color="#4c1d95" />
+              <Text style={styles.headerBadgeText}>EARNINGS & BILLING</Text>
+            </View>
           </View>
-          <Text style={styles.title}>Payouts</Text>
           <Text style={styles.subtitle}>Track your revenue, commissions, and bank settlements</Text>
         </Animated.View>
 
@@ -186,11 +188,12 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { paddingHorizontal: 16, paddingTop: 16 },
   
-  header: { marginBottom: 20, paddingHorizontal: 4 },
-  headerBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(76, 29, 149, 0.08)', alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, marginBottom: 6 },
+  header: { marginBottom: 12, paddingHorizontal: 4 },
+  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 },
+  headerBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(76, 29, 149, 0.08)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
   headerBadgeText: { fontSize: 8, fontWeight: '800', color: '#4c1d95', letterSpacing: 0.5 },
   title: { fontSize: 22, fontWeight: '800', color: '#0F172A', fontFamily: typography.fontFamily.display, letterSpacing: -0.5 },
-  subtitle: { fontSize: 12, color: '#64748B', fontWeight: '500', marginTop: 2 },
+  subtitle: { fontSize: 12, color: '#64748B', fontWeight: '500' },
 
   heroCard: { borderRadius: 24, padding: 24, marginBottom: 20 },
   heroTitle: { fontSize: 18, fontWeight: '800', color: '#FFF', marginBottom: 8 },

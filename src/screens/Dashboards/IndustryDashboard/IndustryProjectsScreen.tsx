@@ -306,11 +306,13 @@ export const IndustryProjectsScreen = () => {
       >
         {/* Header Section */}
         <Animated.View entering={FadeInUp.delay(100)} style={styles.header}>
-           <View style={styles.headerBadge}>
-              <Briefcase size={10} color={colors.purple[600]} />
-              <Text style={styles.headerBadgeText}>R&D OPPORTUNITIES</Text>
+           <View style={styles.headerRow}>
+              <Text style={styles.title}>Live Projects</Text>
+              <View style={styles.headerBadge}>
+                 <Briefcase size={10} color={colors.purple[600]} />
+                 <Text style={styles.headerBadgeText}>R&D OPPORTUNITIES</Text>
+              </View>
            </View>
-           <Text style={styles.title}>Live Projects</Text>
            <Text style={styles.subtitle}>Post real projects for students to participate in</Text>
         </Animated.View>
 
@@ -336,28 +338,23 @@ export const IndustryProjectsScreen = () => {
           ) : projects.length > 0 ? (
             projects.map((project, index) => (
                <Animated.View key={project.name} entering={FadeInUp.delay(350 + index * 50)} style={styles.projectCard}>
-                  <View style={styles.cardTop}>
-                     <View style={styles.titleRow}>
-                        <View style={styles.iconBox}>
-                           <Microscope size={20} color="#64748B" />
-                        </View>
-                        <View style={styles.titleInfo}>
-                           <Text style={styles.projectTitle}>{project.project_name}</Text>
-                           <Text style={styles.projectSubtitle}>{project.industry} • {project.project_code}</Text>
-                        </View>
+                  <View style={styles.cardHeaderRow}>
+                     <View style={styles.iconBox}>
+                        <Microscope size={18} color="#64748B" />
                      </View>
-                     
-                     <View style={styles.badgesRow}>
-                        <View style={[styles.badge, project.status?.toLowerCase() === "active" ? styles.badgeOpen : {}]}>
-                           <Text style={[styles.badgeText, project.status?.toLowerCase() === "active" ? styles.badgeTextOpen : {}]}>{project.status}</Text>
-                        </View>
+                     <View style={styles.titleInfo}>
+                        <Text style={styles.projectTitle} numberOfLines={1}>{project.project_name}</Text>
+                        <Text style={styles.projectSubtitle}>{project.industry} • {project.project_code}</Text>
+                     </View>
+                     <View style={[styles.badge, project.status?.toLowerCase() === "active" ? styles.badgeOpen : {}]}>
+                        <Text style={[styles.badgeText, project.status?.toLowerCase() === "active" ? styles.badgeTextOpen : {}]}>{project.status}</Text>
                      </View>
                   </View>
 
-                  <Text style={styles.description} numberOfLines={3}>{project.description}</Text>
+                  <Text style={styles.description} numberOfLines={2}>{project.description}</Text>
                   
                   <View style={styles.tagsContainer}>
-                     {(project.required_skills || project.skills || []).slice(0, 4).map((skill: any, sIdx: number) => (
+                     {(project.required_skills || project.skills || []).slice(0, 3).map((skill: any, sIdx: number) => (
                         <View key={sIdx} style={styles.tagPill}>
                            <Text style={styles.tagText}>{skill.skill || skill.skills}</Text>
                         </View>
@@ -366,7 +363,7 @@ export const IndustryProjectsScreen = () => {
 
                   <View style={styles.divider} />
 
-                  <View style={styles.metricsContainer}>
+                  <View style={styles.footerRow}>
                      <View style={styles.metricsGrid}>
                         <View style={styles.metricItem}>
                            <Text style={[styles.metricValue, { color: '#F97316' }]}>{project.applied_count || 0}</Text>
@@ -392,7 +389,7 @@ export const IndustryProjectsScreen = () => {
                            onPress={() => handleDelete(project.name)}
                            disabled={project.status?.toLowerCase() === 'disabled' || project.status?.toLowerCase() === 'disable' || project.status?.toLowerCase() === 'inactive'}
                         >
-                           <Trash2 size={16} color={(project.status?.toLowerCase() === 'disabled' || project.status?.toLowerCase() === 'disable' || project.status?.toLowerCase() === 'inactive') ? '#CBD5E1' : colors.error} />
+                           <Trash2 size={14} color={(project.status?.toLowerCase() === 'disabled' || project.status?.toLowerCase() === 'disable' || project.status?.toLowerCase() === 'inactive') ? '#CBD5E1' : colors.error} />
                         </TouchableOpacity>
                         
                         <TouchableOpacity 
@@ -404,7 +401,7 @@ export const IndustryProjectsScreen = () => {
                            disabled={project.status?.toLowerCase() === 'disabled' || project.status?.toLowerCase() === 'disable' || project.status?.toLowerCase() === 'inactive'}
                         >
                            <Text style={styles.manageBtnText}>Manage</Text>
-                           <ArrowRight size={14} color="#FFF" />
+                           <ArrowRight size={12} color="#FFF" />
                         </TouchableOpacity>
                      </View>
                   </View>
@@ -462,51 +459,49 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 40 },
   
-  header: { marginBottom: 16, paddingHorizontal: 4 },
-  headerBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(147, 51, 234, 0.08)', alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, marginBottom: 6 },
+  header: { marginBottom: 12, paddingHorizontal: 4 },
+  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 },
+  headerBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(147, 51, 234, 0.08)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
   headerBadgeText: { fontSize: 8, fontWeight: '800', color: colors.purple[600], letterSpacing: 0.5 },
   title: { fontSize: 22, fontWeight: '800', color: '#0F172A', fontFamily: typography.fontFamily.display, letterSpacing: -0.5 },
-  subtitle: { fontSize: 12, color: '#64748B', fontWeight: '500', marginTop: 2 },
+  subtitle: { fontSize: 12, color: '#64748B', fontWeight: '500' },
   postBtn: { marginBottom: 24, backgroundColor: colors.purple[600], flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14, borderRadius: 12, shadowColor: colors.purple[600], shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8 },
   postBtnText: { color: '#FFF', fontSize: 14, fontWeight: '800' },
 
-  statsRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4, marginBottom: 24, flexWrap: 'wrap', gap: 12 },
+  statsRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4, marginBottom: 24, flexWrap: 'wrap' },
 
-  projectCard: { backgroundColor: '#FFF', borderRadius: 20, padding: 20, borderWidth: 1, borderColor: '#E2E8F0', marginBottom: 16, shadowColor: '#64748B', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 4, elevation: 1 },
-  cardTop: { marginBottom: 16 },
-  titleRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginBottom: 12 },
-  iconBox: { width: 44, height: 44, borderRadius: 12, backgroundColor: '#F8FAFC', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#F1F5F9' },
-  titleInfo: { flex: 1 },
-  projectTitle: { fontSize: 16, fontWeight: '800', color: '#1E293B', marginBottom: 2 },
-  projectSubtitle: { fontSize: 10, fontWeight: '800', color: '#94A3B8', letterSpacing: 0.5, textTransform: 'uppercase' },
-  badgesRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  badge: { backgroundColor: '#F8FAFC', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, borderWidth: 1, borderColor: '#F1F5F9' },
-  badgeText: { fontSize: 10, fontWeight: '800', color: '#94A3B8', textTransform: 'uppercase', letterSpacing: 0.5 },
+  projectCard: { backgroundColor: '#FFF', borderRadius: 20, padding: 16, borderWidth: 1, borderColor: '#E2E8F0', marginBottom: 16, shadowColor: '#64748B', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 4, elevation: 1 },
+  cardHeaderRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
+  iconBox: { width: 36, height: 36, borderRadius: 10, backgroundColor: '#F8FAFC', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#F1F5F9' },
+  titleInfo: { flex: 1, marginLeft: 10 },
+  projectTitle: { fontSize: 15, fontWeight: '800', color: '#1E293B' },
+  projectSubtitle: { fontSize: 9, fontWeight: '700', color: '#94A3B8', letterSpacing: 0.5, textTransform: 'uppercase' },
+  badge: { backgroundColor: '#F8FAFC', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, borderWidth: 1, borderColor: '#F1F5F9' },
+  badgeText: { fontSize: 9, fontWeight: '800', color: '#94A3B8', textTransform: 'uppercase' },
   badgeOpen: { backgroundColor: '#ECFDF5', borderColor: '#D1FAE5' },
   badgeTextOpen: { color: '#059669' },
 
-  description: { fontSize: 13, color: '#64748B', fontWeight: '500', lineHeight: 20, marginBottom: 16 },
+  description: { fontSize: 12, color: '#64748B', fontWeight: '500', lineHeight: 18, marginBottom: 10 },
   
-  tagsContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 20 },
-  tagPill: { backgroundColor: '#EEF2FF', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: '#E0E7FF' },
-  tagText: { color: '#6366F1', fontSize: 10, fontWeight: '800' },
+  tagsContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 12 },
+  tagPill: { backgroundColor: '#EEF2FF', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6, borderWidth: 1, borderColor: '#E0E7FF' },
+  tagText: { color: '#6366F1', fontSize: 9, fontWeight: '800' },
 
-  divider: { height: 1, backgroundColor: '#F1F5F9', marginBottom: 20 },
+  divider: { height: 1, backgroundColor: '#F1F5F9', marginBottom: 12 },
 
-  metricsContainer: { gap: 16 },
-  metricsGrid: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
+  footerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  metricsGrid: { flexDirection: 'row', gap: 12 },
   metricItem: { alignItems: 'center' },
-  metricValue: { fontSize: 16, fontWeight: '900', color: '#1E293B', marginBottom: 4 },
-  metricLabel: { fontSize: 9, fontWeight: '800', color: '#CBD5E1', textTransform: 'uppercase', letterSpacing: 0.5 },
+  metricValue: { fontSize: 14, fontWeight: '900', color: '#1E293B' },
+  metricLabel: { fontSize: 8, fontWeight: '800', color: '#CBD5E1', textTransform: 'uppercase' },
 
-  actionRow: { flexDirection: 'row', gap: 8, alignItems: 'center' },
-  actionBtn: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0' },
+  actionRow: { flexDirection: 'row', gap: 6, alignItems: 'center' },
+  actionBtn: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0' },
   deleteBtn: { backgroundColor: '#FEF2F2' },
   disabledBtn: { backgroundColor: '#F1F5F9', borderColor: '#E2E8F0' },
-  editBtn: { backgroundColor: '#F5F3FF' },
-  manageBtn: { flex: 1, backgroundColor: colors.purple[600], flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, height: 44, borderRadius: 12 },
+  manageBtn: { backgroundColor: colors.purple[600], flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, height: 36, paddingHorizontal: 12, borderRadius: 10 },
   disabledManageBtn: { backgroundColor: '#CBD5E1' },
-  manageBtnText: { color: '#FFF', fontSize: 13, fontWeight: '800' },
+  manageBtnText: { color: '#FFF', fontSize: 12, fontWeight: '800' },
 
   emptyContainer: { alignItems: 'center', justifyContent: 'center', paddingVertical: 60, opacity: 0.6 },
   emptyText: { marginTop: 12, fontSize: 14, color: '#64748B', fontWeight: '600' },

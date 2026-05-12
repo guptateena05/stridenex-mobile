@@ -71,11 +71,13 @@ export const MentorSessionHistoryScreen = () => {
         
         {/* Header */}
         <Animated.View entering={FadeInUp.delay(50)} style={styles.header}>
-          <View style={styles.headerBadge}>
-            <History size={10} color="#4c1d95" />
-            <Text style={styles.headerBadgeText}>PAST SESSIONS</Text>
+          <View style={styles.headerRow}>
+            <Text style={styles.title}>History</Text>
+            <View style={styles.headerBadge}>
+              <History size={10} color="#4c1d95" />
+              <Text style={styles.headerBadgeText}>PAST SESSIONS</Text>
+            </View>
           </View>
-          <Text style={styles.title}>History</Text>
           <Text style={styles.subtitle}>Review past sessions and student feedback</Text>
         </Animated.View>
 
@@ -138,11 +140,12 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { paddingHorizontal: 16, paddingTop: 16 },
   
-  header: { marginBottom: 24, paddingHorizontal: 4 },
-  headerBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(76, 29, 149, 0.08)', alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, marginBottom: 6 },
+  header: { marginBottom: 12, paddingHorizontal: 4 },
+  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 },
+  headerBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(76, 29, 149, 0.08)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
   headerBadgeText: { fontSize: 8, fontWeight: '800', color: '#4c1d95', letterSpacing: 0.5 },
   title: { fontSize: 22, fontWeight: '800', color: '#0F172A', fontFamily: typography.fontFamily.display, letterSpacing: -0.5 },
-  subtitle: { fontSize: 12, color: '#64748B', fontWeight: '500', marginTop: 2 },
+  subtitle: { fontSize: 12, color: '#64748B', fontWeight: '500' },
 
   list: { gap: 16 },
   historyCard: { backgroundColor: '#FFF', borderRadius: 20, padding: 20, borderWidth: 1, borderColor: '#E2E8F0', shadowColor: '#64748B', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 4, elevation: 1 },

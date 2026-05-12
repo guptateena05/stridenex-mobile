@@ -45,11 +45,13 @@ export const MentorScheduleScreen = () => {
         
         {/* Header */}
         <Animated.View entering={FadeInUp.delay(50)} style={styles.header}>
-          <View style={styles.headerBadge}>
-            <Calendar size={10} color="#4c1d95" />
-            <Text style={styles.headerBadgeText}>YOUR SCHEDULE</Text>
+          <View style={styles.headerRow}>
+            <Text style={styles.title}>Schedule</Text>
+            <View style={styles.headerBadge}>
+              <Calendar size={10} color="#4c1d95" />
+              <Text style={styles.headerBadgeText}>YOUR SCHEDULE</Text>
+            </View>
           </View>
-          <Text style={styles.title}>Schedule</Text>
           <Text style={styles.subtitle}>Manage availability and upcoming bookings</Text>
         </Animated.View>
 
@@ -115,11 +117,12 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { paddingHorizontal: 16, paddingTop: 16 },
   
-  header: { marginBottom: 16, paddingHorizontal: 4 },
-  headerBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(76, 29, 149, 0.08)', alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, marginBottom: 6 },
+  header: { marginBottom: 12, paddingHorizontal: 4 },
+  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 },
+  headerBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(76, 29, 149, 0.08)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
   headerBadgeText: { fontSize: 8, fontWeight: '800', color: '#4c1d95', letterSpacing: 0.5 },
   title: { fontSize: 22, fontWeight: '800', color: '#0F172A', fontFamily: typography.fontFamily.display, letterSpacing: -0.5 },
-  subtitle: { fontSize: 12, color: '#64748B', fontWeight: '500', marginTop: 2 },
+  subtitle: { fontSize: 12, color: '#64748B', fontWeight: '500' },
 
   primaryBtn: { backgroundColor: '#4c1d95', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14, borderRadius: 12, shadowColor: '#4c1d95', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8 },
   primaryBtnText: { color: '#FFF', fontSize: 13, fontWeight: '800' },

@@ -576,11 +576,13 @@ export const IndustryCompanyProfileScreen = () => {
         }
       >
         <Animated.View entering={FadeInUp.delay(50)} style={styles.header}>
-          <View style={styles.headerBadge}>
-            <Building2 size={10} color={colors.purple[600]} />
-            <Text style={styles.headerBadgeText}>COMPANY DETAILS</Text>
+          <View style={styles.headerRow}>
+            <Text style={styles.title}>Profile</Text>
+            <View style={styles.headerBadge}>
+              <Building2 size={10} color={colors.purple[600]} />
+              <Text style={styles.headerBadgeText}>COMPANY DETAILS</Text>
+            </View>
           </View>
-          <Text style={styles.title}>Profile</Text>
           <Text style={styles.subtitle}>Manage your employer branding and details</Text>
         </Animated.View>
 
@@ -592,25 +594,24 @@ export const IndustryCompanyProfileScreen = () => {
             <View style={styles.companyLogoFrame}>
               <View style={styles.companyLogoInner} />
             </View>
+            <View style={styles.heroInfo}>
+              <View style={styles.heroTitleRow}>
+                <Text style={styles.heroTitle}>{industryData?.company_name || 'My Company'}</Text>
+                <View style={styles.verifiedBadge}>
+                  <ShieldCheck size={10} color="#059669" />
+                  <Text style={styles.verifiedText}>VERIFIED</Text>
+                </View>
+              </View>
+              <Text style={styles.heroSub} numberOfLines={1}>
+                {industryData?.headquarters || industryData?.location?.city || 'Location not set'} • {industryData?.industry_sector || 'Industry not set'}
+              </Text>
+            </View>
             <TouchableOpacity
               style={styles.editBtn}
               onPress={() => setIsEditModalVisible(true)}
             >
-              <Edit3 size={16} color="#0F172A" />
+              <Edit3 size={16} color="#4c1d95" />
             </TouchableOpacity>
-          </View>
-
-          <View style={styles.heroInfo}>
-            <View style={styles.heroTitleRow}>
-              <Text style={styles.heroTitle}>{industryData?.company_name || 'My Company'}</Text>
-              <View style={styles.verifiedBadge}>
-                <ShieldCheck size={10} color="#FFF" />
-                <Text style={styles.verifiedText}>VERIFIED</Text>
-              </View>
-            </View>
-            <Text style={styles.heroSub}>
-              {industryData?.headquarters || industryData?.location?.city || 'Location not set'} • {industryData?.industry_sector || 'Industry not set'} • {industryData?.employee_head_count || 'N/A'} Team
-            </Text>
           </View>
 
           <View style={styles.heroStatsRow}>
@@ -619,11 +620,11 @@ export const IndustryCompanyProfileScreen = () => {
               <Text style={styles.heroStatLabel}>OPEN ROLES</Text>
             </View>
             <View style={styles.heroStatItem}>
-              <Text style={[styles.heroStatValue, { color: '#FCD34D' }]}>4.5</Text>
+              <Text style={[styles.heroStatValue, { color: '#D97706' }]}>4.5</Text>
               <Text style={styles.heroStatLabel}>RATING</Text>
             </View>
             <View style={styles.heroStatItem}>
-              <Text style={[styles.heroStatValue, { color: '#34D399' }]}>--</Text>
+              <Text style={[styles.heroStatValue, { color: '#059669' }]}>--</Text>
               <Text style={styles.heroStatLabel}>HIRED</Text>
             </View>
           </View>
@@ -892,28 +893,29 @@ const styles = StyleSheet.create({
   retryBtn: { marginTop: 16, backgroundColor: colors.primary.DEFAULT, paddingHorizontal: 24, paddingVertical: 10, borderRadius: 8 },
   retryBtnText: { color: '#FFF', fontWeight: 'bold' },
 
-  header: { marginBottom: 16, paddingHorizontal: 4 },
-  headerBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(147, 51, 234, 0.08)', alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, marginBottom: 6 },
+  header: { marginBottom: 12, paddingHorizontal: 4 },
+  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 },
+  headerBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(147, 51, 234, 0.08)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
   headerBadgeText: { fontSize: 8, fontWeight: '800', color: colors.purple[600], letterSpacing: 0.5 },
   title: { fontSize: 22, fontWeight: '800', color: '#0F172A', fontFamily: typography.fontFamily.display, letterSpacing: -0.5 },
-  subtitle: { fontSize: 12, color: '#64748B', fontWeight: '500', marginTop: 2 },
+  subtitle: { fontSize: 12, color: '#64748B', fontWeight: '500' },
 
-  heroBanner: { backgroundColor: '#0F172A', borderRadius: 24, padding: 24, position: 'relative', overflow: 'hidden', marginBottom: 24 },
-  heroGlow: { position: 'absolute', top: -50, right: -50, width: 200, height: 200, borderRadius: 100, backgroundColor: 'rgba(59, 130, 246, 0.3)' },
-  heroTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20, zIndex: 10 },
-  companyLogoFrame: { width: 64, height: 64, backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 20, padding: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' },
-  companyLogoInner: { flex: 1, backgroundColor: '#FACC15', borderRadius: 4 },
-  editBtn: { backgroundColor: '#FFF', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12 },
-  heroInfo: { zIndex: 10, marginBottom: 24 },
-  heroTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 6 },
-  heroTitle: { fontSize: 24, fontWeight: '900', color: '#FFF' },
-  verifiedBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#10B981', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
-  verifiedText: { fontSize: 9, fontWeight: '900', color: '#FFF', letterSpacing: 1 },
-  heroSub: { fontSize: 13, fontWeight: '600', color: '#94A3B8' },
-  heroStatsRow: { flexDirection: 'row', gap: 12, zIndex: 10 },
-  heroStatItem: { flex: 1, backgroundColor: 'rgba(255,255,255,0.05)', padding: 12, borderRadius: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
-  heroStatValue: { fontSize: 20, fontWeight: '900', color: '#60A5FA', marginBottom: 2 },
-  heroStatLabel: { fontSize: 9, fontWeight: '900', color: '#64748B', letterSpacing: 1 },
+  heroBanner: { backgroundColor: '#F1F5F9', borderRadius: 24, padding: 16, position: 'relative', overflow: 'hidden', marginBottom: 20, borderWidth: 1, borderColor: '#E2E8F0', shadowColor: '#64748B', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 10, elevation: 2 },
+  heroGlow: { position: 'absolute', top: -30, left: -30, width: 100, height: 100, borderRadius: 50, backgroundColor: 'rgba(76, 29, 149, 0.03)' },
+  heroTopRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 16, zIndex: 10 },
+  companyLogoFrame: { width: 52, height: 52, backgroundColor: '#FFF', borderRadius: 14, padding: 12, borderWidth: 1, borderColor: '#E2E8F0', alignItems: 'center', justifyContent: 'center' },
+  companyLogoInner: { width: 28, height: 28, backgroundColor: '#FACC15', borderRadius: 6 },
+  editBtn: { backgroundColor: '#FFF', padding: 10, borderRadius: 10, borderWidth: 1, borderColor: '#E2E8F0' },
+  heroInfo: { flex: 1, marginLeft: 12, zIndex: 10 },
+  heroTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 2 },
+  heroTitle: { fontSize: 18, fontWeight: '900', color: '#0F172A' },
+  verifiedBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#ECFDF5', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, borderWidth: 1, borderColor: '#D1FAE5' },
+  verifiedText: { fontSize: 8, fontWeight: '900', color: '#059669', letterSpacing: 0.5 },
+  heroSub: { fontSize: 11, fontWeight: '600', color: '#64748B' },
+  heroStatsRow: { flexDirection: 'row', gap: 10, zIndex: 10 },
+  heroStatItem: { flex: 1, backgroundColor: '#FFF', padding: 10, borderRadius: 12, borderWidth: 1, borderColor: '#E2E8F0', alignItems: 'center' },
+  heroStatValue: { fontSize: 18, fontWeight: '900', color: colors.purple[600], marginBottom: 2 },
+  heroStatLabel: { fontSize: 8, fontWeight: '800', color: '#94A3B8', letterSpacing: 1 },
 
   card: { backgroundColor: '#FFF', borderRadius: 24, padding: 20, borderWidth: 1, borderColor: '#E2E8F0', marginBottom: 24, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.02, shadowRadius: 8, elevation: 1 },
   cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 20 },
