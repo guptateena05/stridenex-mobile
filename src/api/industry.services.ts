@@ -3,7 +3,8 @@ import { api } from "./api.services";
 export const getIndustryByEmail = async (email: string) => {
   try {
     const response = await api.get(
-      `method/stridenex_app.api_stridenex_app.industry.industry.get_industry_by_name?email=${encodeURIComponent(email)}`
+      'method/stridenex_app.api_stridenex_app.industry.industry.get_industry_by_name',
+      { params: { email } }
     );
     return response.data;
   } catch (error) {
@@ -28,7 +29,8 @@ export const updateIndustry = async (companyName: string, data: any) => {
 export const getSkillDomain = async (industry: string) => {
   try {
     const response = await api.get(
-      `method/stridenex_app.stridenex_app.doctype.industry_skill_domain.industry_skill_domain.get_skill_domain?industry=${encodeURIComponent(industry)}`
+      'method/stridenex_app.stridenex_app.doctype.industry_skill_domain.industry_skill_domain.get_skill_domain',
+      { params: { industry } }
     );
     return response.data;
   } catch (error) {
@@ -170,3 +172,79 @@ export const getMasterData = async (doctype: string, additionalPayload: any = {}
     throw error;
   }
 };
+export const getApplicationStatusCount = async (industry: string) => {
+  try {
+    const response = await api.get(
+      'method/stridenex_app.stridenex_app.doctype.internship_application.internship_application.get_application_status_count',
+      { params: { industry } }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching application status count:", error);
+    throw error;
+  }
+};
+export const getProjectList = async (industry: string) => {
+  try {
+    const response = await api.get(
+      'method/stridenex_app.stridenex_app.doctype.industry_project.industry_project.get_project_list',
+      { params: { industry } }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching project list:", error);
+    throw error;
+  }
+};
+
+export const createProject = async (data: any) => {
+  try {
+    const response = await api.post(
+      `method/stridenex_app.stridenex_app.doctype.industry_project.industry_project.create_project`,
+      data
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error creating project:", error);
+    throw error;
+  }
+};
+
+export const updateProject = async (name: string, data: any) => {
+  try {
+    const response = await api.post(
+      `method/stridenex_app.stridenex_app.doctype.industry_project.industry_project.update_project?name=${encodeURIComponent(name)}`,
+      data
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error updating project:", error);
+    throw error;
+  }
+};
+
+export const deleteProject = async (projectName: string) => {
+  try {
+    const response = await api.post(
+      `method/stridenex_app.stridenex_app.doctype.industry_project.industry_project.inactive_project?project_name=${encodeURIComponent(projectName)}`
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error deleting project:", error);
+    throw error;
+  }
+};
+
+export const getProjectApplicationCount = async (industry: string) => {
+  try {
+    const response = await api.get(
+      'method/stridenex_app.stridenex_app.doctype.student_project_enrollment.student_project_enrollment.get_application_count_by_industry',
+      { params: { industry } }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching project application count:", error);
+    throw error;
+  }
+};
+

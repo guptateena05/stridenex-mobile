@@ -1,14 +1,14 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { 
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, 
+import {
+  View, Text, StyleSheet, ScrollView, TouchableOpacity,
   Dimensions, ActivityIndicator, Modal, Alert, RefreshControl
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '@/theme/colors';
 import { typography } from '@/theme/typography';
 import { spacing } from '@/theme/spacing';
-import { 
-  Building2, 
+import {
+  Building2,
   Edit3,
   Star,
   Globe,
@@ -28,18 +28,19 @@ import {
 } from 'lucide-react-native';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import { useIndustry } from '@/context/IndustryContext';
-import { 
-  updateIndustry, 
-  getSkillDomain, 
-  createSkillDomain, 
-  updateSkillDomain, 
+import {
+  updateIndustry,
+  getSkillDomain,
+  createSkillDomain,
+  updateSkillDomain,
   deleteSkillDomain,
   addHiringRound,
   updateHiringRound,
   deleteHiringRound,
   createSpecialization,
   createSkill,
-  createDesignation
+  createDesignation,
+  getApplicationStatusCount
 } from '@/api/industry.services';
 import DynamicForm from '@/components/forms/DynamicForm';
 import { FormField } from '@/components/forms/DynamicField';
@@ -50,7 +51,7 @@ export const IndustryCompanyProfileScreen = () => {
   const { industryData, loading, error, refreshIndustryData } = useIndustry();
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
   const [updateLoading, setUpdateLoading] = useState(false);
-  
+
   // Skill Domains State
   const [skillDomains, setSkillDomains] = useState<any[]>([]);
   const [skillsLoading, setSkillsLoading] = useState(false);
@@ -61,6 +62,48 @@ export const IndustryCompanyProfileScreen = () => {
   const [isHiringModalVisible, setIsHiringModalVisible] = useState(false);
   const [editingHiring, setEditingHiring] = useState<any>(null);
 
+  // Application Pipeline State
+  const [pipelineData, setPipelineData] = useState<any[]>([]);
+  const [pipelineLoading, setPipelineLoading] = useState(false);
+
+  const fetchPipelineCounts = useCallback(async () => {
+    const industryId = industryData?.name || industryData?.company_name;
+    if (!industryId) return;
+
+    try {
+      setPipelineLoading(true);
+      const response = await getApplicationStatusCount(industryId);
+      const apiData = response?.data || response?.message || {};
+
+      const initialStages = [
+        { stage: "New Applications", apiKey: "Applied", color: "#1E293B" },
+        { stage: "AI Pre-screened", apiKey: "Shortlisted", color: "#3B82F6" },
+        { stage: "HR Shortlisted", apiKey: "HR", color: "#F97316" },
+        { stage: "Interview Round 1", apiKey: "Tech Interview", color: "#FB923C" },
+        { stage: "Final Round", apiKey: "Final", color: "#10B981" },
+        { stage: "Offers Extended", apiKey: "Selected", color: "#059669" }
+      ];
+
+      const counts = Object.values(apiData).map(v => Number(v) || 0);
+      const maxCount = Math.max(...counts, 1);
+
+      const updatedStages = initialStages.map(stage => {
+        const count = Number(apiData[stage.apiKey]) || 0;
+        return {
+          ...stage,
+          count,
+          width: `${Math.max((count / maxCount) * 100, 5)}%`
+        };
+      });
+
+      setPipelineData(updatedStages);
+    } catch (err) {
+      console.error("Error fetching pipeline counts in profile:", err);
+    } finally {
+      setPipelineLoading(false);
+    }
+  }, [industryData?.name, industryData?.company_name]);
+
   const fetchSkills = useCallback(async () => {
     // Try to get industry identifier from name or company_name
     const industryId = industryData?.name || industryData?.company_name;
@@ -69,7 +112,7 @@ export const IndustryCompanyProfileScreen = () => {
     try {
       setSkillsLoading(true);
       const response = await getSkillDomain(industryId);
-      
+
       // Extensive fallback parsing for Frappe API responses
       let data = [];
       if (response && Array.isArray(response.data)) {
@@ -83,7 +126,7 @@ export const IndustryCompanyProfileScreen = () => {
       } else if (Array.isArray(response)) {
         data = response;
       }
-      
+
       setSkillDomains(data);
     } catch (err) {
       console.error("Error fetching skill domains:", err);
@@ -94,7 +137,8 @@ export const IndustryCompanyProfileScreen = () => {
 
   useEffect(() => {
     fetchSkills();
-  }, [fetchSkills]);
+    fetchPipelineCounts();
+  }, [fetchSkills, fetchPipelineCounts]);
 
   const companyStats = useMemo(() => [
     { label: "Industry", value: industryData?.industry_sector || "N/A", icon: Layers, color: "#3B82F6", bg: "#EFF6FF" },
@@ -315,7 +359,7 @@ export const IndustryCompanyProfileScreen = () => {
 
   const handleUpdateProfile = async (formData: any) => {
     if (!industryData?.name) return;
-    
+
     setUpdateLoading(true);
     try {
       const {
@@ -370,7 +414,7 @@ export const IndustryCompanyProfileScreen = () => {
   const handleSkillSubmit = async (formData: any) => {
     const industryId = industryData?.name || industryData?.company_name;
     if (!industryId) return;
-    
+
     setUpdateLoading(true);
     try {
       const payload = {
@@ -386,7 +430,7 @@ export const IndustryCompanyProfileScreen = () => {
       } else {
         await createSkillDomain(payload);
       }
-      
+
       await fetchSkills();
       setIsSkillModalVisible(false);
       setEditingSkill(null);
@@ -404,8 +448,8 @@ export const IndustryCompanyProfileScreen = () => {
       'Are you sure you want to delete this skill domain?',
       [
         { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Delete', 
+        {
+          text: 'Delete',
           style: 'destructive',
           onPress: async () => {
             try {
@@ -427,7 +471,7 @@ export const IndustryCompanyProfileScreen = () => {
   const handleHiringSubmit = async (formData: any) => {
     const industryId = industryData?.name || industryData?.company_name;
     if (!industryId) return;
-    
+
     setUpdateLoading(true);
     try {
       const payload = {
@@ -441,7 +485,7 @@ export const IndustryCompanyProfileScreen = () => {
       } else {
         await addHiringRound(payload);
       }
-      
+
       await refreshIndustryData();
       setIsHiringModalVisible(false);
       setEditingHiring(null);
@@ -461,8 +505,8 @@ export const IndustryCompanyProfileScreen = () => {
       'Are you sure you want to delete this hiring round?',
       [
         { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Delete', 
+        {
+          text: 'Delete',
           style: 'destructive',
           onPress: async () => {
             try {
@@ -523,215 +567,217 @@ export const IndustryCompanyProfileScreen = () => {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-      <ScrollView 
-        style={styles.container} 
-        contentContainerStyle={styles.content} 
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={loading} onRefresh={() => { refreshIndustryData(); fetchSkills(); }} />
+          <RefreshControl refreshing={loading} onRefresh={() => { refreshIndustryData(); fetchSkills(); fetchPipelineCounts(); }} />
         }
       >
         <Animated.View entering={FadeInUp.delay(50)} style={styles.header}>
-           <View style={styles.headerBadge}>
-              <Building2 size={10} color={colors.purple[600]} />
-              <Text style={styles.headerBadgeText}>COMPANY DETAILS</Text>
-           </View>
-           <Text style={styles.title}>Profile</Text>
-           <Text style={styles.subtitle}>Manage your employer branding and details</Text>
+          <View style={styles.headerBadge}>
+            <Building2 size={10} color={colors.purple[600]} />
+            <Text style={styles.headerBadgeText}>COMPANY DETAILS</Text>
+          </View>
+          <Text style={styles.title}>Profile</Text>
+          <Text style={styles.subtitle}>Manage your employer branding and details</Text>
         </Animated.View>
 
         {/* Banner */}
         <Animated.View entering={FadeInUp.delay(100)} style={styles.heroBanner}>
-           <View style={styles.heroGlow} />
-           
-           <View style={styles.heroTopRow}>
-              <View style={styles.companyLogoFrame}>
-                 <View style={styles.companyLogoInner} />
-              </View>
-              <TouchableOpacity 
-                style={styles.editBtn}
-                onPress={() => setIsEditModalVisible(true)}
-              >
-                 <Edit3 size={16} color="#0F172A" />
-              </TouchableOpacity>
-           </View>
+          <View style={styles.heroGlow} />
 
-           <View style={styles.heroInfo}>
-              <View style={styles.heroTitleRow}>
-                 <Text style={styles.heroTitle}>{industryData?.company_name || 'My Company'}</Text>
-                 <View style={styles.verifiedBadge}>
-                    <ShieldCheck size={10} color="#FFF" />
-                    <Text style={styles.verifiedText}>VERIFIED</Text>
-                 </View>
-              </View>
-              <Text style={styles.heroSub}>
-                {industryData?.headquarters || industryData?.location?.city || 'Location not set'} • {industryData?.industry_sector || 'Industry not set'} • {industryData?.employee_head_count || 'N/A'} Team
-              </Text>
-           </View>
+          <View style={styles.heroTopRow}>
+            <View style={styles.companyLogoFrame}>
+              <View style={styles.companyLogoInner} />
+            </View>
+            <TouchableOpacity
+              style={styles.editBtn}
+              onPress={() => setIsEditModalVisible(true)}
+            >
+              <Edit3 size={16} color="#0F172A" />
+            </TouchableOpacity>
+          </View>
 
-           <View style={styles.heroStatsRow}>
-              <View style={styles.heroStatItem}>
-                 <Text style={styles.heroStatValue}>--</Text>
-                 <Text style={styles.heroStatLabel}>OPEN ROLES</Text>
+          <View style={styles.heroInfo}>
+            <View style={styles.heroTitleRow}>
+              <Text style={styles.heroTitle}>{industryData?.company_name || 'My Company'}</Text>
+              <View style={styles.verifiedBadge}>
+                <ShieldCheck size={10} color="#FFF" />
+                <Text style={styles.verifiedText}>VERIFIED</Text>
               </View>
-              <View style={styles.heroStatItem}>
-                 <Text style={[styles.heroStatValue, { color: '#FCD34D' }]}>4.5</Text>
-                 <Text style={styles.heroStatLabel}>RATING</Text>
-              </View>
-              <View style={styles.heroStatItem}>
-                 <Text style={[styles.heroStatValue, { color: '#34D399' }]}>--</Text>
-                 <Text style={styles.heroStatLabel}>HIRED</Text>
-              </View>
-           </View>
+            </View>
+            <Text style={styles.heroSub}>
+              {industryData?.headquarters || industryData?.location?.city || 'Location not set'} • {industryData?.industry_sector || 'Industry not set'} • {industryData?.employee_head_count || 'N/A'} Team
+            </Text>
+          </View>
+
+          <View style={styles.heroStatsRow}>
+            <View style={styles.heroStatItem}>
+              <Text style={styles.heroStatValue}>--</Text>
+              <Text style={styles.heroStatLabel}>OPEN ROLES</Text>
+            </View>
+            <View style={styles.heroStatItem}>
+              <Text style={[styles.heroStatValue, { color: '#FCD34D' }]}>4.5</Text>
+              <Text style={styles.heroStatLabel}>RATING</Text>
+            </View>
+            <View style={styles.heroStatItem}>
+              <Text style={[styles.heroStatValue, { color: '#34D399' }]}>--</Text>
+              <Text style={styles.heroStatLabel}>HIRED</Text>
+            </View>
+          </View>
         </Animated.View>
 
         {/* Overview section */}
         <Animated.View entering={FadeInUp.delay(200)} style={styles.card}>
-           <View style={styles.cardHeader}>
-              <View style={styles.iconSquare}>
-                 <Zap size={14} color="#FFF" />
+          <View style={styles.cardHeader}>
+            <View style={styles.iconSquare}>
+              <Zap size={14} color="#FFF" />
+            </View>
+            <Text style={styles.cardTitleText}>COMPANY OVERVIEW</Text>
+          </View>
+
+          <View style={styles.missionContainer}>
+            <Text style={styles.missionLabel}>THE MISSION</Text>
+            <Text style={styles.missionText}>
+              {industryData?.about || "No mission statement or overview provided yet. Update your profile to add one."}
+            </Text>
+          </View>
+
+          {industryData?.specializations && industryData.specializations.length > 0 && (
+            <View style={styles.missionContainer}>
+              <Text style={styles.missionLabel}>SPECIALIZATIONS</Text>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 }}>
+                {industryData.specializations.map((s: any, idx: number) => (
+                  <View key={idx} style={{ backgroundColor: '#F1F5F9', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, borderWidth: 1, borderColor: '#E2E8F0' }}>
+                    <Text style={{ fontSize: 12, color: '#475569', fontWeight: '600' }}>{s.specialization || s}</Text>
+                  </View>
+                ))}
               </View>
-              <Text style={styles.cardTitleText}>COMPANY OVERVIEW</Text>
-           </View>
+            </View>
+          )}
 
-           <View style={styles.missionContainer}>
-              <Text style={styles.missionLabel}>THE MISSION</Text>
-              <Text style={styles.missionText}>
-                 {industryData?.about || "No mission statement or overview provided yet. Update your profile to add one."}
-              </Text>
-           </View>
-
-           {industryData?.specializations && industryData.specializations.length > 0 && (
-             <View style={styles.missionContainer}>
-                <Text style={styles.missionLabel}>SPECIALIZATIONS</Text>
-                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 }}>
-                   {industryData.specializations.map((s: any, idx: number) => (
-                     <View key={idx} style={{ backgroundColor: '#F1F5F9', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, borderWidth: 1, borderColor: '#E2E8F0' }}>
-                        <Text style={{ fontSize: 12, color: '#475569', fontWeight: '600' }}>{s.specialization || s}</Text>
-                     </View>
-                   ))}
+          <View style={styles.companyStatsGrid}>
+            {companyStats.map((stat, idx) => (
+              <View key={idx} style={styles.companyStatCard}>
+                <View style={styles.companyStatTop}>
+                  <View style={[styles.companyStatIcon, { backgroundColor: stat.bg }]}>
+                    <stat.icon size={12} color={stat.color} />
+                  </View>
+                  <Text style={styles.companyStatLabel}>{stat.label}</Text>
                 </View>
-             </View>
-           )}
-
-           <View style={styles.companyStatsGrid}>
-              {companyStats.map((stat, idx) => (
-                 <View key={idx} style={styles.companyStatCard}>
-                    <View style={styles.companyStatTop}>
-                       <View style={[styles.companyStatIcon, { backgroundColor: stat.bg }]}>
-                          <stat.icon size={12} color={stat.color} />
-                       </View>
-                       <Text style={styles.companyStatLabel}>{stat.label}</Text>
-                    </View>
-                    <Text style={styles.companyStatValue} numberOfLines={1}>{stat.value}</Text>
-                 </View>
-              ))}
-           </View>
+                <Text style={styles.companyStatValue} numberOfLines={1}>{stat.value}</Text>
+              </View>
+            ))}
+          </View>
         </Animated.View>
 
         {/* Skills We Audit Section */}
         <Animated.View entering={FadeInUp.delay(300)} style={styles.card}>
-           <View style={styles.cardHeaderWithAction}>
-              <View style={styles.cardHeaderLeft}>
-                <View style={[styles.iconSquare, { backgroundColor: colors.blue[600] }]}>
-                   <Target size={14} color="#FFF" />
-                </View>
-                <Text style={styles.cardTitleText}>SKILLS WE AUDIT</Text>
+          <View style={styles.cardHeaderWithAction}>
+            <View style={styles.cardHeaderLeft}>
+              <View style={[styles.iconSquare, { backgroundColor: colors.blue[600] }]}>
+                <Target size={14} color="#FFF" />
               </View>
-              <TouchableOpacity 
-                style={styles.addIconBtn}
-                onPress={() => { setEditingSkill(null); setIsSkillModalVisible(true); }}
-              >
-                 <Plus size={18} color={colors.blue[600]} />
-              </TouchableOpacity>
-           </View>
+              <Text style={styles.cardTitleText}>SKILLS WE AUDIT</Text>
+            </View>
+            <TouchableOpacity
+              style={styles.addIconBtn}
+              onPress={() => { setEditingSkill(null); setIsSkillModalVisible(true); }}
+            >
+              <Plus size={18} color={colors.blue[600]} />
+            </TouchableOpacity>
+          </View>
 
-           {skillsLoading ? (
-             <ActivityIndicator size="small" color={colors.blue[600]} style={{ marginVertical: 20 }} />
-           ) : skillDomains.length > 0 ? (
-             <View style={styles.listContainer}>
-                {skillDomains.map((domain, idx) => (
-                  <View key={idx} style={styles.listItem}>
-                    <View style={styles.listItemHeader}>
-                       <Text style={styles.listItemTitle}>{domain.domain || domain.skill_domain}</Text>
-                       <View style={styles.listItemActions}>
-                          <TouchableOpacity onPress={() => { setEditingSkill(domain); setIsSkillModalVisible(true); }}>
-                             <Edit3 size={14} color={colors.text.secondary} />
-                          </TouchableOpacity>
-                          <TouchableOpacity onPress={() => handleDeleteSkill(domain.name)} style={{ marginLeft: 12 }}>
-                             <Trash2 size={14} color={colors.error} />
-                          </TouchableOpacity>
-                       </View>
-                    </View>
-                    <Text style={styles.listItemSub}>{domain.sub_domain}</Text>
-                    <View style={styles.tagCloud}>
-                       {(domain.skills || []).map((s: any, sIdx: number) => (
-                         <View key={sIdx} style={styles.miniTag}>
-                            <Text style={styles.miniTagText}>{s.skill}</Text>
-                         </View>
-                       ))}
-                    </View>
-                    <View style={styles.listItemFooter}>
-                       <Briefcase size={12} color={colors.text.secondary} />
-                       <Text style={styles.listItemFooterText}>
-                         {(domain.roles || []).map((r: any) => r.designation).join(' • ')}
-                       </Text>
+          {skillsLoading ? (
+            <ActivityIndicator size="small" color={colors.blue[600]} style={{ marginVertical: 20 }} />
+          ) : skillDomains.length > 0 ? (
+            <View style={styles.listContainer}>
+              {skillDomains.map((domain, idx) => (
+                <View key={idx} style={styles.listItem}>
+                  <View style={styles.listItemHeader}>
+                    <Text style={styles.listItemTitle}>{domain.domain || domain.skill_domain}</Text>
+                    <View style={styles.listItemActions}>
+                      <TouchableOpacity onPress={() => { setEditingSkill(domain); setIsSkillModalVisible(true); }}>
+                        <Edit3 size={14} color={colors.text.secondary} />
+                      </TouchableOpacity>
+                      <TouchableOpacity onPress={() => handleDeleteSkill(domain.name)} style={{ marginLeft: 12 }}>
+                        <Trash2 size={14} color={colors.error} />
+                      </TouchableOpacity>
                     </View>
                   </View>
-                ))}
-             </View>
-           ) : (
-             <Text style={styles.emptyText}>No skill domains added yet.</Text>
-           )}
+                  <Text style={styles.listItemSub}>{domain.sub_domain}</Text>
+                  <View style={styles.tagCloud}>
+                    {(domain.skills || []).map((s: any, sIdx: number) => (
+                      <View key={sIdx} style={styles.miniTag}>
+                        <Text style={styles.miniTagText}>{s.skill}</Text>
+                      </View>
+                    ))}
+                  </View>
+                  <View style={styles.listItemFooter}>
+                    <Briefcase size={12} color={colors.text.secondary} />
+                    <Text style={styles.listItemFooterText}>
+                      {(domain.roles || []).map((r: any) => r.designation).join(' • ')}
+                    </Text>
+                  </View>
+                </View>
+              ))}
+            </View>
+          ) : (
+            <Text style={styles.emptyText}>No skill domains added yet.</Text>
+          )}
         </Animated.View>
 
         {/* Hiring Pipeline Section */}
         <Animated.View entering={FadeInUp.delay(400)} style={styles.card}>
-           <View style={styles.cardHeaderWithAction}>
-              <View style={styles.cardHeaderLeft}>
-                <View style={[styles.iconSquare, { backgroundColor: colors.emerald[600] }]}>
-                   <ListChecks size={14} color="#FFF" />
-                </View>
-                <Text style={styles.cardTitleText}>HIRING PIPELINE</Text>
+          <View style={styles.cardHeaderWithAction}>
+            <View style={styles.cardHeaderLeft}>
+              <View style={[styles.iconSquare, { backgroundColor: colors.emerald[600] }]}>
+                <ListChecks size={14} color="#FFF" />
               </View>
-              <TouchableOpacity 
-                style={styles.addIconBtn}
-                onPress={() => { setEditingHiring(null); setIsHiringModalVisible(true); }}
-              >
-                 <Plus size={18} color={colors.emerald[600]} />
-              </TouchableOpacity>
-           </View>
+              <Text style={styles.cardTitleText}>HIRING PIPELINE</Text>
+            </View>
+            <TouchableOpacity
+              style={styles.addIconBtn}
+              onPress={() => { setEditingHiring(null); setIsHiringModalVisible(true); }}
+            >
+              <Plus size={18} color={colors.emerald[600]} />
+            </TouchableOpacity>
+          </View>
 
-           {industryData?.hiring_process && industryData.hiring_process.length > 0 ? (
-             <View style={styles.listContainer}>
-                {industryData.hiring_process.map((round, idx) => (
-                  <View key={idx} style={styles.hiringItem}>
-                    <View style={styles.hiringItemLeft}>
-                       <View style={styles.hiringDot} />
-                       <View>
-                          <Text style={styles.hiringTitle}>{round.round}</Text>
-                          <Text style={styles.hiringSub}>Based on: {round.based_on}</Text>
-                       </View>
-                    </View>
-                    <View style={styles.hiringItemRight}>
-                       <View style={styles.hiringTime}>
-                          <Clock size={10} color={colors.text.secondary} />
-                          <Text style={styles.hiringTimeText}>{round.duration} min</Text>
-                       </View>
-                       <TouchableOpacity onPress={() => { setEditingHiring(round); setIsHiringModalVisible(true); }} style={{ marginLeft: 12 }}>
-                          <Edit3 size={14} color={colors.text.secondary} />
-                       </TouchableOpacity>
-                       <TouchableOpacity onPress={() => handleDeleteHiring(round.name!)} style={{ marginLeft: 12 }}>
-                          <Trash2 size={14} color={colors.error} />
-                       </TouchableOpacity>
+          {industryData?.hiring_process && industryData.hiring_process.length > 0 ? (
+            <View style={styles.listContainer}>
+              {industryData.hiring_process.map((round, idx) => (
+                <View key={idx} style={styles.hiringItem}>
+                  <View style={styles.hiringItemLeft}>
+                    <View style={styles.hiringDot} />
+                    <View>
+                      <Text style={styles.hiringTitle}>{round.round}</Text>
+                      <Text style={styles.hiringSub}>Based on: {round.based_on}</Text>
                     </View>
                   </View>
-                ))}
-             </View>
-           ) : (
-             <Text style={styles.emptyText}>No hiring rounds defined.</Text>
-           )}
+                  <View style={styles.hiringItemRight}>
+                    <View style={styles.hiringTime}>
+                      <Clock size={10} color={colors.text.secondary} />
+                      <Text style={styles.hiringTimeText}>{round.duration} min</Text>
+                    </View>
+                    <TouchableOpacity onPress={() => { setEditingHiring(round); setIsHiringModalVisible(true); }} style={{ marginLeft: 12 }}>
+                      <Edit3 size={14} color={colors.text.secondary} />
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => handleDeleteHiring(round.name!)} style={{ marginLeft: 12 }}>
+                      <Trash2 size={14} color={colors.error} />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ))}
+            </View>
+          ) : (
+            <Text style={styles.emptyText}>No hiring rounds defined.</Text>
+          )}
         </Animated.View>
+
+
 
         <View style={styles.footerSpacer} />
       </ScrollView>
@@ -747,15 +793,15 @@ export const IndustryCompanyProfileScreen = () => {
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Edit Company Profile</Text>
-              <TouchableOpacity 
+              <TouchableOpacity
                 onPress={() => setIsEditModalVisible(false)}
                 style={styles.closeBtn}
               >
                 <X size={20} color={colors.text.primary} />
               </TouchableOpacity>
             </View>
-            
-            <ScrollView 
+
+            <ScrollView
               showsVerticalScrollIndicator={false}
               contentContainerStyle={styles.modalScrollContent}
             >
@@ -839,7 +885,7 @@ const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: '#F8FAFC' },
   container: { flex: 1 },
   content: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 40 },
-  
+
   centerContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F8FAFC' },
   loadingText: { marginTop: 12, fontSize: 14, color: '#64748B', fontFamily: typography.fontFamily.display },
   errorText: { fontSize: 14, color: colors.error, textAlign: 'center', marginHorizontal: 20 },
@@ -851,7 +897,7 @@ const styles = StyleSheet.create({
   headerBadgeText: { fontSize: 8, fontWeight: '800', color: colors.purple[600], letterSpacing: 0.5 },
   title: { fontSize: 22, fontWeight: '800', color: '#0F172A', fontFamily: typography.fontFamily.display, letterSpacing: -0.5 },
   subtitle: { fontSize: 12, color: '#64748B', fontWeight: '500', marginTop: 2 },
-  
+
   heroBanner: { backgroundColor: '#0F172A', borderRadius: 24, padding: 24, position: 'relative', overflow: 'hidden', marginBottom: 24 },
   heroGlow: { position: 'absolute', top: -50, right: -50, width: 200, height: 200, borderRadius: 100, backgroundColor: 'rgba(59, 130, 246, 0.3)' },
   heroTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20, zIndex: 10 },
@@ -876,7 +922,7 @@ const styles = StyleSheet.create({
   iconSquare: { width: 28, height: 28, backgroundColor: '#0F172A', borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
   cardTitleText: { fontSize: 12, fontWeight: '900', color: '#0F172A', letterSpacing: 1 },
   addIconBtn: { padding: 4 },
-  
+
   missionContainer: { marginBottom: 24 },
   missionLabel: { fontSize: 10, fontWeight: '900', color: '#2563EB', letterSpacing: 1.5, marginBottom: 8 },
   missionText: { fontSize: 14, color: '#334155', fontWeight: '600', lineHeight: 22 },
@@ -920,4 +966,12 @@ const styles = StyleSheet.create({
   modalTitle: { fontSize: 20, fontWeight: '900', color: '#0F172A', fontFamily: typography.fontFamily.display },
   closeBtn: { padding: 4 },
   modalScrollContent: { paddingHorizontal: 24, paddingBottom: 40 },
+
+  // Pipeline Styles
+  pipelineContainer: { marginTop: 12, gap: 12 },
+  pipelineRow: { flexDirection: 'row', alignItems: 'center' },
+  pipelineLabel: { width: 100, fontSize: 11, fontWeight: '600', color: '#475569' },
+  pipelineBarContainer: { flex: 1, height: 6, backgroundColor: '#F1F5F9', borderRadius: 3, marginHorizontal: 10, overflow: 'hidden' },
+  pipelineBarFill: { height: '100%', borderRadius: 3 },
+  pipelineCount: { width: 24, textAlign: 'right', fontSize: 12, fontWeight: '800', color: '#1E293B' },
 });
