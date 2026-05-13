@@ -5,7 +5,6 @@ import { colors } from '@/theme/colors';
 import { typography } from '@/theme/typography';
 import {
   Plus,
-  MapPin,
   Calendar,
   Users,
   Banknote,
@@ -22,7 +21,10 @@ import {
   getInternshipList,
   createInternship,
   updateInternship,
-  deleteInternship
+  deleteInternship,
+  createSkill,
+  createCourse,
+  createDepartment
 } from '@/api/industry.services';
 import DynamicForm from '@/components/forms/DynamicForm';
 import { FormField } from '@/components/forms/DynamicField';
@@ -193,7 +195,7 @@ export const IndustryInternshipsScreen = () => {
       };
 
       if (editingInternship) {
-        await updateInternship(editingInternship.name, payload);
+        await updateInternship(editingInternship.name, { ...payload, name: editingInternship.name });
         Alert.alert("Success", "Internship updated successfully");
       } else {
         await createInternship(payload);
@@ -206,6 +208,21 @@ export const IndustryInternshipsScreen = () => {
       Alert.alert("Error", err?.message || "Failed to save internship");
     } finally {
       setModalLoading(false);
+    }
+  };
+
+  const handleCreateCustomValue = async (fieldName: string, value: string) => {
+    try {
+      if (fieldName === 'required_skills') {
+        await createSkill(value);
+      } else if (fieldName === 'course') {
+        await createCourse(value);
+      } else if (fieldName === 'department') {
+        await createDepartment(value);
+      }
+    } catch (err) {
+      console.error(`Error creating custom value for ${fieldName}:`, err);
+      throw err;
     }
   };
 
@@ -300,6 +317,7 @@ export const IndustryInternshipsScreen = () => {
       apiParams: { doctype: 'Courses' },
       multiSelect: true,
       required: true,
+      allowCustom: true
     },
     {
       fieldname: 'department',
@@ -309,6 +327,7 @@ export const IndustryInternshipsScreen = () => {
       apiParams: { doctype: 'College Department' },
       multiSelect: true,
       required: true,
+      allowCustom: true
     },
     {
       fieldname: 'academic_year',
@@ -333,9 +352,8 @@ export const IndustryInternshipsScreen = () => {
       label: 'Description',
       fieldtype: 'Long Text',
       required: true,
-      placeholder: 'Describe the roles and responsibilities...'
     }
-  ], [formValues.payment_type]);
+  ], [formValues.payment_type, editingInternship]);
 
   const statsCards = [
     { label: "ACTIVE ROLES", value: String(stats.active), icon: Briefcase, color: "#9333EA" },
@@ -489,6 +507,7 @@ export const IndustryInternshipsScreen = () => {
                 fields={internshipFields}
                 onSubmit={handleFormSubmit}
                 onChange={handleFormChange}
+                onCreateCustomValue={handleCreateCustomValue}
                 loading={modalLoading}
                 initialValues={formValues}
                 buttonLabel={editingInternship ? "Save Changes" : "Post Internship"}

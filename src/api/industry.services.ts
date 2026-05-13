@@ -298,3 +298,29 @@ export const deleteInternship = async (internshipName: string) => {
     throw error;
   }
 };
+
+export const createCourse = async (course_name: string) => {
+  try {
+    const response = await api.post(
+      `method/stridenex_app.stridenex_app.doctype.courses.courses.create_course`,
+      { course_name }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error creating course:", error);
+    throw error;
+  }
+};
+
+export const createDepartment = async (department_name: string) => {
+  try {
+    const response = await api.post(
+      `method/stridenex_app.stridenex_app.doctype.college_department.college_department.create_department`,
+      { department_name }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error creating department:", error);
+    throw error;
+  }
+};

@@ -9,8 +9,6 @@ import {
   Trophy,
   Users,
   Microscope,
-  Palette,
-  Database,
   ArrowRight,
   RefreshCcw,
   Trash2,
@@ -25,7 +23,10 @@ import {
   updateProject, 
   deleteProject, 
   getProjectApplicationCount,
-  getMasterData
+  getMasterData,
+  createSkill,
+  createCourse,
+  createDepartment
 } from '@/api/industry.services';
 import DynamicForm from '@/components/forms/DynamicForm';
 import { FormField } from '@/components/forms/DynamicField';
@@ -155,7 +156,7 @@ export const IndustryProjectsScreen = () => {
       };
 
       if (editingProject) {
-        await updateProject(editingProject.name, payload);
+        await updateProject(editingProject.name, { ...payload, name: editingProject.name });
         Alert.alert("Success", "Project updated successfully");
       } else {
         await createProject(payload);
@@ -174,6 +175,21 @@ export const IndustryProjectsScreen = () => {
       Alert.alert("Error", msg);
     } finally {
       setModalLoading(false);
+    }
+  };
+
+  const handleCreateCustomValue = async (fieldName: string, value: string) => {
+    try {
+      if (fieldName === 'required_skills') {
+        await createSkill(value);
+      } else if (fieldName === 'course') {
+        await createCourse(value);
+      } else if (fieldName === 'department') {
+        await createDepartment(value);
+      }
+    } catch (err) {
+      console.error(`Error creating custom value for ${fieldName}:`, err);
+      throw err;
     }
   };
 
@@ -244,7 +260,8 @@ export const IndustryProjectsScreen = () => {
       apiEndpoint: 'method/stridenex_app.api_stridenex_app.college.master.get_master_data',
       apiParams: { doctype: 'Courses' },
       multiSelect: true,
-      required: true
+      required: true,
+      allowCustom: true
     },
     {
       fieldname: 'department',
@@ -253,7 +270,8 @@ export const IndustryProjectsScreen = () => {
       apiEndpoint: 'method/stridenex_app.api_stridenex_app.college.master.get_master_data',
       apiParams: { doctype: 'College Department' },
       multiSelect: true,
-      required: true
+      required: true,
+      allowCustom: true
     },
     {
       fieldname: 'academic_year',
@@ -438,6 +456,7 @@ export const IndustryProjectsScreen = () => {
                 initialValues={initialValues} 
                 onSubmit={handleFormSubmit}
                 onChange={handleFormChange}
+                onCreateCustomValue={handleCreateCustomValue}
                 loading={modalLoading}
                 buttonLabel={editingProject ? "Update Project" : "Create Project"}
               />
