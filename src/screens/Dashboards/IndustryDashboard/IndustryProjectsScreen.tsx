@@ -209,7 +209,6 @@ export const IndustryProjectsScreen = () => {
       fieldtype: 'Data', 
       required: true, 
       placeholder: 'e.g. PRJ-2401',
-      layout: 'half'
     },
     { 
       fieldname: 'status', 
@@ -217,7 +216,6 @@ export const IndustryProjectsScreen = () => {
       fieldtype: 'Select', 
       options: ['Active', 'Completed', 'Disable'], 
       required: true,
-      layout: 'half'
     },
     { 
       fieldname: 'duration', 
@@ -225,21 +223,18 @@ export const IndustryProjectsScreen = () => {
       fieldtype: 'Int', 
       required: true, 
       placeholder: 'e.g. 30',
-      layout: 'half'
     },
     { 
       fieldname: 'start_date', 
       label: 'Start Date', 
       fieldtype: 'Date', 
       required: true,
-      layout: 'half'
     },
     { 
       fieldname: 'end_date', 
       label: 'End Date', 
       fieldtype: 'Date', 
       required: true,
-      layout: 'half',
       disabled: true
     },
     {

@@ -21,8 +21,10 @@ import {
   UserCheck,
   Star,
   Calendar,
-  School
+  School,
+  Settings
 } from 'lucide-react-native';
+import { IndustrySettingsScreen } from '@/screens/Dashboards/IndustryDashboard/IndustrySettingsScreen';
 
 const Drawer = createDrawerNavigator();
 
@@ -88,7 +90,7 @@ export const IndustryDrawerNavigator = () => {
           drawerIcon: ({ color, size }) => <UserCheck color={color} size={size} />
         }}
       />
-      <Drawer.Screen
+      {/* <Drawer.Screen
         name="Feedback"
         component={IndustryFeedbackScreen}
         options={{
@@ -100,6 +102,13 @@ export const IndustryDrawerNavigator = () => {
         component={IndustryAnalyticsScreen}
         options={{
           drawerIcon: ({ color, size }) => <Calendar color={color} size={size} />
+        }}
+      /> */}
+      <Drawer.Screen
+        name="Settings"
+        component={IndustrySettingsScreen}
+        options={{
+          drawerIcon: ({ color, size }) => <Settings color={color} size={size} />
         }}
       />
       <Drawer.Screen

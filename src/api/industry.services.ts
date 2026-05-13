@@ -248,3 +248,53 @@ export const getProjectApplicationCount = async (industry: string) => {
   }
 };
 
+export const getInternshipList = async (industry: string) => {
+  try {
+    const response = await api.get(
+      'method/stridenex_app.stridenex_app.doctype.internship.internship.get_internship_list',
+      { params: { industry } }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching internship list:", error);
+    throw error;
+  }
+};
+
+export const createInternship = async (data: any) => {
+  try {
+    const response = await api.post(
+      `method/stridenex_app.stridenex_app.doctype.internship.internship.create_internship`,
+      data
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error creating internship:", error);
+    throw error;
+  }
+};
+
+export const updateInternship = async (name: string, data: any) => {
+  try {
+    const response = await api.post(
+      `method/stridenex_app.stridenex_app.doctype.internship.internship.update_internship?name=${encodeURIComponent(name)}`,
+      data
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error updating internship:", error);
+    throw error;
+  }
+};
+
+export const deleteInternship = async (internshipName: string) => {
+  try {
+    const response = await api.post(
+      `method/stridenex_app.stridenex_app.doctype.internship.internship.inactive_internship?internship_name=${encodeURIComponent(internshipName)}`
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error deleting internship:", error);
+    throw error;
+  }
+};
