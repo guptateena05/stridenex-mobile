@@ -40,6 +40,8 @@ import {
   createSpecialization,
   createSkill,
   createDesignation,
+  createDomain,
+  createSubDomain,
   getApplicationStatusCount
 } from '@/api/industry.services';
 import DynamicForm from '@/components/forms/DynamicForm';
@@ -57,6 +59,7 @@ export const IndustryCompanyProfileScreen = () => {
   const [skillsLoading, setSkillsLoading] = useState(false);
   const [isSkillModalVisible, setIsSkillModalVisible] = useState(false);
   const [editingSkill, setEditingSkill] = useState<any>(null);
+  const [skillFormValues, setSkillFormValues] = useState<any>({});
 
   // Hiring Rounds State
   const [isHiringModalVisible, setIsHiringModalVisible] = useState(false);
@@ -292,7 +295,7 @@ export const IndustryCompanyProfileScreen = () => {
     },
   ];
 
-  const skillFields: FormField[] = [
+  const skillFields: FormField[] = useMemo(() => [
     {
       fieldname: 'domain',
       label: 'Domain Name',
@@ -307,8 +310,9 @@ export const IndustryCompanyProfileScreen = () => {
       label: 'Sub Domain',
       fieldtype: 'Select',
       apiEndpoint: 'method/stridenex_app.api_stridenex_app.college.master.get_master_data',
-      apiParams: { doctype: 'Sub Domain' },
+      apiParams: { doctype: 'Sub Domain', filters: skillFormValues?.domain ? { domain: skillFormValues.domain } : undefined },
       allowCustom: true,
+      disabled: !skillFormValues?.domain,
     },
     {
       fieldname: 'skills',
@@ -330,7 +334,7 @@ export const IndustryCompanyProfileScreen = () => {
       apiParams: { doctype: 'Designation' },
       allowCustom: true,
     }
-  ];
+  ], [skillFormValues?.domain]);
 
   const hiringFields: FormField[] = [
     {
@@ -351,7 +355,7 @@ export const IndustryCompanyProfileScreen = () => {
     {
       fieldname: 'duration',
       label: 'Duration (min)',
-      fieldtype: 'Data',
+      fieldtype: 'Int',
       required: true,
       placeholder: 'e.g. 45',
     }
@@ -404,6 +408,13 @@ export const IndustryCompanyProfileScreen = () => {
         await createSkill(value);
       } else if (fieldName === 'roles') {
         await createDesignation(value);
+      } else if (fieldName === 'domain') {
+        await createDomain(value);
+      } else if (fieldName === 'sub_domain') {
+        if (!skillFormValues?.domain) {
+          throw new Error('Please select a Domain first');
+        }
+        await createSubDomain(value, skillFormValues.domain);
       }
     } catch (err) {
       console.error(`Error creating custom value for ${fieldName}:`, err);
@@ -685,7 +696,7 @@ export const IndustryCompanyProfileScreen = () => {
             </View>
             <TouchableOpacity
               style={styles.addIconBtn}
-              onPress={() => { setEditingSkill(null); setIsSkillModalVisible(true); }}
+              onPress={() => { setEditingSkill(null); setSkillFormValues({}); setIsSkillModalVisible(true); }}
             >
               <Plus size={18} color={colors.blue[600]} />
             </TouchableOpacity>
@@ -700,7 +711,15 @@ export const IndustryCompanyProfileScreen = () => {
                   <View style={styles.listItemHeader}>
                     <Text style={styles.listItemTitle}>{domain.domain || domain.skill_domain}</Text>
                     <View style={styles.listItemActions}>
-                      <TouchableOpacity onPress={() => { setEditingSkill(domain); setIsSkillModalVisible(true); }}>
+                      <TouchableOpacity onPress={() => { 
+                        setEditingSkill(domain); 
+                        setSkillFormValues({
+                          ...domain,
+                          skills: (domain.skills || []).map((s: any) => s.skill),
+                          roles: (domain.roles || []).map((r: any) => r.designation)
+                        });
+                        setIsSkillModalVisible(true); 
+                      }}>
                         <Edit3 size={14} color={colors.text.secondary} />
                       </TouchableOpacity>
                       <TouchableOpacity onPress={() => handleDeleteSkill(domain.name)} style={{ marginLeft: 12 }}>
@@ -837,12 +856,10 @@ export const IndustryCompanyProfileScreen = () => {
             <ScrollView style={{ paddingHorizontal: 20 }}>
               <DynamicForm
                 fields={skillFields}
-                initialValues={editingSkill ? {
-                  ...editingSkill,
-                  skills: (editingSkill.skills || []).map((s: any) => s.skill),
-                  roles: (editingSkill.roles || []).map((r: any) => r.designation)
-                } : {}}
+                initialValues={skillFormValues}
+                onChange={setSkillFormValues}
                 onSubmit={handleSkillSubmit}
+                onCreateCustomValue={handleCreateCustomValue}
                 buttonLabel="Save Skill Domain"
                 loading={updateLoading}
               />

@@ -160,6 +160,32 @@ export const getSkillDomainMaster = async () => getMasterData("Skill");
 export const getDesignationMaster = async () => getMasterData("Designation");
 export const getDomainMaster = async () => getMasterData("Domain");
 
+export const createDomain = async (domain: string) => {
+  try {
+    const response = await api.post(
+      `method/stridenex_app.stridenex_app.doctype.sub_domain.sub_domain.create_domain`,
+      { domain }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error creating domain:", error);
+    throw error;
+  }
+};
+
+export const createSubDomain = async (sub_domain: string, domain: string) => {
+  try {
+    const response = await api.post(
+      `method/stridenex_app.stridenex_app.doctype.sub_domain.sub_domain.create_sub_domain`,
+      { sub_domain, domain }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error creating sub domain:", error);
+    throw error;
+  }
+};
+
 export const getMasterData = async (doctype: string, additionalPayload: any = {}) => {
   try {
     const response = await api.post(

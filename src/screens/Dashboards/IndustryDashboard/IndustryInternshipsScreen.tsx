@@ -315,25 +315,33 @@ export const IndustryInternshipsScreen = () => {
       fieldtype: 'Link',
       apiEndpoint: 'method/stridenex_app.api_stridenex_app.college.master.get_master_data',
       apiParams: { doctype: 'Courses' },
+      mapOptions: (data: any) => {
+        const options = data.map((item: any) => {
+          const val = item.name || item.value || (typeof item === 'string' ? item : '');
+          const lbl = item.label || item.name || (typeof item === 'string' ? item : '');
+          return { value: val, label: lbl };
+        });
+        return [{ value: 'All', label: 'All' }, ...options];
+      },
       multiSelect: true,
       required: true,
-      allowCustom: true
+      allowCustom: false
     },
     {
       fieldname: 'department',
       label: 'Department',
       fieldtype: 'Link',
-      apiEndpoint: 'method/stridenex_app.api_stridenex_app.college.master.get_master_data',
-      apiParams: { doctype: 'College Department' },
+      apiEndpoint: 'method/stridenex_app.stridenex_app.doctype.college_department.college_department.get_departments_by_course',
+      apiParams: { courses: formValues.course ? (Array.isArray(formValues.course) ? formValues.course.join(',') : formValues.course) : '' },
       multiSelect: true,
       required: true,
-      allowCustom: true
+      allowCustom: false
     },
     {
       fieldname: 'academic_year',
       label: 'Academic Year',
       fieldtype: 'Select',
-      options: ['1', '2', '3', '4'],
+      options: ['2', '3', '4'],
       multiSelect: true,
       required: true,
     },
@@ -353,7 +361,7 @@ export const IndustryInternshipsScreen = () => {
       fieldtype: 'Long Text',
       required: true,
     }
-  ], [formValues.payment_type, editingInternship]);
+  ], [formValues.payment_type, editingInternship, formValues.course]);
 
   const statsCards = [
     { label: "ACTIVE ROLES", value: String(stats.active), icon: Briefcase, color: "#9333EA" },
