@@ -130,7 +130,7 @@ export default function DynamicField({ field, value, onChange, onCreateCustomVal
         setFetchError('No options available');
       }
     } catch (err: any) {
-      console.error(`Error fetching ${field.fieldname}:`, err);
+      console.warn(`Error fetching ${field.fieldname}:`, err);
       setFetchError(err?.message || `Failed to load ${field.label}`);
       setOptions([]);
       setFilteredOptions([]);

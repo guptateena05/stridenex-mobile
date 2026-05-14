@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Dimensions, ActivityIndicator, Modal, Alert, RefreshControl
+  Dimensions, ActivityIndicator, Modal, Alert, RefreshControl, TextInput
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '@/theme/colors';
@@ -24,7 +24,10 @@ import {
   ListChecks,
   Briefcase,
   Calendar,
-  Clock
+  Clock,
+  Check,
+  Save,
+  Navigation
 } from 'lucide-react-native';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import { useIndustry } from '@/context/IndustryContext';
@@ -53,6 +56,7 @@ export const IndustryCompanyProfileScreen = () => {
   const { industryData, loading, error, refreshIndustryData } = useIndustry();
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
   const [updateLoading, setUpdateLoading] = useState(false);
+  const [profileFormValues, setProfileFormValues] = useState<any>({});
 
   // Skill Domains State
   const [skillDomains, setSkillDomains] = useState<any[]>([]);
@@ -101,7 +105,7 @@ export const IndustryCompanyProfileScreen = () => {
 
       setPipelineData(updatedStages);
     } catch (err) {
-      console.error("Error fetching pipeline counts in profile:", err);
+      console.warn("Error fetching pipeline counts in profile:", err);
     } finally {
       setPipelineLoading(false);
     }
@@ -132,7 +136,7 @@ export const IndustryCompanyProfileScreen = () => {
 
       setSkillDomains(data);
     } catch (err) {
-      console.error("Error fetching skill domains:", err);
+      console.warn("Error fetching skill domains:", err);
     } finally {
       setSkillsLoading(false);
     }
@@ -162,10 +166,16 @@ export const IndustryCompanyProfileScreen = () => {
     },
     {
       fieldname: 'business_type',
-      label: 'Business Type',
+      label: 'Company Type',
       fieldtype: 'Select',
       apiEndpoint: 'method/stridenex_app.api_stridenex_app.college.master.get_master_data',
       apiParams: { doctype: 'Business Type' },
+    },
+    {
+      fieldname: 'gst_number',
+      label: 'GST Number',
+      fieldtype: 'Data',
+      placeholder: 'Enter GST Number',
     },
     {
       fieldname: 'industry_sector',
@@ -176,17 +186,24 @@ export const IndustryCompanyProfileScreen = () => {
       apiParams: { doctype: 'Industry Sector' },
     },
     {
-      fieldname: 'company_website',
-      label: 'Company Website',
+      fieldname: 'headquarters',
+      label: 'Headquarters',
       fieldtype: 'Data',
-      placeholder: 'e.g. https://company.com',
+      placeholder: 'Jaipur, Rajasthan',
+    },
+    {
+      fieldname: 'company_website',
+      label: 'Website (URL)',
+      fieldtype: 'Data',
+      required: true,
+      placeholder: 'www.ashok.com',
     },
     {
       fieldname: 'employee_head_count',
-      label: 'Employee Size',
-      fieldtype: 'Select',
+      label: 'Employee Count',
+      fieldtype: 'Int',
       required: true,
-      options: ['1-10', '11-50', '51-200', '201-500', '501-1000', '1000+'],
+      placeholder: 'e.g. 200',
     },
     {
       fieldname: 'cin',
@@ -195,35 +212,11 @@ export const IndustryCompanyProfileScreen = () => {
       placeholder: 'Enter CIN Number',
     },
     {
-      fieldname: 'gst_number',
-      label: 'GST Number',
-      fieldtype: 'Data',
-      placeholder: 'Enter GST Number',
-    },
-    {
-      fieldname: 'turn_over_in_cr',
-      label: 'Turnover (in Cr)',
-      fieldtype: 'Data',
-      placeholder: 'Enter Turnover',
-    },
-    {
-      fieldname: 'internship_per_year',
-      label: 'Internships per Year',
-      fieldtype: 'Data',
-      placeholder: 'e.g. 10',
-    },
-    {
-      fieldname: 'average_fresher_recruited_per_year',
-      label: 'Avg Freshers Recruited/Year',
-      fieldtype: 'Data',
-      placeholder: 'e.g. 5',
-    },
-    {
       fieldname: 'about',
-      label: 'About / Mission',
+      label: 'About Company',
       fieldtype: 'Long Text',
       required: true,
-      placeholder: 'Tell us about your company mission...',
+      placeholder: 'Tell us about your company...',
     },
     {
       fieldname: 'specializations',
@@ -233,67 +226,9 @@ export const IndustryCompanyProfileScreen = () => {
       apiEndpoint: 'method/stridenex_app.api_stridenex_app.college.master.get_master_data',
       apiParams: { doctype: 'Specialization' },
       allowCustom: true,
-    },
-    {
-      fieldname: 'address_line_1',
-      label: 'Address Line 1',
-      fieldtype: 'Data',
-      required: true,
-      placeholder: 'Building, Street...',
-    },
-    {
-      fieldname: 'address_line_2',
-      label: 'Address Line 2',
-      fieldtype: 'Data',
-      placeholder: 'Area, Locality...',
-    },
-    {
-      fieldname: 'country',
-      label: 'Country',
-      fieldtype: 'Data',
-      required: true,
-      placeholder: 'Enter Country',
-    },
-    {
-      fieldname: 'state',
-      label: 'State',
-      fieldtype: 'Data',
-      required: true,
-      placeholder: 'Enter State',
-    },
-    {
-      fieldname: 'district',
-      label: 'District',
-      fieldtype: 'Data',
-      placeholder: 'Enter District',
-    },
-    {
-      fieldname: 'tahsil',
-      label: 'Taluka (Tahsil)',
-      fieldtype: 'Data',
-      placeholder: 'Enter Taluka',
-    },
-    {
-      fieldname: 'city',
-      label: 'City',
-      fieldtype: 'Data',
-      required: true,
-      placeholder: 'Enter City',
-    },
-    {
-      fieldname: 'pincode',
-      label: 'Pincode',
-      fieldtype: 'Data',
-      required: true,
-      placeholder: '6-digit PIN',
-    },
-    {
-      fieldname: 'map_link',
-      label: 'Map Link (URL)',
-      fieldtype: 'Data',
-      placeholder: 'Google Maps URL',
-    },
+    }
   ];
+
 
   const skillFields: FormField[] = useMemo(() => [
     {
@@ -361,35 +296,26 @@ export const IndustryCompanyProfileScreen = () => {
     }
   ];
 
-  const handleUpdateProfile = async (formData: any) => {
-    if (!industryData?.name) return;
+  const handleUpdateProfile = async () => {
+    const identifier = industryData?.name || industryData?.company_name;
+    if (!identifier) return;
 
     setUpdateLoading(true);
     try {
       const {
         address_line_1, address_line_2, city, state, district, tahsil, country, pincode, map_link,
-        specializations, ...rest
-      } = formData;
+        specializations, operating_hours, location, ...rest
+      } = profileFormValues;
 
       // Transform data to match backend structure
       const payload = {
         ...rest,
-        specializations: (specializations || []).map((s: string) => ({ specialization: s })),
-        location: {
-          address_line_1,
-          address_line_2,
-          city,
-          state,
-          district,
-          tahsil,
-          country,
-          pincode,
-          map_link,
-        },
-        operating_hours: industryData.operating_hours || []
+        specializations: (specializations || []).map((s: string | any) => ({ specialization: s.specialization || s })),
+        location: profileFormValues.location || {},
+        operating_hours: profileFormValues.operating_hours || []
       };
 
-      await updateIndustry(industryData.name, payload);
+      await updateIndustry(identifier, payload);
       await refreshIndustryData();
       setIsEditModalVisible(false);
       Alert.alert('Success', 'Profile updated successfully');
@@ -619,7 +545,10 @@ export const IndustryCompanyProfileScreen = () => {
             </View>
             <TouchableOpacity
               style={styles.editBtn}
-              onPress={() => setIsEditModalVisible(true)}
+              onPress={() => {
+                setProfileFormValues(initialFormValues);
+                setIsEditModalVisible(true);
+              }}
             >
               <Edit3 size={16} color="#4c1d95" />
             </TouchableOpacity>
@@ -711,14 +640,14 @@ export const IndustryCompanyProfileScreen = () => {
                   <View style={styles.listItemHeader}>
                     <Text style={styles.listItemTitle}>{domain.domain || domain.skill_domain}</Text>
                     <View style={styles.listItemActions}>
-                      <TouchableOpacity onPress={() => { 
-                        setEditingSkill(domain); 
+                      <TouchableOpacity onPress={() => {
+                        setEditingSkill(domain);
                         setSkillFormValues({
                           ...domain,
                           skills: (domain.skills || []).map((s: any) => s.skill),
                           roles: (domain.roles || []).map((r: any) => r.designation)
                         });
-                        setIsSkillModalVisible(true); 
+                        setIsSkillModalVisible(true);
                       }}>
                         <Edit3 size={14} color={colors.text.secondary} />
                       </TouchableOpacity>
@@ -825,15 +754,214 @@ export const IndustryCompanyProfileScreen = () => {
               showsVerticalScrollIndicator={false}
               contentContainerStyle={styles.modalScrollContent}
             >
+              <View style={styles.companyHeaderBox}>
+                <View style={styles.companyIconPlaceholder}>
+                  <Building2 size={24} color="#FFF" />
+                </View>
+                <View>
+                  <Text style={styles.companyModalTitle}>{industryData?.company_name}</Text>
+                  <Text style={styles.companyModalSubtitle}>{industryData?.business_type}</Text>
+                </View>
+              </View>
+
               <DynamicForm
                 fields={editFields}
-                initialValues={initialFormValues}
-                onSubmit={handleUpdateProfile}
+                initialValues={profileFormValues}
+                onChange={(data) => setProfileFormValues((prev: any) => ({ ...prev, ...data }))}
+                onSubmit={() => { }}
                 onCreateCustomValue={handleCreateCustomValue}
-                buttonLabel="Save Changes"
+                buttonLabel=""
                 loading={updateLoading}
               />
+
+              {/* Operating Hours Section */}
+              <Text style={styles.sectionTitle}>OPERATING HOURS</Text>
+              <View style={styles.hoursTable}>
+                <View style={styles.hoursHeaderRow}>
+                  <Text style={[styles.hoursHeaderText, { flex: 1.5 }]}>Day</Text>
+                  <Text style={[styles.hoursHeaderText, { width: 50, textAlign: 'center' }]}>Closed</Text>
+                  <Text style={[styles.hoursHeaderText, { flex: 2 }]}>Opening</Text>
+                  <Text style={[styles.hoursHeaderText, { flex: 2 }]}>Closing</Text>
+                  <View style={{ width: 28 }} />
+                </View>
+
+                {(profileFormValues.operating_hours || []).map((row: any, idx: number) => {
+                  // Format time to remove seconds if present (e.g. 09:00:00 -> 09:00)
+                  const formatTime = (t: string) => t && t.length === 8 ? t.slice(0, 5) : t;
+                  
+                  return (
+                    <View key={idx} style={styles.hoursRow}>
+                      <TextInput
+                        style={[styles.hoursInput, { flex: 1.5 }]}
+                        value={row.day}
+                        onChangeText={(val) => {
+                          const newHours = [...(profileFormValues.operating_hours || [])];
+                          newHours[idx] = { ...newHours[idx], day: val };
+                          setProfileFormValues((prev: any) => ({ ...prev, operating_hours: newHours }));
+                        }}
+                        placeholder="Mon-Sat"
+                      />
+                      <View style={{ width: 50, alignItems: 'center', justifyContent: 'center' }}>
+                        <TouchableOpacity
+                          style={[styles.checkbox, row.is_closed ? styles.checkboxChecked : {}]}
+                          onPress={() => {
+                            const newHours = [...(profileFormValues.operating_hours || [])];
+                            newHours[idx] = { ...newHours[idx], is_closed: row.is_closed ? 0 : 1 };
+                            setProfileFormValues((prev: any) => ({ ...prev, operating_hours: newHours }));
+                          }}
+                        >
+                          {row.is_closed ? <Check size={12} color="#FFF" /> : null}
+                        </TouchableOpacity>
+                      </View>
+                      <TextInput
+                        style={[styles.hoursInput, { flex: 2, opacity: row.is_closed ? 0.5 : 1 }]}
+                        value={formatTime(row.opening_time)}
+                        onChangeText={(val) => {
+                          const newHours = [...(profileFormValues.operating_hours || [])];
+                          newHours[idx] = { ...newHours[idx], opening_time: val };
+                          setProfileFormValues((prev: any) => ({ ...prev, operating_hours: newHours }));
+                        }}
+                        placeholder="09:00"
+                        editable={!row.is_closed}
+                      />
+                      <TextInput
+                        style={[styles.hoursInput, { flex: 2, opacity: row.is_closed ? 0.5 : 1 }]}
+                        value={formatTime(row.closing_time)}
+                        onChangeText={(val) => {
+                          const newHours = [...(profileFormValues.operating_hours || [])];
+                          newHours[idx] = { ...newHours[idx], closing_time: val };
+                          setProfileFormValues((prev: any) => ({ ...prev, operating_hours: newHours }));
+                        }}
+                        placeholder="18:00"
+                        editable={!row.is_closed}
+                      />
+                      <TouchableOpacity
+                        style={{ width: 28, alignItems: 'flex-end', justifyContent: 'center' }}
+                        onPress={() => {
+                          const newHours = [...(profileFormValues.operating_hours || [])];
+                          newHours.splice(idx, 1);
+                          setProfileFormValues((prev: any) => ({ ...prev, operating_hours: newHours }));
+                        }}
+                      >
+                        <X size={16} color="#94A3B8" />
+                      </TouchableOpacity>
+                    </View>
+                  );
+                })}
+
+                <TouchableOpacity
+                  style={styles.addWorkingDaysBtn}
+                  onPress={() => {
+                    setProfileFormValues((prev: any) => ({
+                      ...prev,
+                      operating_hours: [...(prev.operating_hours || []), { day: '', is_closed: 0, opening_time: '', closing_time: '' }]
+                    }));
+                  }}
+                >
+                  <Text style={styles.addWorkingDaysText}>+ Add Working Days</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Business Location Section */}
+              <Text style={styles.sectionTitle}>BUSINESS LOCATION</Text>
+
+              <View style={styles.locationInputGroup}>
+                <View style={styles.locationHeaderRow}>
+                  <Text style={styles.locationLabel}>ADDRESS LINE 1 <Text style={{ color: colors.error }}>*</Text></Text>
+                  <TouchableOpacity style={styles.useLocationBtn}>
+                    <MapPin size={12} color="#2563EB" />
+                    <Text style={styles.useLocationText}>Use My Location</Text>
+                  </TouchableOpacity>
+                </View>
+                <View style={styles.locationInputWrapper}>
+                  <MapPin size={16} color="#94A3B8" style={{ marginLeft: 12 }} />
+                  <TextInput
+                    style={styles.locationInput}
+                    value={profileFormValues.location?.address_line_1 || ''}
+                    onChangeText={(val) => setProfileFormValues((prev: any) => ({
+                      ...prev, location: { ...(prev.location || {}), address_line_1: val }
+                    }))}
+                    placeholder="e.g. 370"
+                  />
+                </View>
+              </View>
+
+              <View style={styles.locationInputGroup}>
+                <Text style={styles.locationLabel}>ADDRESS LINE 2 (OPTIONAL)</Text>
+                <View style={styles.locationInputWrapper}>
+                  <MapPin size={16} color="#94A3B8" style={{ marginLeft: 12 }} />
+                  <TextInput
+                    style={styles.locationInput}
+                    value={profileFormValues.location?.address_line_2 || ''}
+                    onChangeText={(val) => setProfileFormValues((prev: any) => ({
+                      ...prev, location: { ...(prev.location || {}), address_line_2: val }
+                    }))}
+                    placeholder="e.g. Barkat Nagar, Tonk Phatak"
+                  />
+                </View>
+              </View>
+
+              <View style={styles.locationInputGroup}>
+                <Text style={styles.locationLabel}>PINCODE <Text style={{ color: colors.error }}>*</Text></Text>
+                <View style={styles.locationInputWrapper}>
+                  <Navigation size={16} color="#94A3B8" style={{ marginLeft: 12 }} />
+                  <TextInput
+                    style={styles.locationInput}
+                    value={profileFormValues.location?.pincode || ''}
+                    onChangeText={(val) => setProfileFormValues((prev: any) => ({
+                      ...prev, location: { ...(prev.location || {}), pincode: val }
+                    }))}
+                    placeholder="e.g. 202025"
+                    keyboardType="numeric"
+                  />
+                </View>
+              </View>
+
+              <View style={styles.mapPreviewContainer}>
+                <View style={styles.mapPreviewHeader}>
+                  <View>
+                    <Text style={styles.locationLabel}>MAP PREVIEW</Text>
+                    <Text style={styles.mapPreviewSub}>Verify your business location on map</Text>
+                  </View>
+                  <TouchableOpacity style={styles.adjustMapBtn}>
+                    <Text style={styles.adjustMapText}>↗ ADJUST ON FULL MAP</Text>
+                  </TouchableOpacity>
+                </View>
+                <View style={styles.mapStaticContainer}>
+                  {/* Placeholder Map Image */}
+                  <View style={styles.mapGridPattern}>
+                    <View style={styles.mapRoad1} />
+                    <View style={styles.mapRoad2} />
+                    <View style={styles.mapPinContainer}>
+                      <MapPin size={28} color="#2563EB" fill="#2563EB" />
+                      <View style={styles.mapPinShadow} />
+                    </View>
+                  </View>
+                </View>
+              </View>
+
             </ScrollView>
+
+            {/* Sticky Footer */}
+            <View style={styles.modalStickyFooter}>
+              <TouchableOpacity style={styles.footerCancelBtn} onPress={() => setIsEditModalVisible(false)}>
+                <Text style={styles.footerCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.footerSaveBtn, updateLoading && { opacity: 0.7 }]}
+                onPress={handleUpdateProfile}
+                disabled={updateLoading}
+              >
+                {updateLoading ? (
+                  <ActivityIndicator size="small" color="#FFF" />
+                ) : (
+                  <>
+                    <Save size={16} color="#FFF" />
+                    <Text style={styles.footerSaveText}>Save Changes</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>
@@ -993,4 +1121,47 @@ const styles = StyleSheet.create({
   pipelineBarContainer: { flex: 1, height: 6, backgroundColor: '#F1F5F9', borderRadius: 3, marginHorizontal: 10, overflow: 'hidden' },
   pipelineBarFill: { height: '100%', borderRadius: 3 },
   pipelineCount: { width: 24, textAlign: 'right', fontSize: 12, fontWeight: '800', color: '#1E293B' },
+
+  // New Modal Styles
+  companyHeaderBox: { flexDirection: 'row', alignItems: 'center', marginBottom: 20, backgroundColor: '#F8FAFC', padding: 16, borderRadius: 16, borderWidth: 1, borderColor: '#F1F5F9' },
+  companyIconPlaceholder: { width: 48, height: 48, borderRadius: 12, backgroundColor: '#2563EB', alignItems: 'center', justifyContent: 'center', marginRight: 16 },
+  companyModalTitle: { fontSize: 18, fontWeight: '800', color: '#0F172A' },
+  companyModalSubtitle: { fontSize: 12, fontWeight: '600', color: '#64748B' },
+  sectionTitle: { fontSize: 11, fontWeight: '800', color: '#64748B', letterSpacing: 1, marginTop: 24, marginBottom: 12 },
+
+  hoursTable: { borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, overflow: 'hidden' },
+  hoursHeaderRow: { flexDirection: 'row', backgroundColor: '#F8FAFC', paddingVertical: 10, paddingHorizontal: 12, borderBottomWidth: 1, borderBottomColor: '#E2E8F0' },
+  hoursHeaderText: { fontSize: 10, fontWeight: '800', color: '#64748B', letterSpacing: 0.5 },
+  hoursRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8, paddingHorizontal: 12, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
+  hoursInput: { height: 36, borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 8, paddingHorizontal: 10, fontSize: 12, backgroundColor: '#FFF', marginRight: 8, color: '#0F172A' },
+  checkbox: { width: 18, height: 18, borderRadius: 4, borderWidth: 1, borderColor: '#CBD5E1', backgroundColor: '#FFF', alignItems: 'center', justifyContent: 'center' },
+  checkboxChecked: { backgroundColor: '#2563EB', borderColor: '#2563EB' },
+  addWorkingDaysBtn: { paddingVertical: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F8FAFC' },
+  addWorkingDaysText: { fontSize: 12, fontWeight: '700', color: '#2563EB' },
+
+  locationInputGroup: { marginBottom: 16 },
+  locationHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
+  locationLabel: { fontSize: 10, fontWeight: '800', color: '#64748B', letterSpacing: 0.5, marginBottom: 6 },
+  useLocationBtn: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  useLocationText: { fontSize: 10, fontWeight: '700', color: '#2563EB' },
+  locationInputWrapper: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, backgroundColor: '#FFF' },
+  locationInput: { flex: 1, height: 48, paddingHorizontal: 12, fontSize: 14, color: '#0F172A' },
+
+  mapPreviewContainer: { borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, overflow: 'hidden', marginTop: 8 },
+  mapPreviewHeader: { padding: 12, backgroundColor: '#F8FAFC', borderBottomWidth: 1, borderBottomColor: '#E2E8F0', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  mapPreviewSub: { fontSize: 10, color: '#64748B' },
+  adjustMapBtn: { backgroundColor: '#EEF2FF', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 6 },
+  adjustMapText: { fontSize: 9, fontWeight: '800', color: '#4F46E5', letterSpacing: 0.5 },
+  mapStaticContainer: { height: 120, backgroundColor: '#E2E8F0', position: 'relative', overflow: 'hidden' },
+  mapGridPattern: { flex: 1, opacity: 0.4 },
+  mapRoad1: { position: 'absolute', top: '40%', left: 0, right: 0, height: 12, backgroundColor: '#FFF', transform: [{ rotate: '-5deg' }] },
+  mapRoad2: { position: 'absolute', top: 0, bottom: 0, left: '60%', width: 16, backgroundColor: '#FFF', transform: [{ rotate: '15deg' }] },
+  mapPinContainer: { position: 'absolute', top: '50%', left: '50%', marginLeft: -14, marginTop: -28, alignItems: 'center' },
+  mapPinShadow: { width: 12, height: 4, backgroundColor: 'rgba(0,0,0,0.2)', borderRadius: 2, marginTop: -4 },
+
+  modalStickyFooter: { flexDirection: 'row', padding: 16, borderTopWidth: 1, borderTopColor: '#E2E8F0', backgroundColor: '#FFF', paddingBottom: 32 },
+  footerCancelBtn: { flex: 1, height: 48, borderRadius: 12, borderWidth: 1, borderColor: '#E2E8F0', alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+  footerCancelText: { fontSize: 14, fontWeight: '700', color: '#475569' },
+  footerSaveBtn: { flex: 2, height: 48, borderRadius: 12, backgroundColor: '#0F172A', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  footerSaveText: { fontSize: 14, fontWeight: '700', color: '#FFF' },
 });
