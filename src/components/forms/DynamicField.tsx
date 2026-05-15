@@ -471,7 +471,9 @@ export default function DynamicField({ field, value, onChange, onCreateCustomVal
               ) || []}
               keyExtractor={(item, index) => item + index}
               renderItem={({ item }) => {
-                const isSelected = value === item;
+                const isSelected = field.multiSelect 
+                  ? (Array.isArray(value) && value.includes(item))
+                  : (value === item);
                 return (
                   <TouchableOpacity
                     style={[
@@ -480,9 +482,13 @@ export default function DynamicField({ field, value, onChange, onCreateCustomVal
                       isSelected && { backgroundColor: accentColor + '10' }
                     ]}
                     onPress={() => {
-                      onChange(field.fieldname, item);
-                      setIsOpen(false);
-                      setSearchTerm('');
+                      if (field.multiSelect) {
+                        handleMultiSelect(item);
+                      } else {
+                        onChange(field.fieldname, item);
+                        setIsOpen(false);
+                        setSearchTerm('');
+                      }
                     }}
                   >
                     <Text style={[
@@ -504,6 +510,13 @@ export default function DynamicField({ field, value, onChange, onCreateCustomVal
               showsVerticalScrollIndicator={true}
               style={styles.flatList}
             />
+            {field.multiSelect && (
+              <View style={[styles.modalFooter, { borderTopColor: borderColor }]}>
+                <TouchableOpacity style={[styles.doneButton, { backgroundColor: accentColor }]} onPress={() => setIsOpen(false)}>
+                  <Text style={styles.doneButtonText}>Done</Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
         </View>
       </Modal>
@@ -565,13 +578,26 @@ export default function DynamicField({ field, value, onChange, onCreateCustomVal
             onPress={() => setIsOpen(true)}
             disabled={field.read_only || field.disabled}
           >
-            <Text style={[
-              styles.inputText,
-              { color: textPrimary },
-              !value && { color: textSecondary }
-            ]}>
-              {value || field.placeholder || `Select ${field.label}`}
-            </Text>
+            {field.multiSelect && Array.isArray(value) && value.length > 0 ? (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.multiSelectContainer}>
+                {value.map((v: string) => (
+                  <View key={v} style={[styles.tag, { backgroundColor: accentColor + '20' }]}>
+                    <Text style={[styles.tagText, { color: accentColor }]}>{v}</Text>
+                    <TouchableOpacity onPress={() => removeSelectedItem(v)}>
+                      <Text style={[styles.tagRemove, { color: accentColor }]}>✕</Text>
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </ScrollView>
+            ) : (
+              <Text style={[
+                styles.inputText,
+                { color: textPrimary },
+                !value && { color: textSecondary }
+              ]}>
+                {Array.isArray(value) ? (value.length > 0 ? value.join(', ') : (field.placeholder || `Select ${field.label}`)) : (value || field.placeholder || `Select ${field.label}`)}
+              </Text>
+            )}
             <Text style={[styles.dropdownIcon, { color: textSecondary }]}>▼</Text>
           </TouchableOpacity>
 

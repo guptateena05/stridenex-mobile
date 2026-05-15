@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Dimensions, ActivityIndicator, Modal, Alert, RefreshControl, TextInput
+  Dimensions, ActivityIndicator, Modal, Alert, RefreshControl, TextInput, LayoutAnimation, Platform, UIManager
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '@/theme/colors';
@@ -60,6 +60,11 @@ export const IndustryCompanyProfileScreen = () => {
   const [updateLoading, setUpdateLoading] = useState(false);
   const [profileFormValues, setProfileFormValues] = useState<any>({});
 
+  // Enable LayoutAnimation for Android
+  if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+    UIManager.setLayoutAnimationEnabledExperimental(true);
+  }
+
   // Skill Domains State
   const [skillDomains, setSkillDomains] = useState<any[]>([]);
   const [skillsLoading, setSkillsLoading] = useState(false);
@@ -74,6 +79,10 @@ export const IndustryCompanyProfileScreen = () => {
   // Application Pipeline State
   const [pipelineData, setPipelineData] = useState<any[]>([]);
   const [pipelineLoading, setPipelineLoading] = useState(false);
+
+  // View More/Less state
+  const [showAllSkills, setShowAllSkills] = useState(false);
+  const [showAllRounds, setShowAllRounds] = useState(false);
 
   const fetchPipelineCounts = useCallback(async () => {
     const industryId = industryData?.name || industryData?.company_name;
@@ -625,19 +634,29 @@ export const IndustryCompanyProfileScreen = () => {
               </View>
               <Text style={styles.cardTitleText}>SKILLS WE AUDIT</Text>
             </View>
-            <TouchableOpacity
-              style={styles.addIconBtn}
-              onPress={() => { setEditingSkill(null); setSkillFormValues({}); setIsSkillModalVisible(true); }}
-            >
-              <Plus size={18} color={colors.blue[600]} />
-            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              {skillDomains.length > 1 && (
+                <TouchableOpacity onPress={() => {
+                  LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                  setShowAllSkills(!showAllSkills);
+                }}>
+                  <Text style={[styles.headerActionText, { color: colors.blue[600] }]}>{showAllSkills ? "VIEW LESS" : "VIEW ALL"}</Text>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity
+                style={styles.addIconBtn}
+                onPress={() => { setEditingSkill(null); setSkillFormValues({}); setIsSkillModalVisible(true); }}
+              >
+                <Plus size={18} color={colors.blue[600]} />
+              </TouchableOpacity>
+            </View>
           </View>
 
           {skillsLoading ? (
             <ActivityIndicator size="small" color={colors.blue[600]} style={{ marginVertical: 20 }} />
           ) : skillDomains.length > 0 ? (
             <View style={styles.listContainer}>
-              {skillDomains.map((domain, idx) => (
+              {skillDomains.slice(0, showAllSkills ? undefined : 1).map((domain, idx) => (
                 <View key={idx} style={styles.listItem}>
                   <View style={styles.listItemHeader}>
                     <Text style={styles.listItemTitle}>{domain.domain || domain.skill_domain}</Text>
@@ -689,17 +708,27 @@ export const IndustryCompanyProfileScreen = () => {
               </View>
               <Text style={styles.cardTitleText}>HIRING PIPELINE</Text>
             </View>
-            <TouchableOpacity
-              style={styles.addIconBtn}
-              onPress={() => { setEditingHiring(null); setIsHiringModalVisible(true); }}
-            >
-              <Plus size={18} color={colors.emerald[600]} />
-            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              {industryData?.hiring_process && industryData.hiring_process.length > 1 && (
+                <TouchableOpacity onPress={() => {
+                  LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                  setShowAllRounds(!showAllRounds);
+                }}>
+                  <Text style={[styles.headerActionText, { color: colors.emerald[600] }]}>{showAllRounds ? "VIEW LESS" : "VIEW ALL"}</Text>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity
+                style={styles.addIconBtn}
+                onPress={() => { setEditingHiring(null); setIsHiringModalVisible(true); }}
+              >
+                <Plus size={18} color={colors.emerald[600]} />
+              </TouchableOpacity>
+            </View>
           </View>
 
           {industryData?.hiring_process && industryData.hiring_process.length > 0 ? (
             <View style={styles.listContainer}>
-              {industryData.hiring_process.map((round, idx) => (
+              {industryData.hiring_process.slice(0, showAllRounds ? undefined : 1).map((round, idx) => (
                 <View key={idx} style={styles.hiringItem}>
                   <View style={styles.hiringItemLeft}>
                     <View style={styles.hiringDot} />
@@ -1137,6 +1166,9 @@ const styles = StyleSheet.create({
   hiringTimeText: { fontSize: 10, fontWeight: '700', color: colors.emerald[700] },
 
   emptyText: { textAlign: 'center', color: '#94A3B8', fontSize: 12, fontStyle: 'italic', marginVertical: 20 },
+  viewMoreBtn: { paddingVertical: 12, alignItems: 'center', justifyContent: 'center', borderTopWidth: 1, borderTopColor: '#F1F5F9', marginTop: 8 },
+  viewMoreText: { fontSize: 10, fontWeight: '900', color: colors.purple[600], letterSpacing: 1 },
+  headerActionText: { fontSize: 9, fontWeight: '900', color: colors.purple[600], letterSpacing: 1, textDecorationLine: 'underline' },
   footerSpacer: { height: 40 },
 
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },

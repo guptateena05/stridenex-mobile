@@ -306,7 +306,7 @@ export const IndustryInternshipsScreen = () => {
       fieldname: 'status',
       label: 'Status',
       fieldtype: 'Select',
-      options: ['Active', 'Completed', 'Closing', 'Disable'],
+      options: ['Active', 'Draft', 'Closed'],
       required: true,
     },
     {
@@ -363,6 +363,18 @@ export const IndustryInternshipsScreen = () => {
     }
   ], [formValues.payment_type, editingInternship, formValues.course]);
 
+  const formatDate = (dateStr: string) => {
+    if (!dateStr) return 'N/A';
+    // Handle YYYY-MM-DD
+    if (dateStr.includes('-')) {
+      const parts = dateStr.split('-');
+      if (parts.length === 3) {
+        return `${parts[2]}-${parts[1]}-${parts[0]}`;
+      }
+    }
+    return dateStr;
+  };
+
   const statsCards = [
     { label: "ACTIVE ROLES", value: String(stats.active), icon: Briefcase, color: "#9333EA" },
     { label: "APPLICATIONS", value: String(stats.applications), icon: Users, color: "#3B82F6" },
@@ -418,8 +430,8 @@ export const IndustryInternshipsScreen = () => {
                       <Text style={styles.jobSubtitle}>{job.type} • {job.work_mode || job.location}</Text>
                     </View>
                   </View>
-                  <View style={[styles.statusBadge, job.status === 'Active' ? styles.statusActive : (job.status === 'Closing' ? styles.statusClosing : styles.statusDisabled)]}>
-                    <Text style={[styles.statusText, job.status === 'Active' ? styles.statusTextActive : (job.status === 'Closing' ? styles.statusTextClosing : styles.statusTextDisabled)]}>
+                  <View style={[styles.statusBadge, job.status === 'Active' ? styles.statusActive : (job.status === 'Draft' ? styles.statusClosing : styles.statusDisabled)]}>
+                    <Text style={[styles.statusText, job.status === 'Active' ? styles.statusTextActive : (job.status === 'Draft' ? styles.statusTextClosing : styles.statusTextDisabled)]}>
                       {job.status}
                     </Text>
                   </View>
@@ -436,7 +448,7 @@ export const IndustryInternshipsScreen = () => {
                   </View>
                   <View style={styles.infoItem}>
                     <Calendar size={14} color="#F59E0B" />
-                    <Text style={styles.infoText}>Ends {job.application_deadline || job.deadline}</Text>
+                    <Text style={styles.infoText}>Ends {formatDate(job.end_date)}</Text>
                   </View>
                 </View>
 
@@ -450,16 +462,16 @@ export const IndustryInternshipsScreen = () => {
 
                   <View style={styles.actionRow}>
                     <TouchableOpacity
-                      style={[styles.actionBtn, styles.deleteBtn, job.status === 'Disable' && styles.disabledBtn]}
-                      onPress={() => job.status !== 'Disable' && handleDelete(job.name)}
-                      disabled={job.status === 'Disable'}
+                      style={[styles.actionBtn, styles.deleteBtn, job.status === 'Closed' && styles.disabledBtn]}
+                      onPress={() => job.status !== 'Closed' && handleDelete(job.name)}
+                      disabled={job.status === 'Closed'}
                     >
-                      <Trash2 size={16} color={job.status === 'Disable' ? "#94A3B8" : "#EF4444"} />
+                      <Trash2 size={16} color={job.status === 'Closed' ? "#94A3B8" : "#EF4444"} />
                     </TouchableOpacity>
                     <TouchableOpacity
-                      style={[styles.manageBtn, job.status === 'Disable' && styles.disabledManageBtn]}
-                      onPress={() => job.status !== 'Disable' && handleEdit(job)}
-                      disabled={job.status === 'Disable'}
+                      style={[styles.manageBtn, job.status === 'Closed' && styles.disabledManageBtn]}
+                      onPress={() => job.status !== 'Closed' && handleEdit(job)}
+                      disabled={job.status === 'Closed'}
                     >
                       <Text style={styles.manageBtnText}>Manage</Text>
                     </TouchableOpacity>
