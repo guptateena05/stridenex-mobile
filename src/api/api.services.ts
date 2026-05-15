@@ -8,7 +8,7 @@ export const api = axios.create({
   timeout: 30000,
   headers: {
     "Content-Type": "application/json",
-    Accept: "application/json",
+    Accept: "*/*",
   },
 });
 
@@ -25,9 +25,12 @@ api.interceptors.request.use(
 
       console.log("BEFORE TOKEN FETCH");
 
-      const token = await AsyncStorage.getItem("token");
+      const storedToken = await AsyncStorage.getItem("token");
+      const token = storedToken ? storedToken.trim() : null;
 
-      console.log("AFTER TOKEN FETCH", token);
+      if (__DEV__) {
+        console.log("AFTER TOKEN FETCH", token ? "Token exists" : "No token");
+      }
 
       if (token) {
         config.headers.Authorization = `token ${token}`;

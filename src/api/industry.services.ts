@@ -350,3 +350,78 @@ export const createDepartment = async (department_name: string) => {
     throw error;
   }
 };
+
+export const getStudentApplicationList = async (industry: string) => {
+  try {
+    const response = await api.get(
+      `method/stridenex_app.stridenex_app.doctype.internship_application.internship_application.get_student_application_list`,
+      { params: { industry } }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching student application list:", error);
+    throw error;
+  }
+};
+
+export const getStudentByEmail = async (emailId: string) => {
+  try {
+    const response = await api.get(
+      `method/stridenex_app.api_stridenex_app.student.student.get_student_by_email`,
+      { params: { email_id: emailId } }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching student by email:", error);
+    throw error;
+  }
+};
+
+export const updateApplicationStatus = async (name: string, status: string) => {
+  try {
+    const response = await api.post(
+      `method/stridenex_app.stridenex_app.doctype.internship_application.internship_application.update_application_status`,
+      { name, status }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error updating application status:", error);
+    throw error;
+  }
+};
+
+export const getProjectApplicationList = async (industry: string, projectName?: string) => {
+  try {
+    const filters: any = {};
+    if (industry) filters.industry = industry;
+    if (projectName) filters.project = projectName;
+    
+    console.log("[DEBUG] Fetching Project Apps with filters:", JSON.stringify(filters));
+
+    const response = await api.post(
+      "method/stridenex_app.api_stridenex_app.college.master.get_master_data",
+      { 
+        doctype: "Student Project Enrollment",
+        filters,
+        fields: ["name", "student", "project", "industry", "status", "applied_on", "resume"]
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching project application list:", error);
+    throw error;
+  }
+};
+
+export const updateProjectApplicationStatus = async (payload: { name: string, industry: string, status: string }) => {
+  try {
+    const response = await api.post(
+      `method/stridenex_app.stridenex_app.doctype.student_project_enrollment.student_project_enrollment.update_student_project_enrollment`,
+      payload
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error updating project application status:", error);
+    throw error;
+  }
+};

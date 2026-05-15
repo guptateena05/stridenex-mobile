@@ -15,6 +15,7 @@ import {
   X
 } from 'lucide-react-native';
 import Animated, { FadeInUp, FadeInRight } from 'react-native-reanimated';
+import { useNavigation } from '@react-navigation/native';
 import { StatsCard } from '@/components/dashboard/StatsCard';
 import { useIndustry } from '@/context/IndustryContext';
 import { 
@@ -34,6 +35,7 @@ import { FormField } from '@/components/forms/DynamicField';
 const { width } = Dimensions.get('window');
 
 export const IndustryProjectsScreen = () => {
+  const navigation = useNavigation<any>();
   const { industryData, loading: industryLoading } = useIndustry();
   const [projects, setProjects] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -78,7 +80,7 @@ export const IndustryProjectsScreen = () => {
       setStats({
         active: projectList.filter((p: any) => p.status === 'Active').length,
         applications: countRes?.data?.total_applications || countRes?.message?.total_applications || 0,
-        awarded: 0,
+        awarded: projectList.reduce((acc: number, p: any) => acc + (p.shortlisted_count || 0), 0),
         ppo: 0
       });
     } catch (err) {
@@ -91,7 +93,14 @@ export const IndustryProjectsScreen = () => {
 
   useEffect(() => {
     fetchProjectData();
-  }, [fetchProjectData]);
+    
+    // Refresh data when screen comes into focus
+    const unsubscribe = navigation.addListener('focus', () => {
+      fetchProjectData();
+    });
+    
+    return unsubscribe;
+  }, [navigation, fetchProjectData]);
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -357,77 +366,82 @@ export const IndustryProjectsScreen = () => {
           {loading && !refreshing ? (
              <ActivityIndicator size="large" color={colors.purple[600]} style={{ marginTop: 40 }} />
           ) : projects.length > 0 ? (
-            projects.map((project, index) => (
-               <Animated.View key={project.name} entering={FadeInUp.delay(350 + index * 50)} style={styles.projectCard}>
-                  <View style={styles.cardHeaderRow}>
-                     <View style={styles.iconBox}>
+             projects.map((project, index) => (
+                <Animated.View key={project.name} entering={FadeInUp.delay(350 + index * 50)} style={styles.projectCard}>
+                  <TouchableOpacity 
+                    activeOpacity={0.7} 
+                    onPress={() => navigation.navigate('Project Pipeline', { project })}
+                  >
+                    <View style={styles.cardHeaderRow}>
+                      <View style={styles.iconBox}>
                         <Microscope size={18} color="#64748B" />
-                     </View>
-                     <View style={styles.titleInfo}>
+                      </View>
+                      <View style={styles.titleInfo}>
                         <Text style={styles.projectTitle} numberOfLines={1}>{project.project_name}</Text>
                         <Text style={styles.projectSubtitle}>{project.industry} • {project.project_code}</Text>
-                     </View>
-                     <View style={[styles.badge, project.status?.toLowerCase() === "active" ? styles.badgeOpen : {}]}>
+                      </View>
+                      <View style={[styles.badge, project.status?.toLowerCase() === "active" ? styles.badgeOpen : {}]}>
                         <Text style={[styles.badgeText, project.status?.toLowerCase() === "active" ? styles.badgeTextOpen : {}]}>{project.status}</Text>
-                     </View>
-                  </View>
+                      </View>
+                    </View>
 
-                  <Text style={styles.description} numberOfLines={2}>{project.description}</Text>
-                  
-                  <View style={styles.tagsContainer}>
-                     {(project.required_skills || project.skills || []).slice(0, 3).map((skill: any, sIdx: number) => (
+                    <Text style={styles.description} numberOfLines={2}>{project.description}</Text>
+                    
+                    <View style={styles.tagsContainer}>
+                      {(project.required_skills || project.skills || []).slice(0, 3).map((skill: any, sIdx: number) => (
                         <View key={sIdx} style={styles.tagPill}>
-                           <Text style={styles.tagText}>{skill.skill || skill.skills}</Text>
+                          <Text style={styles.tagText}>{skill.skill || skill.skills}</Text>
                         </View>
-                     ))}
-                  </View>
+                      ))}
+                    </View>
 
-                  <View style={styles.divider} />
+                    <View style={styles.divider} />
 
-                  <View style={styles.footerRow}>
-                     <View style={styles.metricsGrid}>
+                    <View style={styles.footerRow}>
+                      <View style={styles.metricsGrid}>
                         <View style={styles.metricItem}>
-                           <Text style={[styles.metricValue, { color: '#F97316' }]}>{project.applied_count || 0}</Text>
-                           <Text style={styles.metricLabel}>Applied</Text>
+                          <Text style={[styles.metricValue, { color: '#F97316' }]}>{project.applied_count || 0}</Text>
+                          <Text style={styles.metricLabel}>Applied</Text>
                         </View>
                         <View style={styles.metricItem}>
-                           <Text style={[styles.metricValue, { color: '#3B82F6' }]}>{project.shortlisted_count || 0}</Text>
-                           <Text style={styles.metricLabel}>Shortlisted</Text>
+                          <Text style={[styles.metricValue, { color: '#3B82F6' }]}>{project.shortlisted_count || 0}</Text>
+                          <Text style={styles.metricLabel}>Shortlisted</Text>
                         </View>
                         <View style={styles.metricItem}>
-                           <Text style={[styles.metricValue, { color: '#10B981' }]}>{project.duration || '-'}</Text>
-                           <Text style={styles.metricLabel}>Days</Text>
+                          <Text style={[styles.metricValue, { color: '#10B981' }]}>{project.duration || '-'}</Text>
+                          <Text style={styles.metricLabel}>Days</Text>
                         </View>
-                     </View>
-                     
-                     <View style={styles.actionRow}>
+                      </View>
+                      
+                      <View style={styles.actionRow}>
                         <TouchableOpacity 
-                           style={[
-                              styles.actionBtn, 
-                              styles.deleteBtn, 
-                              (project.status?.toLowerCase() === 'disabled' || project.status?.toLowerCase() === 'disable' || project.status?.toLowerCase() === 'inactive') && styles.disabledBtn
-                           ]} 
-                           onPress={() => handleDelete(project.name)}
-                           disabled={project.status?.toLowerCase() === 'disabled' || project.status?.toLowerCase() === 'disable' || project.status?.toLowerCase() === 'inactive'}
+                          style={[
+                            styles.actionBtn, 
+                            styles.deleteBtn, 
+                            (project.status?.toLowerCase() === 'disabled' || project.status?.toLowerCase() === 'disable' || project.status?.toLowerCase() === 'inactive') && styles.disabledBtn
+                          ]} 
+                          onPress={() => handleDelete(project.name)}
+                          disabled={project.status?.toLowerCase() === 'disabled' || project.status?.toLowerCase() === 'disable' || project.status?.toLowerCase() === 'inactive'}
                         >
-                           <Trash2 size={14} color={(project.status?.toLowerCase() === 'disabled' || project.status?.toLowerCase() === 'disable' || project.status?.toLowerCase() === 'inactive') ? '#CBD5E1' : colors.error} />
+                          <Trash2 size={14} color={(project.status?.toLowerCase() === 'disabled' || project.status?.toLowerCase() === 'disable' || project.status?.toLowerCase() === 'inactive') ? '#CBD5E1' : colors.error} />
                         </TouchableOpacity>
                         
                         <TouchableOpacity 
-                           style={[
-                              styles.manageBtn, 
-                              (project.status?.toLowerCase() === 'disabled' || project.status?.toLowerCase() === 'disable' || project.status?.toLowerCase() === 'inactive') && styles.disabledManageBtn
-                           ]}
-                           onPress={() => handleEdit(project)}
-                           disabled={project.status?.toLowerCase() === 'disabled' || project.status?.toLowerCase() === 'disable' || project.status?.toLowerCase() === 'inactive'}
+                          style={[
+                            styles.manageBtn, 
+                            (project.status?.toLowerCase() === 'disabled' || project.status?.toLowerCase() === 'disable' || project.status?.toLowerCase() === 'inactive') && styles.disabledManageBtn
+                          ]}
+                          onPress={() => handleEdit(project)}
+                          disabled={project.status?.toLowerCase() === 'disabled' || project.status?.toLowerCase() === 'disable' || project.status?.toLowerCase() === 'inactive'}
                         >
-                           <Text style={styles.manageBtnText}>Manage</Text>
-                           <ArrowRight size={12} color="#FFF" />
+                          <Text style={styles.manageBtnText}>Manage</Text>
+                          <ArrowRight size={12} color="#FFF" />
                         </TouchableOpacity>
-                     </View>
-                  </View>
-               </Animated.View>
-            ))
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                </Animated.View>
+             ))
           ) : (
             <View style={styles.emptyContainer}>
                <Briefcase size={48} color="#CBD5E1" />

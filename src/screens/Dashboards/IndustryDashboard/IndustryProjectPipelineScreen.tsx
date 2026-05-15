@@ -9,7 +9,8 @@ import {
   Modal,
   Dimensions,
   RefreshControl,
-  Alert
+  Alert,
+  Linking
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '@/theme/colors';
@@ -22,83 +23,88 @@ import {
   PhoneCall,
   CheckCircle2,
   XCircle,
+  ArrowLeft,
   LayoutDashboard,
   Target,
   X,
   ChevronDown,
-  Mail,
-  ChevronRight
+  Briefcase,
+  ChevronRight,
+  FileText,
+  Trophy
 } from 'lucide-react-native';
-import Animated, { FadeInUp, FadeInRight, Layout, SlideInRight } from 'react-native-reanimated';
+import Animated, { FadeInUp, FadeInRight } from 'react-native-reanimated';
 import { useIndustry } from '@/context/IndustryContext';
-import { getStudentApplicationList, getStudentByEmail, updateApplicationStatus } from '@/api/industry.services';
+import { getProjectApplicationList, getStudentByEmail, updateProjectApplicationStatus } from '@/api/industry.services';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 const pipelineColumns = [
-  { id: "Applied", title: "Applied", color: '#1E293B', icon: Mail },
+  { id: "Applied", title: "Applied", color: '#1E293B', icon: FileText },
   { id: "Shortlisted", title: "Shortlisted", color: '#3B82F6', icon: UserCheck },
-  { id: "Tech Interview", title: "Tech Interview", color: '#F97316', icon: PhoneCall },
-  { id: "HR", title: "HR", color: '#8B5CF6', icon: PhoneCall },
+  { id: "Interview Scheduled", title: "Interview Scheduled", color: '#F97316', icon: PhoneCall },
   { id: "Rejected", title: "Rejected", color: '#EF4444', icon: XCircle },
-  { id: "Selected", title: "Selected", color: '#10B981', icon: CheckCircle2 }
+  { id: "Selected", title: "Selected", color: '#10B981', icon: CheckCircle2 },
+  { id: "Awarded", title: "Awarded", color: '#8B5CF6', icon: Trophy }
 ];
 
-interface Candidate {
+interface ProjectCandidate {
   id: string;
   name: string;
-  owner: string;
+  student: string;
+  project: string;
   status: string;
-  studentEmail: string;
-  internship: string;
-  college: string;
   applied_on: string;
-  match: number;
+  resume: string;
   initials: string;
   bgColor: string;
 }
 
-export const IndustryPipelineScreen = () => {
+export const IndustryProjectPipelineScreen = ({ route, navigation }: any) => {
   const { industryData } = useIndustry();
+  const projectParams = route?.params?.project;
+
   const [activeTab, setActiveTab] = useState("Applied");
-  const [candidates, setCandidates] = useState<Record<string, Candidate[]>>({
+  const [candidates, setCandidates] = useState<Record<string, ProjectCandidate[]>>({
     "Applied": [],
     "Shortlisted": [],
-    "Tech Interview": [],
-    "HR": [],
+    "Interview Scheduled": [],
     "Rejected": [],
     "Selected": [],
+    "Awarded": []
   });
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  
+
   // Modal states
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
+  const [selectedCandidate, setSelectedCandidate] = useState<ProjectCandidate | null>(null);
   const [selectedStatus, setSelectedStatus] = useState<string>("");
   const [studentDetails, setStudentDetails] = useState<any>(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [updateStatusLoading, setUpdateStatusLoading] = useState(false);
   const [isStatusPickerOpen, setIsStatusPickerOpen] = useState(false);
 
-  const companyName = industryData?.company_name || "";
+  const companyName = industryData?.company_name || industryData?.name || "";
+  const projectFilter = projectParams?.name || projectParams?.project_name;
+  const projectTitle = projectParams?.project_name || projectParams?.name;
   const tabScrollRef = useRef<ScrollView>(null);
 
-  const fetchApplications = useCallback(async (name: string) => {
+  const fetchApplications = useCallback(async (name: string, projName?: string) => {
     try {
       if (!refreshing) setLoading(true);
-      const response = await getStudentApplicationList(name);
-      
-      const apiData = response?.data || response?.message?.data || [];
+      const response = await getProjectApplicationList(name, projName);
+
+      const apiData = response?.message?.data || response?.data || [];
 
       if (Array.isArray(apiData)) {
-        const newCandidates: Record<string, Candidate[]> = {
+        const newCandidates: Record<string, ProjectCandidate[]> = {
           "Applied": [],
           "Shortlisted": [],
-          "Tech Interview": [],
-          "HR": [],
+          "Interview Scheduled": [],
           "Rejected": [],
           "Selected": [],
+          "Awarded": []
         };
 
         apiData.forEach((app: any) => {
@@ -107,18 +113,16 @@ export const IndustryPipelineScreen = () => {
           const bgColors = ['#EF4444', '#3B82F6', '#10B981', '#6366F1', '#F59E0B', '#8B5CF6'];
           const randomColor = bgColors[Math.floor(Math.random() * bgColors.length)];
 
-          const candidate: Candidate = {
+          const candidate: ProjectCandidate = {
             id: app.name || Math.random().toString(),
             name: app.student_name || email.split('@')[0],
-            owner: app.owner || app.modified_by || "Unknown",
+            student: app.student,
+            project: app.project || "Unknown",
             status: app.status || "Applied",
-            studentEmail: app.student,
-            internship: app.internship || "Unknown",
-            initials: initials,
-            bgColor: randomColor,
-            college: app.college || "N/A",
             applied_on: app.applied_on ? new Date(app.applied_on).toLocaleDateString() : "N/A",
-            match: Math.round(app.match_score) || 0
+            resume: app.resume || "",
+            initials: initials,
+            bgColor: randomColor
           };
 
           if (newCandidates[candidate.status]) {
@@ -131,16 +135,19 @@ export const IndustryPipelineScreen = () => {
         setCandidates(newCandidates);
       }
     } catch (err: any) {
-      console.error("Error fetching applications:", err);
+      console.error("Error fetching project applications:", err);
+      // Handle 404 No Data Found gracefully
       if (err?.status === 404 || err?.message?.includes("404")) {
         setCandidates({
           "Applied": [],
           "Shortlisted": [],
-          "Tech Interview": [],
-          "HR": [],
+          "Interview Scheduled": [],
           "Rejected": [],
           "Selected": [],
+          "Awarded": []
         });
+      } else {
+        Alert.alert("Error", "Failed to fetch project applications");
       }
     } finally {
       setLoading(false);
@@ -149,24 +156,24 @@ export const IndustryPipelineScreen = () => {
   }, [refreshing]);
 
   useEffect(() => {
-    if (companyName) {
-      fetchApplications(companyName);
+    if (companyName && projectFilter) {
+      fetchApplications(companyName, projectFilter);
     }
-  }, [companyName, fetchApplications]);
+  }, [companyName, projectFilter, fetchApplications]);
 
   const onRefresh = () => {
     setRefreshing(true);
-    fetchApplications(companyName);
+    fetchApplications(companyName, projectFilter);
   };
 
-  const handleCardClick = async (candidate: Candidate) => {
+  const handleCardClick = async (candidate: ProjectCandidate) => {
     setSelectedCandidate(candidate);
     setSelectedStatus(candidate.status);
     setIsModalOpen(true);
     setLoadingDetails(true);
     setStudentDetails(null);
     try {
-      const response = await getStudentByEmail(candidate.studentEmail);
+      const response = await getStudentByEmail(candidate.student);
       const data = response?.message?.data || response?.data || response;
       if (data) {
         setStudentDetails(data);
@@ -182,8 +189,12 @@ export const IndustryPipelineScreen = () => {
     if (!selectedCandidate) return;
     try {
       setUpdateStatusLoading(true);
-      await updateApplicationStatus(selectedCandidate.id, selectedStatus);
-      await fetchApplications(companyName);
+      await updateProjectApplicationStatus({
+        name: selectedCandidate.id,
+        industry: companyName,
+        status: selectedStatus
+      });
+      await fetchApplications(companyName, projectFilter);
       setSelectedCandidate(prev => prev ? { ...prev, status: selectedStatus } : null);
       Alert.alert("Success", `Status updated to ${selectedStatus}`);
       setIsModalOpen(false);
@@ -194,11 +205,35 @@ export const IndustryPipelineScreen = () => {
     }
   };
 
+  const formatAppliedDate = (dateStr: string) => {
+    if (!dateStr || dateStr === "N/A") return "N/A";
+    try {
+      const date = new Date(dateStr.replace(' ', 'T'));
+      if (isNaN(date.getTime())) return dateStr;
+
+      const day = String(date.getDate()).padStart(2, '0');
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const year = date.getFullYear();
+      const hours = String(date.getHours()).padStart(2, '0');
+      const minutes = String(date.getMinutes()).padStart(2, '0');
+      const seconds = String(date.getSeconds()).padStart(2, '0');
+
+      return `${day} ${hours}:${minutes}:${seconds}-${month}-${year}`;
+    } catch (e) {
+      return dateStr;
+    }
+  };
+
+  const openResume = (url: string) => {
+    if (!url) return;
+    Linking.openURL(url).catch(err => Alert.alert("Error", "Cannot open resume link"));
+  };
+
   if (loading && !refreshing) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={colors.purple[600]} />
-        <Text style={styles.loadingText}>SYNCING PIPELINE...</Text>
+        <Text style={styles.loadingText}>SYNCING PROJECT PIPELINE...</Text>
       </View>
     );
   }
@@ -210,13 +245,16 @@ export const IndustryPipelineScreen = () => {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerRow}>
-          <Text style={styles.title}>Pipeline</Text>
+          <TouchableOpacity onPress={() => navigation.navigate('Projects')} style={styles.backButton}>
+            <ArrowLeft size={24} color="#0F172A" />
+          </TouchableOpacity>
+          <Text style={styles.title} numberOfLines={1}>Project Pipeline</Text>
           <View style={styles.headerBadge}>
-            <LayoutDashboard size={10} color={colors.purple[600]} />
-            <Text style={styles.headerBadgeText}>CANDIDATE WORKFLOW</Text>
+            <Briefcase size={10} color={colors.purple[600]} />
+            <Text style={styles.headerBadgeText}>R&D WORKFLOW</Text>
           </View>
         </View>
-        <Text style={styles.subtitle}>Manage your talent acquisition funnel</Text>
+        <Text style={styles.subtitle} numberOfLines={1}>{projectTitle || "All Projects"}</Text>
       </View>
 
       {/* Custom Tabs */}
@@ -274,18 +312,18 @@ export const IndustryPipelineScreen = () => {
           </View>
           <View>
             <Text style={[styles.heroTitle, { color: activeColor }]}>{activeTab}</Text>
-            <Text style={styles.heroSubtitle}>{candidates[activeTab]?.length || 0} candidates in this stage</Text>
+            <Text style={styles.heroSubtitle}>{candidates[activeTab]?.length || 0} applications in this stage</Text>
           </View>
         </View>
 
         <View style={styles.cardsList}>
           {candidates[activeTab]?.length > 0 ? (
             candidates[activeTab].map((candidate, cIdx) => (
-              <Animated.View 
-                key={candidate.id} 
+              <Animated.View
+                key={candidate.id}
                 entering={FadeInUp.delay(cIdx * 50)}
               >
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.candidateCard}
                   onPress={() => handleCardClick(candidate)}
                 >
@@ -295,19 +333,9 @@ export const IndustryPipelineScreen = () => {
                     </View>
                     <View style={styles.candidateInfo}>
                       <View style={styles.nameRow}>
-                        <Text style={styles.candidateName} numberOfLines={1}>{candidate.name}</Text>
-                        <View style={styles.matchBadge}>
-                          <Text style={styles.matchText}>{candidate.match}% Match</Text>
-                        </View>
+                        <Text style={styles.candidateName} numberOfLines={1}>{candidate.student}</Text>
                       </View>
-                      <Text style={styles.candidateEmail} numberOfLines={1}>{candidate.studentEmail}</Text>
-                      
-                      <View style={styles.metaRow}>
-                        <View style={styles.metaItem}>
-                          <MapPin size={12} color="#94A3B8" />
-                          <Text style={styles.metaText} numberOfLines={1}>{candidate.college}</Text>
-                        </View>
-                      </View>
+                      <Text style={styles.projectText} numberOfLines={1}>Project: {candidate.project}</Text>
                     </View>
                     <ChevronRight size={18} color="#CBD5E1" />
                   </View>
@@ -317,9 +345,12 @@ export const IndustryPipelineScreen = () => {
                       <Clock size={12} color="#64748B" />
                       <Text style={styles.footerText}>Applied on {candidate.applied_on}</Text>
                     </View>
-                    <View style={styles.ownerBadge}>
-                      <Text style={styles.ownerText}>Owner: {candidate.owner}</Text>
-                    </View>
+                    {candidate.resume ? (
+                      <View style={styles.resumeBadge}>
+                        <FileText size={10} color="#3B82F6" />
+                        <Text style={styles.resumeText}>Resume Attached</Text>
+                      </View>
+                    ) : null}
                   </View>
                 </TouchableOpacity>
               </Animated.View>
@@ -327,10 +358,10 @@ export const IndustryPipelineScreen = () => {
           ) : (
             <View style={styles.emptyState}>
               <View style={styles.emptyIconCircle}>
-                <Mail size={32} color="#E2E8F0" />
+                <Briefcase size={32} color="#E2E8F0" />
               </View>
-              <Text style={styles.emptyStateTitle}>No Candidates Yet</Text>
-              <Text style={styles.emptyStateText}>Applications in the '{activeTab}' stage will appear here.</Text>
+              <Text style={styles.emptyStateTitle}>No Applications Yet</Text>
+              <Text style={styles.emptyStateText}>Students applying for the project will appear here.</Text>
             </View>
           )}
         </View>
@@ -351,9 +382,9 @@ export const IndustryPipelineScreen = () => {
                 <View style={[styles.modalAvatar, { backgroundColor: selectedCandidate?.bgColor || colors.purple[600] }]}>
                   <Text style={styles.modalAvatarText}>{selectedCandidate?.initials || "S"}</Text>
                 </View>
-                <View>
-                  <Text style={styles.modalTitle}>{selectedCandidate?.name || "Student Details"}</Text>
-                  <Text style={styles.modalSubtitle}>{selectedCandidate?.college || "Application Record"}</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.modalTitle} numberOfLines={1}>{selectedCandidate?.student || "Student Details"}</Text>
+                  <Text style={styles.modalSubtitle} numberOfLines={1}>{selectedCandidate?.project || "Application Record"}</Text>
                 </View>
               </View>
               <TouchableOpacity onPress={() => setIsModalOpen(false)} style={styles.closeBtn}>
@@ -362,103 +393,102 @@ export const IndustryPipelineScreen = () => {
             </View>
 
             <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
-              {loadingDetails ? (
-                <View style={styles.detailsLoading}>
-                  <ActivityIndicator color={colors.purple[600]} />
-                </View>
-              ) : studentDetails ? (
-                <View style={styles.detailsList}>
-                  <View style={styles.detailsCard}>
-                    {[
-                      { label: "Email", value: studentDetails.name },
-                      { label: "First Name", value: studentDetails.first_name },
-                      { label: "Last Name", value: studentDetails.last_name },
-                      { label: "College", value: studentDetails.college },
-                      { label: "Stream", value: studentDetails.stream },
-                      { label: "Course", value: studentDetails.course },
-                    ].map((item, idx) => (
-                      <View key={idx} style={styles.detailItem}>
-                        <Text style={styles.detailLabel}>{item.label}</Text>
-                        <Text style={styles.detailValue}>{item.value || "N/A"}</Text>
-                      </View>
-                    ))}
+              <View style={styles.detailsList}>
+                <View style={styles.detailsCard}>
+                  <View style={styles.detailItem}>
+                    <Text style={styles.detailLabel}>STUDENT</Text>
+                    <Text style={styles.detailValue}>{selectedCandidate?.student || "N/A"}</Text>
                   </View>
-
-                  <View style={styles.updateStatusSection}>
-                    <View style={styles.sectionHeader}>
-                      <Target size={16} color="#F97316" />
-                      <Text style={styles.sectionHeaderText}>UPDATE PIPELINE STATUS</Text>
-                    </View>
-
-                    <TouchableOpacity 
-                      style={styles.pickerTrigger}
-                      onPress={() => setIsStatusPickerOpen(true)}
-                    >
-                      <Zap size={16} color="#64748B" />
-                      <Text style={styles.pickerTriggerText}>{selectedStatus}</Text>
-                      <ChevronDown size={16} color="#64748B" />
-                    </TouchableOpacity>
-
-                    {selectedStatus !== selectedCandidate?.status && (
-                      <TouchableOpacity 
-                        style={styles.confirmBtn}
-                        onPress={handleChangeStatus}
-                        disabled={updateStatusLoading}
-                      >
-                        {updateStatusLoading ? (
-                          <ActivityIndicator color="#FFF" size="small" />
-                        ) : (
-                          <Text style={styles.confirmBtnText}>Confirm Status Change</Text>
-                        )}
+                  <View style={styles.detailItem}>
+                    <Text style={styles.detailLabel}>PROJECT</Text>
+                    <Text style={styles.detailValue}>{selectedCandidate?.project || "N/A"}</Text>
+                  </View>
+                  <View style={styles.detailItem}>
+                    <Text style={styles.detailLabel}>APPLIED ON</Text>
+                    <Text style={styles.detailValue}>{formatAppliedDate(selectedCandidate?.applied_on || "")}</Text>
+                  </View>
+                  <View style={styles.detailItem}>
+                    <Text style={styles.detailLabel}>RESUME</Text>
+                    {selectedCandidate?.resume ? (
+                      <TouchableOpacity onPress={() => openResume(selectedCandidate.resume)}>
+                        <Text style={[styles.detailValue, { color: '#3B82F6' }]}>View Resume</Text>
                       </TouchableOpacity>
+                    ) : (
+                      <Text style={[styles.detailValue, { color: '#94A3B8' }]}>Not provided</Text>
                     )}
                   </View>
                 </View>
-              ) : (
-                <View style={styles.noDetails}>
-                  <Text style={styles.noDetailsText}>No details found for this student.</Text>
+
+                <View style={styles.updateStatusSection}>
+                  <View style={styles.sectionHeader}>
+                    <Target size={16} color="#3B82F6" />
+                    <Text style={styles.sectionHeaderText}>UPDATE PIPELINE STATUS</Text>
+                  </View>
+
+                  <TouchableOpacity
+                    style={styles.pickerTrigger}
+                    onPress={() => setIsStatusPickerOpen(true)}
+                  >
+                    <Zap size={16} color="#64748B" />
+                    <Text style={styles.pickerTriggerText}>{selectedStatus}</Text>
+                    <ChevronDown size={16} color="#64748B" />
+                  </TouchableOpacity>
+
+                  {selectedStatus !== selectedCandidate?.status && (
+                    <TouchableOpacity
+                      style={styles.confirmBtn}
+                      onPress={handleChangeStatus}
+                      disabled={updateStatusLoading}
+                    >
+                      {updateStatusLoading ? (
+                        <ActivityIndicator color="#FFF" size="small" />
+                      ) : (
+                        <Text style={styles.confirmBtnText}>Confirm Status Change</Text>
+                      )}
+                    </TouchableOpacity>
+                  )}
                 </View>
-              )}
+              </View>
             </ScrollView>
           </View>
         </View>
+      </Modal>
 
-        {/* Status Picker Modal */}
-        <Modal
-          visible={isStatusPickerOpen}
-          transparent={true}
-          animationType="fade"
-          onRequestClose={() => setIsStatusPickerOpen(false)}
+      {/* Status Picker Modal */}
+      <Modal
+        visible={isStatusPickerOpen}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setIsStatusPickerOpen(false)}
+      >
+        <TouchableOpacity
+          style={styles.pickerOverlay}
+          activeOpacity={1}
+          onPress={() => setIsStatusPickerOpen(false)}
         >
-          <TouchableOpacity 
-            style={styles.pickerOverlay} 
-            activeOpacity={1} 
-            onPress={() => setIsStatusPickerOpen(false)}
-          >
-            <View style={styles.pickerContent}>
-              <Text style={styles.pickerHeader}>Select Status</Text>
-              {pipelineColumns.map((col) => (
-                <TouchableOpacity
-                  key={col.id}
-                  style={[
-                    styles.pickerItem,
-                    selectedStatus === col.id && styles.pickerItemActive
-                  ]}
-                  onPress={() => {
-                    setSelectedStatus(col.id);
-                    setIsStatusPickerOpen(false);
-                  }}
-                >
-                  <Text style={[
-                    styles.pickerItemText,
-                    selectedStatus === col.id && styles.pickerItemTextActive
-                  ]}>{col.title}</Text>
-                  {selectedStatus === col.id && <CheckCircle2 size={16} color={colors.purple[600]} />}
-                </TouchableOpacity>
-              ))}
-            </View>
-          </TouchableOpacity>
-        </Modal>
+          <View style={styles.pickerContent}>
+            <Text style={styles.pickerHeader}>Select Project Status</Text>
+            {pipelineColumns.map((col) => (
+              <TouchableOpacity
+                key={col.id}
+                style={[
+                  styles.pickerItem,
+                  selectedStatus === col.id && styles.pickerItemActive
+                ]}
+                onPress={() => {
+                  setSelectedStatus(col.id);
+                  setIsStatusPickerOpen(false);
+                }}
+              >
+                <Text style={[
+                  styles.pickerItemText,
+                  selectedStatus === col.id && styles.pickerItemTextActive
+                ]}>{col.title}</Text>
+                {selectedStatus === col.id && <CheckCircle2 size={16} color={colors.purple[600]} />}
+              </TouchableOpacity>
+            ))}
+          </View>
+        </TouchableOpacity>
       </Modal>
     </SafeAreaView>
   );
@@ -468,12 +498,13 @@ const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: '#F8FAFC' },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#FFF' },
   loadingText: { marginTop: 12, fontSize: 10, fontWeight: '800', color: '#64748B', letterSpacing: 1 },
-  
+
   header: { paddingHorizontal: 20, paddingTop: 16, marginBottom: 16 },
-  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 },
-  headerBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(147, 51, 234, 0.08)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
-  headerBadgeText: { fontSize: 8, fontWeight: '800', color: colors.purple[600], letterSpacing: 0.5 },
-  title: { fontSize: 28, fontWeight: '800', color: '#0F172A', fontFamily: typography.fontFamily.display },
+  headerRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },
+  backButton: { marginRight: 12, padding: 4 },
+  headerBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(59, 130, 246, 0.08)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, marginLeft: 'auto' },
+  headerBadgeText: { fontSize: 8, fontWeight: '800', color: '#3B82F6', letterSpacing: 0.5 },
+  title: { fontSize: 28, fontWeight: '800', color: '#0F172A', flex: 1 },
   subtitle: { fontSize: 13, color: '#64748B', fontWeight: '500' },
 
   tabsContainer: { backgroundColor: '#FFF', borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
@@ -498,18 +529,13 @@ const styles = StyleSheet.create({
   candidateInfo: { flex: 1 },
   nameRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 },
   candidateName: { fontSize: 16, fontWeight: '800', color: '#1E293B' },
-  matchBadge: { backgroundColor: '#ECFDF5', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
-  matchText: { fontSize: 10, fontWeight: '800', color: '#059669' },
-  candidateEmail: { fontSize: 12, color: '#64748B', fontWeight: '500', marginBottom: 8 },
-  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  metaItem: { flexDirection: 'row', alignItems: 'center', gap: 4, flex: 1 },
-  metaText: { fontSize: 11, fontWeight: '600', color: '#94A3B8' },
+  projectText: { fontSize: 11, fontWeight: '600', color: '#94A3B8' },
 
   cardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 16, paddingTop: 16, borderTopWidth: 1, borderTopColor: '#F1F5F9' },
   footerItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   footerText: { fontSize: 11, fontWeight: '600', color: '#64748B' },
-  ownerBadge: { backgroundColor: '#F8FAFC', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, borderWidth: 1, borderColor: '#F1F5F9' },
-  ownerText: { fontSize: 10, fontWeight: '700', color: '#94A3B8' },
+  resumeBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#EFF6FF', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, borderWidth: 1, borderColor: '#DBEAFE' },
+  resumeText: { fontSize: 10, fontWeight: '700', color: '#3B82F6' },
 
   emptyState: { alignItems: 'center', justifyContent: 'center', paddingVertical: 80, paddingHorizontal: 40 },
   emptyIconCircle: { width: 80, height: 80, borderRadius: 40, backgroundColor: '#F8FAFC', alignItems: 'center', justifyContent: 'center', marginBottom: 20 },
@@ -518,28 +544,27 @@ const styles = StyleSheet.create({
 
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
   modalContainer: { backgroundColor: '#F8FAFC', borderTopLeftRadius: 32, borderTopRightRadius: 32, height: '92%', overflow: 'hidden' },
-  modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 24, backgroundColor: '#FFF', borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
-  modalHeaderContent: { flexDirection: 'row', alignItems: 'center', gap: 16 },
-  modalAvatar: { width: 56, height: 56, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 24, backgroundColor: '#101828' },
+  modalHeaderContent: { flexDirection: 'row', alignItems: 'center', gap: 16, flex: 1 },
+  modalAvatar: { width: 56, height: 56, borderRadius: 18, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' },
   modalAvatarText: { fontSize: 20, fontWeight: '800', color: '#FFF' },
-  modalTitle: { fontSize: 18, fontWeight: '800', color: '#0F172A' },
-  modalSubtitle: { fontSize: 12, fontWeight: '600', color: '#64748B', marginTop: 2 },
-  closeBtn: { padding: 8, backgroundColor: '#F1F5F9', borderRadius: 12 },
+  modalTitle: { fontSize: 18, fontWeight: '800', color: '#FFF' },
+  modalSubtitle: { fontSize: 12, fontWeight: '600', color: '#94A3B8', marginTop: 2 },
+  closeBtn: { padding: 8 },
 
-  modalBody: { flex: 1, padding: 20 },
-  detailsLoading: { padding: 40, alignItems: 'center' },
+  modalBody: { flex: 1, padding: 20, backgroundColor: '#F8FAFC' },
   detailsList: { gap: 20 },
   detailsCard: { backgroundColor: '#FFF', borderRadius: 24, padding: 20, borderWidth: 1, borderColor: '#E2E8F0', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
-  detailItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
-  detailLabel: { fontSize: 11, fontWeight: '700', color: '#94A3B8', textTransform: 'uppercase', letterSpacing: 0.5 },
+  detailItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
+  detailLabel: { fontSize: 11, fontWeight: '700', color: '#64748B', letterSpacing: 0.5 },
   detailValue: { fontSize: 14, fontWeight: '800', color: '#1E293B', textAlign: 'right', flex: 1, marginLeft: 20 },
-  
-  updateStatusSection: { backgroundColor: '#FFF', borderRadius: 24, padding: 20, borderWidth: 1, borderColor: '#E2E8F0', marginBottom: 40 },
+
+  updateStatusSection: { backgroundColor: '#FFF', borderRadius: 24, padding: 20, borderWidth: 1, borderColor: '#E2E8F0' },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 16 },
-  sectionHeaderText: { fontSize: 11, fontWeight: '800', color: '#1E293B', letterSpacing: 0.5 },
+  sectionHeaderText: { fontSize: 11, fontWeight: '800', color: '#101828', letterSpacing: 0.5 },
   pickerTrigger: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#F8FAFC', padding: 16, borderRadius: 16, borderWidth: 1, borderColor: '#E2E8F0' },
   pickerTriggerText: { flex: 1, fontSize: 14, fontWeight: '800', color: '#1E293B' },
-  confirmBtn: { backgroundColor: '#F97316', padding: 16, borderRadius: 16, alignItems: 'center', marginTop: 12, shadowColor: '#F97316', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 4 },
+  confirmBtn: { backgroundColor: '#3B82F6', padding: 16, borderRadius: 16, alignItems: 'center', marginTop: 12, shadowColor: '#3B82F6', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 4 },
   confirmBtnText: { color: '#FFF', fontSize: 14, fontWeight: '800' },
 
   noDetails: { padding: 40, alignItems: 'center' },
@@ -549,7 +574,7 @@ const styles = StyleSheet.create({
   pickerContent: { backgroundColor: '#FFF', borderRadius: 24, padding: 8 },
   pickerHeader: { fontSize: 16, fontWeight: '800', color: '#0F172A', padding: 20, textAlign: 'center', borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
   pickerItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, borderRadius: 16 },
-  pickerItemActive: { backgroundColor: 'rgba(147, 51, 234, 0.05)' },
+  pickerItemActive: { backgroundColor: 'rgba(59, 130, 246, 0.05)' },
   pickerItemText: { fontSize: 14, fontWeight: '700', color: '#475569' },
-  pickerItemTextActive: { color: colors.purple[600], fontWeight: '800' }
+  pickerItemTextActive: { color: '#3B82F6', fontWeight: '800' }
 });

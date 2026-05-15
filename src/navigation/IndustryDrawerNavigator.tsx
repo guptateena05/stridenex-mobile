@@ -25,6 +25,7 @@ import {
   Settings
 } from 'lucide-react-native';
 import { IndustrySettingsScreen } from '@/screens/Dashboards/IndustryDashboard/IndustrySettingsScreen';
+import { IndustryProjectPipelineScreen } from '@/screens/Dashboards/IndustryDashboard/IndustryProjectPipelineScreen';
 
 const Drawer = createDrawerNavigator();
 
@@ -70,7 +71,7 @@ export const IndustryDrawerNavigator = () => {
         }}
       />
       <Drawer.Screen
-        name="Pipeline"
+        name="Internships Pipeline"
         component={IndustryPipelineScreen}
         options={{
           drawerIcon: ({ color, size }) => <Mail color={color} size={size} />
@@ -116,6 +117,13 @@ export const IndustryDrawerNavigator = () => {
         component={IndustryPlansScreen}
         options={{
           drawerIcon: ({ color, size }) => <School color={color} size={size} />
+        }}
+      />
+      <Drawer.Screen
+        name="Project Pipeline"
+        component={IndustryProjectPipelineScreen}
+        options={{
+          drawerItemStyle: { display: 'none' }
         }}
       />
     </Drawer.Navigator>
