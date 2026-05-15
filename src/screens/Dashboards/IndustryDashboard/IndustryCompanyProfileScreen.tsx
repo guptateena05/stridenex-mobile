@@ -48,6 +48,7 @@ import {
   getApplicationStatusCount
 } from '@/api/industry.services';
 import DynamicForm from '@/components/forms/DynamicForm';
+import { LocationPicker, LocationData } from '../../../components/maps/LocationPicker';
 import { FormField } from '@/components/forms/DynamicField';
 
 const { width } = Dimensions.get('window');
@@ -55,6 +56,7 @@ const { width } = Dimensions.get('window');
 export const IndustryCompanyProfileScreen = () => {
   const { industryData, loading, error, refreshIndustryData } = useIndustry();
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
+  const [isMapModalVisible, setIsMapModalVisible] = useState(false);
   const [updateLoading, setUpdateLoading] = useState(false);
   const [profileFormValues, setProfileFormValues] = useState<any>({});
 
@@ -868,9 +870,9 @@ export const IndustryCompanyProfileScreen = () => {
               <View style={styles.locationInputGroup}>
                 <View style={styles.locationHeaderRow}>
                   <Text style={styles.locationLabel}>ADDRESS LINE 1 <Text style={{ color: colors.error }}>*</Text></Text>
-                  <TouchableOpacity style={styles.useLocationBtn}>
+                  <TouchableOpacity style={styles.useLocationBtn} onPress={() => setIsMapModalVisible(true)}>
                     <MapPin size={12} color="#2563EB" />
-                    <Text style={styles.useLocationText}>Use My Location</Text>
+                    <Text style={styles.useLocationText}>Pick on Map</Text>
                   </TouchableOpacity>
                 </View>
                 <View style={styles.locationInputWrapper}>
@@ -923,7 +925,7 @@ export const IndustryCompanyProfileScreen = () => {
                     <Text style={styles.locationLabel}>MAP PREVIEW</Text>
                     <Text style={styles.mapPreviewSub}>Verify your business location on map</Text>
                   </View>
-                  <TouchableOpacity style={styles.adjustMapBtn}>
+                  <TouchableOpacity style={styles.adjustMapBtn} onPress={() => setIsMapModalVisible(true)}>
                     <Text style={styles.adjustMapText}>↗ ADJUST ON FULL MAP</Text>
                   </TouchableOpacity>
                 </View>
@@ -964,6 +966,38 @@ export const IndustryCompanyProfileScreen = () => {
             </View>
           </View>
         </View>
+      </Modal>
+
+      {/* Map Location Picker Modal */}
+      <Modal visible={isMapModalVisible} animationType="slide" onRequestClose={() => setIsMapModalVisible(false)}>
+        <LocationPicker
+          initialLocation={
+            profileFormValues.location?.latitude ? {
+              latitude: profileFormValues.location.latitude,
+              longitude: profileFormValues.location.longitude,
+              address: profileFormValues.location.full_address
+            } : undefined
+          }
+          onLocationSelect={(data: LocationData) => {
+            setProfileFormValues((prev: any) => ({
+              ...prev,
+              location: {
+                ...prev.location,
+                address_line_1: data.address_line_1,
+                address_line_2: data.address_line_2,
+                city: data.city,
+                state: data.state,
+                country: data.country,
+                pincode: data.pincode,
+                latitude: data.latitude,
+                longitude: data.longitude,
+                full_address: data.full_address
+              }
+            }));
+            setIsMapModalVisible(false);
+          }}
+          onClose={() => setIsMapModalVisible(false)}
+        />
       </Modal>
 
       {/* Skill Domain Modal */}
