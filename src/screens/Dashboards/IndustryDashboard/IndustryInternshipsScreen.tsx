@@ -15,6 +15,7 @@ import {
   X
 } from 'lucide-react-native';
 import Animated, { FadeInUp } from 'react-native-reanimated';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { StatsCard } from '@/components/dashboard/StatsCard';
 import { useIndustry } from '@/context/IndustryContext';
 import {
@@ -30,6 +31,8 @@ import DynamicForm from '@/components/forms/DynamicForm';
 import { FormField } from '@/components/forms/DynamicField';
 
 export const IndustryInternshipsScreen = () => {
+  const navigation = useNavigation<any>();
+  const route = useRoute<any>();
   const { industryData } = useIndustry();
   const [internships, setInternships] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -87,6 +90,13 @@ export const IndustryInternshipsScreen = () => {
   useEffect(() => {
     fetchInternshipData();
   }, [fetchInternshipData]);
+
+  useEffect(() => {
+    if (route.params?.openForm) {
+      handlePostNew();
+      navigation.setParams({ openForm: undefined });
+    }
+  }, [route.params?.openForm]);
 
   const onRefresh = () => {
     setRefreshing(true);

@@ -16,6 +16,7 @@ import {
   LayoutDashboard
 } from 'lucide-react-native';
 import Animated, { FadeInUp, FadeInRight } from 'react-native-reanimated';
+import { useNavigation } from '@react-navigation/native';
 import { StatsCard } from '@/components/dashboard/StatsCard';
 import { useIndustry } from '@/context/IndustryContext';
 import { getApplicationStatusCount } from '@/api/industry.services';
@@ -43,6 +44,7 @@ const initialPipelineStages = [
 ];
 
 export const IndustryDashboardScreen = () => {
+  const navigation = useNavigation<any>();
   const { userFullName } = useAuth();
   const { industryData, refreshIndustryData } = useIndustry();
   const [pipelineData, setPipelineData] = React.useState(initialPipelineStages);
@@ -213,13 +215,13 @@ export const IndustryDashboardScreen = () => {
 
             <View style={[styles.card, { marginTop: 16 }]}>
               <Text style={styles.cardTitle}>Quick Actions</Text>
-              <TouchableOpacity style={styles.actionBtn}>
+              <TouchableOpacity style={styles.actionBtn} onPress={() => navigation.navigate('Internships', { openForm: true })}>
                 <View style={[styles.actionIconBox, { backgroundColor: 'rgba(147, 51, 234, 0.1)' }]}>
                   <Briefcase size={16} color={colors.purple[600]} />
                 </View>
                 <Text style={styles.actionBtnText}>Post New Internship</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.actionBtn}>
+              <TouchableOpacity style={styles.actionBtn} onPress={() => navigation.navigate('Projects', { openForm: true })}>
                 <View style={[styles.actionIconBox, { backgroundColor: 'rgba(59, 130, 246, 0.1)' }]}>
                   <Target size={16} color="#3B82F6" />
                 </View>

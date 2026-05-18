@@ -15,7 +15,7 @@ import {
   X
 } from 'lucide-react-native';
 import Animated, { FadeInUp, FadeInRight } from 'react-native-reanimated';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { StatsCard } from '@/components/dashboard/StatsCard';
 import { useIndustry } from '@/context/IndustryContext';
 import { 
@@ -36,6 +36,7 @@ const { width } = Dimensions.get('window');
 
 export const IndustryProjectsScreen = () => {
   const navigation = useNavigation<any>();
+  const route = useRoute<any>();
   const { industryData, loading: industryLoading } = useIndustry();
   const [projects, setProjects] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -101,6 +102,13 @@ export const IndustryProjectsScreen = () => {
     
     return unsubscribe;
   }, [navigation, fetchProjectData]);
+
+  useEffect(() => {
+    if (route.params?.openForm) {
+      handlePostNew();
+      navigation.setParams({ openForm: undefined });
+    }
+  }, [route.params?.openForm]);
 
   const onRefresh = () => {
     setRefreshing(true);
