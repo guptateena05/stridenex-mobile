@@ -3,9 +3,9 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, Refre
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '@/theme/colors';
 import { typography } from '@/theme/typography';
-import { 
-  Plus, 
-  Briefcase, 
+import {
+  Plus,
+  Briefcase,
   Trophy,
   Users,
   Microscope,
@@ -18,11 +18,11 @@ import Animated, { FadeInUp, FadeInRight } from 'react-native-reanimated';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { StatsCard } from '@/components/dashboard/StatsCard';
 import { useIndustry } from '@/context/IndustryContext';
-import { 
-  getProjectList, 
-  createProject, 
-  updateProject, 
-  deleteProject, 
+import {
+  getProjectList,
+  createProject,
+  updateProject,
+  deleteProject,
   getProjectApplicationCount,
   getMasterData,
   createSkill,
@@ -58,7 +58,7 @@ export const IndustryProjectsScreen = () => {
 
   const fetchProjectData = useCallback(async () => {
     if (!companyName) return;
-    
+
     try {
       setLoading(true);
       const [listRes, countRes] = await Promise.all([
@@ -94,12 +94,12 @@ export const IndustryProjectsScreen = () => {
 
   useEffect(() => {
     fetchProjectData();
-    
+
     // Refresh data when screen comes into focus
     const unsubscribe = navigation.addListener('focus', () => {
       fetchProjectData();
     });
-    
+
     return unsubscribe;
   }, [navigation, fetchProjectData]);
 
@@ -123,12 +123,12 @@ export const IndustryProjectsScreen = () => {
 
   const handleEdit = (project: any) => {
     const vals = {
-        ...project,
-        required_skills: Array.isArray(project.required_skills)
-          ? project.required_skills.map((s: any) => s.skill)
-          : Array.isArray(project.skills)
-            ? project.skills.map((s: any) => s.skill)
-            : []
+      ...project,
+      required_skills: Array.isArray(project.required_skills)
+        ? project.required_skills.map((s: any) => s.skill)
+        : Array.isArray(project.skills)
+          ? project.skills.map((s: any) => s.skill)
+          : []
     };
     setEditingProject(project);
     setFormValues(vals);
@@ -141,8 +141,8 @@ export const IndustryProjectsScreen = () => {
       "Are you sure you want to delete this project?",
       [
         { text: "Cancel", style: "cancel" },
-        { 
-          text: "Delete", 
+        {
+          text: "Delete",
           style: "destructive",
           onPress: async () => {
             try {
@@ -167,7 +167,7 @@ export const IndustryProjectsScreen = () => {
         duration: String(formData.duration),
         // Convert comma-separated skills back to objects if needed, 
         // but here we just pass the values as the backend expect
-        required_skills: Array.isArray(formData.required_skills) 
+        required_skills: Array.isArray(formData.required_skills)
           ? formData.required_skills.map((s: string) => ({ skill: s }))
           : []
       };
@@ -228,45 +228,45 @@ export const IndustryProjectsScreen = () => {
   };
 
   const projectFields: FormField[] = useMemo(() => [
-    { 
-      fieldname: 'project_name', 
-      label: 'Project Name', 
-      fieldtype: 'Data', 
-      required: true, 
+    {
+      fieldname: 'project_name',
+      label: 'Project Name',
+      fieldtype: 'Data',
+      required: true,
       placeholder: 'e.g. AI-Powered Fraud Detection',
       disabled: !!editingProject
     },
-    { 
-      fieldname: 'project_code', 
-      label: 'Project Code', 
-      fieldtype: 'Data', 
-      required: true, 
+    {
+      fieldname: 'project_code',
+      label: 'Project Code',
+      fieldtype: 'Data',
+      required: true,
       placeholder: 'e.g. PRJ-2401',
     },
-    { 
-      fieldname: 'status', 
-      label: 'Status', 
-      fieldtype: 'Select', 
-      options: ['Active', 'Completed', 'Disable'], 
+    {
+      fieldname: 'status',
+      label: 'Status',
+      fieldtype: 'Select',
+      options: ['Active', 'Completed', 'Disable'],
       required: true,
     },
-    { 
-      fieldname: 'duration', 
-      label: 'Duration (Days)', 
-      fieldtype: 'Int', 
-      required: true, 
+    {
+      fieldname: 'duration',
+      label: 'Duration (Days)',
+      fieldtype: 'Int',
+      required: true,
       placeholder: 'e.g. 30',
     },
-    { 
-      fieldname: 'start_date', 
-      label: 'Start Date', 
-      fieldtype: 'Date', 
+    {
+      fieldname: 'start_date',
+      label: 'Start Date',
+      fieldtype: 'Date',
       required: true,
     },
-    { 
-      fieldname: 'end_date', 
-      label: 'End Date', 
-      fieldtype: 'Date', 
+    {
+      fieldname: 'end_date',
+      label: 'End Date',
+      fieldtype: 'Date',
       required: true,
       disabled: true
     },
@@ -316,12 +316,12 @@ export const IndustryProjectsScreen = () => {
       required: true,
       allowCustom: true
     },
-    { 
-      fieldname: 'description', 
-      label: 'Description', 
-      fieldtype: 'Long Text', 
-      required: true, 
-      placeholder: 'Project details and objectives...' 
+    {
+      fieldname: 'description',
+      label: 'Description',
+      fieldtype: 'Long Text',
+      required: true,
+      placeholder: 'Project details and objectives...'
     }
   ], [editingProject, formValues.course]);
 
@@ -336,128 +336,128 @@ export const IndustryProjectsScreen = () => {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-      <ScrollView 
-        style={styles.container} 
-        contentContainerStyle={styles.content} 
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
         {/* Header Section */}
         <Animated.View entering={FadeInUp.delay(100)} style={styles.header}>
-           <View style={styles.headerRow}>
-              <Text style={styles.title}>Live Projects</Text>
-              <View style={styles.headerBadge}>
-                 <Briefcase size={10} color={colors.purple[600]} />
-                 <Text style={styles.headerBadgeText}>R&D OPPORTUNITIES</Text>
-              </View>
-           </View>
-           <Text style={styles.subtitle}>Post real projects for students to participate in</Text>
+          <View style={styles.headerRow}>
+            <Text style={styles.title}>Live Projects</Text>
+            <View style={styles.headerBadge}>
+              <Briefcase size={10} color={colors.purple[600]} />
+              <Text style={styles.headerBadgeText}>R&D OPPORTUNITIES</Text>
+            </View>
+          </View>
+          <Text style={styles.subtitle}>Post real projects for students to participate in</Text>
         </Animated.View>
 
         {/* Post Button */}
         <Animated.View entering={FadeInUp.delay(150)}>
-           <TouchableOpacity style={styles.postBtn} onPress={handlePostNew}>
-             <Plus size={16} color="#FFF" />
-             <Text style={styles.postBtnText}>Post New Project</Text>
-           </TouchableOpacity>
+          <TouchableOpacity style={styles.postBtn} onPress={handlePostNew}>
+            <Plus size={16} color="#FFF" />
+            <Text style={styles.postBtnText}>Post New Project</Text>
+          </TouchableOpacity>
         </Animated.View>
 
         {/* Stats Row */}
         <Animated.View entering={FadeInUp.delay(200)} style={styles.statsRow}>
-           {statsCards.map((stat, i) => (
-              <StatsCard key={i} title={stat.label} value={stat.value} icon={stat.icon} color={stat.color} />
-           ))}
+          {statsCards.map((stat, i) => (
+            <StatsCard key={i} title={stat.label} value={stat.value} icon={stat.icon} color={stat.color} />
+          ))}
         </Animated.View>
 
         {/* Projects List */}
         <Animated.View entering={FadeInUp.delay(300)}>
           {loading && !refreshing ? (
-             <ActivityIndicator size="large" color={colors.purple[600]} style={{ marginTop: 40 }} />
+            <ActivityIndicator size="large" color={colors.purple[600]} style={{ marginTop: 40 }} />
           ) : projects.length > 0 ? (
-             projects.map((project, index) => (
-                <Animated.View key={project.name} entering={FadeInUp.delay(350 + index * 50)} style={styles.projectCard}>
-                  <TouchableOpacity 
-                    activeOpacity={0.7} 
-                    onPress={() => navigation.navigate('Project Pipeline', { project })}
-                  >
-                    <View style={styles.cardHeaderRow}>
-                      <View style={styles.iconBox}>
-                        <Microscope size={18} color="#64748B" />
+            projects.map((project, index) => (
+              <Animated.View key={project.name} entering={FadeInUp.delay(350 + index * 50)} style={styles.projectCard}>
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                // onPress={() => navigation.navigate('Project Pipeline', { project })}
+                >
+                  <View style={styles.cardHeaderRow}>
+                    <View style={styles.iconBox}>
+                      <Microscope size={18} color="#64748B" />
+                    </View>
+                    <View style={styles.titleInfo}>
+                      <Text style={styles.projectTitle} numberOfLines={1}>{project.project_name}</Text>
+                      <Text style={styles.projectSubtitle}>{project.industry} • {project.project_code}</Text>
+                    </View>
+                    <View style={[styles.badge, project.status?.toLowerCase() === "active" ? styles.badgeOpen : {}]}>
+                      <Text style={[styles.badgeText, project.status?.toLowerCase() === "active" ? styles.badgeTextOpen : {}]}>{project.status}</Text>
+                    </View>
+                  </View>
+
+                  <Text style={styles.description} numberOfLines={2}>{project.description}</Text>
+
+                  <View style={styles.tagsContainer}>
+                    {(project.required_skills || project.skills || []).slice(0, 3).map((skill: any, sIdx: number) => (
+                      <View key={sIdx} style={styles.tagPill}>
+                        <Text style={styles.tagText}>{skill.skill || skill.skills}</Text>
                       </View>
-                      <View style={styles.titleInfo}>
-                        <Text style={styles.projectTitle} numberOfLines={1}>{project.project_name}</Text>
-                        <Text style={styles.projectSubtitle}>{project.industry} • {project.project_code}</Text>
+                    ))}
+                  </View>
+
+                  <View style={styles.divider} />
+
+                  <View style={styles.footerRow}>
+                    <View style={styles.metricsGrid}>
+                      <View style={styles.metricItem}>
+                        <Text style={[styles.metricValue, { color: '#F97316' }]}>{project.applied_count || 0}</Text>
+                        <Text style={styles.metricLabel}>Applied</Text>
                       </View>
-                      <View style={[styles.badge, project.status?.toLowerCase() === "active" ? styles.badgeOpen : {}]}>
-                        <Text style={[styles.badgeText, project.status?.toLowerCase() === "active" ? styles.badgeTextOpen : {}]}>{project.status}</Text>
+                      <View style={styles.metricItem}>
+                        <Text style={[styles.metricValue, { color: '#3B82F6' }]}>{project.shortlisted_count || 0}</Text>
+                        <Text style={styles.metricLabel}>Shortlisted</Text>
+                      </View>
+                      <View style={styles.metricItem}>
+                        <Text style={[styles.metricValue, { color: '#10B981' }]}>{project.duration || '-'}</Text>
+                        <Text style={styles.metricLabel}>Days</Text>
                       </View>
                     </View>
 
-                    <Text style={styles.description} numberOfLines={2}>{project.description}</Text>
-                    
-                    <View style={styles.tagsContainer}>
-                      {(project.required_skills || project.skills || []).slice(0, 3).map((skill: any, sIdx: number) => (
-                        <View key={sIdx} style={styles.tagPill}>
-                          <Text style={styles.tagText}>{skill.skill || skill.skills}</Text>
-                        </View>
-                      ))}
-                    </View>
+                    <View style={styles.actionRow}>
+                      <TouchableOpacity
+                        style={[
+                          styles.actionBtn,
+                          styles.deleteBtn,
+                          (project.status?.toLowerCase() === 'disabled' || project.status?.toLowerCase() === 'disable' || project.status?.toLowerCase() === 'inactive') && styles.disabledBtn
+                        ]}
+                        onPress={() => handleDelete(project.name)}
+                        disabled={project.status?.toLowerCase() === 'disabled' || project.status?.toLowerCase() === 'disable' || project.status?.toLowerCase() === 'inactive'}
+                      >
+                        <Trash2 size={14} color={(project.status?.toLowerCase() === 'disabled' || project.status?.toLowerCase() === 'disable' || project.status?.toLowerCase() === 'inactive') ? '#CBD5E1' : colors.error} />
+                      </TouchableOpacity>
 
-                    <View style={styles.divider} />
-
-                    <View style={styles.footerRow}>
-                      <View style={styles.metricsGrid}>
-                        <View style={styles.metricItem}>
-                          <Text style={[styles.metricValue, { color: '#F97316' }]}>{project.applied_count || 0}</Text>
-                          <Text style={styles.metricLabel}>Applied</Text>
-                        </View>
-                        <View style={styles.metricItem}>
-                          <Text style={[styles.metricValue, { color: '#3B82F6' }]}>{project.shortlisted_count || 0}</Text>
-                          <Text style={styles.metricLabel}>Shortlisted</Text>
-                        </View>
-                        <View style={styles.metricItem}>
-                          <Text style={[styles.metricValue, { color: '#10B981' }]}>{project.duration || '-'}</Text>
-                          <Text style={styles.metricLabel}>Days</Text>
-                        </View>
-                      </View>
-                      
-                      <View style={styles.actionRow}>
-                        <TouchableOpacity 
-                          style={[
-                            styles.actionBtn, 
-                            styles.deleteBtn, 
-                            (project.status?.toLowerCase() === 'disabled' || project.status?.toLowerCase() === 'disable' || project.status?.toLowerCase() === 'inactive') && styles.disabledBtn
-                          ]} 
-                          onPress={() => handleDelete(project.name)}
-                          disabled={project.status?.toLowerCase() === 'disabled' || project.status?.toLowerCase() === 'disable' || project.status?.toLowerCase() === 'inactive'}
-                        >
-                          <Trash2 size={14} color={(project.status?.toLowerCase() === 'disabled' || project.status?.toLowerCase() === 'disable' || project.status?.toLowerCase() === 'inactive') ? '#CBD5E1' : colors.error} />
-                        </TouchableOpacity>
-                        
-                        <TouchableOpacity 
-                          style={[
-                            styles.manageBtn, 
-                            (project.status?.toLowerCase() === 'disabled' || project.status?.toLowerCase() === 'disable' || project.status?.toLowerCase() === 'inactive') && styles.disabledManageBtn
-                          ]}
-                          onPress={() => handleEdit(project)}
-                          disabled={project.status?.toLowerCase() === 'disabled' || project.status?.toLowerCase() === 'disable' || project.status?.toLowerCase() === 'inactive'}
-                        >
-                          <Text style={styles.manageBtnText}>Manage</Text>
-                          <ArrowRight size={12} color="#FFF" />
-                        </TouchableOpacity>
-                      </View>
+                      <TouchableOpacity
+                        style={[
+                          styles.manageBtn,
+                          (project.status?.toLowerCase() === 'disabled' || project.status?.toLowerCase() === 'disable' || project.status?.toLowerCase() === 'inactive') && styles.disabledManageBtn
+                        ]}
+                        onPress={() => handleEdit(project)}
+                        disabled={project.status?.toLowerCase() === 'disabled' || project.status?.toLowerCase() === 'disable' || project.status?.toLowerCase() === 'inactive'}
+                      >
+                        <Text style={styles.manageBtnText}>Manage</Text>
+                        <ArrowRight size={12} color="#FFF" />
+                      </TouchableOpacity>
                     </View>
-                  </TouchableOpacity>
-                </Animated.View>
-             ))
+                  </View>
+                </TouchableOpacity>
+              </Animated.View>
+            ))
           ) : (
             <View style={styles.emptyContainer}>
-               <Briefcase size={48} color="#CBD5E1" />
-               <Text style={styles.emptyText}>No live projects found.</Text>
-               <TouchableOpacity style={styles.retryBtn} onPress={onRefresh}>
-                  <RefreshCcw size={16} color="#FFF" />
-                  <Text style={styles.retryBtnText}>Refresh</Text>
-               </TouchableOpacity>
+              <Briefcase size={48} color="#CBD5E1" />
+              <Text style={styles.emptyText}>No live projects found.</Text>
+              <TouchableOpacity style={styles.retryBtn} onPress={onRefresh}>
+                <RefreshCcw size={16} color="#FFF" />
+                <Text style={styles.retryBtnText}>Refresh</Text>
+              </TouchableOpacity>
             </View>
           )}
         </Animated.View>
@@ -481,9 +481,9 @@ export const IndustryProjectsScreen = () => {
               </TouchableOpacity>
             </View>
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 20 }}>
-              <DynamicForm 
-                fields={projectFields} 
-                initialValues={initialValues} 
+              <DynamicForm
+                fields={projectFields}
+                initialValues={initialValues}
                 onSubmit={handleFormSubmit}
                 onChange={handleFormChange}
                 onCreateCustomValue={handleCreateCustomValue}
@@ -502,7 +502,7 @@ const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: '#F8FAFC' },
   container: { flex: 1 },
   content: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 40 },
-  
+
   header: { marginBottom: 12, paddingHorizontal: 4 },
   headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 },
   headerBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(147, 51, 234, 0.08)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
@@ -526,7 +526,7 @@ const styles = StyleSheet.create({
   badgeTextOpen: { color: '#059669' },
 
   description: { fontSize: 12, color: '#64748B', fontWeight: '500', lineHeight: 18, marginBottom: 10 },
-  
+
   tagsContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 12 },
   tagPill: { backgroundColor: '#EEF2FF', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6, borderWidth: 1, borderColor: '#E0E7FF' },
   tagText: { color: '#6366F1', fontSize: 9, fontWeight: '800' },
