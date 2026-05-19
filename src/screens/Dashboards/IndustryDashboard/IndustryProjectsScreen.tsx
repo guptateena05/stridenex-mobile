@@ -378,7 +378,7 @@ export const IndustryProjectsScreen = () => {
               <Animated.View key={project.name} entering={FadeInUp.delay(350 + index * 50)} style={styles.projectCard}>
                 <TouchableOpacity
                   activeOpacity={0.7}
-                // onPress={() => navigation.navigate('Project Pipeline', { project })}
+                  onPress={() => navigation.navigate('Project Pipeline', { project })}
                 >
                   <View style={styles.cardHeaderRow}>
                     <View style={styles.iconBox}>
