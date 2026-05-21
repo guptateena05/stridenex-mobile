@@ -250,7 +250,7 @@ export const IndustryInternshipsScreen = () => {
       fieldtype: 'Link',
       apiEndpoint: 'method/stridenex_app.api_stridenex_app.college.master.get_master_data',
       apiParams: { doctype: 'Domain' },
-      required: true,
+      required: false,
     },
     {
       fieldname: 'industry',
@@ -276,7 +276,7 @@ export const IndustryInternshipsScreen = () => {
       fieldname: 'stipend',
       label: 'Stipend (Monthly)',
       fieldtype: 'Int',
-      required: formValues.payment_type === 'Paid',
+      required: true,
       placeholder: 'e.g. 15000',
       hidden: formValues.payment_type === 'Unpaid'
     },

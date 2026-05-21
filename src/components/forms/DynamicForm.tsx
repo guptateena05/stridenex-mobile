@@ -59,6 +59,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
   const handleSubmit = () => {
     const newErrors: Record<string, string> = {};
     fields.forEach(f => {
+      if (f.hidden) return; // Skip validation for hidden fields
       if (f.required && (!formData[f.fieldname] || (Array.isArray(formData[f.fieldname]) && formData[f.fieldname].length === 0))) {
         newErrors[f.fieldname] = 'This field is mandatory';
       }
