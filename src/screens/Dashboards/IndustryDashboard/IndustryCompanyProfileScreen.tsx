@@ -50,6 +50,9 @@ import {
 import DynamicForm from '@/components/forms/DynamicForm';
 import { LocationPicker, LocationData } from '../../../components/maps/LocationPicker';
 import { FormField } from '@/components/forms/DynamicField';
+import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
+import Geocoder from 'react-native-geocoding';
+import { GOOGLE_MAPS_API_KEY } from '../../../config/maps';
 
 const { width } = Dimensions.get('window');
 
@@ -154,6 +157,7 @@ export const IndustryCompanyProfileScreen = () => {
   }, [industryData?.name, industryData?.company_name]);
 
   useEffect(() => {
+    Geocoder.init(GOOGLE_MAPS_API_KEY);
     fetchSkills();
     fetchPipelineCounts();
   }, [fetchSkills, fetchPipelineCounts]);
@@ -306,6 +310,56 @@ export const IndustryCompanyProfileScreen = () => {
       placeholder: 'e.g. 45',
     }
   ];
+
+  const geocodeAddress = async (newLocationState: any) => {
+    const { address_line_1, address_line_2, city, state, pincode, country } = newLocationState || {};
+    
+    if (!address_line_1 && !pincode) return;
+
+    const queryParts = [address_line_1, address_line_2, city, state, pincode, country].filter(Boolean);
+    const query = queryParts.join(', ');
+
+    if (!query.trim()) return;
+
+    try {
+      const response = await Geocoder.from(query);
+      if (response.results && response.results.length > 0) {
+        const { lat, lng } = response.results[0].geometry.location;
+        const formattedAddress = response.results[0].formatted_address;
+        
+        // Parse Google components to populate city, state, country if they are missing
+        const addressComponents = response.results[0].address_components;
+        let fetchedCity = city || '';
+        let fetchedState = state || '';
+        let fetchedCountry = country || '';
+        let fetchedPincode = pincode || '';
+
+        addressComponents.forEach((comp: any) => {
+          const types = comp.types;
+          if (types.includes('locality')) fetchedCity = comp.long_name;
+          if (types.includes('administrative_area_level_1')) fetchedState = comp.long_name;
+          if (types.includes('country')) fetchedCountry = comp.long_name;
+          if (types.includes('postal_code')) fetchedPincode = comp.long_name;
+        });
+
+        setProfileFormValues((prev: any) => ({
+          ...prev,
+          location: {
+            ...(prev.location || {}),
+            latitude: lat,
+            longitude: lng,
+            full_address: formattedAddress,
+            city: fetchedCity,
+            state: fetchedState,
+            country: fetchedCountry,
+            pincode: fetchedPincode || pincode,
+          }
+        }));
+      }
+    } catch (error) {
+      console.warn("Auto-geocoding error:", error);
+    }
+  };
 
   const handleUpdateProfile = async () => {
     const identifier = industryData?.name || industryData?.company_name;
@@ -912,6 +966,7 @@ export const IndustryCompanyProfileScreen = () => {
                     onChangeText={(val) => setProfileFormValues((prev: any) => ({
                       ...prev, location: { ...(prev.location || {}), address_line_1: val }
                     }))}
+                    onBlur={() => geocodeAddress(profileFormValues.location)}
                     placeholder="e.g. 370"
                   />
                 </View>
@@ -927,6 +982,7 @@ export const IndustryCompanyProfileScreen = () => {
                     onChangeText={(val) => setProfileFormValues((prev: any) => ({
                       ...prev, location: { ...(prev.location || {}), address_line_2: val }
                     }))}
+                    onBlur={() => geocodeAddress(profileFormValues.location)}
                     placeholder="e.g. Barkat Nagar, Tonk Phatak"
                   />
                 </View>
@@ -942,6 +998,7 @@ export const IndustryCompanyProfileScreen = () => {
                     onChangeText={(val) => setProfileFormValues((prev: any) => ({
                       ...prev, location: { ...(prev.location || {}), pincode: val }
                     }))}
+                    onBlur={() => geocodeAddress(profileFormValues.location)}
                     placeholder="e.g. 202025"
                     keyboardType="numeric"
                   />
@@ -959,15 +1016,40 @@ export const IndustryCompanyProfileScreen = () => {
                   </TouchableOpacity>
                 </View>
                 <View style={styles.mapStaticContainer}>
-                  {/* Placeholder Map Image */}
-                  <View style={styles.mapGridPattern}>
-                    <View style={styles.mapRoad1} />
-                    <View style={styles.mapRoad2} />
-                    <View style={styles.mapPinContainer}>
-                      <MapPin size={28} color="#2563EB" fill="#2563EB" />
-                      <View style={styles.mapPinShadow} />
+                  {profileFormValues.location?.latitude && profileFormValues.location?.longitude ? (
+                    <MapView
+                      provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
+                      style={StyleSheet.absoluteFillObject}
+                      region={{
+                        latitude: Number(profileFormValues.location.latitude),
+                        longitude: Number(profileFormValues.location.longitude),
+                        latitudeDelta: 0.005,
+                        longitudeDelta: 0.005,
+                      }}
+                      scrollEnabled={false}
+                      zoomEnabled={false}
+                      pitchEnabled={false}
+                      rotateEnabled={false}
+                    >
+                      <Marker
+                        coordinate={{
+                          latitude: Number(profileFormValues.location.latitude),
+                          longitude: Number(profileFormValues.location.longitude),
+                        }}
+                      >
+                        <MapPin size={28} color="#2563EB" fill="#E0E7FF" />
+                      </Marker>
+                    </MapView>
+                  ) : (
+                    <View style={styles.mapGridPattern}>
+                      <View style={styles.mapRoad1} />
+                      <View style={styles.mapRoad2} />
+                      <View style={styles.mapPinContainer}>
+                        <MapPin size={28} color="#2563EB" fill="#2563EB" />
+                        <View style={styles.mapPinShadow} />
+                      </View>
                     </View>
-                  </View>
+                  )}
                 </View>
               </View>
 

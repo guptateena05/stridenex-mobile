@@ -1,15 +1,39 @@
+// LocationPicker.tsx - FIXED VERSION (Defaults to Jaipur)
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, PermissionsAndroid, Platform, Alert, StyleProp, ViewStyle } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, PermissionsAndroid, Platform, Alert, StyleProp, ViewStyle, TextInput } from 'react-native';
 import MapView, { Marker, PROVIDER_GOOGLE, Region, MarkerDragStartEndEvent } from 'react-native-maps';
-import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
 import Geolocation from 'react-native-geolocation-service';
-import Geocoder from 'react-native-geocoding';
-import { MapPin, Navigation, Map as MapIcon, X } from 'lucide-react-native';
+import { MapPin, Navigation, Map as MapIcon, X, Search } from 'lucide-react-native';
 import { colors } from '../../theme/colors';
 import { typography } from '../../theme/typography';
-import { GOOGLE_MAPS_API_KEY } from '../../config/maps';
 
-// Geocoder will be initialized inside the component
+// Using OpenStreetMap's Nominatim service - completely free, no API key required
+const searchAddress = async (query: string): Promise<any> => {
+  try {
+    const encodedQuery = encodeURIComponent(query + ", India");
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/search?q=${encodedQuery}&format=json&limit=5&countrycodes=in&accept-language=en`
+    );
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Search error:', error);
+    return [];
+  }
+};
+
+const reverseGeocode = async (lat: number, lng: number): Promise<any> => {
+  try {
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=en`
+    );
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Reverse geocode error:', error);
+    return null;
+  }
+};
 
 export interface LocationData {
   address_line_1: string;
@@ -34,11 +58,17 @@ interface LocationPickerProps {
   style?: StyleProp<ViewStyle>;
 }
 
+// JAIPUR, RAJASTHAN - Fixed coordinates
+const JAIPUR_COORDINATES = {
+  latitude: 26.9124,
+  longitude: 75.7873,
+};
+
 const DEFAULT_REGION: Region = {
-  latitude: 28.6139, // Default to New Delhi if nothing is available
-  longitude: 77.2090,
-  latitudeDelta: 0.05,
-  longitudeDelta: 0.05,
+  latitude: JAIPUR_COORDINATES.latitude,
+  longitude: JAIPUR_COORDINATES.longitude,
+  latitudeDelta: 0.0922,
+  longitudeDelta: 0.0421,
 };
 
 export const LocationPicker: React.FC<LocationPickerProps> = ({
@@ -48,35 +78,61 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
   style
 }) => {
   const mapRef = useRef<MapView>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [showResults, setShowResults] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
+  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
 
-  useEffect(() => {
-    // Initialize Geocoder with the API Key inside the component
-    Geocoder.init(GOOGLE_MAPS_API_KEY);
-  }, []);
-
-  const [region, setRegion] = useState<Region>(
-    initialLocation ? {
-      latitude: initialLocation.latitude,
-      longitude: initialLocation.longitude,
-      latitudeDelta: 0.01,
-      longitudeDelta: 0.01,
-    } : DEFAULT_REGION
-  );
-
-  const [markerCoords, setMarkerCoords] = useState({
-    latitude: initialLocation?.latitude || DEFAULT_REGION.latitude,
-    longitude: initialLocation?.longitude || DEFAULT_REGION.longitude,
+  // Initialize with Jaipur coordinates
+  const [region, setRegion] = useState<Region>(DEFAULT_REGION);
+  const [markerCoords, setMarkerCoords] = useState(JAIPUR_COORDINATES);
+  const [currentAddress, setCurrentAddress] = useState<string>('Jaipur, Rajasthan, India');
+  const [parsedLocationData, setParsedLocationData] = useState<Partial<LocationData>>({
+    latitude: JAIPUR_COORDINATES.latitude,
+    longitude: JAIPUR_COORDINATES.longitude,
+    city: 'Jaipur',
+    state: 'Rajasthan',
+    country: 'India',
+    full_address: 'Jaipur, Rajasthan, India'
   });
-
-  const [currentAddress, setCurrentAddress] = useState<string>(initialLocation?.address || '');
-  const [parsedLocationData, setParsedLocationData] = useState<Partial<LocationData>>({});
   const [loading, setLoading] = useState<boolean>(false);
 
+  // Set initial location for Jaipur
   useEffect(() => {
-    if (initialLocation) {
-      handleReverseGeocoding(initialLocation.latitude, initialLocation.longitude);
+    if (initialLocation && initialLocation.latitude && initialLocation.longitude) {
+      // Use provided initial location if available
+      setMarkerCoords({
+        latitude: initialLocation.latitude,
+        longitude: initialLocation.longitude,
+      });
+      setRegion({
+        latitude: initialLocation.latitude,
+        longitude: initialLocation.longitude,
+        latitudeDelta: 0.01,
+        longitudeDelta: 0.01,
+      });
+      if (initialLocation.address) {
+        setCurrentAddress(initialLocation.address);
+      } else {
+        reverseGeocodeLocation(initialLocation.latitude, initialLocation.longitude);
+      }
+    } else {
+      // Default to Jaipur
+      setCurrentAddress('Jaipur, Rajasthan, India');
+      setParsedLocationData({
+        latitude: JAIPUR_COORDINATES.latitude,
+        longitude: JAIPUR_COORDINATES.longitude,
+        city: 'Jaipur',
+        state: 'Rajasthan',
+        country: 'India',
+        full_address: 'Jaipur, Rajasthan, India',
+        address_line_1: 'Jaipur',
+        address_line_2: '',
+        pincode: ''
+      });
     }
-  }, []);
+  }, [initialLocation]);
 
   const requestLocationPermission = async () => {
     if (Platform.OS === 'ios') {
@@ -100,10 +156,12 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
     return false;
   };
 
-  const handleGetCurrentLocation = async () => {
+  const handleGetCurrentLocation = async (silent: boolean = false) => {
     const hasPermission = await requestLocationPermission();
     if (!hasPermission) {
-      Alert.alert("Permission Denied", "Location permission is required to use this feature.");
+      if (!silent) {
+        Alert.alert("Permission Denied", "Location permission is required to use this feature.");
+      }
       return;
     }
 
@@ -112,12 +170,14 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
       (position) => {
         const { latitude, longitude } = position.coords;
         animateToLocation(latitude, longitude);
-        handleReverseGeocoding(latitude, longitude);
+        reverseGeocodeLocation(latitude, longitude);
         setLoading(false);
       },
       (error) => {
         console.error("Geolocation Error:", error);
-        Alert.alert("Error", "Could not fetch your current location. Make sure GPS is enabled.");
+        if (!silent) {
+          Alert.alert("Error", "Could not fetch your current location. Make sure GPS is enabled.");
+        }
         setLoading(false);
       },
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
@@ -126,71 +186,85 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
 
   const animateToLocation = (latitude: number, longitude: number) => {
     setMarkerCoords({ latitude, longitude });
-    mapRef.current?.animateToRegion({
+    setRegion({
       latitude,
       longitude,
       latitudeDelta: 0.01,
       longitudeDelta: 0.01,
-    }, 1000);
+    });
+
+    mapRef.current?.animateToRegion(
+      {
+        latitude,
+        longitude,
+        latitudeDelta: 0.01,
+        longitudeDelta: 0.01,
+      },
+      500
+    );
   };
 
-  const handleReverseGeocoding = async (lat: number, lng: number) => {
-    // Set coordinates immediately so the "Confirm" button enables
-    setParsedLocationData(prev => ({ ...prev, latitude: lat, longitude: lng }));
-    setMarkerCoords({ latitude: lat, longitude: lng });
-
-    if (GOOGLE_MAPS_API_KEY === "AIzaSyAf-ypNGApRTwjmzctoSt3i3moC56fPK_0") {
-      console.warn("Google Maps API Key is still a placeholder. Address search and reverse-geocoding will not work.");
+  const handleSearch = async () => {
+    if (!searchQuery.trim()) {
+      Alert.alert("Error", "Please enter an address to search");
       return;
     }
+
+    setIsSearching(true);
+    try {
+      const results = await searchAddress(searchQuery);
+      setSearchResults(results);
+      setShowResults(true);
+    } catch (error) {
+      console.error("Search error:", error);
+      Alert.alert("Error", "Failed to search address. Please try again.");
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const selectSearchResult = async (result: any) => {
+    const lat = parseFloat(result.lat);
+    const lon = parseFloat(result.lon);
+    setShowResults(false);
+    setSearchQuery(result.display_name);
+    animateToLocation(lat, lon);
+    await reverseGeocodeLocation(lat, lon);
+  };
+
+  const reverseGeocodeLocation = async (lat: number, lng: number) => {
     setLoading(true);
     try {
-      const response = await Geocoder.from(lat, lng);
-      const addressComponents = response.results[0].address_components;
-      const formattedAddress = response.results[0].formatted_address;
+      const data = await reverseGeocode(lat, lng);
 
-      setCurrentAddress(formattedAddress);
+      if (data && data.display_name) {
+        setCurrentAddress(data.display_name);
 
-      // Parse Google Maps components to our structured LocationData
-      let addressLine1 = '';
-      let addressLine2 = '';
-      let city = '';
-      let state = '';
-      let country = '';
-      let pincode = '';
+        const addr = data.address || {};
+        const locationData: LocationData = {
+          address_line_1: data.display_name?.split(',')[0] || '',
+          address_line_2: '',
+          city: addr.city || addr.town || addr.village || '',
+          state: addr.state || '',
+          country: addr.country || '',
+          pincode: addr.postcode || '',
+          latitude: lat,
+          longitude: lng,
+          full_address: data.display_name
+        };
 
-      addressComponents.forEach((comp) => {
-        const types = comp.types;
-        if (types.includes('street_number')) addressLine1 += comp.long_name + ' ';
-        if (types.includes('route')) addressLine1 += comp.long_name;
-        if (types.includes('sublocality')) addressLine2 += comp.long_name + ', ';
-        if (types.includes('neighborhood')) addressLine2 += comp.long_name;
-
-        if (types.includes('locality')) city = comp.long_name;
-        if (types.includes('administrative_area_level_1')) state = comp.long_name;
-        if (types.includes('country')) country = comp.long_name;
-        if (types.includes('postal_code')) pincode = comp.long_name;
-      });
-
-      // Fallback logic
-      if (!addressLine1.trim()) addressLine1 = formattedAddress.split(',')[0];
-      if (!city) city = addressComponents.find(c => c.types.includes('administrative_area_level_2'))?.long_name || '';
-
-      const locationData: LocationData = {
-        address_line_1: addressLine1.trim(),
-        address_line_2: addressLine2.replace(/,\s*$/, '').trim(),
-        city,
-        state,
-        country,
-        pincode,
-        latitude: lat,
-        longitude: lng,
-        full_address: formattedAddress
-      };
-
-      setParsedLocationData(locationData);
+        setParsedLocationData(locationData);
+      } else {
+        setCurrentAddress(`${lat.toFixed(6)}, ${lng.toFixed(6)}`);
+        setParsedLocationData(prev => ({
+          ...prev,
+          latitude: lat,
+          longitude: lng,
+          full_address: `${lat.toFixed(6)}, ${lng.toFixed(6)}`
+        }));
+      }
     } catch (error) {
-      console.error("Geocoding Error:", error);
+      console.error("Reverse Geocoding Error:", error);
     } finally {
       setLoading(false);
     }
@@ -198,15 +272,37 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
 
   const onMarkerDragEnd = (e: MarkerDragStartEndEvent) => {
     const { latitude, longitude } = e.nativeEvent.coordinate;
-    setMarkerCoords({ latitude, longitude });
-    handleReverseGeocoding(latitude, longitude);
+    reverseGeocodeLocation(latitude, longitude);
+    mapRef.current?.animateToRegion({
+      latitude,
+      longitude,
+      latitudeDelta: 0.01,
+      longitudeDelta: 0.01,
+    }, 300);
   };
 
   const confirmLocation = () => {
-    if (parsedLocationData.latitude) {
+    if (parsedLocationData.latitude && parsedLocationData.longitude) {
       onLocationSelect(parsedLocationData as LocationData);
+      if (onClose) {
+        onClose();
+      }
     } else {
-      Alert.alert("Error", "Please select a valid location first.");
+      // Fallback - use Jaipur coordinates
+      onLocationSelect({
+        address_line_1: 'Jaipur',
+        address_line_2: '',
+        city: 'Jaipur',
+        state: 'Rajasthan',
+        country: 'India',
+        pincode: '',
+        latitude: JAIPUR_COORDINATES.latitude,
+        longitude: JAIPUR_COORDINATES.longitude,
+        full_address: 'Jaipur, Rajasthan, India'
+      });
+      if (onClose) {
+        onClose();
+      }
     }
   };
 
@@ -225,64 +321,79 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
       </View>
 
       <View style={styles.searchContainer}>
-        <GooglePlacesAutocomplete
-          placeholder="Search for an address..."
-          fetchDetails={true}
-          onPress={(data, details = null) => {
-            if (details) {
-              const { lat, lng } = details.geometry.location;
-              setMarkerCoords({ latitude: lat, longitude: lng });
-              setParsedLocationData(prev => ({ ...prev, latitude: lat, longitude: lng }));
-              animateToLocation(lat, lng);
-              handleReverseGeocoding(lat, lng);
-            }
-          }}
-          query={{
-            key: GOOGLE_MAPS_API_KEY === "AIzaSyAf-ypNGApRTwjmzctoSt3i3moC56fPK_0" ? "" : GOOGLE_MAPS_API_KEY,
-            language: 'en',
-          }}
-          styles={{
-            textInputContainer: styles.autocompleteContainer,
-            textInput: styles.autocompleteInput,
-            listView: styles.autocompleteListView,
-          }}
-          enablePoweredByContainer={false}
-          textInputProps={{
-            placeholderTextColor: colors.text.secondary,
-          }}
-        />
+        <View style={styles.searchInputContainer}>
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search for an address (e.g., Jaipur, Mumbai, Delhi)"
+            placeholderTextColor={colors.text.secondary}
+            value={searchQuery}
+            onChangeText={(text) => {
+              setSearchQuery(text);
+              if (showResults) setShowResults(false);
+            }}
+            onSubmitEditing={handleSearch}
+          />
+          <TouchableOpacity
+            style={styles.searchButton}
+            onPress={handleSearch}
+            disabled={isSearching}
+          >
+            {isSearching ? (
+              <ActivityIndicator size="small" color="#FFF" />
+            ) : (
+              <Search size={20} color="#FFF" />
+            )}
+          </TouchableOpacity>
+        </View>
+
+        {showResults && searchResults.length > 0 && (
+          <View style={styles.resultsContainer}>
+            {searchResults.map((result, index) => (
+              <TouchableOpacity
+                key={index}
+                style={styles.resultItem}
+                onPress={() => selectSearchResult(result)}
+              >
+                <MapPin size={16} color={colors.primary.DEFAULT} />
+                <Text style={styles.resultText} numberOfLines={2}>
+                  {result.display_name}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
       </View>
 
       <View style={styles.mapContainer}>
-        {/* <MapView
+        <MapView
           ref={mapRef}
           provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
           style={styles.map}
-          initialRegion={region}
+          region={region}
+          onMapReady={() => {
+            setInitialLoadComplete(true);
+            // Animate to Jaipur on map ready if no initial location
+            if (!initialLocation && mapRef.current) {
+              mapRef.current.animateToRegion(DEFAULT_REGION, 500);
+            }
+          }}
           showsUserLocation={true}
           showsMyLocationButton={false}
-        > */}
-        <MapView
-          style={{ flex: 1 }}
-          initialRegion={{
-            latitude: 28.6139,
-            longitude: 77.2090,
-            latitudeDelta: 0.05,
-            longitudeDelta: 0.05,
-          }}
+          showsCompass={true}
+          showsScale={true}
         >
           <Marker
             coordinate={markerCoords}
             draggable
             onDragEnd={onMarkerDragEnd}
-          >
-            <MapPin size={36} color={colors.primary.DEFAULT} fill="#E0E7FF" />
-          </Marker>
+            title="Company Location"
+            description="Drag to adjust location"
+          />
         </MapView>
 
         <TouchableOpacity
           style={styles.currentLocationButton}
-          onPress={handleGetCurrentLocation}
+          onPress={() => handleGetCurrentLocation(false)}
           disabled={loading}
         >
           {loading ? (
@@ -296,15 +407,22 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
       <View style={styles.footer}>
         <View style={styles.addressDisplay}>
           <Text style={styles.addressLabel}>Selected Address:</Text>
-          <Text style={styles.addressText} numberOfLines={2}>
-            {currentAddress || "Drag the pin or search for a location..."}
+          <Text style={styles.addressText} numberOfLines={3}>
+            {currentAddress || (loading ? "Loading address..." : "Search for a location or drag the pin")}
           </Text>
+          {parsedLocationData.city && (
+            <Text style={styles.addressDetail}>
+              {[parsedLocationData.city, parsedLocationData.state, parsedLocationData.pincode]
+                .filter(Boolean)
+                .join(', ')}
+            </Text>
+          )}
         </View>
 
         <TouchableOpacity
-          style={[styles.confirmButton, !parsedLocationData.latitude && styles.confirmButtonDisabled]}
+          style={styles.confirmButton}
           onPress={confirmLocation}
-          disabled={!parsedLocationData.latitude || loading}
+          disabled={loading}
         >
           <Text style={styles.confirmButtonText}>Confirm Location</Text>
         </TouchableOpacity>
@@ -335,7 +453,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 18,
     fontFamily: typography.fontFamily.display,
-    fontWeight: typography.fontWeight.semibold,
+    fontWeight: '600',
     color: colors.text.primary,
   },
   closeButton: {
@@ -343,39 +461,68 @@ const styles = StyleSheet.create({
   },
   searchContainer: {
     padding: 16,
-    zIndex: 10, // Important for autocomplete list dropdown
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+    zIndex: 10,
   },
-  autocompleteContainer: {
-    backgroundColor: 'transparent',
-    borderTopWidth: 0,
-    borderBottomWidth: 0,
+  searchInputContainer: {
+    flexDirection: 'row',
+    gap: 8,
   },
-  autocompleteInput: {
+  searchInput: {
+    flex: 1,
+    height: 48,
     backgroundColor: '#F8FAFC',
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#E2E8F0',
-    height: 48,
-    color: colors.text.primary,
-    fontFamily: typography.fontFamily.body,
+    paddingHorizontal: 12,
     fontSize: 14,
+    color: colors.text.primary,
   },
-  autocompleteListView: {
+  searchButton: {
+    width: 48,
+    height: 48,
+    backgroundColor: colors.primary.DEFAULT,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  resultsContainer: {
+    position: 'absolute',
+    top: 80,
+    left: 16,
+    right: 16,
     backgroundColor: '#FFF',
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: '#E2E8F0',
-    borderRadius: 8,
-    marginTop: 4,
-    elevation: 4,
+    maxHeight: 200,
+    zIndex: 20,
+    elevation: 5,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
   },
+  resultItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+    gap: 8,
+  },
+  resultText: {
+    flex: 1,
+    fontSize: 13,
+    color: colors.text.primary,
+  },
   mapContainer: {
     flex: 1,
     position: 'relative',
     minHeight: 300,
+    backgroundColor: '#F1F5F9',
   },
   map: {
     ...StyleSheet.absoluteFillObject,
@@ -395,6 +542,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 4,
+    zIndex: 1,
   },
   footer: {
     padding: 16,
@@ -408,7 +556,7 @@ const styles = StyleSheet.create({
   addressLabel: {
     fontSize: 12,
     fontFamily: typography.fontFamily.body,
-    fontWeight: typography.fontWeight.medium,
+    fontWeight: '600',
     color: colors.text.secondary,
     marginBottom: 4,
     textTransform: 'uppercase',
@@ -417,9 +565,15 @@ const styles = StyleSheet.create({
   addressText: {
     fontSize: 14,
     fontFamily: typography.fontFamily.body,
-    fontWeight: typography.fontWeight.medium,
+    fontWeight: '500',
     color: colors.text.primary,
     lineHeight: 20,
+    marginBottom: 4,
+  },
+  addressDetail: {
+    fontSize: 12,
+    color: colors.text.secondary,
+    marginTop: 4,
   },
   confirmButton: {
     backgroundColor: colors.primary.DEFAULT,
@@ -428,13 +582,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  confirmButtonDisabled: {
-    backgroundColor: '#CBD5E1',
-  },
   confirmButtonText: {
     color: '#FFF',
     fontSize: 16,
     fontFamily: typography.fontFamily.body,
-    fontWeight: typography.fontWeight.semibold,
+    fontWeight: '600',
   },
 });
