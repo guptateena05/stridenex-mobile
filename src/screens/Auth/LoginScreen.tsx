@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Input } from '@/components/Shared/Input';
 import { Button } from '@/components/Shared/Button';
 import { Checkbox } from '@/components/Shared/Checkbox';
 import { AnimatedAuthLayout } from '@/components/layout/AnimatedAuthLayout';
 import { useAuth } from '@/context/AuthContext';
-import { api, BASE_URL } from '@/api/api.services';
+import { api } from '@/api/api.services';
 import { colors } from '@/theme/colors';
 import { typography } from '@/theme/typography';
 import { spacing } from '@/theme/spacing';
@@ -53,6 +54,26 @@ export const LoginScreen = () => {
           full_name: data.full_name || '',
           username: username
         };
+
+        if (userRole === 'Industry') {
+          const isOnboardedVal = parseInt(data.is_onboarded ?? '0', 10);
+          if (isOnboardedVal < 3) {
+            const userEmail = data.user || username;
+            await AsyncStorage.setItem('userEmail', userEmail);
+            const webOnboardingUrl = `https://testwebstridenex.quantcloud.in/onboarding/industry?source=mobile`;
+            (navigation as any).navigate('WebOnboarding', {
+              url: webOnboardingUrl,
+              sessionData: {
+                apiKey: api_key || '',
+                apiSecret: api_secret || '',
+                email: userEmail,
+                isOnboarded: String(isOnboardedVal),
+                fullName: data.full_name || '',
+              }
+            });
+            return;
+          }
+        }
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         await login(userRole as any, token, userDetails);

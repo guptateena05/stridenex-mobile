@@ -1,10 +1,12 @@
 import React from 'react';
+import { ActivityIndicator, View, StyleSheet } from 'react-native';
 import { WebView } from 'react-native-webview';
+import { colors } from '@/theme/colors';
 
 const WebOnboarding = ({ route, navigation }) => {
-  const { url } = route.params;
+  const { url, sessionData, email } = route.params;
 
-  const clearStorageScript = `
+  let injectedScript = `
     localStorage.clear();
     sessionStorage.clear();
     document.cookie.split(";").forEach(function(c) {
@@ -12,6 +14,26 @@ const WebOnboarding = ({ route, navigation }) => {
     });
     console.log("Storage cleared");
   `;
+
+  const emailToPrefill = email || (sessionData && sessionData.email);
+  if (emailToPrefill) {
+    injectedScript += `
+      localStorage.setItem("userEmail", ${JSON.stringify(emailToPrefill)});
+      console.log("Prefilled userEmail in localStorage");
+    `;
+  }
+
+  if (sessionData) {
+    injectedScript += `
+      localStorage.setItem("apiKey", ${JSON.stringify(sessionData.apiKey)});
+      localStorage.setItem("apiSecret", ${JSON.stringify(sessionData.apiSecret)});
+      localStorage.setItem("currentUser", ${JSON.stringify(sessionData.email)});
+      localStorage.setItem("role", "industry");
+      localStorage.setItem("isOnboarded", ${JSON.stringify(sessionData.isOnboarded)});
+      localStorage.setItem("fullName", ${JSON.stringify(sessionData.fullName)});
+      console.log("Injected session data into localStorage");
+    `;
+  }
 
   const handleNavigation = (navState) => {
     console.log("Navigation URL:", navState.url);
@@ -32,15 +54,36 @@ const WebOnboarding = ({ route, navigation }) => {
   };
 
   return (
-    <WebView
-      source={{ uri: url }}
-      onNavigationStateChange={handleNavigation}
-      injectedJavaScriptBeforeContentLoaded={clearStorageScript}
-      javaScriptEnabled={true}
-      domStorageEnabled={true}
-      cacheEnabled={false}
-    />
+    <View style={styles.container}>
+      <WebView
+        source={{ uri: url }}
+        onNavigationStateChange={handleNavigation}
+        injectedJavaScriptBeforeContentLoaded={injectedScript}
+        javaScriptEnabled={true}
+        domStorageEnabled={true}
+        cacheEnabled={false}
+        startInLoadingState={true}
+        renderLoading={() => (
+          <View style={styles.loaderContainer}>
+            <ActivityIndicator size="large" color={colors.accent.DEFAULT} />
+          </View>
+        )}
+      />
+    </View>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#ffffff',
+  },
+  loaderContainer: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
+  },
+});
 
 export default WebOnboarding;

@@ -18,7 +18,17 @@ export type AuthStackParamList = {
   // MentorOnboarding: undefined;
   TermsOfUse: undefined;
   PrivacyPolicy: undefined;
-  WebOnboarding: { url: string };
+  WebOnboarding: { 
+    url: string; 
+    email?: string;
+    sessionData?: {
+      apiKey: string;
+      apiSecret: string;
+      email: string;
+      isOnboarded: string;
+      fullName: string;
+    };
+  };
 };
 
 export type DashboardStackParamList = {

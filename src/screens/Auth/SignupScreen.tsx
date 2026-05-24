@@ -4,7 +4,7 @@ import { Input } from '@/components/Shared/Input';
 import { Button } from '@/components/Shared/Button';
 import { Checkbox } from '@/components/Shared/Checkbox';
 import { AnimatedAuthLayout } from '@/components/layout/AnimatedAuthLayout';
-import { api, BASE_URL } from '@/api/api.services';
+import { api } from '@/api/api.services';
 import { colors } from '@/theme/colors';
 import { typography } from '@/theme/typography';
 import { spacing, borderRadius } from '@/theme/spacing';
@@ -31,7 +31,7 @@ export const SignupScreen = () => {
   const [acceptTerms, setAcceptTerms] = useState(false);
 
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   const navigation = useNavigation<any>();
 
@@ -44,18 +44,53 @@ export const SignupScreen = () => {
     return "";
   };
 
+  const handleFieldChange = (field: string, value: any, setter: (val: any) => void) => {
+    setter(value);
+    setErrors(prev => {
+      const updated = { ...prev };
+      delete updated[field];
+      return updated;
+    });
+  };
+
   const handleSignup = async () => {
-    if (!firstName || !lastName || !email || !password || !confirmPassword) {
-      setError("All fields are required");
+    const newErrors: Record<string, string> = {};
+
+    if (!firstName) newErrors.firstName = "First name is required";
+    if (!lastName) newErrors.lastName = "Last name is required";
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!email) {
+      newErrors.email = "Email is required";
+    } else if (!emailRegex.test(email)) {
+      newErrors.email = "Invalid email format";
+    }
+
+    if (!password) {
+      newErrors.password = "Password is required";
+    } else {
+      const passError = validatePasswordStrength(password);
+      if (passError) {
+        newErrors.password = passError;
+      }
+    }
+
+    if (!confirmPassword) {
+      newErrors.confirmPassword = "Confirm password is required";
+    } else if (password !== confirmPassword) {
+      newErrors.confirmPassword = "Passwords do not match";
+    }
+
+    if (!acceptTerms) {
+      newErrors.acceptTerms = "You must accept the Terms of Service and Privacy Policy";
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
       return;
     }
-    const passError = validatePasswordStrength(password);
-    if (passError) { setError(passError); return; }
-    if (password !== confirmPassword) { setError("Passwords do not match"); return; }
-    if (!acceptTerms) { setError("You must accept the Terms of Service"); return; }
-
+    setErrors({});
     setLoading(true);
-    setError("");
 
     const rolePayload = [
       { student: selectedRole === "student" ? 1 : 0 },
@@ -85,18 +120,29 @@ export const SignupScreen = () => {
         if (selectedRole === 'student') {
           navigation.navigate('StudentOnboarding');
         } else {
-          const webOnboardingUrl = `http://testwebstridenex.quantcloud.in/onboarding/${selectedRole}?source=mobile`;
+          const webOnboardingUrl = `https://testwebstridenex.quantcloud.in/onboarding/${selectedRole}?source=mobile`;
 
           navigation.navigate('WebOnboarding', {
-            url: webOnboardingUrl
+            url: webOnboardingUrl,
+            email: email
           });
         }
       } else {
-        setError(data?.message?.error || data?.message || "Signup failed");
+        const errMsg = data?.message?.error || data?.message || "Signup failed";
+        if (errMsg.toLowerCase().includes("email") || errMsg.toLowerCase().includes("user already exists")) {
+          setErrors({ email: errMsg });
+        } else {
+          setErrors({ general: errMsg });
+        }
       }
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
-      setError(err?.response?.data?.message || err?.message || "An error occurred during signup");
+      const errMsg = err?.response?.data?.message || err?.message || "An error occurred during signup";
+      if (errMsg.toLowerCase().includes("email") || errMsg.toLowerCase().includes("user already exists")) {
+        setErrors({ email: errMsg });
+      } else {
+        setErrors({ general: errMsg });
+      }
     } finally {
       setLoading(false);
     }
@@ -108,14 +154,48 @@ export const SignupScreen = () => {
       subtitle="Join StrideNex to start your career development journey"
     >
       <View style={styles.formContainer}>
-        {error ? <Text style={styles.errorText}>{error}</Text> : null}
+        {errors.general ? <Text style={styles.errorText}>{errors.general}</Text> : null}
 
-        <Input label="First Name" placeholder="Enter first name" value={firstName} onChangeText={setFirstName} />
-        <Input label="Last Name" placeholder="Enter last name" value={lastName} onChangeText={setLastName} />
+        <Input 
+          label="First Name" 
+          placeholder="Enter first name" 
+          value={firstName} 
+          onChangeText={(val) => handleFieldChange('firstName', val, setFirstName)} 
+          error={errors.firstName}
+        />
+        <Input 
+          label="Last Name" 
+          placeholder="Enter last name" 
+          value={lastName} 
+          onChangeText={(val) => handleFieldChange('lastName', val, setLastName)} 
+          error={errors.lastName}
+        />
 
-        <Input label="Email" placeholder="name@college.edu" value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" />
-        <Input label="Password" placeholder="Create a password" value={password} onChangeText={setPassword} isPassword />
-        <Input label="Confirm Password" placeholder="Confirm your password" value={confirmPassword} onChangeText={setConfirmPassword} isPassword />
+        <Input 
+          label="Email" 
+          placeholder="name@college.edu" 
+          value={email} 
+          onChangeText={(val) => handleFieldChange('email', val, setEmail)} 
+          autoCapitalize="none" 
+          keyboardType="email-address" 
+          error={errors.email}
+        />
+        <Input 
+          label="Password" 
+          placeholder="Create a password" 
+          value={password} 
+          onChangeText={(val) => handleFieldChange('password', val, setPassword)} 
+          isPassword 
+          error={errors.password}
+        />
+        <Input 
+          label="Confirm Password" 
+          placeholder="Confirm your password" 
+          value={confirmPassword} 
+          onChangeText={(val) => handleFieldChange('confirmPassword', val, setConfirmPassword)} 
+          isPassword 
+          error={errors.confirmPassword}
+        />
 
         <Text style={styles.roleLabel}>I want to join as</Text>
         <View style={styles.rolesGrid}>
@@ -138,12 +218,13 @@ export const SignupScreen = () => {
           })}
         </View>
 
-        <View style={styles.termsRow}>
-          <Checkbox checked={acceptTerms} onCheckedChange={setAcceptTerms} />
+        <View style={[styles.termsRow, errors.acceptTerms ? { marginBottom: spacing.xs } : null]}>
+          <Checkbox checked={acceptTerms} onCheckedChange={(val) => handleFieldChange('acceptTerms', val, setAcceptTerms)} />
           <Text style={styles.termsText}>
             I agree to the <Text style={styles.linkText} onPress={() => navigation.navigate('TermsOfUse')}>Terms of Use</Text> and <Text style={styles.linkText} onPress={() => navigation.navigate('PrivacyPolicy')}>Privacy Policy</Text>
           </Text>
         </View>
+        {errors.acceptTerms ? <Text style={styles.checkboxErrorText}>{errors.acceptTerms}</Text> : null}
 
         <Button title="Create Account" onPress={handleSignup} loading={loading} variant="accent" style={styles.submitBtn} />
 
@@ -173,5 +254,11 @@ const styles = StyleSheet.create({
   termsText: { flex: 1, marginLeft: spacing.sm, fontSize: typography.fontSize.sm, color: colors.text.secondary, lineHeight: 20 },
   linkText: { color: colors.accent.DEFAULT, fontWeight: typography.fontWeight.medium },
   submitBtn: { marginBottom: spacing.lg },
-  loginLinkRow: { flexDirection: 'row', justifyContent: 'center' }
+  loginLinkRow: { flexDirection: 'row', justifyContent: 'center' },
+  checkboxErrorText: {
+    color: colors.error,
+    fontSize: typography.fontSize.xs,
+    marginBottom: spacing.md,
+    fontFamily: typography.fontFamily.display,
+  },
 });
