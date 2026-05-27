@@ -69,6 +69,28 @@ export const LoginScreen = () => {
                 email: userEmail,
                 isOnboarded: String(isOnboardedVal),
                 fullName: data.full_name || '',
+                role: 'industry',
+              }
+            });
+            return;
+          }
+        }
+
+        if (userRole === 'Mentor') {
+          const isOnboardedVal = parseInt(data.is_onboarded ?? '0', 10);
+          if (isOnboardedVal < 3) {
+            const userEmail = data.user || username;
+            await AsyncStorage.setItem('userEmail', userEmail);
+            const webOnboardingUrl = `https://testwebstridenex.quantcloud.in/onboarding/mentor?source=mobile`;
+            (navigation as any).navigate('WebOnboarding', {
+              url: webOnboardingUrl,
+              sessionData: {
+                apiKey: api_key || '',
+                apiSecret: api_secret || '',
+                email: userEmail,
+                isOnboarded: String(isOnboardedVal),
+                fullName: data.full_name || '',
+                role: 'mentor',
               }
             });
             return;

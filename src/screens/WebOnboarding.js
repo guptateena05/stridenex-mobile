@@ -28,7 +28,7 @@ const WebOnboarding = ({ route, navigation }) => {
       localStorage.setItem("apiKey", ${JSON.stringify(sessionData.apiKey)});
       localStorage.setItem("apiSecret", ${JSON.stringify(sessionData.apiSecret)});
       localStorage.setItem("currentUser", ${JSON.stringify(sessionData.email)});
-      localStorage.setItem("role", "industry");
+      localStorage.setItem("role", ${JSON.stringify(sessionData.role || "industry")});
       localStorage.setItem("isOnboarded", ${JSON.stringify(sessionData.isOnboarded)});
       localStorage.setItem("fullName", ${JSON.stringify(sessionData.fullName)});
       console.log("Injected session data into localStorage");
