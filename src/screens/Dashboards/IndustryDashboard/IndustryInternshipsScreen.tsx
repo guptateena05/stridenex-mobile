@@ -326,12 +326,11 @@ export const IndustryInternshipsScreen = () => {
       apiEndpoint: 'method/stridenex_app.api_stridenex_app.college.master.get_master_data',
       apiParams: { doctype: 'Courses' },
       mapOptions: (data: any) => {
-        const options = data.map((item: any) => {
+        return data.map((item: any) => {
           const val = item.name || item.value || (typeof item === 'string' ? item : '');
           const lbl = item.label || item.name || (typeof item === 'string' ? item : '');
           return { value: val, label: lbl };
         });
-        return [{ value: 'All', label: 'All' }, ...options];
       },
       multiSelect: true,
       required: true,
