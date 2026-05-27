@@ -1,10 +1,10 @@
 import { api } from "./api.services";
 
-export const getNotifications = async (module: string) => {
+export const getNotifications = async (ownerEmail: string) => {
   try {
     const response = await api.get(
       'method/stridenex_app.api_stridenex_app.notification.get_notifications',
-      { params: { module } }
+      { params: { owner_email: ownerEmail } }
     );
     return response.data;
   } catch (error) {
@@ -13,18 +13,15 @@ export const getNotifications = async (module: string) => {
   }
 };
 
-export const markNotificationAsRead = async (name: string) => {
+export const markNotificationAsSeen = async (notificationName: string, ownerEmail: string) => {
   try {
-    // Note: The user didn't provide a mark-as-read API, 
-    // but typically it follows a similar pattern if needed.
-    // We'll keep it as a placeholder or update it if the user provides it.
-    const response = await api.post(
-      'method/stridenex_app.api_stridenex_app.notification.mark_as_read',
-      { name }
+    const response = await api.get(
+      'method/stridenex_app.api_stridenex_app.notification.mark_as_seen',
+      { params: { notification_name: notificationName, owner_email: ownerEmail } }
     );
     return response.data;
   } catch (error) {
-    console.error("Error marking notification as read:", error);
+    console.error("Error marking notification as seen:", error);
     throw error;
   }
 };

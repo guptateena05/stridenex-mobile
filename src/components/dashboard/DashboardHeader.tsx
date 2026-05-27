@@ -8,11 +8,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '@/theme/colors';
 import { typography } from '@/theme/typography';
 import { spacing } from '@/theme/spacing';
-import { getNotifications, markNotificationAsRead } from '@/api/notification.services';
+import { getNotifications, markNotificationAsSeen } from '@/api/notification.services';
 import Animated, { FadeInRight, FadeInUp, FadeIn } from 'react-native-reanimated';
 
 export const DashboardHeader = ({ title, showMenu = true }: { title?: string, showMenu?: boolean }) => {
-  const { logout, role } = useAuth();
+  const { logout, role, userName } = useAuth();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
 
@@ -21,19 +21,25 @@ export const DashboardHeader = ({ title, showMenu = true }: { title?: string, sh
   const [loading, setLoading] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
 
+  const cleanNotificationMessage = (content: string) => {
+    if (!content) return "";
+    let clean = content.replace(/<[^>]*>/g, '');
+    clean = clean.replace(/\n\s+/g, '\n').trim();
+    return clean;
+  };
+
   const fetchNotifications = async () => {
     try {
       setLoading(true);
-      // Use the provided module mapping
-      const moduleName = role || 'Industry';
-      const response = await getNotifications(moduleName);
+      const email = userName || '';
+      const response = await getNotifications(email);
 
       const list = response?.message?.data || [];
       setNotifications(list);
 
-      // Count 'Unseen' status as unread
-      const unseen = list.filter((n: any) => n.status === 'Unseen').length;
-      setUnreadCount(unseen);
+      // Count unread status: read === 0 is unread
+      const unread = list.filter((n: any) => n.read === 0).length;
+      setUnreadCount(unread);
     } catch (error) {
       console.log("Error fetching notifications:", error);
     } finally {
@@ -49,14 +55,14 @@ export const DashboardHeader = ({ title, showMenu = true }: { title?: string, sh
   };
 
   const handleMarkRead = async (item: any) => {
-    if (item.status === 'Seen') return;
+    if (item.read === 1) return;
     try {
       // Optimistic update
-      setNotifications(prev => prev.map(n => n.name === item.name ? { ...n, status: 'Seen' } : n));
+      setNotifications(prev => prev.map(n => n.name === item.name ? { ...n, read: 1 } : n));
       setUnreadCount(prev => Math.max(0, prev - 1));
 
       // Attempt API call if exists
-      await markNotificationAsRead(item.name).catch(() => { });
+      await markNotificationAsSeen(item.name, userName || "").catch(() => { });
     } catch (error) {
       console.log("Error marking as read:", error);
     }
@@ -82,7 +88,7 @@ export const DashboardHeader = ({ title, showMenu = true }: { title?: string, sh
   };
 
   const renderNotificationItem = ({ item, index }: { item: any, index: number }) => {
-    const isUnread = item.status === 'Unseen';
+    const isUnread = item.read === 0;
     return (
       <Animated.View entering={FadeInRight.delay(index * 50)}>
         <TouchableOpacity
@@ -97,8 +103,8 @@ export const DashboardHeader = ({ title, showMenu = true }: { title?: string, sh
             )}
           </View>
           <View style={styles.notifContent}>
-            <Text style={[styles.notifTitle, isUnread && styles.boldText]}>{item.title || 'Notification'}</Text>
-            <Text style={styles.notifMsg}>{item.message || ''}</Text>
+            <Text style={[styles.notifTitle, isUnread && styles.boldText]}>{item.subject || 'Notification'}</Text>
+            <Text style={styles.notifMsg}>{cleanNotificationMessage(item.email_content)}</Text>
             <View style={styles.notifFooter}>
               <Clock size={10} color="#94A3B8" />
               <Text style={styles.notifTime}>{item.creation?.split(' ')[0] || 'Recently'}</Text>
