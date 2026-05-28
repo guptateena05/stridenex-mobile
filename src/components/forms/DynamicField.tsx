@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, Modal,
   FlatList, TextInput, ActivityIndicator, ScrollView,
-  Alert, Platform, PermissionsAndroid
+  Alert, Platform, Switch
 } from 'react-native';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import * as DocumentPicker from '@react-native-documents/picker';
@@ -75,7 +75,7 @@ export default function DynamicField({ field, value, onChange, onCreateCustomVal
   const errorColor = getColor(colors.error);
   const successColor = getColor(colors.success);
 
-  const fetchOptions = async () => {
+  const fetchOptions = useCallback(async () => {
     if (!field.apiEndpoint) return;
     if (fetchedRef.current && options.length > 0) return;
 
@@ -137,7 +137,8 @@ export default function DynamicField({ field, value, onChange, onCreateCustomVal
     } finally {
       setLoading(false);
     }
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [field.apiEndpoint, field.apiParams, field.mapOptions, field.fieldname, field.label]);
 
   useEffect(() => {
     if (options.length > 0) {
@@ -152,7 +153,7 @@ export default function DynamicField({ field, value, onChange, onCreateCustomVal
     if (field.apiEndpoint && value && !fetchedRef.current) {
       fetchOptions();
     }
-  }, [field.apiEndpoint, value]);
+  }, [field.apiEndpoint, value, fetchOptions]);
 
   const handleDropdownClick = () => {
     if (field.read_only || field.disabled) return;
@@ -247,7 +248,6 @@ export default function DynamicField({ field, value, onChange, onCreateCustomVal
     const month = (date.getMonth() + 1).toString().padStart(2, '0');
     const day = date.getDate().toString().padStart(2, '0');
     const storageFormat = `${year}-${month}-${day}`;
-    const displayFormat = `${day}-${month}-${year}`; // For UI
 
     onChange(field.fieldname, storageFormat); // Store YYYY-MM-DD
     setDatePickerVisible(false);
@@ -607,6 +607,62 @@ export default function DynamicField({ field, value, onChange, onCreateCustomVal
     }
 
     switch (field.fieldtype) {
+      case 'Time':
+        const formatTime = (timeStr: string) => {
+          if (!timeStr) return '';
+          const parts = timeStr.split(':');
+          if (parts.length < 2) return timeStr;
+          const h = parseInt(parts[0], 10);
+          const minutes = parts[1];
+          const ampm = h >= 12 ? 'PM' : 'AM';
+          const h12 = h % 12 || 12;
+          return `${h12}:${minutes} ${ampm}`;
+        };
+        return (
+          <>
+            <TouchableOpacity
+              style={[styles.inputContainer, { borderColor: error ? errorColor : borderColor, backgroundColor }]}
+              onPress={() => setDatePickerVisible(true)}
+              disabled={field.read_only}
+            >
+              <Text style={[
+                styles.inputText,
+                { color: textPrimary },
+                !value && { color: textSecondary }
+              ]}>
+                {value ? formatTime(value) : (field.placeholder || 'Select time')}
+              </Text>
+              <Text style={[styles.calendarIcon, { color: textSecondary }]}>⏰</Text>
+            </TouchableOpacity>
+            <DateTimePickerModal
+              isVisible={isDatePickerVisible}
+              mode="time"
+              onConfirm={(date) => {
+                const hours = date.getHours().toString().padStart(2, '0');
+                const minutes = date.getMinutes().toString().padStart(2, '0');
+                onChange(field.fieldname, `${hours}:${minutes}`);
+                setDatePickerVisible(false);
+              }}
+              onCancel={() => setDatePickerVisible(false)}
+            />
+          </>
+        );
+
+      case 'Check':
+      case 'Switch':
+        return (
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 48, paddingHorizontal: 4 }}>
+            <Text style={{ color: textPrimary, fontSize: 14, fontFamily: typography.fontFamily.display }}>{field.placeholder || 'Enable Option'}</Text>
+            <Switch
+              value={value === '1' || value === 1 || value === true}
+              onValueChange={(val) => onChange(field.fieldname, val ? '1' : '0')}
+              trackColor={{ false: '#D1D5DB', true: accentColor }}
+              thumbColor={(value === '1' || value === 1 || value === true) ? '#FFF' : '#F4F4F5'}
+              disabled={field.read_only || field.disabled}
+            />
+          </View>
+        );
+
       case 'Password':
         return (
           <View style={[styles.inputContainer, { borderColor: error ? errorColor : borderColor, backgroundColor }]}>
