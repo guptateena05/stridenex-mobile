@@ -364,6 +364,27 @@ export const getStudentApplicationList = async (industry: string) => {
   }
 };
 
+export const getFindTalentList = async (industry: string, college?: string, page: number = 1, page_size: number = 20) => {
+  try {
+    const params: any = {
+      industry,
+      page,
+      page_size
+    };
+    if (college) {
+      params.college = college;
+    }
+    const response = await api.get(
+      'method/stridenex_app.stridenex_app.doctype.student.student.get_student_list',
+      { params }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching student list:", error);
+    throw error;
+  }
+};
+
 export const getStudentByEmail = async (emailId: string) => {
   try {
     const response = await api.get(

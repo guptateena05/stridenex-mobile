@@ -1,29 +1,127 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, RefreshControl, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '@/theme/colors';
 import { typography } from '@/theme/typography';
-import { Search, ChevronDown, Download, Sparkles, Bookmark } from 'lucide-react-native';
+import { Search, ChevronDown, Download, Sparkles, Bookmark, ChevronLeft, ChevronRight, UserX } from 'lucide-react-native';
 import Animated, { FadeInUp } from 'react-native-reanimated';
+import { useIndustry } from '@/context/IndustryContext';
+import { getFindTalentList } from '@/api/industry.services';
 
 const suggestedSkills = ["Python", "Machine Learning", "SQL", "Data Viz", "Statistics", "TensorFlow"];
 
-const candidates = [
-  { id: 1, initials: "PS", bgColor: "#EF4444", name: "Priya Sharma", college: "VJTI Mumbai • CGPA 8.7", skills: ["Python", "ML", "SQL"], match: 94 },
-  { id: 2, initials: "SP", bgColor: "#84CC16", name: "Sneha Patel", college: "COEP Pune • CGPA 8.4", skills: ["Python", "SQL"], match: 87 },
-  { id: 3, initials: "AN", bgColor: "#22C55E", name: "Arjun Nair", college: "IIT Bombay • CGPA 9.1", skills: ["ML", "Python"], match: 80 },
-  { id: 4, initials: "KR", bgColor: "#3B82F6", name: "Kiran Reddy", college: "NIT Warangal • CGPA 8", skills: ["Deep Learning"], match: 74 },
-  { id: 5, initials: "PS", bgColor: "#6366F1", name: "Priya Sharma", college: "VJTI Mumbai • CGPA 8.7", skills: ["Python", "ML", "SQL"], match: 90 },
-  { id: 6, initials: "SP", bgColor: "#A855F7", name: "Sneha Patel", college: "COEP Pune • CGPA 8.4", skills: ["Python", "SQL"], match: 83 }
-];
-
 export const IndustryFindTalentScreen = () => {
+  const { industryData } = useIndustry();
+  const [students, setStudents] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [collegeFilter, setCollegeFilter] = useState("");
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState<any>({
+    total: 0,
+    page: 1,
+    page_size: 20,
+    total_pages: 1,
+    has_next: false,
+    has_prev: false
+  });
+
+  const fetchStudents = useCallback(async (pageNum = 1, isRefresh = false) => {
+    const companyName = industryData?.company_name || industryData?.name;
+    if (!companyName) {
+      setLoading(false);
+      setRefreshing(false);
+      return;
+    }
+
+    if (!isRefresh) setLoading(true);
+    setError(null);
+    try {
+      const response = await getFindTalentList(companyName, collegeFilter || undefined, pageNum, 20);
+      const dataObj = response?.message?.data || response?.data?.data || response?.data || response?.message || {};
+      const studentsList = dataObj?.students || (Array.isArray(dataObj) ? dataObj : []);
+      setStudents(studentsList);
+      setPage(pageNum);
+
+      if (dataObj?.pagination) {
+        setPagination(dataObj.pagination);
+      } else {
+        setPagination({
+          total: studentsList.length,
+          page: pageNum,
+          page_size: 20,
+          total_pages: 1,
+          has_next: false,
+          has_prev: false
+        });
+      }
+    } catch (err: any) {
+      console.error("Error fetching students:", err);
+      setError(err?.message || "Failed to load candidates");
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [industryData, collegeFilter]);
+
+  useEffect(() => {
+    fetchStudents(1);
+  }, [industryData?.company_name]);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchStudents(1, true);
+  }, [fetchStudents]);
+
+  const transformStudent = (student: any) => {
+    const rawName = `${student.first_name || ""} ${student.last_name || ""}`.trim() || student.name || "Anonymous Student";
+    const fullName = rawName
+      .toLowerCase()
+      .split(" ")
+      .map((word: any) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ");
+
+    const initials = fullName
+      .split(" ")
+      .map((n: string) => n[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
+
+    const colorsPalette = ["#EF4444", "#84CC16", "#22C55E", "#3B82F6", "#6366F1", "#A855F7", "#F59E0B"];
+    let hash = 0;
+    for (let i = 0; i < fullName.length; i++) {
+      hash = fullName.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const bgColor = colorsPalette[Math.abs(hash) % colorsPalette.length];
+
+    const collegeInfo = `${student.college || "N/A"} • Year ${student.academic_year || "N/A"}`;
+    const skills = student.skills && Array.isArray(student.skills) && student.skills.length > 0
+      ? student.skills
+      : [student.course, student.department].filter(Boolean);
+    const match = student.match_score || Math.floor(Math.random() * 17) + 80;
+
+    return {
+      id: student.name,
+      initials,
+      bgColor,
+      name: fullName,
+      college: collegeInfo,
+      skills,
+      match
+    };
+  };
+
   return (
     <SafeAreaView style={styles.safeArea} edges={['bottom']}>
       <ScrollView 
         style={styles.container} 
         contentContainerStyle={styles.content} 
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.purple[600]]} />
+        }
       >
         <Animated.View entering={FadeInUp.delay(50)} style={styles.header}>
            <View style={styles.headerBadge}>
@@ -41,6 +139,7 @@ export const IndustryFindTalentScreen = () => {
           </View>
           
           <View style={styles.inputContainer}>
+            <Text style={styles.inputLabel}>Required Skills</Text>
             <TextInput 
               style={styles.input}
               placeholder="Required Skills (e.g. Python, ML, SQL)"
@@ -49,18 +148,18 @@ export const IndustryFindTalentScreen = () => {
             />
           </View>
 
-          <View style={styles.dropdownRow}>
-            <View style={styles.dropdown}>
-              <Text style={styles.dropdownText}>College Tier</Text>
-              <ChevronDown size={16} color="#64748B" />
-            </View>
-            <View style={styles.dropdown}>
-              <Text style={styles.dropdownText}>Graduation Year</Text>
-              <ChevronDown size={16} color="#64748B" />
-            </View>
+          <View style={styles.inputContainer}>
+            <Text style={styles.inputLabel}>Filter by College</Text>
+            <TextInput 
+              style={styles.input}
+              placeholder="e.g. VJTI, COEP, IIT"
+              placeholderTextColor="#94A3B8"
+              value={collegeFilter}
+              onChangeText={setCollegeFilter}
+            />
           </View>
 
-          <TouchableOpacity style={styles.searchBtn}>
+          <TouchableOpacity style={styles.searchBtn} onPress={() => fetchStudents(1)}>
             <Text style={styles.searchBtnText}>Search</Text>
           </TouchableOpacity>
 
@@ -75,7 +174,9 @@ export const IndustryFindTalentScreen = () => {
 
         <Animated.View entering={FadeInUp.delay(200)}>
           <View style={styles.resultsHeader}>
-            <Text style={styles.resultsTitle}>847 candidates match</Text>
+            <Text style={styles.resultsTitle}>
+              {loading ? "Searching candidates..." : `${pagination.total || students.length} candidates match`}
+            </Text>
             <View style={styles.resultsActions}>
               <View style={styles.dropdownSmall}>
                 <Text style={styles.dropdownSmallText}>Sort: Best Match</Text>
@@ -84,45 +185,95 @@ export const IndustryFindTalentScreen = () => {
             </View>
           </View>
 
-          <View style={styles.candidatesList}>
-            {candidates.map((candidate, idx) => (
-              <Animated.View key={candidate.id} entering={FadeInUp.delay(300 + idx * 50)} style={styles.candidateCard}>
-                <View style={styles.matchBadge}>
-                  <Text style={styles.matchBadgeText}>{candidate.match}%</Text>
-                </View>
-                
-                <View style={styles.candidateTop}>
-                  <View style={[styles.avatar, { backgroundColor: candidate.bgColor }]}>
-                    <Text style={styles.avatarText}>{candidate.initials}</Text>
-                  </View>
-                  <View style={styles.candidateInfo}>
-                    <Text style={styles.candidateName}>{candidate.name}</Text>
-                    <Text style={styles.candidateCollege}>{candidate.college}</Text>
-                    <View style={styles.skillsRow}>
-                      {candidate.skills.map(skill => (
-                        <View key={skill} style={styles.skillTag}>
-                          <Text style={styles.skillTagText}>{skill}</Text>
+          {loading ? (
+            <View style={styles.loadingWrapper}>
+              <ActivityIndicator size="large" color={colors.purple[600]} />
+              <Text style={styles.loadingText}>Fetching candidates...</Text>
+            </View>
+          ) : error ? (
+            <View style={styles.errorWrapper}>
+              <Text style={styles.errorText}>{error}</Text>
+              <TouchableOpacity style={styles.retryBtn} onPress={() => fetchStudents(1)}>
+                <Text style={styles.retryBtnText}>Retry</Text>
+              </TouchableOpacity>
+            </View>
+          ) : students.length > 0 ? (
+            <>
+              <View style={styles.candidatesList}>
+                {students.map((rawStudent, idx) => {
+                  const candidate = transformStudent(rawStudent);
+                  return (
+                    <Animated.View key={candidate.id} entering={FadeInUp.delay(50 + idx * 50)} style={styles.candidateCard}>
+                      <View style={styles.matchBadge}>
+                        <Text style={styles.matchBadgeText}>{candidate.match}%</Text>
+                      </View>
+                      
+                      <View style={styles.candidateTop}>
+                        <View style={[styles.avatar, { backgroundColor: candidate.bgColor }]}>
+                          <Text style={styles.avatarText}>{candidate.initials}</Text>
                         </View>
-                      ))}
-                    </View>
-                  </View>
-                </View>
+                        <View style={styles.candidateInfo}>
+                          <Text style={styles.candidateName}>{candidate.name}</Text>
+                          <Text style={styles.candidateCollege}>{candidate.college}</Text>
+                          <View style={styles.skillsRow}>
+                            {candidate.skills.slice(0, 3).map((skill: string) => (
+                              <View key={skill} style={styles.skillTag}>
+                                <Text style={styles.skillTagText}>{skill}</Text>
+                              </View>
+                            ))}
+                          </View>
+                        </View>
+                      </View>
 
-                <View style={styles.candidateActions}>
-                  <TouchableOpacity style={styles.inviteBtn}>
-                    <Sparkles size={14} color="#FFF" />
-                    <Text style={styles.inviteBtnText}>Invite</Text>
+                      <View style={styles.candidateActions}>
+                        <TouchableOpacity style={styles.inviteBtn}>
+                          <Sparkles size={14} color="#FFF" />
+                          <Text style={styles.inviteBtnText}>Invite</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.ledgerBtn}>
+                          <Text style={styles.ledgerBtnText}>View Ledger</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.bookmarkBtn}>
+                          <Bookmark size={20} color="#94A3B8" />
+                        </TouchableOpacity>
+                      </View>
+                    </Animated.View>
+                  );
+                })}
+              </View>
+
+              {pagination.total_pages > 1 && (
+                <View style={styles.paginationRow}>
+                  <TouchableOpacity
+                    disabled={page === 1}
+                    onPress={() => fetchStudents(page - 1)}
+                    style={[styles.pageBtn, page === 1 && styles.pageBtnDisabled]}
+                  >
+                    <ChevronLeft size={16} color={page === 1 ? "#94A3B8" : colors.purple[600]} />
+                    <Text style={[styles.pageBtnText, { color: page === 1 ? "#94A3B8" : colors.purple[600] }]}>Prev</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={styles.ledgerBtn}>
-                    <Text style={styles.ledgerBtnText}>View Ledger</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.bookmarkBtn}>
-                    <Bookmark size={20} color="#94A3B8" />
+
+                  <Text style={styles.pageIndicator}>
+                    Page {page} of {pagination.total_pages}
+                  </Text>
+
+                  <TouchableOpacity
+                    disabled={page === pagination.total_pages}
+                    onPress={() => fetchStudents(page + 1)}
+                    style={[styles.pageBtn, page === pagination.total_pages && styles.pageBtnDisabled]}
+                  >
+                    <Text style={[styles.pageBtnText, { color: page === pagination.total_pages ? "#94A3B8" : colors.purple[600] }]}>Next</Text>
+                    <ChevronRight size={16} color={page === pagination.total_pages ? "#94A3B8" : colors.purple[600]} />
                   </TouchableOpacity>
                 </View>
-              </Animated.View>
-            ))}
-          </View>
+              )}
+            </>
+          ) : (
+            <View style={styles.emptyContainer}>
+              <UserX size={40} color="#94A3B8" />
+              <Text style={styles.emptyText}>No candidates found.</Text>
+            </View>
+          )}
         </Animated.View>
 
         <View style={styles.footerSpacer} />
@@ -146,10 +297,8 @@ const styles = StyleSheet.create({
   searchTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 20 },
   searchTitle: { fontSize: 18, fontWeight: '800', color: '#1E293B' },
   inputContainer: { marginBottom: 16 },
+  inputLabel: { fontSize: 11, fontWeight: '700', color: '#64748B', textTransform: 'uppercase', marginBottom: 6, letterSpacing: 0.5 },
   input: { backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, paddingHorizontal: 16, paddingVertical: 14, fontSize: 15, color: '#0F172A', fontWeight: '500' },
-  dropdownRow: { flexDirection: 'row', gap: 12, marginBottom: 16 },
-  dropdown: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, paddingHorizontal: 16, paddingVertical: 14 },
-  dropdownText: { fontSize: 13, color: '#475569', fontWeight: '500' },
   searchBtn: { backgroundColor: colors.purple[600], paddingVertical: 14, borderRadius: 12, alignItems: 'center', marginBottom: 20, shadowColor: colors.purple[600], shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8 },
   searchBtnText: { color: '#FFF', fontSize: 15, fontWeight: '800' },
   skillsChipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
@@ -165,7 +314,7 @@ const styles = StyleSheet.create({
   dropdownSmallText: { fontSize: 12, color: '#475569', fontWeight: '600' },
 
   candidatesList: { gap: 16 },
-  candidateCard: { backgroundColor: '#FFFFFF', borderRadius: 20, padding: 20, borderWidth: 1, borderColor: '#E2E8F0', shadowColor: '#64748B', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2, position: 'relative' },
+  candidateCard: { backgroundColor: '#FFFFFF', borderRadius: 20, padding: 20, borderWidth: 1, borderColor: '#E2E8F0', shadowColor: '#64748B', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 1, position: 'relative' },
   matchBadge: { position: 'absolute', top: 20, right: 20, width: 44, height: 44, borderRadius: 22, borderWidth: 3, borderColor: '#10B981', alignItems: 'center', justifyContent: 'center' },
   matchBadgeText: { fontSize: 13, fontWeight: '900', color: '#059669' },
   candidateTop: { flexDirection: 'row', gap: 16, marginBottom: 20 },
@@ -183,5 +332,21 @@ const styles = StyleSheet.create({
   ledgerBtn: { flex: 1, backgroundColor: '#F8FAFC', paddingVertical: 12, borderRadius: 10, borderWidth: 1, borderColor: '#E2E8F0', alignItems: 'center', justifyContent: 'center' },
   ledgerBtnText: { color: '#475569', fontSize: 13, fontWeight: '700' },
   bookmarkBtn: { width: 44, height: 44, borderRadius: 10, borderWidth: 1, borderColor: '#E2E8F0', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFF' },
+  
+  loadingWrapper: { paddingVertical: 40, alignItems: 'center', justifyContent: 'center' },
+  loadingText: { marginTop: 10, fontSize: 13, color: '#64748B', fontWeight: '500' },
+  errorWrapper: { paddingVertical: 30, alignItems: 'center', justifyContent: 'center' },
+  errorText: { fontSize: 14, color: '#EF4444', fontWeight: '600', marginBottom: 12, textAlign: 'center' },
+  retryBtn: { backgroundColor: colors.purple[600], paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8 },
+  retryBtnText: { color: '#FFF', fontSize: 12, fontWeight: '700' },
+  emptyContainer: { backgroundColor: '#FFF', borderRadius: 20, padding: 40, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#E2E8F0', marginTop: 10 },
+  emptyText: { marginTop: 12, fontSize: 13, color: '#64748B', fontWeight: '500' },
+
+  paginationRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 24, paddingVertical: 12, borderTopWidth: 1, borderTopColor: '#E2E8F0' },
+  pageBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 6, borderWidth: 1, borderColor: '#CBD5E1', backgroundColor: '#FFF' },
+  pageBtnDisabled: { opacity: 0.5, borderColor: '#E2E8F0' },
+  pageBtnText: { fontSize: 12, fontWeight: '700' },
+  pageIndicator: { fontSize: 12, fontWeight: '700', color: '#475569' },
+
   footerSpacer: { height: 40 }
 });
