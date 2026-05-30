@@ -16,7 +16,7 @@ export const Tabs = ({ tabs, activeTab, onTabChange }: TabListProps) => {
       horizontal 
       showsHorizontalScrollIndicator={false}
       style={styles.container}
-      contentContainerStyle={styles.contentContainer}
+      contentContainerStyle={[styles.contentContainer, { justifyContent: 'center', flexGrow: 1 }]}
     >
       {tabs.map((tab) => {
         const isActive = activeTab === tab.value;
@@ -40,6 +40,7 @@ export const Tabs = ({ tabs, activeTab, onTabChange }: TabListProps) => {
 const styles = StyleSheet.create({
   container: {
     maxHeight: 50,
+    alignSelf: 'center',
   },
   contentContainer: {
     paddingHorizontal: spacing.sm,

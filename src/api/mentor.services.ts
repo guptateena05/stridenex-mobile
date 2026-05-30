@@ -189,4 +189,152 @@ export const emailSessionNoteToStudent = async (payload: { session_name: string;
   }
 };
 
+export const suggestAltTime = async (payload: { booking_name: string; alt_date: string; alt_time: string }) => {
+  try {
+    const response = await api.post(
+      "method/stridenex_app.stridenex_app.doctype.mentor_session_booking.mentor_session_booking.suggest_alt_time",
+      payload
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error suggesting alternate time:", error);
+    throw error;
+  }
+};
+
+export const acceptRequest = async (payload: { booking_name: string; from_time: string; to_time: string }) => {
+  try {
+    const response = await api.post(
+      "method/stridenex_app.stridenex_app.doctype.mentor_session_booking.mentor_session_booking.accept_request",
+      payload
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error accepting request:", error);
+    throw error;
+  }
+};
+
+export const declineRequest = async (payload: { booking_name: string }) => {
+  try {
+    const response = await api.post(
+      "method/stridenex_app.stridenex_app.doctype.mentor_session_booking.mentor_session_booking.decline_request",
+      payload
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error declining request:", error);
+    throw error;
+  }
+};
+
+export const verifyAndEndorseSkill = async (evidenceName: string) => {
+  try {
+    const response = await api.post(
+      "method/nexedu.skill_ledger.doctype.skill_evidence.skill_evidence.verify_and_endorse_skill",
+      { evidence_name: evidenceName }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error verifying and endorsing skill:", error);
+    throw error;
+  }
+};
+
+export const rejectSkillEvidence = async (evidenceName: string) => {
+  try {
+    const response = await api.post(
+      "method/nexedu.skill_ledger.doctype.skill_evidence.skill_evidence.reject_skill_evidence",
+      { evidence_name: evidenceName }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error rejecting skill evidence:", error);
+    throw error;
+  }
+};
+
+export const getSlotCalendar = async (mentor: string) => {
+  try {
+    const response = await api.get(
+      `method/stridenex_app.stridenex_app.doctype.mentor_session_booking.mentor_session_booking.get_slot_calendar?mentor=${encodeURIComponent(mentor)}`
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching slot calendar:", error);
+    throw error;
+  }
+};
+
+export const getWeeklyBookedSessions = async (mentor: string) => {
+  try {
+    const response = await api.post(
+      "method/stridenex_app.stridenex_app.doctype.mentor_session_booking.mentor_session_booking.get_weekly_booked_sessions",
+      { mentor }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching weekly booked sessions:", error);
+    throw error;
+  }
+};
+
+export const getMonthlyBookedSessions = async (mentor: string) => {
+  try {
+    const response = await api.post(
+      "method/stridenex_app.stridenex_app.doctype.mentor_session_booking.mentor_session_booking.get_monthly_booked_sessions",
+      { mentor }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching monthly booked sessions:", error);
+    throw error;
+  }
+};
+
+export const blockTime = async (payload: {
+  mentor: string;
+  date: string;
+  from_time: string;
+  to_time: string;
+  reason: string;
+}) => {
+  try {
+    const response = await api.post(
+      "method/stridenex_app.stridenex_app.doctype.mentor_blocked_time.mentor_blocked_time.block_time",
+      payload
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error blocking time:", error);
+    throw error;
+  }
+};
+
+export const saveMentorAvailability = async (payload: any) => {
+  try {
+    const response = await api.post(
+      "method/stridenex_app.stridenex_app.doctype.mentor_availability.mentor_availability.save_mentor_availability",
+      payload
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error saving mentor availability:", error);
+    throw error;
+  }
+};
+
+export const deleteMentorAvailability = async (mentor: string) => {
+  try {
+    const response = await api.post(
+      "method/stridenex_app.stridenex_app.doctype.mentor_availability.mentor_availability.delete_mentor_availability",
+      { mentor }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error deleting mentor availability:", error);
+    throw error;
+  }
+};
+
 
