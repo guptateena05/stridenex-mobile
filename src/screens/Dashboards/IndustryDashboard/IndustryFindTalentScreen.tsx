@@ -3,10 +3,11 @@ import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Refres
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '@/theme/colors';
 import { typography } from '@/theme/typography';
-import { Search, ChevronDown, Download, Sparkles, Bookmark, ChevronLeft, ChevronRight, UserX } from 'lucide-react-native';
+import { Search, ChevronDown, Download, Sparkles, Bookmark, UserX } from 'lucide-react-native';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import { useIndustry } from '@/context/IndustryContext';
 import { getFindTalentList } from '@/api/industry.services';
+import { Pagination } from '@/components/Shared/Pagination';
 
 const suggestedSkills = ["Python", "Machine Learning", "SQL", "Data Viz", "Statistics", "TensorFlow"];
 
@@ -39,7 +40,7 @@ export const IndustryFindTalentScreen = () => {
     setError(null);
     try {
       const response = await getFindTalentList(companyName, collegeFilter || undefined, pageNum, 20);
-      const dataObj = response?.message?.data || response?.data?.data || response?.data || response?.message || {};
+      const dataObj = response?.message?.data || response?.data?.data || response?.data || response?.message || response || {};
       const studentsList = dataObj?.students || (Array.isArray(dataObj) ? dataObj : []);
       setStudents(studentsList);
       setPage(pageNum);
@@ -242,31 +243,11 @@ export const IndustryFindTalentScreen = () => {
                 })}
               </View>
 
-              {pagination.total_pages > 1 && (
-                <View style={styles.paginationRow}>
-                  <TouchableOpacity
-                    disabled={page === 1}
-                    onPress={() => fetchStudents(page - 1)}
-                    style={[styles.pageBtn, page === 1 && styles.pageBtnDisabled]}
-                  >
-                    <ChevronLeft size={16} color={page === 1 ? "#94A3B8" : colors.purple[600]} />
-                    <Text style={[styles.pageBtnText, { color: page === 1 ? "#94A3B8" : colors.purple[600] }]}>Prev</Text>
-                  </TouchableOpacity>
-
-                  <Text style={styles.pageIndicator}>
-                    Page {page} of {pagination.total_pages}
-                  </Text>
-
-                  <TouchableOpacity
-                    disabled={page === pagination.total_pages}
-                    onPress={() => fetchStudents(page + 1)}
-                    style={[styles.pageBtn, page === pagination.total_pages && styles.pageBtnDisabled]}
-                  >
-                    <Text style={[styles.pageBtnText, { color: page === pagination.total_pages ? "#94A3B8" : colors.purple[600] }]}>Next</Text>
-                    <ChevronRight size={16} color={page === pagination.total_pages ? "#94A3B8" : colors.purple[600]} />
-                  </TouchableOpacity>
-                </View>
-              )}
+              <Pagination
+                currentPage={page}
+                totalPages={pagination.total_pages}
+                onPageChange={fetchStudents}
+              />
             </>
           ) : (
             <View style={styles.emptyContainer}>
@@ -341,12 +322,6 @@ const styles = StyleSheet.create({
   retryBtnText: { color: '#FFF', fontSize: 12, fontWeight: '700' },
   emptyContainer: { backgroundColor: '#FFF', borderRadius: 20, padding: 40, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#E2E8F0', marginTop: 10 },
   emptyText: { marginTop: 12, fontSize: 13, color: '#64748B', fontWeight: '500' },
-
-  paginationRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 24, paddingVertical: 12, borderTopWidth: 1, borderTopColor: '#E2E8F0' },
-  pageBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 6, borderWidth: 1, borderColor: '#CBD5E1', backgroundColor: '#FFF' },
-  pageBtnDisabled: { opacity: 0.5, borderColor: '#E2E8F0' },
-  pageBtnText: { fontSize: 12, fontWeight: '700' },
-  pageIndicator: { fontSize: 12, fontWeight: '700', color: '#475569' },
 
   footerSpacer: { height: 40 }
 });

@@ -26,10 +26,9 @@ import {
   Edit2,
   Mail,
   History,
-  ChevronLeft,
-  ChevronRight,
   LayoutList
 } from 'lucide-react-native';
+import { Pagination } from '@/components/Shared/Pagination';
 import Animated, { FadeInUp, FadeInRight } from 'react-native-reanimated';
 import { useAuth } from '@/context/AuthContext';
 import {
@@ -568,32 +567,12 @@ export const MentorSessionHistoryScreen = () => {
             </View>
           )}
 
-          {/* Pagination Controls */}
-          {totalHistoryPages > 1 && (
-            <View style={styles.paginationRow}>
-              <TouchableOpacity
-                disabled={historyPage === 1}
-                onPress={() => setHistoryPage(prev => Math.max(prev - 1, 1))}
-                style={[styles.pageBtn, historyPage === 1 && styles.pageBtnDisabled]}
-              >
-                <ChevronLeft size={16} color={historyPage === 1 ? "#94A3B8" : "#4c1d95"} />
-                <Text style={[styles.pageBtnText, { color: historyPage === 1 ? "#94A3B8" : "#4c1d95" }]}>Prev</Text>
-              </TouchableOpacity>
-
-              <Text style={styles.pageIndicator}>
-                Page {historyPage} of {totalHistoryPages}
-              </Text>
-
-              <TouchableOpacity
-                disabled={historyPage === totalHistoryPages}
-                onPress={() => setHistoryPage(prev => Math.min(prev + 1, totalHistoryPages))}
-                style={[styles.pageBtn, historyPage === totalHistoryPages && styles.pageBtnDisabled]}
-              >
-                <Text style={[styles.pageBtnText, { color: historyPage === totalHistoryPages ? "#94A3B8" : "#4c1d95" }]}>Next</Text>
-                <ChevronRight size={16} color={historyPage === totalHistoryPages ? "#94A3B8" : "#4c1d95"} />
-              </TouchableOpacity>
-            </View>
-          )}
+          <Pagination
+            currentPage={historyPage}
+            totalPages={totalHistoryPages}
+            onPageChange={setHistoryPage}
+            activeColor="#4c1d95"
+          />
 
           <View style={styles.footerSpacer} />
         </ScrollView>
@@ -674,13 +653,6 @@ const styles = StyleSheet.create({
   editNotesText: { fontSize: 12, fontWeight: '700', color: '#475569' },
   emailNotesBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#E2E8F0', paddingVertical: 8, borderRadius: 8, backgroundColor: '#FFF' },
   emailNotesText: { fontSize: 12, fontWeight: '700', color: '#475569' },
-
-  // Pagination Row
-  paginationRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 24, paddingVertical: 12, borderTopWidth: 1, borderTopColor: '#E2E8F0' },
-  pageBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 6, borderWidth: 1, borderColor: '#CBD5E1', backgroundColor: '#FFF' },
-  pageBtnDisabled: { opacity: 0.5, borderColor: '#E2E8F0' },
-  pageBtnText: { fontSize: 12, fontWeight: '700' },
-  pageIndicator: { fontSize: 12, fontWeight: '700', color: '#475569' },
 
   // Empty state
   emptyContainer: { backgroundColor: '#FFF', borderRadius: 16, padding: 32, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#E2E8F0' },
