@@ -364,7 +364,7 @@ export const getStudentApplicationList = async (industry: string) => {
   }
 };
 
-export const getFindTalentList = async (industry: string, college?: string, page: number = 1, page_size: number = 20) => {
+export const getFindTalentList = async (industry: string, college?: string, page: number = 1, page_size: number = 20, search?: string) => {
   try {
     const params: any = {
       industry,
@@ -373,6 +373,9 @@ export const getFindTalentList = async (industry: string, college?: string, page
     };
     if (college) {
       params.college = college;
+    }
+    if (search) {
+      params.search = search;
     }
     const response = await api.get(
       'method/stridenex_app.stridenex_app.doctype.student.student.get_student_list',

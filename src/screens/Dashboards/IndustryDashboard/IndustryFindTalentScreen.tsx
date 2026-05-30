@@ -18,6 +18,9 @@ export const IndustryFindTalentScreen = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [collegeFilter, setCollegeFilter] = useState("");
+  const [activeCollegeFilter, setActiveCollegeFilter] = useState("");
+  const [searchVal, setSearchVal] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState<any>({
     total: 0,
@@ -39,7 +42,7 @@ export const IndustryFindTalentScreen = () => {
     if (!isRefresh) setLoading(true);
     setError(null);
     try {
-      const response = await getFindTalentList(companyName, collegeFilter || undefined, pageNum, 20);
+      const response = await getFindTalentList(companyName, activeCollegeFilter || undefined, pageNum, 20, searchQuery);
       const dataObj = response?.message?.data || response?.data?.data || response?.data || response?.message || response || {};
       const studentsList = dataObj?.students || (Array.isArray(dataObj) ? dataObj : []);
       setStudents(studentsList);
@@ -64,11 +67,16 @@ export const IndustryFindTalentScreen = () => {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [industryData, collegeFilter]);
+  }, [industryData, activeCollegeFilter, searchQuery]);
 
   useEffect(() => {
     fetchStudents(1);
-  }, [industryData?.company_name]);
+  }, [fetchStudents]);
+
+  const handleSearch = () => {
+    setSearchQuery(searchVal);
+    setActiveCollegeFilter(collegeFilter);
+  };
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
@@ -140,12 +148,13 @@ export const IndustryFindTalentScreen = () => {
           </View>
           
           <View style={styles.inputContainer}>
-            <Text style={styles.inputLabel}>Required Skills</Text>
+            <Text style={styles.inputLabel}>Search</Text>
             <TextInput 
               style={styles.input}
-              placeholder="Required Skills (e.g. Python, ML, SQL)"
+              placeholder="Search by name, email, skills..."
               placeholderTextColor="#94A3B8"
-              defaultValue="Python, Machine Learning, SQL"
+              value={searchVal}
+              onChangeText={setSearchVal}
             />
           </View>
 
@@ -160,7 +169,7 @@ export const IndustryFindTalentScreen = () => {
             />
           </View>
 
-          <TouchableOpacity style={styles.searchBtn} onPress={() => fetchStudents(1)}>
+          <TouchableOpacity style={styles.searchBtn} onPress={handleSearch}>
             <Text style={styles.searchBtnText}>Search</Text>
           </TouchableOpacity>
 
