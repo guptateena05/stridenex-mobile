@@ -1,5 +1,4 @@
-import axios from "axios";
-import { BASE_URL } from "./api.services";
+import { api } from "./api.services";
 
 export interface College {
     name: string;
@@ -63,8 +62,8 @@ export interface OtpVerification {
 // Send mobile OTP
 export const sendMobileOTP = async (mobileNo: string): Promise<OtpResponse> => {
     try {
-        const response = await axios.get(
-            `${BASE_URL}method/stridenex_app.api_stridenex_app.app.send_mobile_otp`,
+        const response = await api.get(
+            `method/stridenex_app.api_stridenex_app.app.send_mobile_otp`,
             {
                 params: {
                     mobile_no: mobileNo
@@ -81,8 +80,9 @@ export const sendMobileOTP = async (mobileNo: string): Promise<OtpResponse> => {
 // Verify mobile OTP
 export const verifyMobileOTP = async (mobileNo: string, otp: string): Promise<any> => {
     try {
-        const url = `${BASE_URL}method/stridenex_app.api_stridenex_app.app.validate_mobile_otp?mobile_no=${encodeURIComponent(mobileNo)}&otp=${encodeURIComponent(otp)}`;
-        const response = await axios.get(url);
+        const response = await api.get(
+            `method/stridenex_app.api_stridenex_app.app.validate_mobile_otp?mobile_no=${encodeURIComponent(mobileNo)}&otp=${encodeURIComponent(otp)}`
+        );
         return response.data;
     } catch (error) {
         console.error("Error verifying mobile OTP:", error);
@@ -93,8 +93,9 @@ export const verifyMobileOTP = async (mobileNo: string, otp: string): Promise<an
 // Send email OTP
 export const sendEmailOTP = async (email: string): Promise<EmailOtpResponse> => {
     try {
-        const url = `${BASE_URL}method/stridenex_app.api_stridenex_app.app.send_email_otp?email=${encodeURIComponent(email)}`;
-        const response = await axios.get(url);
+        const response = await api.get(
+            `method/stridenex_app.api_stridenex_app.app.send_email_otp?email=${encodeURIComponent(email)}`
+        );
         return response.data;
     } catch (error) {
         console.error("Error sending email OTP:", error);
@@ -105,8 +106,9 @@ export const sendEmailOTP = async (email: string): Promise<EmailOtpResponse> => 
 // Verify email OTP
 export const verifyEmailOTP = async (email: string, otp: string): Promise<any> => {
     try {
-        const url = `${BASE_URL}method/stridenex_app.api_stridenex_app.app.validate_email_otp?email=${encodeURIComponent(email)}&otp=${encodeURIComponent(otp)}`;
-        const response = await axios.get(url);
+        const response = await api.get(
+            `method/stridenex_app.api_stridenex_app.app.validate_email_otp?email=${encodeURIComponent(email)}&otp=${encodeURIComponent(otp)}`
+        );
         return response.data;
     } catch (error) {
         console.error("Error verifying email OTP:", error);
@@ -142,8 +144,8 @@ export const createStudent = async (payload: any) => {
       }
     });
 
-    const response = await axios.post(
-      `${BASE_URL}method/stridenex_app.api_stridenex_app.student.student.create_student`,
+    const response = await api.post(
+      `method/stridenex_app.api_stridenex_app.student.student.create_student`,
       formData,
       {
         headers: {
