@@ -15,6 +15,7 @@ import {
   Switch
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRoute, useNavigation } from '@react-navigation/native';
 import { colors } from '@/theme/colors';
 import { typography } from '@/theme/typography';
 import { 
@@ -57,9 +58,20 @@ const BASE_DOMAIN = "https://devstridenex.quantcloud.in";
 
 export const MentorScheduleScreen = () => {
   const { userName } = useAuth();
+  const route = useRoute<any>();
+  const navigation = useNavigation<any>();
   
   // Navigation tab state
   const [activeTab, setActiveTab] = useState<'booked' | 'availability' | 'upcoming'>('booked');
+
+  const initialTab = route.params?.initialTab;
+
+  useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab);
+      navigation.setParams({ initialTab: undefined });
+    }
+  }, [initialTab, navigation]);
   
   // Booked sessions tab state
   const [viewType, setViewType] = useState<'week' | 'month'>('week');

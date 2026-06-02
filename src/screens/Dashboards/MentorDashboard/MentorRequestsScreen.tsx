@@ -14,6 +14,7 @@ import {
   Platform 
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRoute, useNavigation } from '@react-navigation/native';
 import { colors } from '@/theme/colors';
 import { typography } from '@/theme/typography';
 import { 
@@ -49,9 +50,20 @@ const BASE_DOMAIN = "https://devstridenex.quantcloud.in";
 
 export const MentorRequestsScreen = () => {
   const { userName } = useAuth();
+  const route = useRoute<any>();
+  const navigation = useNavigation<any>();
   
   // Tab State
   const [activeTab, setActiveTab] = useState<'bookings' | 'verifications'>('bookings');
+
+  const initialTab = route.params?.initialTab;
+
+  useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab);
+      navigation.setParams({ initialTab: undefined });
+    }
+  }, [initialTab, navigation]);
 
   // Booking Requests States
   const [requests, setRequests] = useState<any[]>([]);

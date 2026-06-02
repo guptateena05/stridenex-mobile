@@ -416,7 +416,7 @@ export const MentorDashboardScreen = () => {
                 <Calendar size={18} color="#64748B" />
                 <Text style={styles.cardTitle}>Upcoming Sessions</Text>
               </View>
-              <TouchableOpacity onPress={() => navigation.navigate('Schedule')} style={styles.viewAllBtn}>
+              <TouchableOpacity onPress={() => navigation.navigate('Schedule', { initialTab: 'upcoming' })} style={styles.viewAllBtn}>
                 <Text style={styles.viewAllText}>Manage</Text>
                 <ChevronRight size={14} color="#2563EB" />
               </TouchableOpacity>
@@ -479,7 +479,7 @@ export const MentorDashboardScreen = () => {
                 <Video size={18} color="#F97316" />
                 <Text style={styles.cardTitle}>Pending Requests</Text>
               </View>
-              <TouchableOpacity onPress={() => navigation.navigate('Requests')} style={styles.viewAllBtn}>
+              <TouchableOpacity onPress={() => navigation.navigate('Requests', { initialTab: 'bookings' })} style={styles.viewAllBtn}>
                 <Text style={styles.viewAllText}>View All</Text>
                 <ChevronRight size={14} color="#2563EB" />
               </TouchableOpacity>
@@ -508,7 +508,7 @@ export const MentorDashboardScreen = () => {
                 ))
               )}
             </View>
-            <TouchableOpacity style={styles.reviewBtn} onPress={() => navigation.navigate('Requests')}>
+            <TouchableOpacity style={styles.reviewBtn} onPress={() => navigation.navigate('Requests', { initialTab: 'bookings' })}>
               <Text style={styles.reviewBtnText}>{pendingRequestsCount} Pending — Review Now</Text>
             </TouchableOpacity>
           </Animated.View>
@@ -520,7 +520,7 @@ export const MentorDashboardScreen = () => {
                 <CheckCircle size={18} color="#64748B" />
                 <Text style={styles.cardTitle}>Skill Verify Queue</Text>
               </View>
-              <TouchableOpacity onPress={() => navigation.navigate('Requests')} style={styles.viewAllBtn}>
+              <TouchableOpacity onPress={() => navigation.navigate('Requests', { initialTab: 'verifications' })} style={styles.viewAllBtn}>
                 <Text style={styles.viewAllText}>View All</Text>
                 <ChevronRight size={14} color="#2563EB" />
               </TouchableOpacity>
@@ -547,7 +547,7 @@ export const MentorDashboardScreen = () => {
                 ))
               )}
             </View>
-            <TouchableOpacity style={[styles.reviewBtn, { backgroundColor: '#4c1d95' }]} onPress={() => navigation.navigate('Requests')}>
+            <TouchableOpacity style={[styles.reviewBtn, { backgroundColor: '#4c1d95' }]} onPress={() => navigation.navigate('Requests', { initialTab: 'verifications' })}>
               <Text style={styles.reviewBtnText}>{totalPendingCount} Awaiting Review</Text>
             </TouchableOpacity>
           </Animated.View>
