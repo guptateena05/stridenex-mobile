@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, RefreshControl, ActivityIndicator, Alert, Modal } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, ActivityIndicator, Alert, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '@/theme/colors';
 import { typography } from '@/theme/typography';
@@ -14,7 +14,7 @@ import {
   Trash2,
   X
 } from 'lucide-react-native';
-import Animated, { FadeInUp, FadeInRight } from 'react-native-reanimated';
+import Animated, { FadeInUp } from 'react-native-reanimated';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { StatsCard } from '@/components/dashboard/StatsCard';
 import { useIndustry } from '@/context/IndustryContext';
@@ -24,7 +24,6 @@ import {
   updateProject,
   deleteProject,
   getProjectApplicationCount,
-  getMasterData,
   createSkill,
   createCourse,
   createDepartment
@@ -32,12 +31,12 @@ import {
 import DynamicForm from '@/components/forms/DynamicForm';
 import { FormField } from '@/components/forms/DynamicField';
 
-const { width } = Dimensions.get('window');
+
 
 export const IndustryProjectsScreen = () => {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
-  const { industryData, loading: industryLoading } = useIndustry();
+  const { industryData } = useIndustry();
   const [projects, setProjects] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -66,14 +65,20 @@ export const IndustryProjectsScreen = () => {
         getProjectApplicationCount(companyName)
       ]);
 
-      const apiResponse = listRes?.message || listRes?.data || listRes || [];
+      const dataObj = listRes?.data || (listRes?.message && typeof listRes.message === 'object' ? listRes.message : null) || listRes || {};
       let projectList = [];
-      if (Array.isArray(apiResponse?.data)) {
-        projectList = apiResponse.data;
-      } else if (Array.isArray(apiResponse)) {
-        projectList = apiResponse;
-      } else if (Array.isArray(listRes?.data)) {
-        projectList = listRes.data;
+      if (Array.isArray(dataObj)) {
+        projectList = dataObj;
+      } else if (dataObj && typeof dataObj === 'object') {
+        const rawData = dataObj.projects || dataObj.data;
+        if (Array.isArray(rawData)) {
+          projectList = rawData;
+        } else if (dataObj.message && typeof dataObj.message === 'object') {
+          const nestedData = dataObj.message.projects || dataObj.message.data;
+          if (Array.isArray(nestedData)) {
+            projectList = nestedData;
+          }
+        }
       }
 
       setProjects(projectList);
@@ -108,7 +113,7 @@ export const IndustryProjectsScreen = () => {
       handlePostNew();
       navigation.setParams({ openForm: undefined });
     }
-  }, [route.params?.openForm]);
+  }, [route.params?.openForm, navigation]);
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -150,6 +155,7 @@ export const IndustryProjectsScreen = () => {
               fetchProjectData();
               Alert.alert("Success", "Project deleted successfully");
             } catch (err) {
+              console.error("Error deleting project:", err);
               Alert.alert("Error", "Failed to delete project");
             }
           }

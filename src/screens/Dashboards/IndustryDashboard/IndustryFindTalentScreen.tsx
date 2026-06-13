@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, RefreshControl, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, RefreshControl, ActivityIndicator, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '@/theme/colors';
 import { typography } from '@/theme/typography';
-import { Search, ChevronDown, Download, Sparkles, Bookmark, UserX } from 'lucide-react-native';
+import { Search, ChevronDown, Sparkles, Bookmark, UserX } from 'lucide-react-native';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import { useIndustry } from '@/context/IndustryContext';
-import { getFindTalentList } from '@/api/industry.services';
+import { getFindTalentList, getMasterData } from '@/api/industry.services';
 import { Pagination } from '@/components/Shared/Pagination';
 
 const suggestedSkills = ["Python", "Machine Learning", "SQL", "Data Viz", "Statistics", "TensorFlow"];
@@ -30,6 +30,29 @@ export const IndustryFindTalentScreen = () => {
     has_next: false,
     has_prev: false
   });
+
+  // College Dropdown States
+  const [colleges, setColleges] = useState<string[]>([]);
+  const [loadingColleges, setLoadingColleges] = useState(false);
+  const [collegeSearchQuery, setCollegeSearchQuery] = useState("");
+  const [showCollegeDropdown, setShowCollegeDropdown] = useState(false);
+
+  const loadColleges = async () => {
+    if (colleges.length > 0) return;
+    try {
+      setLoadingColleges(true);
+      const res = await getMasterData("College");
+      const apiData = res?.data || res?.message || res || [];
+      const options = Array.isArray(apiData)
+        ? apiData.map((item: any) => item.name || item.value || (typeof item === 'string' ? item : '')).filter(Boolean)
+        : [];
+      setColleges(options);
+    } catch (err) {
+      console.error("Error loading colleges:", err);
+    } finally {
+      setLoadingColleges(false);
+    }
+  };
 
   const fetchStudents = useCallback(async (pageNum = 1, isRefresh = false) => {
     const companyName = industryData?.company_name || industryData?.name;
@@ -106,9 +129,10 @@ export const IndustryFindTalentScreen = () => {
     const bgColor = colorsPalette[Math.abs(hash) % colorsPalette.length];
 
     const collegeInfo = `${student.college || "N/A"} • Year ${student.academic_year || "N/A"}`;
-    const skills = student.skills && Array.isArray(student.skills) && student.skills.length > 0
+    const rawSkills = student.skills && Array.isArray(student.skills) && student.skills.length > 0
       ? student.skills
       : [student.course, student.department].filter(Boolean);
+    const skills = rawSkills.map((s: any) => (s && typeof s === 'object' ? s.skill || s.name || '' : s)).filter(Boolean);
     const match = student.match_score || Math.floor(Math.random() * 17) + 80;
 
     return {
@@ -160,13 +184,18 @@ export const IndustryFindTalentScreen = () => {
 
           <View style={styles.inputContainer}>
             <Text style={styles.inputLabel}>Filter by College</Text>
-            <TextInput 
-              style={styles.input}
-              placeholder="e.g. VJTI, COEP, IIT"
-              placeholderTextColor="#94A3B8"
-              value={collegeFilter}
-              onChangeText={setCollegeFilter}
-            />
+            <TouchableOpacity 
+              style={styles.dropdownTrigger}
+              onPress={() => {
+                setShowCollegeDropdown(true);
+                loadColleges();
+              }}
+            >
+              <Text style={[styles.dropdownTriggerText, !activeCollegeFilter ? styles.dropdownPlaceholder : {}]} numberOfLines={1}>
+                {activeCollegeFilter || "All Colleges"}
+              </Text>
+              <ChevronDown size={18} color="#64748B" />
+            </TouchableOpacity>
           </View>
 
           <TouchableOpacity style={styles.searchBtn} onPress={handleSearch}>
@@ -226,8 +255,8 @@ export const IndustryFindTalentScreen = () => {
                           <Text style={styles.candidateName}>{candidate.name}</Text>
                           <Text style={styles.candidateCollege}>{candidate.college}</Text>
                           <View style={styles.skillsRow}>
-                            {candidate.skills.slice(0, 3).map((skill: string) => (
-                              <View key={skill} style={styles.skillTag}>
+                            {candidate.skills.slice(0, 3).map((skill: string, skillIdx: number) => (
+                              <View key={`${skill}-${skillIdx}`} style={styles.skillTag}>
                                 <Text style={styles.skillTagText}>{skill}</Text>
                               </View>
                             ))}
@@ -268,6 +297,84 @@ export const IndustryFindTalentScreen = () => {
 
         <View style={styles.footerSpacer} />
       </ScrollView>
+
+      {/* College Dropdown Modal */}
+      <Modal
+        visible={showCollegeDropdown}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowCollegeDropdown(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Select College</Text>
+              <TouchableOpacity onPress={() => setShowCollegeDropdown(false)} style={styles.closeBtn}>
+                <Text style={styles.closeBtnText}>Close</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.modalSearchContainer}>
+              <Search size={16} color="#94A3B8" style={styles.modalSearchIcon} />
+              <TextInput
+                style={styles.modalSearchInput}
+                placeholder="Search colleges..."
+                placeholderTextColor="#94A3B8"
+                value={collegeSearchQuery}
+                onChangeText={setCollegeSearchQuery}
+                autoFocus
+              />
+            </View>
+
+            {loadingColleges ? (
+              <View style={styles.modalLoading}>
+                <ActivityIndicator size="small" color={colors.purple[600]} />
+                <Text style={styles.modalLoadingText}>Loading colleges...</Text>
+              </View>
+            ) : (
+              <ScrollView style={styles.optionsList} keyboardShouldPersistTaps="handled">
+                <TouchableOpacity
+                  style={[styles.optionItem, !activeCollegeFilter ? styles.optionItemActive : {}]}
+                  onPress={() => {
+                    setCollegeFilter("");
+                    setActiveCollegeFilter("");
+                    setShowCollegeDropdown(false);
+                    setCollegeSearchQuery("");
+                  }}
+                >
+                  <Text style={[styles.optionText, !activeCollegeFilter ? styles.optionTextActive : {}]}>
+                    All Colleges
+                  </Text>
+                </TouchableOpacity>
+
+                {colleges
+                  .filter((college) =>
+                    college.toLowerCase().includes(collegeSearchQuery.toLowerCase())
+                  )
+                  .map((college) => {
+                    const isActive = activeCollegeFilter === college;
+                    return (
+                      <TouchableOpacity
+                        key={college}
+                        style={[styles.optionItem, isActive ? styles.optionItemActive : {}]}
+                        onPress={() => {
+                          setCollegeFilter(college);
+                          setActiveCollegeFilter(college);
+                          setShowCollegeDropdown(false);
+                          setCollegeSearchQuery("");
+                        }}
+                      >
+                        <Text style={[styles.optionText, isActive ? styles.optionTextActive : {}]}>
+                          {college}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+              </ScrollView>
+            )}
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -332,5 +439,118 @@ const styles = StyleSheet.create({
   emptyContainer: { backgroundColor: '#FFF', borderRadius: 20, padding: 40, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#E2E8F0', marginTop: 10 },
   emptyText: { marginTop: 12, fontSize: 13, color: '#64748B', fontWeight: '500' },
 
-  footerSpacer: { height: 40 }
+  footerSpacer: { height: 40 },
+
+  // College Dropdown specific styles
+  dropdownTrigger: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'space-between', 
+    backgroundColor: '#F8FAFC', 
+    borderWidth: 1, 
+    borderColor: '#E2E8F0', 
+    borderRadius: 12, 
+    paddingHorizontal: 16, 
+    paddingVertical: 14 
+  },
+  dropdownTriggerText: { 
+    fontSize: 15, 
+    color: '#0F172A', 
+    fontWeight: '500', 
+    flex: 1, 
+    marginRight: 8 
+  },
+  dropdownPlaceholder: { 
+    color: '#94A3B8' 
+  },
+  modalOverlay: { 
+    flex: 1, 
+    backgroundColor: 'rgba(15, 23, 42, 0.4)', 
+    justifyContent: 'flex-end' 
+  },
+  modalContent: { 
+    backgroundColor: '#FFF', 
+    borderTopLeftRadius: 24, 
+    borderTopRightRadius: 24, 
+    maxHeight: '80%', 
+    minHeight: '50%' 
+  },
+  modalHeader: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center', 
+    paddingHorizontal: 20, 
+    paddingVertical: 16, 
+    borderBottomWidth: 1, 
+    borderBottomColor: '#F1F5F9' 
+  },
+  modalTitle: { 
+    fontSize: 16, 
+    fontWeight: '800', 
+    color: '#1E293B', 
+    fontFamily: typography.fontFamily.display 
+  },
+  closeBtn: { 
+    paddingVertical: 4, 
+    paddingHorizontal: 8 
+  },
+  closeBtnText: { 
+    color: colors.purple[600], 
+    fontSize: 14, 
+    fontWeight: '700' 
+  },
+  modalSearchContainer: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    backgroundColor: '#F8FAFC', 
+    margin: 16, 
+    paddingHorizontal: 12, 
+    borderRadius: 12, 
+    borderWidth: 1, 
+    borderColor: '#E2E8F0' 
+  },
+  modalSearchIcon: { 
+    marginRight: 8 
+  },
+  modalSearchInput: { 
+    flex: 1, 
+    height: 44, 
+    fontSize: 14, 
+    color: '#0F172A', 
+    fontWeight: '500' 
+  },
+  optionsList: { 
+    flex: 1, 
+    paddingHorizontal: 16, 
+    marginBottom: 20 
+  },
+  optionItem: { 
+    paddingVertical: 14, 
+    paddingHorizontal: 12, 
+    borderRadius: 10, 
+    marginBottom: 4 
+  },
+  optionItemActive: { 
+    backgroundColor: 'rgba(147, 51, 234, 0.08)' 
+  },
+  optionText: { 
+    fontSize: 14, 
+    color: '#475569', 
+    fontWeight: '500' 
+  },
+  optionTextActive: { 
+    color: colors.purple[600], 
+    fontWeight: '700' 
+  },
+  modalLoading: { 
+    paddingVertical: 40, 
+    alignItems: 'center', 
+    justifyContent: 'center' 
+  },
+  modalLoadingText: { 
+    marginTop: 10, 
+    fontSize: 13, 
+    color: '#64748B', 
+    fontWeight: '500' 
+  }
 });

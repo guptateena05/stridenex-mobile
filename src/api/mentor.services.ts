@@ -337,4 +337,16 @@ export const deleteMentorAvailability = async (mentor: string) => {
   }
 };
 
+export const createLmsBatchForOffering = async (offeringName: string) => {
+  try {
+    const response = await api.post(
+      `method/stridenex_app.stridenex_app.doctype.mentor_offering.mentor_offering.create_lms_batch_for_offering?offering_name=${encodeURIComponent(offeringName)}`
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error creating LMS batch for offering:", error);
+    throw error;
+  }
+};
+
 

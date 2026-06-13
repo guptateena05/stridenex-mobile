@@ -213,8 +213,7 @@ export const getApplicationStatusCount = async (industry: string) => {
 export const getProjectList = async (industry: string) => {
   try {
     const response = await api.get(
-      'method/stridenex_app.stridenex_app.doctype.industry_project.industry_project.get_project_list',
-      { params: { industry } }
+      `method/stridenex_app.stridenex_app.doctype.industry_project.industry_project.get_project_list?industry=${encodeURIComponent(industry)}`
     );
     return response.data;
   } catch (error) {
@@ -366,21 +365,14 @@ export const getStudentApplicationList = async (industry: string) => {
 
 export const getFindTalentList = async (industry: string, college?: string, page: number = 1, page_size: number = 20, search?: string) => {
   try {
-    const params: any = {
-      industry,
-      page,
-      page_size
-    };
+    let url = `method/stridenex_app.stridenex_app.doctype.student.student.get_student_list?industry=${encodeURIComponent(industry)}&page=${page}&page_size=${page_size}`;
     if (college) {
-      params.college = college;
+      url += `&college=${encodeURIComponent(college)}`;
     }
     if (search) {
-      params.search = search;
+      url += `&search=${encodeURIComponent(search)}`;
     }
-    const response = await api.get(
-      'method/stridenex_app.stridenex_app.doctype.student.student.get_student_list',
-      { params }
-    );
+    const response = await api.get(url);
     return response.data;
   } catch (error) {
     console.error("Error fetching student list:", error);

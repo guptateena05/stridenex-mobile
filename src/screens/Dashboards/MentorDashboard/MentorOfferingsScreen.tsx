@@ -28,7 +28,8 @@ import { useAuth } from '@/context/AuthContext';
 import {
   getMentorOfferings,
   createMentorOffering,
-  updateMentorOffering
+  updateMentorOffering,
+  createLmsBatchForOffering
 } from '@/api/mentor.services';
 import DynamicForm from '@/components/forms/DynamicForm';
 import { FormField } from '@/components/forms/DynamicField';
@@ -237,13 +238,59 @@ export const MentorOfferingsScreen = () => {
       if (editingOffering) {
         await updateMentorOffering(editingOffering.name, payload);
         Alert.alert("Success", "Offering updated successfully!");
+        setIsModalVisible(false);
+        fetchOfferings(true);
       } else {
-        await createMentorOffering(payload);
-        Alert.alert("Success", "Offering created successfully!");
-      }
+        const response = await createMentorOffering(payload);
+        const createdName = response?.message?.name || response?.name || response?.message || response?.data?.name;
 
-      setIsModalVisible(false);
-      fetchOfferings(true);
+        setIsModalVisible(false);
+        fetchOfferings(true);
+
+        if (createdName && formData.offering_type === "Group Session") {
+          Alert.alert(
+            "Create LMS Batch",
+            `An LMS Batch must be created for your group session offering "${formData.title || createdName}".`,
+            [
+              {
+                text: "Create Batch Now",
+                onPress: async () => {
+                  try {
+                    setLoading(true);
+                    const batchRes = await createLmsBatchForOffering(createdName);
+                    
+                    if (batchRes && batchRes.exc_type) {
+                      let errMsg = "Failed to create LMS batch. Please try again.";
+                      if (batchRes._server_messages) {
+                        try {
+                          const messages = JSON.parse(batchRes._server_messages);
+                          const msgObj = JSON.parse(messages[0]);
+                          errMsg = msgObj.message || errMsg;
+                        } catch (e) {
+                          console.error("Error parsing server messages:", e);
+                        }
+                      }
+                      Alert.alert("Error", errMsg);
+                    } else {
+                      const msg = batchRes?.message?.message || (typeof batchRes?.message === "string" ? batchRes.message : null) || "Batch created successfully";
+                      Alert.alert("Success", msg);
+                      fetchOfferings(true);
+                    }
+                  } catch (err: any) {
+                    console.error("Error creating LMS batch:", err);
+                    Alert.alert("Error", err?.message || "Failed to create LMS Batch");
+                  } finally {
+                    setLoading(false);
+                  }
+                }
+              }
+            ],
+            { cancelable: false }
+          );
+        } else {
+          Alert.alert("Success", "Offering created successfully!");
+        }
+      }
     } catch (err: any) {
       console.error("Failed to submit offering:", err);
       Alert.alert("Error", err?.message || "Failed to save offering. Please check your inputs.");
