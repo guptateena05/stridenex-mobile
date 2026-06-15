@@ -97,6 +97,27 @@ export const LoginScreen = () => {
           }
         }
 
+        if (userRole === 'College') {
+          const isOnboardedVal = parseInt(data.is_onboarded ?? '0', 10);
+          if (isOnboardedVal < 3) {
+            const userEmail = data.user || username;
+            await AsyncStorage.setItem('userEmail', userEmail);
+            const webOnboardingUrl = `https://testwebstridenex.quantcloud.in/onboarding/college?source=mobile`;
+            (navigation as any).navigate('WebOnboarding', {
+              url: webOnboardingUrl,
+              sessionData: {
+                apiKey: api_key || '',
+                apiSecret: api_secret || '',
+                email: userEmail,
+                isOnboarded: String(isOnboardedVal),
+                fullName: data.full_name || '',
+                role: 'college',
+              }
+            });
+            return;
+          }
+        }
+
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         await login(userRole as any, token, userDetails);
       } else {
