@@ -77,6 +77,10 @@ export default function DynamicField({ field, value, onChange, onCreateCustomVal
 
   const fetchOptions = useCallback(async () => {
     if (!field.apiEndpoint) return;
+    if (field.disabled) return;
+    if (field.apiEndpoint.includes('master.get_master_data') && (!field.apiParams || !field.apiParams.doctype)) {
+      return;
+    }
     if (fetchedRef.current && options.length > 0) return;
 
     setLoading(true);
@@ -138,7 +142,14 @@ export default function DynamicField({ field, value, onChange, onCreateCustomVal
       setLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [field.apiEndpoint, field.apiParams, field.mapOptions, field.fieldname, field.label]);
+  }, [field.apiEndpoint, field.apiParams, field.mapOptions, field.fieldname, field.label, field.disabled]);
+
+  const serializedParams = JSON.stringify(field.apiParams);
+  useEffect(() => {
+    fetchedRef.current = false;
+    setOptions([]);
+    setFilteredOptions([]);
+  }, [serializedParams, field.apiEndpoint]);
 
   useEffect(() => {
     if (options.length > 0) {
@@ -150,10 +161,10 @@ export default function DynamicField({ field, value, onChange, onCreateCustomVal
   }, [searchTerm, options]);
 
   useEffect(() => {
-    if (field.apiEndpoint && value && !fetchedRef.current) {
+    if (field.apiEndpoint && value && !fetchedRef.current && !field.disabled) {
       fetchOptions();
     }
-  }, [field.apiEndpoint, value, fetchOptions]);
+  }, [field.apiEndpoint, value, fetchOptions, field.disabled]);
 
   const handleDropdownClick = () => {
     if (field.read_only || field.disabled) return;

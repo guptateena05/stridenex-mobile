@@ -1,6 +1,6 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import { User, ShieldCheck, Calendar, Users, Award, Briefcase, Target } from 'lucide-react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { User, ShieldCheck, Calendar, Users, Award, Briefcase, Target, Pen } from 'lucide-react-native';
 import { Svg, Defs, LinearGradient as SvgGradient, Stop, Rect, Circle } from 'react-native-svg';
 
 interface RoleBannerWidgetProps {
@@ -10,9 +10,12 @@ interface RoleBannerWidgetProps {
   progress: number;
   theme?: 'orange' | 'purple' | 'mentor' | 'college';
   metrics?: { label: string; value: string | number; iconName?: 'Users' | 'Calendar' | 'Award' | 'Briefcase' | 'Target' }[];
+  title?: string;
+  subtitle?: string;
+  onEditPress?: () => void;
 }
 
-export const RoleBannerWidget = ({ fullName, date, role, progress, theme = 'orange', metrics }: RoleBannerWidgetProps) => {
+export const RoleBannerWidget = ({ fullName, date, role, progress, theme = 'orange', metrics, title, subtitle, onEditPress }: RoleBannerWidgetProps) => {
   const isPurple = theme === 'purple';
   const isMentor = theme === 'mentor';
   const isCollege = theme === 'college' || role?.toLowerCase() === 'college';
@@ -69,15 +72,32 @@ export const RoleBannerWidget = ({ fullName, date, role, progress, theme = 'oran
       <View style={styles.content}>
         <View style={styles.topSection}>
           <View style={{ flex: 1, paddingRight: 16 }}>
-            <Text style={styles.greeting}>Hello, {fullName.split(' ')[0]}!</Text>
-            <View style={styles.dateRow}>
-              <Calendar size={12} color="rgba(255, 255, 255, 0.8)" />
-              <Text style={styles.dateText}>{date} • {role}</Text>
+            {title ? (
+              <>
+                <Text style={styles.titleText} numberOfLines={2}>{title}</Text>
+                {subtitle ? (
+                  <Text style={styles.subtitleText}>{subtitle}</Text>
+                ) : null}
+              </>
+            ) : (
+              <>
+                <Text style={styles.greeting}>Hello, {fullName.split(' ')[0]}!</Text>
+                <View style={styles.dateRow}>
+                  <Calendar size={12} color="rgba(255, 255, 255, 0.8)" />
+                  <Text style={styles.dateText}>{date} • {role}</Text>
+                </View>
+              </>
+            )}
+          </View>
+          {onEditPress ? (
+            <TouchableOpacity style={styles.avatar} onPress={onEditPress}>
+              <Pen color={iconColor} size={20} />
+            </TouchableOpacity>
+          ) : (
+            <View style={styles.avatar}>
+              <User color={iconColor} size={24} />
             </View>
-          </View>
-          <View style={styles.avatar}>
-            <User color={iconColor} size={24} />
-          </View>
+          )}
         </View>
 
         {metrics && metrics.length > 0 ? (
@@ -228,5 +248,18 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     textAlign: 'center',
+  },
+  titleText: {
+    fontSize: 20,
+    fontWeight: '900',
+    color: '#fff',
+    letterSpacing: -0.5,
+  },
+  subtitleText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: 'rgba(255, 255, 255, 0.9)',
+    marginTop: 4,
+    lineHeight: 16,
   }
 });
