@@ -229,3 +229,75 @@ export const deleteCollegeNotice = async (name: string) => {
   }
 };
 
+export const getStudentAnalyticsList = async (params: {
+  search?: string;
+  college?: string;
+  department?: string;
+  skill?: string;
+  current_year?: string;
+  page?: number;
+  page_size?: number;
+}) => {
+  try {
+    const queryParts: string[] = [];
+    if (params.search !== undefined) queryParts.push(`search=${encodeURIComponent(params.search)}`);
+    if (params.college !== undefined) queryParts.push(`college=${encodeURIComponent(params.college)}`);
+    if (params.department !== undefined) queryParts.push(`department=${encodeURIComponent(params.department)}`);
+    if (params.skill !== undefined) queryParts.push(`skill=${encodeURIComponent(params.skill)}`);
+    if (params.current_year !== undefined) queryParts.push(`current_year=${encodeURIComponent(params.current_year)}`);
+    if (params.page !== undefined) queryParts.push(`page=${encodeURIComponent(params.page)}`);
+    if (params.page_size !== undefined) queryParts.push(`page_size=${encodeURIComponent(params.page_size)}`);
+
+    let url = `method/stridenex_app.stridenex_app.doctype.campus_drive_application.campus_drive_application.get_student_Analytics_list`;
+    if (queryParts.length > 0) {
+      url += `?${queryParts.join("&")}`;
+    }
+
+    const response = await api.get(url);
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching student analytics list:", error);
+    throw error;
+  }
+};
+
+export const getLowEmployabilityStudents = async (college: string) => {
+  try {
+    const response = await api.get(
+      `method/stridenex_app.stridenex_app.doctype.college_campus_drives.college_campus_drives.get_low_employability_students`,
+      { params: { college } }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching low employability students:", error);
+    throw error;
+  }
+};
+
+export const assignStudentMentor = async (payload: { student: string; mentor: string }) => {
+  try {
+    const response = await api.post(
+      `method/stridenex_app.stridenex_app.doctype.student_mentor_mapping.student_mentor_mapping.create_student_mentor_mapping`,
+      payload
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error assigning student mentor:", error);
+    throw error;
+  }
+};
+
+export const getMasterData = async (doctype: string) => {
+  try {
+    const response = await api.post(
+      `method/stridenex_app.api_stridenex_app.college.master.get_master_data`,
+      { doctype }
+    );
+    return response.data;
+  } catch (error) {
+    console.error(`Error fetching master data for ${doctype}:`, error);
+    throw error;
+  }
+};
+
+

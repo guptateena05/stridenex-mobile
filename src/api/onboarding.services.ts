@@ -32,6 +32,7 @@ export interface CreateStudentPayload {
   department: string;
   academic_year: string;
   semester: string;
+  current_year?: string;
   date_of_birth: string;
   skill: Array<{ skill: string }>;
   career_interest: Array<{ career_interest: string }>;

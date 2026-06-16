@@ -35,7 +35,7 @@ export const CollegeDrawerNavigator = () => {
       screenOptions={{
         header: () => <DashboardHeader />,
         // Use green for College role
-        drawerActiveBackgroundColor: 'rgba(16, 185, 129, 0.1)', 
+        drawerActiveBackgroundColor: 'rgba(16, 185, 129, 0.1)',
         drawerActiveTintColor: '#10b981',
         drawerInactiveTintColor: colors.text.secondary,
         drawerLabelStyle: {
@@ -55,7 +55,7 @@ export const CollegeDrawerNavigator = () => {
         options={{ drawerIcon: ({ color, size }) => <LayoutDashboard color={color} size={size} /> }}
       />
       <Drawer.Screen
-        name="Students"
+        name="Student Analytics"
         component={CollegeStudentsScreen}
         options={{ drawerIcon: ({ color, size }) => <Users color={color} size={size} /> }}
       />
@@ -75,7 +75,7 @@ export const CollegeDrawerNavigator = () => {
         initialParams={{ tab: 'Dashboard' }}
         options={{ drawerIcon: ({ color, size }) => <Building2 color={color} size={size} /> }}
       />
-      
+
       {/* Accordion Hidden Sub Tabs for NEP & UGC */}
       <Drawer.Screen
         name="NEP Dashboard"
