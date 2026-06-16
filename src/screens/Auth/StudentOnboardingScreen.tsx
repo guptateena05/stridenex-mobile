@@ -34,6 +34,7 @@ interface DynamicFormDataType {
   department: string;
   academicYear: string;
   semester: string;
+  current_year: string;
   dateOfBirth: string;
   gender: string;
   skills: string[];
@@ -73,7 +74,7 @@ const StudentOnboardingScreen = () => {
 
   const [dynamicFormData, setDynamicFormData] = useState<DynamicFormDataType>({
     state: "", district: "", college: "", stream: "", courses: [], course: "", department: "",
-    academicYear: "1", semester: "", dateOfBirth: "", gender: "Male", skills: [], careerInterest: [],
+    academicYear: "1", semester: "", current_year: "", dateOfBirth: "", gender: "Male", skills: [], careerInterest: [],
     resume: null, linkedinUrl: "", githubUrl: ""
   });
 
@@ -410,6 +411,15 @@ const StudentOnboardingScreen = () => {
       disabled: !dynamicFormData.department
     },
     {
+      fieldname: "current_year",
+      label: "Current Year",
+      fieldtype: "Select",
+      required: true,
+      placeholder: "Select Current Year",
+      layout: "full",
+      options: ["First Year", "Second Year", "Third Year", "Final Year"]
+    },
+    {
       fieldname: "dateOfBirth",
       label: "Date of Birth",
       fieldtype: "Date",
@@ -502,7 +512,7 @@ const StudentOnboardingScreen = () => {
 
   const validateStep3 = (data: DynamicFormDataType) => {
     const errs: Record<string, string> = {};
-    const requiredFields: (keyof DynamicFormDataType)[] = ['state', 'district', 'college', 'department', 'stream', 'course', 'semester', 'dateOfBirth'];
+    const requiredFields: (keyof DynamicFormDataType)[] = ['state', 'district', 'college', 'department', 'stream', 'course', 'semester', 'current_year', 'dateOfBirth'];
     requiredFields.forEach(f => {
       if (!data[f] || data[f].toString().trim() === '') errs[f as string] = 'This field is required';
     });
@@ -561,6 +571,7 @@ const StudentOnboardingScreen = () => {
         department: data.department || "Dispatch",
         academic_year: academicYearValue,
         semester: data.semester || "1",
+        current_year: data.current_year || "",
         date_of_birth: data.dateOfBirth, // Already in YYYY-MM-DD format from handleDateConfirm
         skill: skillsArray.length > 0 ? skillsArray : [{ skill: "Creativity & innovation" }],
         career_interest: careerInterestArray.length > 0 ? careerInterestArray : [{ career_interest: "Biotechnology / Genetics" }],
@@ -630,6 +641,7 @@ const StudentOnboardingScreen = () => {
         stream: newData.stream ?? prev.stream,
         course: newData.course ?? prev.course,
         semester: newData.semester ?? prev.semester,
+        current_year: newData.current_year ?? prev.current_year,
         dateOfBirth: newData.dateOfBirth ?? prev.dateOfBirth,
         courses: newData.courses ?? prev.courses,
         skills: newData.skills ?? prev.skills,
