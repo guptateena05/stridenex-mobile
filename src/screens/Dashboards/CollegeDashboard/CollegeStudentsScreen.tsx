@@ -16,7 +16,7 @@ import { typography } from '@/theme/typography';
 import { spacing } from '@/theme/spacing';
 import { Card } from '@/components/Shared/Card';
 import Animated, { FadeInUp } from 'react-native-reanimated';
-import { Search, Users, ChevronDown, ChevronLeft, ChevronRight, X, AlertCircle } from 'lucide-react-native';
+import { Search, Users, ChevronDown, ChevronLeft, ChevronRight, X, AlertCircle, AlertTriangle } from 'lucide-react-native';
 import { useAuth } from '@/context/AuthContext';
 import { getCollegeDetails, getStudentAnalyticsList, getMasterData } from '@/api/college.services';
 
@@ -256,6 +256,21 @@ export const CollegeStudentsScreen = () => {
     };
   };
 
+  const handleViewStudent = (student: any) => {
+    const fullName = `${student.first_name || ""} ${student.last_name || ""}`.trim() || student.student_name || student.name || "—";
+    Alert.alert(
+      "Student Details",
+      `Name: ${fullName}\n` +
+      `Branch: ${student.branch || student.department || "—"}\n` +
+      `Year: ${student.year || student.academic_year || "—"}\n` +
+      `Employability Score: ${student.employability_score !== undefined ? student.employability_score : (student.employability !== undefined ? student.employability : "—")}\n` +
+      `Internships: ${student.internship_count !== undefined ? student.internship_count : (student.internship || "0")}\n` +
+      `Status: ${student.placement_status || student.status || "—"}\n` +
+      `Risk Level: ${student.risk_level || student.risk || "—"}`,
+      [{ text: "Close", style: "cancel" }]
+    );
+  };
+
   return (
     <View style={{ flex: 1, backgroundColor: colors.background.light }}>
       <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -351,6 +366,7 @@ export const CollegeStudentsScreen = () => {
                   <Text style={[styles.columnLabel, { width: 100 }]}>INTERNSHIP</Text>
                   <Text style={[styles.columnLabel, { width: 100 }]}>STATUS</Text>
                   <Text style={[styles.columnLabel, { width: 60, textAlign: 'center' }]}>RISK</Text>
+                  <Text style={[styles.columnLabel, { width: 80, textAlign: 'center' }]}>ACTION</Text>
                 </View>
 
                 {/* Table Rows */}
@@ -363,6 +379,10 @@ export const CollegeStudentsScreen = () => {
                     const riskObj = getRiskDetails(student.risk_level || student.risk || "low");
                     const avatarColor = getAvatarColor(fullName);
                     const initial = fullName.charAt(0).toUpperCase() || "S";
+
+                    // Handle status badges properly if status is - or empty
+                    const statusTextVal = student.placement_status || student.status || "—";
+                    const isStatusEmpty = statusTextVal === "—" || statusTextVal === "";
 
                     return (
                       <View key={student.name || idx} style={[styles.row, idx === filteredStudentsList.length - 1 && styles.noBorder]}>
@@ -396,20 +416,37 @@ export const CollegeStudentsScreen = () => {
 
                         <View style={[styles.column, { width: 100 }]}>
                           <View style={[styles.statusBadge, {
-                            backgroundColor: student.placement_status === 'Interning' || student.status === 'Interning' ? 'rgba(16,185,129,0.1)' :
-                                            student.placement_status === 'Searching' || student.status === 'Searching' ? 'rgba(234,88,12,0.1)' : 'rgba(124,58,237,0.1)'
+                            backgroundColor: isStatusEmpty ? '#F8FAFC' :
+                                            (statusTextVal === 'Interning' ? 'rgba(16,185,129,0.1)' :
+                                            statusTextVal === 'Searching' ? 'rgba(234,88,12,0.1)' : 'rgba(124,58,237,0.1)'),
+                            borderWidth: isStatusEmpty ? 1 : 0,
+                            borderColor: isStatusEmpty ? '#E2E8F0' : 'transparent'
                           }]}>
                             <Text style={[styles.statusText, {
-                              color: student.placement_status === 'Interning' || student.status === 'Interning' ? colors.success :
-                                     student.placement_status === 'Searching' || student.status === 'Searching' ? colors.warning : '#7C3AED'
+                              color: isStatusEmpty ? '#64748B' :
+                                     (statusTextVal === 'Interning' ? colors.success :
+                                     statusTextVal === 'Searching' ? colors.warning : '#7C3AED')
                             }]}>
-                              {student.placement_status || student.status || "Searching"}
+                              {statusTextVal}
                             </Text>
                           </View>
                         </View>
 
-                        <View style={[styles.column, { width: 60, alignItems: 'center' }]}>
-                          <View style={[styles.riskDot, { backgroundColor: riskObj.color }]} />
+                        <View style={[styles.column, { width: 60, alignItems: 'center', justifyContent: 'center' }]}>
+                          {riskObj.label === 'High' || riskObj.label === 'Med' ? (
+                            <AlertTriangle size={16} color={riskObj.color} />
+                          ) : (
+                            <Text style={styles.cellText}>—</Text>
+                          )}
+                        </View>
+
+                        <View style={[styles.column, { width: 80, alignItems: 'center', justifyContent: 'center' }]}>
+                          <TouchableOpacity 
+                            style={styles.actionViewBtn}
+                            onPress={() => handleViewStudent(student)}
+                          >
+                            <Text style={styles.actionViewText}>View</Text>
+                          </TouchableOpacity>
                         </View>
                       </View>
                     );
@@ -550,6 +587,10 @@ const styles = StyleSheet.create({
   statusText: { fontSize: 10, fontWeight: '800' },
   
   riskDot: { width: 10, height: 10, borderRadius: 5 },
+  modalLoading: { paddingVertical: 40, alignItems: 'center', justifyContent: 'center' },
+  modalLoadingText: { marginTop: 10, fontSize: 13, color: '#64748B', fontWeight: '500' },
+  actionViewBtn: { borderWidth: 1, borderColor: '#CBD5E1', borderRadius: 16, paddingHorizontal: 16, paddingVertical: 6, backgroundColor: '#FFF', alignItems: 'center', justifyContent: 'center' },
+  actionViewText: { fontSize: 11, fontWeight: '600', color: '#334155' },
 
   loaderContainer: { alignItems: 'center', justifyContent: 'center', paddingVertical: 40 },
   loaderText: { marginTop: 8, fontSize: 13, color: '#64748B', fontWeight: '500' },
