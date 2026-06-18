@@ -11,6 +11,7 @@ import {
   Alert,
   TouchableOpacity
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '@/theme/colors';
 import { typography } from '@/theme/typography';
 import { StatsCard } from '@/components/dashboard/StatsCard';
@@ -77,6 +78,7 @@ const empDistribution = [
 ];
 
 export const CollegeOverviewScreen = () => {
+  const insets = useSafeAreaInsets();
   const { userName } = useAuth();
   const navigation = useNavigation<any>();
   const [collegeData, setCollegeData] = useState<any>(null);
@@ -812,24 +814,26 @@ export const CollegeOverviewScreen = () => {
       {/* Edit Profile Modal / Bottom Sheet */}
       <Modal animationType="slide" transparent={true} visible={isEditModalVisible} onRequestClose={() => setIsEditModalVisible(false)}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalOverlay}>
-          <Animated.View entering={FadeInUp} style={styles.modalContent}>
+          <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Edit College Settings</Text>
               <TouchableOpacity onPress={() => setIsEditModalVisible(false)} style={styles.closeBtn}>
-                <X size={20} color="#64748B" />
+                <X size={24} color="#000" />
               </TouchableOpacity>
             </View>
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.modalScroll}>
-               <DynamicForm
-                 fields={editFields}
-                 onSubmit={handleUpdateProfile}
-                 initialValues={profileFormValues}
-                 onChange={handleFormChange}
-                 loading={updateLoading}
-                 buttonLabel="Save Changes"
-               />
+               <View style={{ padding: 20 }}>
+                 <DynamicForm
+                   fields={editFields}
+                   onSubmit={handleUpdateProfile}
+                   initialValues={profileFormValues}
+                   onChange={handleFormChange}
+                   loading={updateLoading}
+                   buttonLabel="Save Changes"
+                 />
+               </View>
             </ScrollView>
-          </Animated.View>
+          </View>
         </KeyboardAvoidingView>
       </Modal>
     </View>
@@ -883,9 +887,9 @@ const styles = StyleSheet.create({
   chartLabel: { fontSize: 9, color: '#64748B', marginTop: 8, fontWeight: '700' },
   viewDetailsText: { fontSize: 12, fontWeight: '800', color: '#2563EB' },
   flexRowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.6)', justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: '#FFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, height: '85%', paddingHorizontal: 20, paddingTop: 20 },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)', justifyContent: 'flex-end' },
+  modalContent: { backgroundColor: '#FFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, height: '90%' },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
   modalTitle: { fontSize: 18, fontWeight: '800', color: '#0F172A' },
   closeBtn: { padding: 6, backgroundColor: '#F8FAFC', borderRadius: 20 },
   modalScroll: { paddingBottom: 60 },

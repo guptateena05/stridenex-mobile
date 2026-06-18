@@ -300,4 +300,216 @@ export const getMasterData = async (doctype: string) => {
   }
 };
 
+export const getPlacementList = async (college: string, name?: string, status?: string) => {
+  try {
+    const params: any = { college };
+    if (name) params.name = name;
+    if (status) params.status = status;
+    const response = await api.get(
+      'method/stridenex_app.stridenex_app.doctype.campus_drive_application.campus_drive_application.get_placement_list',
+      { params }
+    );
+    return response.data;
+  } catch (error) {
+    console.error(`Error fetching placement list for college ${college}:`, error);
+    throw error;
+  }
+};
+
+export const getPlacementCounts = async (college: string, name?: string) => {
+  try {
+    const params: any = { college };
+    if (name) params.name = name;
+    const response = await api.get(
+      'method/stridenex_app.stridenex_app.doctype.campus_drive_application.campus_drive_application.get_placement_counts',
+      { params }
+    );
+    return response.data;
+  } catch (error) {
+    console.error(`Error fetching placement counts for college ${college}:`, error);
+    throw error;
+  }
+};
+
+export const getEligibleStudents = async (
+  params: string | { branch?: string; cgpa?: number | string; backlog?: number | string; drive?: string; college?: string }
+) => {
+  try {
+    let queryParams: any = {};
+    if (typeof params === 'string') {
+      queryParams.drive = params;
+    } else {
+      if (params.branch) queryParams.branch = params.branch;
+      if (params.cgpa !== undefined && params.cgpa !== "") queryParams.cgpa = params.cgpa;
+      if (params.backlog !== undefined && params.backlog !== "") queryParams.backlog = params.backlog;
+      if (params.drive) queryParams.drive = params.drive;
+      if (params.college) queryParams.college = params.college;
+    }
+    const response = await api.get(
+      'method/stridenex_app.stridenex_app.doctype.campus_drive_application.campus_drive_application.get_eligible_students',
+      { params: queryParams }
+    );
+    return response.data;
+  } catch (error) {
+    console.error(`Error fetching eligible students:`, error);
+    throw error;
+  }
+};
+
+export const getNonEligibleStudents = async (params: {
+  branch?: string;
+  cgpa?: number | string;
+  backlog?: number | string;
+  college?: string;
+}) => {
+  try {
+    const queryParams: any = {};
+    if (params.branch) queryParams.branch = params.branch;
+    if (params.cgpa !== undefined && params.cgpa !== "") queryParams.cgpa = params.cgpa;
+    if (params.backlog !== undefined && params.backlog !== "") queryParams.backlog = params.backlog;
+    if (params.college) queryParams.college = params.college;
+
+    const response = await api.get(
+      'method/stridenex_app.stridenex_app.doctype.campus_drive_application.campus_drive_application.get_not_eligible_students',
+      { params: queryParams }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching non-eligible students:", error);
+    throw error;
+  }
+};
+
+export const updateCampusDriveApplicationStatus = async (applicationName: string, status: string) => {
+  try {
+    const response = await api.post(
+      `method/stridenex_app.stridenex_app.doctype.campus_drive_application.campus_drive_application.update_application_status?application_name=${encodeURIComponent(applicationName)}&status=${encodeURIComponent(status)}`
+    );
+    return response.data;
+  } catch (error) {
+    console.error(`Error updating campus drive application status for ${applicationName}:`, error);
+    throw error;
+  }
+};
+
+export const sendCandidateStatusMail = async (data: {
+  email: string;
+  status: string;
+  candidate_name: string;
+  drive_name: string;
+}) => {
+  try {
+    const response = await api.post(
+      `method/stridenex_app.stridenex_app.doctype.campus_drive_application.campus_drive_application.send_candidate_status_mail`,
+      data
+    );
+    return response.data;
+  } catch (error) {
+    console.error(`Error sending candidate status mail to ${data.email}:`, error);
+    throw error;
+  }
+};
+
+export const getSalaryBands = async (college: string) => {
+  try {
+    const response = await api.get(
+      `method/stridenex_app.stridenex_app.doctype.college_campus_drives.college_campus_drives.get_salary_bands`,
+      { params: { college } }
+    );
+    return response.data;
+  } catch (error) {
+    console.error(`Error fetching salary bands for college ${college}:`, error);
+    throw error;
+  }
+};
+
+export const createCollegeDrive = async (driveData: any) => {
+  try {
+    const response = await api.post(
+      `method/stridenex_app.stridenex_app.doctype.college_campus_drives.college_campus_drives.create_drive`,
+      driveData
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error creating college drive:", error);
+    throw error;
+  }
+};
+
+export const updateCollegeDrive = async (driveData: any) => {
+  try {
+    const response = await api.post(
+      `method/stridenex_app.stridenex_app.doctype.college_campus_drives.college_campus_drives.update_drive`,
+      driveData
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error updating college drive:", error);
+    throw error;
+  }
+};
+
+export const deleteCollegeDrive = async (driveName: string) => {
+  try {
+    const response = await api.post(
+      `method/stridenex_app.stridenex_app.doctype.college_campus_drives.college_campus_drives.delete_drive?name=${encodeURIComponent(driveName)}`
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error deleting college drive:", error);
+    throw error;
+  }
+};
+
+export const getPlacementFunnel = async (college: string) => {
+  try {
+    const response = await api.get(
+      `method/stridenex_app.stridenex_app.doctype.college_campus_drives.college_campus_drives.get_placement_funnel`,
+      { params: { college } }
+    );
+    return response.data;
+  } catch (error) {
+    console.error(`Error fetching placement funnel for college ${college}:`, error);
+    throw error;
+  }
+};
+
+export const exportEligibleStudents = async (params: {
+  branch?: string;
+  cgpa?: number | string;
+  backlog?: number | string;
+  college?: string;
+}) => {
+  try {
+    const response = await api.get(
+      `method/stridenex_app.stridenex_app.doctype.campus_drive_application.campus_drive_application.export_eligible_students`,
+      { params, responseType: 'blob' }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error exporting eligible students:", error);
+    throw error;
+  }
+};
+
+export const exportNotEligibleStudents = async (params: {
+  branch?: string;
+  cgpa?: number | string;
+  backlog?: number | string;
+  college?: string;
+}) => {
+  try {
+    const response = await api.get(
+      `method/stridenex_app.stridenex_app.doctype.campus_drive_application.campus_drive_application.export_not_eligible_students`,
+      { params, responseType: 'blob' }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error exporting not eligible students:", error);
+    throw error;
+  }
+};
+
+
+
 

@@ -60,9 +60,34 @@ export const CollegeDrawerNavigator = () => {
         options={{ drawerIcon: ({ color, size }) => <Users color={color} size={size} /> }}
       />
       <Drawer.Screen
-        name="Placement"
+        name="Campus Drives"
         component={CollegePlacementScreen}
-        options={{ drawerIcon: ({ color, size }) => <TrendingUp color={color} size={size} /> }}
+        initialParams={{ tab: 'drives' }}
+        options={{ drawerIcon: ({ color, size }) => <Briefcase color={color} size={size} /> }}
+      />
+      <Drawer.Screen
+        name="Active Drives"
+        component={CollegePlacementScreen}
+        initialParams={{ tab: 'drives' }}
+        options={{ drawerIcon: ({ color, size }) => <Briefcase color={color} size={size} /> }}
+      />
+      <Drawer.Screen
+        name="Placement Tracker"
+        component={CollegePlacementScreen}
+        initialParams={{ tab: 'tracker' }}
+        options={{ drawerIcon: ({ color, size }) => <Users color={color} size={size} /> }}
+      />
+      <Drawer.Screen
+        name="Eligibility Checker"
+        component={CollegePlacementScreen}
+        initialParams={{ tab: 'eligibility' }}
+        options={{ drawerIcon: ({ color, size }) => <Target color={color} size={size} /> }}
+      />
+      <Drawer.Screen
+        name="Placement Stats"
+        component={CollegePlacementScreen}
+        initialParams={{ tab: 'stats' }}
+        options={{ drawerIcon: ({ color, size }) => <BarChart color={color} size={size} /> }}
       />
       {/* 
         This is the parent tab for NEP & UGC. 

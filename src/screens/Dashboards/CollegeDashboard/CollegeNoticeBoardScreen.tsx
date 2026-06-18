@@ -715,10 +715,7 @@ export const CollegeNoticeBoardScreen = () => {
         animationType="slide"
         onRequestClose={() => setIsEventModalVisible(false)}
       >
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          style={styles.modalOverlay}
-        >
+        <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <View>
@@ -727,12 +724,12 @@ export const CollegeNoticeBoardScreen = () => {
                   {editingEvent ? 'Modify event information' : 'Publish a new campus event'}
                 </Text>
               </View>
-              <TouchableOpacity onPress={() => setIsEventModalVisible(false)} style={styles.closeBtn}>
-                <X size={20} color="#64748B" />
+              <TouchableOpacity onPress={() => setIsEventModalVisible(false)}>
+                <X size={24} color="#000" />
               </TouchableOpacity>
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.modalScroll}>
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 20 }}>
               <DynamicForm
                 fields={eventFields}
                 onSubmit={handleEventSubmit}
@@ -742,7 +739,7 @@ export const CollegeNoticeBoardScreen = () => {
               />
             </ScrollView>
           </View>
-        </KeyboardAvoidingView>
+        </View>
       </Modal>
 
       {/* Create/Edit Notice Modal */}
@@ -752,10 +749,7 @@ export const CollegeNoticeBoardScreen = () => {
         animationType="slide"
         onRequestClose={() => setIsNoticeModalVisible(false)}
       >
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          style={styles.modalOverlay}
-        >
+        <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <View>
@@ -764,12 +758,12 @@ export const CollegeNoticeBoardScreen = () => {
                   {editingNotice ? 'Modify announcement information' : 'Publish a new announcement'}
                 </Text>
               </View>
-              <TouchableOpacity onPress={() => setIsNoticeModalVisible(false)} style={styles.closeBtn}>
-                <X size={20} color="#64748B" />
+              <TouchableOpacity onPress={() => setIsNoticeModalVisible(false)}>
+                <X size={24} color="#000" />
               </TouchableOpacity>
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.modalScroll}>
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 20 }}>
               <DynamicForm
                 fields={noticeFields}
                 onSubmit={handleNoticeSubmit}
@@ -779,7 +773,7 @@ export const CollegeNoticeBoardScreen = () => {
               />
             </ScrollView>
           </View>
-        </KeyboardAvoidingView>
+        </View>
       </Modal>
     </SafeAreaView>
   );
@@ -854,9 +848,9 @@ const styles = StyleSheet.create({
   centerContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F8FAFC' },
   loadingText: { marginTop: 12, fontSize: 14, color: '#64748B', fontWeight: '500' },
 
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.6)', justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: '#FFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, height: '85%', paddingHorizontal: 20, paddingTop: 20 },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)', justifyContent: 'flex-end' },
+  modalContent: { backgroundColor: '#FFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, height: '90%' },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
   modalTitle: { fontSize: 18, fontWeight: '800', color: '#0F172A', fontFamily: typography.fontFamily.display },
   modalSubtitle: { fontSize: 12, color: '#64748B', fontWeight: '500', marginTop: 2 },
   closeBtn: { padding: 6, backgroundColor: '#F8FAFC', borderRadius: 20 },

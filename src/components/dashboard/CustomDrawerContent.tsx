@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, Alert } from 'react-native';
 import { DrawerContentComponentProps, DrawerItemList, DrawerItem } from '@react-navigation/drawer';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -48,8 +48,22 @@ export const CustomDrawerContent = (props: DrawerContentComponentProps) => {
   else if (role === 'College') headerBg = '#10b981';
   else if (role === 'Industry') headerBg = colors.purple[600] || '#9333ea';
 
+  const activeRouteName = props.state.routes[props.state.index].name;
+
   const [nepExpanded, setNepExpanded] = useState(false);
   const nepTabs = ["NEP Dashboard", "NEP 2020", "UGC 2026", "Grievance Engine", "Portfolio Locker", "ABC Credits", "Equity Audit", "NEP Reports"];
+
+  const [campusExpanded, setCampusExpanded] = useState(false);
+  const campusTabs = ["Active Drives", "Placement Tracker", "Eligibility Checker", "Placement Stats"];
+
+  useEffect(() => {
+    if (nepTabs.includes(activeRouteName)) {
+      setNepExpanded(true);
+    }
+    if (campusTabs.includes(activeRouteName) || activeRouteName === 'Campus Drives') {
+      setCampusExpanded(true);
+    }
+  }, [activeRouteName]);
 
   return (
     <View style={styles.container}>
@@ -74,8 +88,11 @@ export const CustomDrawerContent = (props: DrawerContentComponentProps) => {
             const { title, drawerIcon, drawerActiveTintColor, drawerInactiveTintColor, drawerActiveBackgroundColor, drawerLabelStyle, drawerItemStyle } = props.descriptors[route.key].options;
             const isNepParent = route.name === 'NEP & UGC 2026';
             const isNepChild = nepTabs.includes(route.name);
+            const isCampusParent = route.name === 'Campus Drives';
+            const isCampusChild = campusTabs.includes(route.name);
 
             if (isNepChild && !nepExpanded) return null;
+            if (isCampusChild && !campusExpanded) return null;
 
             return (
               <View key={route.key}>
@@ -85,9 +102,12 @@ export const CustomDrawerContent = (props: DrawerContentComponentProps) => {
                       <Text style={[drawerLabelStyle, { color, fontSize: 13, fontWeight: '700' }]}>
                         {title !== undefined ? title : route.name}
                       </Text>
-                      {isNepParent && (
+                      {(isNepParent || isCampusParent) && (
                         <View style={{ opacity: 0.5 }}>
-                          {nepExpanded ? <ChevronUp size={16} color={color} /> : <ChevronDown size={16} color={color} />}
+                          {isNepParent 
+                            ? (nepExpanded ? <ChevronUp size={16} color={color} /> : <ChevronDown size={16} color={color} />)
+                            : (campusExpanded ? <ChevronUp size={16} color={color} /> : <ChevronDown size={16} color={color} />)
+                          }
                         </View>
                       )}
                     </View>
@@ -97,10 +117,12 @@ export const CustomDrawerContent = (props: DrawerContentComponentProps) => {
                   activeTintColor={drawerActiveTintColor || '#10b981'}
                   inactiveTintColor={drawerInactiveTintColor || colors.text.secondary}
                   activeBackgroundColor={drawerActiveBackgroundColor || 'rgba(16, 185, 129, 0.1)'}
-                  style={[drawerItemStyle, isNepChild && { marginTop: 0, marginBottom: 2, marginLeft: 44 }]}
+                  style={[drawerItemStyle, (isNepChild || isCampusChild) && { marginTop: 0, marginBottom: 2, marginLeft: 44 }]}
                   onPress={() => {
                     if (isNepParent) {
                       setNepExpanded(!nepExpanded);
+                    } else if (isCampusParent) {
+                      setCampusExpanded(!campusExpanded);
                     } else {
                       props.navigation.navigate(route.name);
                     }
