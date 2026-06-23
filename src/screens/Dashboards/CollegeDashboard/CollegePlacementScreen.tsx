@@ -266,7 +266,7 @@ export const CollegePlacementScreen = ({ route }: any) => {
       : [];
 
     const company = dbDrive.industry || dbDrive.industry_name || (dbDrive.name && dbDrive.name.includes("-") ? dbDrive.name.split("-")[0] : dbDrive.name) || "";
-    const role = dbDrive.role || (Array.isArray(dbDrive.designation) && dbDrive.designation[0] ? (dbDrive.designation[0].designation || dbDrive.designation[0].name) : "") || dbDrive.job_title || "Software Engineer";
+    const role = dbDrive.role || (Array.isArray(dbDrive.designation) && dbDrive.designation[0] ? (dbDrive.designation[0].designation || dbDrive.designation[0].name) : "") || dbDrive.job_title || "—";
 
     const stats = {
       shortlisted: dbDrive.shortlisted !== undefined && dbDrive.shortlisted !== null ? Number(dbDrive.shortlisted) : 0,
@@ -282,7 +282,7 @@ export const CollegePlacementScreen = ({ route }: any) => {
       role,
       driveDate: dbDrive.drive_date ? dbDrive.drive_date.split(" ")[0] : "",
       regDeadline: dbDrive.registeration_deadline ? dbDrive.registeration_deadline.split(" ")[0] : "",
-      package: dbDrive.package_offered || "₹4.5 - 7.0 LPA",
+      package: dbDrive.package_offered || "",
       type: dbDrive.job_type || "Full-Time",
       criteria: {
         minCgpa,
@@ -418,11 +418,12 @@ export const CollegePlacementScreen = ({ route }: any) => {
 
   const fetchStatsTab = async (collegeName: string) => {
     try {
-      const [statsRes, branchRes, salaryRes, funnelRes] = await Promise.allSettled([
+      const [statsRes, branchRes, salaryRes, funnelRes, drivesRes] = await Promise.allSettled([
         getPlacementStats(collegeName),
         getBranchWisePerformance(collegeName),
         getSalaryBands(collegeName),
-        getPlacementFunnel(collegeName)
+        getPlacementFunnel(collegeName),
+        getCollegeDrives(collegeName)
       ]);
 
       if (statsRes.status === "fulfilled") {
@@ -477,6 +478,18 @@ export const CollegePlacementScreen = ({ route }: any) => {
           });
           setPlacementFunnel(mapped);
         }
+      }
+
+      if (drivesRes.status === "fulfilled") {
+        const raw = drivesRes.value?.data ?? drivesRes.value?.message?.data ?? drivesRes.value?.message ?? drivesRes.value;
+        let drivesArray: any[] = [];
+        if (raw && typeof raw === 'object') {
+          drivesArray = Array.isArray(raw.campus_drives)
+            ? raw.campus_drives
+            : (Array.isArray(raw) ? raw : []);
+        }
+        const mapped = drivesArray.map((dbDrive: any) => mapBackendDriveToUI(dbDrive));
+        setDrivesList(mapped);
       }
     } catch (err) {
       console.error("Error loading stats tab:", err);
@@ -652,24 +665,71 @@ export const CollegePlacementScreen = ({ route }: any) => {
     }
   }, [selectedDriveStatusFilter, selectedDrive]);
 
+  const parseErrorMessage = (err: any): string => {
+    if (!err) return "";
+    if (typeof err === "string") return err;
+    let msg = err.message;
+    if (msg && typeof msg === "object") {
+      msg = msg.message || msg.error || JSON.stringify(msg);
+    }
+    return msg || String(err);
+  };
+
   const handleUpdateStatus = async (applicationId: string, studentName: string, email: string, newStatus: string) => {
     if (!selectedDrive) return;
     try {
       setUpdatingStatusMap(prev => ({ ...prev, [applicationId]: true }));
       await updateCampusDriveApplicationStatus(applicationId, newStatus);
-      Alert.alert("Success", `Status updated to ${newStatus} for ${studentName}!`);
 
-      // Notify candidate by email
-      try {
-        await sendCandidateStatusMail({
-          email: email,
-          status: newStatus.toLowerCase(),
-          candidate_name: studentName,
-          drive_name: selectedDrive.company || selectedDrive.name || ""
-        });
-      } catch (mailErr) {
-        console.error("Failed to send status email:", mailErr);
+      // Resolve candidate email Address
+      const candidateInList = drivePlacementList.find(r => r.application_id === applicationId);
+      let resolvedEmail = email || candidateInList?.email || candidateInList?.email_id || candidateInList?.student_email;
+      if (!resolvedEmail || !resolvedEmail.includes('@')) {
+        resolvedEmail = candidateInList?.email || candidateInList?.email_id || candidateInList?.student_email || email;
       }
+
+      let emailStatus: 'success' | 'failed' | 'no_email' = 'no_email';
+      let emailErrorMessage = '';
+
+      if (resolvedEmail && resolvedEmail.includes('@')) {
+        try {
+          const mailRes = await sendCandidateStatusMail({
+            email: resolvedEmail,
+            status: newStatus.toLowerCase(),
+            candidate_name: studentName,
+            drive_name: selectedDrive.company || selectedDrive.name || ""
+          });
+
+          if (mailRes && mailRes.message && (mailRes.message.status === 'error' || mailRes.message.status === 'failed' || mailRes.message.status === 'fail')) {
+            throw new Error(mailRes.message.message || "Failed to send email notification");
+          }
+          emailStatus = 'success';
+        } catch (mailErr: any) {
+          console.error("Failed to send status email:", mailErr);
+          emailStatus = 'failed';
+          emailErrorMessage = parseErrorMessage(mailErr);
+        }
+      }
+
+      // Sequential alert to prevent React Native overlapping alert issues
+      Alert.alert(
+        "Success",
+        `Status updated to ${newStatus} for ${studentName}!`,
+        [
+          {
+            text: "OK",
+            onPress: () => {
+              if (emailStatus === 'success') {
+                Alert.alert("Success", `Email sent successfully to ${studentName}!`);
+              } else if (emailStatus === 'failed') {
+                Alert.alert("Error", `Failed to send email to ${studentName}.${emailErrorMessage ? ' ' + emailErrorMessage : ''}`);
+              } else {
+                Alert.alert("Warning", `Could not resolve a valid email address for ${studentName}. Email was not sent.`);
+              }
+            }
+          }
+        ]
+      );
 
       // Refresh drive info counts and list
       const collegeName = collegeDetails?.name || collegeDetails?.college_name;
@@ -683,7 +743,7 @@ export const CollegePlacementScreen = ({ route }: any) => {
       refreshDrivePlacementList(selectedDriveStatusFilter);
     } catch (err: any) {
       console.error("Error updating candidate application status:", err);
-      Alert.alert("Error", err?.message || "Failed to update status. Please try again.");
+      Alert.alert("Error", parseErrorMessage(err) || "Failed to update status. Please try again.");
     } finally {
       setUpdatingStatusMap(prev => ({ ...prev, [applicationId]: false }));
     }
@@ -706,7 +766,7 @@ export const CollegePlacementScreen = ({ route }: any) => {
       Alert.alert("Success", `Email sent successfully to ${fullName}!`);
     } catch (err: any) {
       console.error("Failed to send status email:", err);
-      Alert.alert("Error", err?.message || "Failed to send email.");
+      Alert.alert("Error", parseErrorMessage(err) || "Failed to send email.");
     }
   };
 
@@ -786,7 +846,7 @@ export const CollegePlacementScreen = ({ route }: any) => {
       }
     } catch (err: any) {
       console.error("Failed to save campus drive:", err);
-      Alert.alert("Error", err?.message || "Failed to save campus drive. Please try again.");
+      Alert.alert("Error", parseErrorMessage(err) || "Failed to save campus drive. Please try again.");
     } finally {
       setIsSubmittingDrive(false);
     }
@@ -815,7 +875,7 @@ export const CollegePlacementScreen = ({ route }: any) => {
               }
             } catch (err: any) {
               console.error("Failed to delete campus drive:", err);
-              Alert.alert("Error", err?.message || "Failed to delete drive.");
+              Alert.alert("Error", parseErrorMessage(err) || "Failed to delete drive.");
             } finally {
               setIsDeletingDrive(false);
             }
@@ -914,7 +974,7 @@ export const CollegePlacementScreen = ({ route }: any) => {
       Alert.alert("Export Complete", "Eligible students CSV file prepared and downloaded successfully.");
     } catch (err: any) {
       console.error(err);
-      Alert.alert("Error", err?.message || "Failed to export eligible students.");
+      Alert.alert("Error", parseErrorMessage(err) || "Failed to export eligible students.");
     }
   };
 
@@ -932,7 +992,7 @@ export const CollegePlacementScreen = ({ route }: any) => {
       Alert.alert("Export Complete", "Non-eligible students CSV file prepared and downloaded successfully.");
     } catch (err: any) {
       console.error(err);
-      Alert.alert("Error", err?.message || "Failed to export non-eligible students.");
+      Alert.alert("Error", parseErrorMessage(err) || "Failed to export non-eligible students.");
     }
   };
 
@@ -956,10 +1016,10 @@ export const CollegePlacementScreen = ({ route }: any) => {
   const displaySalaryBands = useMemo(() => {
     if (!salaryBandsList || salaryBandsList.length === 0) {
       return [
-        { range: '<4 LPA', percentage: 12, color: '#EF4444' },
-        { range: '4-8 LPA', percentage: 38, color: '#F59E0B' },
-        { range: '8-15 LPA', percentage: 35, color: '#10B981' },
-        { range: '15+ LPA', percentage: 15, color: '#10B981' },
+        { range: '<4 LPA', percentage: 0, color: '#EF4444' },
+        { range: '4-8 LPA', percentage: 0, color: '#F59E0B' },
+        { range: '8-15 LPA', percentage: 0, color: '#10B981' },
+        { range: '15+ LPA', percentage: 0, color: '#10B981' },
       ];
     }
     return salaryBandsList.map(item => {
@@ -987,12 +1047,12 @@ export const CollegePlacementScreen = ({ route }: any) => {
       return placementFunnel;
     }
     return [
-      { label: 'Final Year Students', value: 680, width: '100%', color: '#0F172A' },
-      { label: 'Eligible (Score ≥60)', value: 521, width: '80%', color: '#10B981' },
-      { label: 'Applications Sent', value: 847, width: '100%', color: '#2563EB' },
-      { label: 'Shortlisted', value: 312, width: '50%', color: '#F59E0B' },
-      { label: 'Interviews Scheduled', value: 156, width: '25%', color: '#EF4444' },
-      { label: 'Offers Received', value: 98, width: '15%', color: '#10B981' },
+      { label: 'Final Year Students', value: 0, width: '0%', color: '#0F172A' },
+      { label: 'Eligible (Score ≥60)', value: 0, width: '0%', color: '#10B981' },
+      { label: 'Applications Sent', value: 0, width: '0%', color: '#2563EB' },
+      { label: 'Shortlisted', value: 0, width: '0%', color: '#F59E0B' },
+      { label: 'Interviews Scheduled', value: 0, width: '0%', color: '#EF4444' },
+      { label: 'Offers Received', value: 0, width: '0%', color: '#10B981' },
     ];
   }, [placementFunnel]);
 
@@ -1006,23 +1066,12 @@ export const CollegePlacementScreen = ({ route }: any) => {
         }))
         .sort((a, b) => b.offers - a.offers);
     }
-    return [
-      { name: 'TechNova Solutions Pvt. Ltd.', offers: 2, package: '₹3.5 LPA' },
-      { name: 'Apex Infotech Solutions', offers: 1, package: '₹5.0 LPA' },
-      { name: 'TCS', offers: 0, package: '₹10.0 LPA' },
-    ];
+    return [];
   }, [drivesList]);
 
   const displayBranchPlacementRate = useMemo(() => {
     if (!branchPerformance || branchPerformance.length === 0) {
-      return [
-        { label: 'E&TC', value: '1/1', progress: 100.0, color: '#10B981' },
-        { label: 'CS', value: '3/13', progress: 23.1, color: '#EF4444' },
-        { label: 'Commerce', value: '0/16073', progress: 0.0, color: '#64748B' },
-        { label: 'Electronics & Telecommunication', value: '0/1289', progress: 0.0, color: '#64748B' },
-        { label: 'MBA', value: '0/15973', progress: 0.0, color: '#64748B' },
-        { label: 'Robotics', value: '0/1363', progress: 0.0, color: '#64748B' },
-      ];
+      return [];
     }
     return branchPerformance.map((b: any) => {
       const branchName = b.department || b.branch_name || b.branch || b.name || "—";
@@ -1213,14 +1262,14 @@ export const CollegePlacementScreen = ({ route }: any) => {
                           <TouchableOpacity 
                             style={[styles.actionBtn, styles.btnShortlist]}
                             disabled={updatingStatusMap[item.application_id]}
-                            onPress={() => handleUpdateStatus(item.application_id, stdName, item.email || item.student_email || item.name, "Shortlisted")}
+                            onPress={() => handleUpdateStatus(item.application_id, stdName, item.email || item.email_id || item.student_email || item.name, "Shortlisted")}
                           >
                             <Text style={[styles.actionBtnText, { color: '#D97706' }]}>Shortlist</Text>
                           </TouchableOpacity>
                           <TouchableOpacity 
                             style={[styles.actionBtn, styles.btnReject]}
                             disabled={updatingStatusMap[item.application_id]}
-                            onPress={() => handleUpdateStatus(item.application_id, stdName, item.email || item.student_email || item.name, "Rejected")}
+                            onPress={() => handleUpdateStatus(item.application_id, stdName, item.email || item.email_id || item.student_email || item.name, "Rejected")}
                           >
                             <Text style={[styles.actionBtnText, { color: '#DC2626' }]}>Reject</Text>
                           </TouchableOpacity>
@@ -1232,14 +1281,14 @@ export const CollegePlacementScreen = ({ route }: any) => {
                           <TouchableOpacity 
                             style={[styles.actionBtn, styles.btnSelect]}
                             disabled={updatingStatusMap[item.application_id]}
-                            onPress={() => handleUpdateStatus(item.application_id, stdName, item.email || item.student_email || item.name, "Selected")}
+                            onPress={() => handleUpdateStatus(item.application_id, stdName, item.email || item.email_id || item.student_email || item.name, "Selected")}
                           >
                             <Text style={[styles.actionBtnText, { color: '#059669' }]}>Select</Text>
                           </TouchableOpacity>
                           <TouchableOpacity 
                             style={[styles.actionBtn, styles.btnReject]}
                             disabled={updatingStatusMap[item.application_id]}
-                            onPress={() => handleUpdateStatus(item.application_id, stdName, item.email || item.student_email || item.name, "Rejected")}
+                            onPress={() => handleUpdateStatus(item.application_id, stdName, item.email || item.email_id || item.student_email || item.name, "Rejected")}
                           >
                             <Text style={[styles.actionBtnText, { color: '#DC2626' }]}>Reject</Text>
                           </TouchableOpacity>
@@ -1275,9 +1324,40 @@ export const CollegePlacementScreen = ({ route }: any) => {
               <Text style={{ fontSize: 12, color: '#64748B' }}>Max Backlogs:</Text>
               <Text style={{ fontSize: 12, fontWeight: '700', color: '#1E293B' }}>{selectedDrive.criteria?.backlogs}</Text>
             </View>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+            <View style={{ borderTopWidth: 1, borderTopColor: '#F1F5F9', marginTop: 4, paddingTop: 10, gap: 6 }}>
               <Text style={{ fontSize: 12, color: '#64748B' }}>Branches:</Text>
-              <Text style={{ fontSize: 12, fontWeight: '700', color: '#1E293B' }}>{selectedDrive.criteria?.branches?.join(", ") || "All"}</Text>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 2 }}>
+                {selectedDrive.criteria?.branches && selectedDrive.criteria.branches.length > 0 ? (
+                  selectedDrive.criteria.branches.map((branch: string, bIdx: number) => (
+                    <View 
+                      key={bIdx} 
+                      style={{ 
+                        backgroundColor: 'rgba(255, 107, 0, 0.06)', 
+                        paddingHorizontal: 8, 
+                        paddingVertical: 4, 
+                        borderRadius: 8,
+                        borderWidth: 1,
+                        borderColor: 'rgba(255, 107, 0, 0.15)'
+                      }}
+                    >
+                      <Text style={{ fontSize: 11, fontWeight: '600', color: '#FF6B00' }}>{branch}</Text>
+                    </View>
+                  ))
+                ) : (
+                  <View 
+                    style={{ 
+                      backgroundColor: '#F1F5F9', 
+                      paddingHorizontal: 8, 
+                      paddingVertical: 4, 
+                      borderRadius: 8,
+                      borderWidth: 1,
+                      borderColor: '#E2E8F0'
+                    }}
+                  >
+                    <Text style={{ fontSize: 11, fontWeight: '600', color: '#475569' }}>All Branches</Text>
+                  </View>
+                )}
+              </View>
             </View>
           </View>
         </Card>
@@ -1876,25 +1956,25 @@ export const CollegePlacementScreen = ({ route }: any) => {
                       <View style={{ flexDirection: 'row', gap: 8 }}>
                         <StatsCard
                           title="Applied"
-                          value={placementStats?.total_applications ?? getFunnelValue("Applications Sent", 847)}
+                          value={placementStats?.total_applications ?? getFunnelValue("Applications Sent", 0)}
                           icon={Send}
                           color="#2563EB"
                         />
                         <StatsCard
                           title="Shortlist"
-                          value={placementStats?.shortlisted ?? getFunnelValue("Shortlisted", 312)}
+                          value={placementStats?.shortlisted ?? getFunnelValue("Shortlisted", 0)}
                           icon={Star}
                           color="#F59E0B"
                         />
                         <StatsCard
                           title="Interviews"
-                          value={getFunnelValue("Interviews Scheduled", 156)}
+                          value={getFunnelValue("Interviews Scheduled", 0)}
                           icon={Calendar}
                           color="#EF4444"
                         />
                         <StatsCard
                           title="Offers"
-                          value={placementStats?.placed ?? getFunnelValue("Offers Received", 98)}
+                          value={placementStats?.placed ?? getFunnelValue("Offers Received", 0)}
                           icon={Award}
                           color="#10B981"
                         />
@@ -1902,25 +1982,25 @@ export const CollegePlacementScreen = ({ route }: any) => {
                       <View style={{ flexDirection: 'row', gap: 8 }}>
                         <StatsCard
                           title="Rate"
-                          value={placementStats?.placement_rate !== undefined ? `${Number(placementStats.placement_rate).toFixed(0)}%` : "77%"}
+                          value={placementStats?.placement_rate !== undefined && placementStats?.placement_rate !== null ? `${Number(placementStats.placement_rate).toFixed(0)}%` : "0%"}
                           icon={FileText}
                           color="#8B5CF6"
                         />
                         <StatsCard
                           title="Avg CTC"
-                          value={placementStats?.average_ctc !== undefined ? `₹${Number(placementStats.average_ctc).toFixed(1)}L` : "₹8.4L"}
+                          value={placementStats?.average_ctc !== undefined && placementStats?.average_ctc !== null ? `₹${Number(placementStats.average_ctc).toFixed(1)}L` : "—"}
                           icon={IndianRupee}
                           color="#0D9488"
                         />
                         <StatsCard
                           title="Max CTC"
-                          value={placementStats?.highest_ctc !== undefined ? `₹${Number(placementStats.highest_ctc).toFixed(0)}L` : "₹24.0L"}
+                          value={placementStats?.highest_ctc !== undefined && placementStats?.highest_ctc !== null ? `₹${Number(placementStats.highest_ctc).toFixed(0)}L` : "—"}
                           icon={Trophy}
                           color="#D97706"
                         />
                         <StatsCard
                           title="Companies"
-                          value={placementStats?.companies_visited !== undefined ? placementStats.companies_visited : (drivesList.length || 18)}
+                          value={placementStats?.companies_visited !== undefined && placementStats?.companies_visited !== null ? placementStats.companies_visited : drivesList.length}
                           icon={Briefcase}
                           color="#475569"
                         />
@@ -2033,17 +2113,23 @@ export const CollegePlacementScreen = ({ route }: any) => {
                           <Text style={styles.sectionTitle}>Branch-wise Placement Rate</Text>
                         </View>
                         <View style={styles.listContainer}>
-                          {displayBranchPlacementRate.map((item, idx) => (
-                            <View key={idx} style={styles.listItem}>
-                              <View style={styles.listItemTextRow}>
-                                <Text style={styles.listItemLabel}>{item.label}</Text>
-                                <Text style={styles.listItemValue}>{item.progress.toFixed(1)}% ({item.value})</Text>
-                              </View>
-                              <View style={styles.progressBarBg}>
-                                <View style={[styles.progressBarFill, { width: `${item.progress}%`, backgroundColor: item.color }]} />
-                              </View>
+                          {displayBranchPlacementRate.length === 0 ? (
+                            <View style={styles.emptyContainer}>
+                              <Text style={styles.emptyText}>No branch performance data found</Text>
                             </View>
-                          ))}
+                          ) : (
+                            displayBranchPlacementRate.map((item, idx) => (
+                              <View key={idx} style={styles.listItem}>
+                                <View style={styles.listItemTextRow}>
+                                  <Text style={styles.listItemLabel}>{item.label}</Text>
+                                  <Text style={styles.listItemValue}>{item.progress.toFixed(1)}% ({item.value})</Text>
+                                </View>
+                                <View style={styles.progressBarBg}>
+                                  <View style={[styles.progressBarFill, { width: `${item.progress}%`, backgroundColor: item.color }]} />
+                                </View>
+                              </View>
+                            ))
+                          )}
                         </View>
                       </Card>
                     )}
@@ -2056,25 +2142,31 @@ export const CollegePlacementScreen = ({ route }: any) => {
                           <Text style={styles.sectionTitle}>Company-wise Selections</Text>
                         </View>
                         <View style={styles.listContainer}>
-                          {displayRecruiters.map((r, idx) => {
-                            const initial = r.name.charAt(0).toUpperCase();
-                            const avatarColor = getAvatarColor(r.name);
-                            
-                            return (
-                              <View key={idx} style={[styles.entityRow, idx === displayRecruiters.length - 1 && styles.noBorder, { alignItems: 'center' }]}>
-                                <View style={[styles.entityIconCircle, { backgroundColor: avatarColor }]}>
-                                  <Text style={styles.entityIconText}>{initial}</Text>
+                          {displayRecruiters.length === 0 ? (
+                            <View style={styles.emptyContainer}>
+                              <Text style={styles.emptyText}>No recruiting partners found</Text>
+                            </View>
+                          ) : (
+                            displayRecruiters.map((r, idx) => {
+                              const initial = r.name.charAt(0).toUpperCase();
+                              const avatarColor = getAvatarColor(r.name);
+                              
+                              return (
+                                <View key={idx} style={[styles.entityRow, idx === displayRecruiters.length - 1 && styles.noBorder, { alignItems: 'center' }]}>
+                                  <View style={[styles.entityIconCircle, { backgroundColor: avatarColor }]}>
+                                    <Text style={styles.entityIconText}>{initial}</Text>
+                                  </View>
+                                  <View style={styles.entityInfo}>
+                                    <Text style={styles.entityName}>{r.name}</Text>
+                                    <Text style={styles.entitySub}>{r.package || "—"}</Text>
+                                  </View>
+                                  <View style={{ backgroundColor: 'rgba(16, 185, 129, 0.1)', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, minWidth: 70, alignItems: 'center', justifyContent: 'center' }}>
+                                    <Text style={{ color: '#10B981', fontSize: 11, fontWeight: '800' }}>{r.offers} offers</Text>
+                                  </View>
                                 </View>
-                                <View style={styles.entityInfo}>
-                                  <Text style={styles.entityName}>{r.name}</Text>
-                                  <Text style={styles.entitySub}>{r.package || "—"}</Text>
-                                </View>
-                                <View style={{ backgroundColor: 'rgba(16, 185, 129, 0.1)', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, minWidth: 70, alignItems: 'center', justifyContent: 'center' }}>
-                                  <Text style={{ color: '#10B981', fontSize: 11, fontWeight: '800' }}>{r.offers} offers</Text>
-                                </View>
-                              </View>
-                            );
-                          })}
+                              );
+                            })
+                          )}
                         </View>
                       </Card>
                     )}
