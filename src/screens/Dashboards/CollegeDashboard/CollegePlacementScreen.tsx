@@ -94,6 +94,9 @@ export const CollegePlacementScreen = ({ route }: any) => {
   const [eligibilityBranches, setEligibilityBranches] = useState<string[]>([]);
   const [eligibilityCgpa, setEligibilityCgpa] = useState('6.0');
   const [eligibilityBacklog, setEligibilityBacklog] = useState('0');
+  const [eligibilityAcademicYear, setEligibilityAcademicYear] = useState("All");
+  const [isYearSelectorOpen, setIsYearSelectorOpen] = useState(false);
+  const availableYears = ["All", "First Year", "Second Year", "Third Year", "Final Year"];
   const [tabEligibleStudents, setTabEligibleStudents] = useState<any[]>([]);
   const [tabNonEligibleStudents, setTabNonEligibleStudents] = useState<any[]>([]);
   const [eligibilityLoading, setEligibilityLoading] = useState(false);
@@ -349,18 +352,21 @@ export const CollegePlacementScreen = ({ route }: any) => {
     try {
       setEligibilityLoading(true);
       const branchStr = eligibilityBranches.join(",");
+      const academicYearParam = eligibilityAcademicYear === "All" ? undefined : eligibilityAcademicYear;
       const [eligibleRes, nonEligibleRes] = await Promise.allSettled([
         getEligibleStudents({
           branch: branchStr,
           cgpa: eligibilityCgpa,
           backlog: eligibilityBacklog,
-          college: collegeName
+          college: collegeName,
+          academic_year: academicYearParam
         }),
         getNonEligibleStudents({
           branch: branchStr,
           cgpa: eligibilityCgpa,
           backlog: eligibilityBacklog,
-          college: collegeName
+          college: collegeName,
+          academic_year: academicYearParam
         })
       ]);
 
@@ -536,7 +542,7 @@ export const CollegePlacementScreen = ({ route }: any) => {
     }, 500);
 
     return () => clearTimeout(delayDebounceFn);
-  }, [eligibilityBranches, eligibilityCgpa, eligibilityBacklog, activeTab, collegeDetails]);
+  }, [eligibilityBranches, eligibilityCgpa, eligibilityBacklog, eligibilityAcademicYear, activeTab, collegeDetails]);
 
   // Handle active tab change for other tabs
   useEffect(() => {
@@ -576,7 +582,7 @@ export const CollegePlacementScreen = ({ route }: any) => {
     } finally {
       setRefreshing(false);
     }
-  }, [userName, activeTab, eligibilityBranches, eligibilityCgpa, eligibilityBacklog]);
+  }, [userName, activeTab, eligibilityBranches, eligibilityCgpa, eligibilityBacklog, eligibilityAcademicYear]);
 
   // Manage Candidates overlay functions
   const handleManageDrive = async (drive: any) => {
@@ -969,7 +975,8 @@ export const CollegePlacementScreen = ({ route }: any) => {
         branch: eligibilityBranches.join(","),
         cgpa: eligibilityCgpa,
         backlog: eligibilityBacklog,
-        college: collegeName
+        college: collegeName,
+        academic_year: eligibilityAcademicYear === "All" ? undefined : eligibilityAcademicYear
       });
       Alert.alert("Export Complete", "Eligible students CSV file prepared and downloaded successfully.");
     } catch (err: any) {
@@ -987,7 +994,8 @@ export const CollegePlacementScreen = ({ route }: any) => {
         branch: eligibilityBranches.join(","),
         cgpa: eligibilityCgpa,
         backlog: eligibilityBacklog,
-        college: collegeName
+        college: collegeName,
+        academic_year: eligibilityAcademicYear === "All" ? undefined : eligibilityAcademicYear
       });
       Alert.alert("Export Complete", "Non-eligible students CSV file prepared and downloaded successfully.");
     } catch (err: any) {
@@ -1498,6 +1506,49 @@ export const CollegePlacementScreen = ({ route }: any) => {
     );
   };
 
+  const renderYearSelectorModal = () => {
+    return (
+      <Modal
+        visible={isYearSelectorOpen}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setIsYearSelectorOpen(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { maxHeight: '80%' }]}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Select Academic Year</Text>
+              <TouchableOpacity onPress={() => setIsYearSelectorOpen(false)}>
+                <X size={20} color="#64748B" />
+              </TouchableOpacity>
+            </View>
+            <FlatList
+              data={availableYears}
+              keyExtractor={(item) => item}
+              renderItem={({ item }) => {
+                const isSelected = eligibilityAcademicYear === item;
+                return (
+                  <TouchableOpacity
+                    style={[styles.optionItem, isSelected && styles.selectedOption]}
+                    onPress={() => {
+                      setEligibilityAcademicYear(item);
+                      setIsYearSelectorOpen(false);
+                    }}
+                  >
+                    <Text style={[styles.optionText, isSelected && styles.selectedOptionText]}>
+                      {item}
+                    </Text>
+                    {isSelected && <Text style={styles.checkMark}>✓</Text>}
+                  </TouchableOpacity>
+                );
+              }}
+            />
+          </View>
+        </View>
+      </Modal>
+    );
+  };
+
   return (
     <View style={styles.container}>
       <ScrollView 
@@ -1715,7 +1766,7 @@ export const CollegePlacementScreen = ({ route }: any) => {
                                   </View>
                                   <View style={{ flex: 1 }}>
                                     <Text style={styles.studentName} numberOfLines={1}>{stdName}</Text>
-                                    <Text style={styles.studentSubtitle}>{std.branch || "CS"} • CGPA: {std.cgpa || "N/A"}</Text>
+                                    <Text style={styles.studentSubtitle}>{std.branch || "CS"} • Yr: {std.academic_year || "—"} • CGPA: {std.cgpa || "N/A"}</Text>
                                   </View>
                                 </View>
                                 
@@ -1808,6 +1859,21 @@ export const CollegePlacementScreen = ({ route }: any) => {
                           </TouchableOpacity>
                         </View>
 
+                        <View style={styles.filterInputGroup}>
+                          <Text style={styles.filterLabel}>Academic Year</Text>
+                          <TouchableOpacity 
+                            style={styles.dropdownTriggerBtn}
+                            onPress={() => {
+                              setIsYearSelectorOpen(true);
+                            }}
+                          >
+                            <Text style={styles.dropdownTriggerText} numberOfLines={1}>
+                              {eligibilityAcademicYear === "All" ? "All Years" : eligibilityAcademicYear}
+                            </Text>
+                            <ChevronDown size={14} color="#64748B" />
+                          </TouchableOpacity>
+                        </View>
+
                         <View style={styles.filterRow}>
                           <View style={[styles.filterInputGroup, { flex: 1 }]}>
                             <Text style={styles.filterLabel}>Min CGPA Required</Text>
@@ -1888,7 +1954,7 @@ export const CollegePlacementScreen = ({ route }: any) => {
                                           <View style={{ flex: 1 }}>
                                             <Text style={styles.studentName} numberOfLines={1}>{stdName}</Text>
                                             <Text style={styles.studentSubtitle}>
-                                              {std.branch || std.course || "CS"} • CGPA: {std.cgpa !== undefined && std.cgpa !== null ? std.cgpa : "—"} • Backlogs: {std.backlogs ?? std.backlog ?? 0}
+                                              {std.branch || std.course || "CS"} • Yr: {std.academic_year || "—"} • CGPA: {std.cgpa !== undefined && std.cgpa !== null ? std.cgpa : "—"} • Backlogs: {std.backlogs ?? std.backlog ?? 0}
                                             </Text>
                                           </View>
                                         </View>
@@ -1927,7 +1993,7 @@ export const CollegePlacementScreen = ({ route }: any) => {
                                           <View style={{ flex: 1 }}>
                                             <Text style={styles.studentName} numberOfLines={1}>{stdName}</Text>
                                             <Text style={styles.studentSubtitle}>
-                                              {std.branch || std.course || "CS"} • CGPA: {std.cgpa !== undefined && std.cgpa !== null ? std.cgpa : "—"} • Backlogs: {std.backlogs ?? std.backlog ?? 0}
+                                              {std.branch || std.course || "CS"} • Yr: {std.academic_year || "—"} • CGPA: {std.cgpa !== undefined && std.cgpa !== null ? std.cgpa : "—"} • Backlogs: {std.backlogs ?? std.backlog ?? 0}
                                             </Text>
                                           </View>
                                         </View>
@@ -2179,6 +2245,7 @@ export const CollegePlacementScreen = ({ route }: any) => {
       </ScrollView>
       {renderAddEditDriveModal()}
       {renderBranchSelectorModal()}
+      {renderYearSelectorModal()}
     </View>
   );
 };

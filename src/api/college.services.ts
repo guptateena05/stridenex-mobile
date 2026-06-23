@@ -332,7 +332,7 @@ export const getPlacementCounts = async (college: string, name?: string) => {
 };
 
 export const getEligibleStudents = async (
-  params: string | { branch?: string; cgpa?: number | string; backlog?: number | string; drive?: string; college?: string }
+  params: string | { branch?: string; cgpa?: number | string; backlog?: number | string; drive?: string; college?: string; academic_year?: string }
 ) => {
   try {
     let queryParams: any = {};
@@ -344,6 +344,7 @@ export const getEligibleStudents = async (
       if (params.backlog !== undefined && params.backlog !== "") queryParams.backlog = params.backlog;
       if (params.drive) queryParams.drive = params.drive;
       if (params.college) queryParams.college = params.college;
+      if (params.academic_year) queryParams.academic_year = params.academic_year;
     }
     const response = await api.get(
       'method/stridenex_app.stridenex_app.doctype.campus_drive_application.campus_drive_application.get_eligible_students',
@@ -361,6 +362,7 @@ export const getNonEligibleStudents = async (params: {
   cgpa?: number | string;
   backlog?: number | string;
   college?: string;
+  academic_year?: string;
 }) => {
   try {
     const queryParams: any = {};
@@ -368,6 +370,7 @@ export const getNonEligibleStudents = async (params: {
     if (params.cgpa !== undefined && params.cgpa !== "") queryParams.cgpa = params.cgpa;
     if (params.backlog !== undefined && params.backlog !== "") queryParams.backlog = params.backlog;
     if (params.college) queryParams.college = params.college;
+    if (params.academic_year) queryParams.academic_year = params.academic_year;
 
     const response = await api.get(
       'method/stridenex_app.stridenex_app.doctype.campus_drive_application.campus_drive_application.get_not_eligible_students',
@@ -479,6 +482,7 @@ export const exportEligibleStudents = async (params: {
   cgpa?: number | string;
   backlog?: number | string;
   college?: string;
+  academic_year?: string;
 }) => {
   try {
     const response = await api.get(
@@ -497,6 +501,7 @@ export const exportNotEligibleStudents = async (params: {
   cgpa?: number | string;
   backlog?: number | string;
   college?: string;
+  academic_year?: string;
 }) => {
   try {
     const response = await api.get(
