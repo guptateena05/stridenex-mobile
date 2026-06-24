@@ -294,8 +294,8 @@ export const CollegeOverviewScreen = () => {
         website: formData.website || collegeData?.website || "",
         state: formData.state || collegeData?.state || "",
         district: formData.district || collegeData?.district || "",
-        tahsil: formData.tahsil || collegeData?.tahsil || "",
-        taluka: formData.tahsil || collegeData?.tahsil || "",
+        tahsil: formData.tahsil || collegeData?.tahsil || collegeData?.taluka || "",
+        taluka: formData.tahsil || collegeData?.tahsil || collegeData?.taluka || "",
         city: formData.city || collegeData?.city || "",
       };
 
