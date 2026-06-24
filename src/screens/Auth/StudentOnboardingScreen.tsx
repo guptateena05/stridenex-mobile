@@ -47,7 +47,7 @@ interface DynamicFormDataType {
 const StudentOnboardingScreen = () => {
   const router = useRoute<any>();
   const navigation = useNavigation<any>();
-  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [step, setStep] = useState<1 | 2>(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -304,7 +304,7 @@ const StudentOnboardingScreen = () => {
         const courses = data.data || data || [];
 
         return courses.map((course: any) => ({
-          value: course.name,
+          value: course.name || course.course_type,
           label: course.course_type || course.name
         }));
       }
@@ -448,14 +448,15 @@ const StudentOnboardingScreen = () => {
       multiSelect: true, // This makes it multi-select
       apiEndpoint: `${API_BASE_URL}/api/method/stridenex_app.api_stridenex_app.college.master.get_master_data`,
       apiParams: {
-        doctype: "Student Skill" // Updated doctype
+        doctype: "Skill",
+        fields: ["skill_name"]
       },
       mapOptions: (data) => {
         console.log("Skills data received:", data);
         const items = data.data || data || [];
         return items.map((item: any) => ({
-          value: item.name,
-          label: item.name || item.skill_name
+          value: item.name || item.skill_name,
+          label: item.skill_name || item.name
         }));
       }
     },
@@ -475,8 +476,8 @@ const StudentOnboardingScreen = () => {
         console.log("Career Interest data received:", data);
         const items = data.data || data || [];
         return items.map((item: any) => ({
-          value: item.name,
-          label: item.name || item.career_interest_name
+          value: item.name || item.career_interest_name,
+          label: item.career_interest_name || item.name
         }));
       }
     },
@@ -664,17 +665,17 @@ const StudentOnboardingScreen = () => {
   return (
     <AnimatedAuthLayout
       title="Complete Your Profile"
-      subtitle={`Step ${step} of 3 - Verify your details to gain access`}
+      subtitle={`Step ${step} of 2 - Verify your details to gain access`}
     >
       <View style={styles.container}>
         {/* Progress Bar */}
         <View style={styles.progressContainer}>
-          {[1, 2, 3].map((num, index) => (
+          {[1, 2].map((num, index) => (
             <React.Fragment key={num}>
               <View style={[styles.circle, step >= num ? styles.activeCircle : styles.inactiveCircle]}>
                 <Text style={[styles.circleText, step >= num ? styles.activeText : styles.inactiveText]}>{num}</Text>
               </View>
-              {index < 2 && <View style={[styles.line, step > num ? styles.activeLine : styles.inactiveLine]} />}
+              {index < 1 && <View style={[styles.line, step > num ? styles.activeLine : styles.inactiveLine]} />}
             </React.Fragment>
           ))}
         </View>
@@ -683,118 +684,135 @@ const StudentOnboardingScreen = () => {
         {success ? <Text style={styles.successText}>{success}</Text> : null}
 
         {step === 1 && (
-          <View>
-            <Input
-              label="Email Address"
-              value={email}
-              onChangeText={setEmail}
-              autoCapitalize="none"
-              keyboardType="email-address"
-              editable={!emailVerified}
-            />
-
-            {!emailOtpSent && !emailVerified && (
-              <Button
-                title={emailTimer > 0 ? `Resend in ${emailTimer}s` : "Send OTP"}
-                onPress={handleSendEmailOTP}
-                loading={loading}
-                disabled={!email || emailTimer > 0}
-                style={styles.orangeBtn}
+          <ScrollView showsVerticalScrollIndicator={false} style={styles.scrollView}>
+            {/* Email Section */}
+            <View style={styles.sectionContainer}>
+              <Input
+                label="Email Address"
+                value={email}
+                onChangeText={(val) => {
+                  setEmail(val);
+                  if (emailOtpSent) {
+                    setEmailOtpSent(false);
+                    setEmailOtp("");
+                  }
+                }}
+                autoCapitalize="none"
+                keyboardType="email-address"
+                editable={!emailVerified}
               />
-            )}
 
-            {emailOtpSent && !emailVerified && (
-              <>
-                <Input
-                  label="Verification Code"
-                  value={emailOtp}
-                  onChangeText={setEmailOtp}
-                  keyboardType="number-pad"
-                  placeholder="Enter 6-digit code"
-                />
+              {!emailOtpSent && !emailVerified && (
                 <Button
-                  title="Verify Code"
-                  onPress={handleVerifyEmail}
-                  style={styles.orangeBtn}
+                  title={emailTimer > 0 ? `Resend in ${emailTimer}s` : "Send OTP"}
+                  onPress={handleSendEmailOTP}
                   loading={loading}
-                  disabled={emailOtp.length !== 6}
+                  disabled={!email || emailTimer > 0}
+                  style={styles.orangeBtn}
                 />
-              </>
+              )}
+
+              {emailOtpSent && !emailVerified && (
+                <>
+                  <Input
+                    label="Email Verification Code"
+                    value={emailOtp}
+                    onChangeText={setEmailOtp}
+                    keyboardType="number-pad"
+                    placeholder="Enter 6-digit code"
+                  />
+                  <Button
+                    title="Verify Email"
+                    onPress={handleVerifyEmail}
+                    style={styles.orangeBtn}
+                    loading={loading}
+                    disabled={emailOtp.length !== 6}
+                  />
+                </>
+              )}
+
+              {emailVerified && (
+                <View style={styles.verifiedBadge}>
+                  <Text style={styles.verifiedText}>✓ Email Verified</Text>
+                </View>
+              )}
+            </View>
+
+            {/* Mobile Section */}
+            {emailVerified && (
+              <View style={[styles.sectionContainer, styles.borderTop]}>
+                <Input
+                  label="Mobile Number"
+                  value={mobile}
+                  onChangeText={(val) => {
+                    setMobile(val);
+                    if (mobileOtpSent) {
+                      setMobileOtpSent(false);
+                      setMobileOtp("");
+                    }
+                  }}
+                  keyboardType="number-pad"
+                  maxLength={10}
+                  editable={!mobileVerified}
+                />
+
+                {!mobileOtpSent && !mobileVerified && (
+                  <Button
+                    title={mobileTimer > 0 ? `Resend in ${mobileTimer}s` : "Send OTP"}
+                    onPress={handleSendMobileOTP}
+                    loading={loading}
+                    disabled={mobile.length !== 10 || mobileTimer > 0}
+                    style={styles.orangeBtn}
+                  />
+                )}
+
+                {mobileOtpSent && !mobileVerified && (
+                  <>
+                    <Input
+                      label="Mobile Verification Code"
+                      value={mobileOtp}
+                      onChangeText={setMobileOtp}
+                      keyboardType="number-pad"
+                      placeholder="Enter 6-digit code"
+                    />
+                    <Button
+                      title="Verify Mobile"
+                      onPress={handleVerifyMobile}
+                      style={styles.orangeBtn}
+                      loading={loading}
+                      disabled={mobileOtp.length !== 6}
+                    />
+                  </>
+                )}
+
+                {mobileVerified && (
+                  <View style={styles.verifiedBadge}>
+                    <Text style={styles.verifiedText}>✓ Mobile Verified</Text>
+                  </View>
+                )}
+              </View>
             )}
 
-            {emailVerified && (
+            {/* Continue Button */}
+            {emailVerified && mobileVerified && (
               <Button
-                title="Continue to Mobile Verification"
-                onPress={() => { setStep(2); setError(""); setSuccess(""); }}
-                style={styles.orangeBtn}
+                title="Continue to Profile"
+                onPress={() => {
+                  setStep(2);
+                  setError("");
+                  setSuccess("");
+                }}
+                style={styles.continueBtn}
               />
             )}
 
             <TouchableOpacity onPress={() => navigation.navigate('Login')} style={styles.skipContainer}>
               <Text style={styles.skipTextBtn}>Skip Onboarding</Text>
             </TouchableOpacity>
-          </View>
+          </ScrollView>
         )}
 
         {step === 2 && (
-          <View>
-            <Input
-              label="Mobile Number"
-              value={mobile}
-              onChangeText={setMobile}
-              keyboardType="number-pad"
-              maxLength={10}
-              editable={!mobileVerified}
-            />
-
-            {!mobileOtpSent && !mobileVerified && (
-              <Button
-                title={mobileTimer > 0 ? `Resend in ${mobileTimer}s` : "Send OTP"}
-                onPress={handleSendMobileOTP}
-                loading={loading}
-                disabled={mobile.length !== 10 || mobileTimer > 0}
-                style={styles.orangeBtn}
-              />
-            )}
-
-            {mobileOtpSent && !mobileVerified && (
-              <>
-                <Input
-                  label="Verification Code"
-                  value={mobileOtp}
-                  onChangeText={setMobileOtp}
-                  keyboardType="number-pad"
-                  placeholder="Enter 6-digit code"
-                />
-                <Button
-                  title="Verify Code"
-                  onPress={handleVerifyMobile}
-                  style={styles.orangeBtn}
-                  loading={loading}
-                  disabled={mobileOtp.length !== 6}
-                />
-              </>
-            )}
-
-            {mobileVerified && (
-              <Button
-                title="Continue to Profile"
-                onPress={() => { setStep(3); setError(""); setSuccess(""); }}
-                style={styles.orangeBtn}
-              />
-            )}
-
-            <View style={styles.backButtonContainer}>
-              <Button
-                title="Back to Email Verification"
-                onPress={() => setStep(1)}
-                variant="outline"
-              />
-            </View>
-          </View>
-        )}
-
-        {step === 3 && (
           <ScrollView
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.scrollContent}
@@ -851,8 +869,8 @@ const StudentOnboardingScreen = () => {
             />
             <View style={styles.backButtonContainer}>
               <Button
-                title="Back to Mobile Verification"
-                onPress={() => setStep(2)}
+                title="Back to Verification"
+                onPress={() => setStep(1)}
                 variant="outline"
               />
             </View>
@@ -948,5 +966,30 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     paddingBottom: spacing.xl,
   },
-
+  sectionContainer: {
+    marginBottom: spacing.md,
+  },
+  borderTop: {
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    paddingTop: spacing.md,
+    marginTop: spacing.sm,
+  },
+  verifiedBadge: {
+    backgroundColor: '#DEF7EC',
+    padding: spacing.sm,
+    borderRadius: 8,
+    marginTop: spacing.sm,
+    alignItems: 'center',
+  },
+  verifiedText: {
+    color: '#03543F',
+    fontWeight: '600',
+    fontSize: typography.fontSize.sm,
+  },
+  continueBtn: {
+    backgroundColor: colors.accent.DEFAULT,
+    marginTop: spacing.lg,
+    width: '100%',
+  },
 });

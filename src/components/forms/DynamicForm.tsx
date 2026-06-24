@@ -28,12 +28,15 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
 }) => {
   const [formData, setFormData] = useState<Record<string, any>>(initialValues || {});
   const [localErrors, setLocalErrors] = useState<Record<string, string>>({});
+  const prevInitialValuesStr = React.useRef(JSON.stringify(initialValues));
 
   useEffect(() => {
-    if (initialValues) {
-      setFormData(initialValues);
+    const currentStr = JSON.stringify(initialValues);
+    if (currentStr !== prevInitialValuesStr.current) {
+      setFormData(initialValues || {});
+      setLocalErrors({});
+      prevInitialValuesStr.current = currentStr;
     }
-    setLocalErrors({});
   }, [initialValues]);
 
   const handleChange = (name: string, value: any) => {
