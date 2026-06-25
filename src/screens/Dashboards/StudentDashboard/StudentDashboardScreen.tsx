@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, Modal, KeyboardAvoidingView, Platform, Alert, TouchableOpacity } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '@/theme/colors';
 import { typography } from '@/theme/typography';
@@ -7,7 +8,7 @@ import { spacing } from '@/theme/spacing';
 import { useAuth } from '@/context/AuthContext';
 import { RoleBannerWidget } from '@/components/dashboard/RoleBannerWidget';
 import { StatsCard } from '@/components/dashboard/StatsCard';
-import { LearningActivityHeatmap } from '@/components/dashboard/LearningActivityHeatmap';
+import { LearningActivityGraph } from '@/components/dashboard/LearningActivityGraph';
 import { AICoachCard } from '@/components/dashboard/AICoachCard';
 import { SkillsCard } from '@/components/dashboard/SkillsCard';
 import { AlertsAgendaCard } from '@/components/dashboard/AlertsAgendaCard';
@@ -26,14 +27,36 @@ export const StudentDashboardScreen = () => {
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
   const [profileFormValues, setProfileFormValues] = useState<any>({});
 
+  // Load cached student data on mount/username change
+  useEffect(() => {
+    const loadCache = async () => {
+      if (!userName) return;
+      try {
+        const cached = await AsyncStorage.getItem(`studentDetails_${userName}`);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          setStudentData(parsed);
+          setLoadingDetails(false);
+        }
+      } catch (err) {
+        console.log("Error loading mobile student cache:", err);
+      }
+    };
+    loadCache();
+  }, [userName]);
+
   const fetchStudentData = async () => {
     if (!userName) return;
-    setLoadingDetails(true);
+    const hasData = !!studentData;
+    if (!hasData) {
+      setLoadingDetails(true);
+    }
     try {
       const res = await getStudentByEmail(userName);
       const data = res?.data || res?.message?.data || res?.message;
       if (data && typeof data === 'object') {
         setStudentData(data);
+        await AsyncStorage.setItem(`studentDetails_${userName}`, JSON.stringify(data));
       }
     } catch (err) {
       console.error("Failed to fetch student details:", err);
@@ -312,7 +335,7 @@ export const StudentDashboardScreen = () => {
         </View>
 
         <Animated.View entering={FadeInUp.delay(400)}>
-          <LearningActivityHeatmap data={{ lessons: 142, problems: 287, studyTime: 168 }} />
+          <LearningActivityGraph data={{ lessons: 142, problems: 287, studyTime: 168 }} />
         </Animated.View>
 
         <Animated.View entering={FadeInUp.delay(500)}>

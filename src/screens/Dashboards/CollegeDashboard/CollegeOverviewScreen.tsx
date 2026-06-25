@@ -11,6 +11,7 @@ import {
   Alert,
   TouchableOpacity
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '@/theme/colors';
 import { typography } from '@/theme/typography';
@@ -97,9 +98,36 @@ export const CollegeOverviewScreen = () => {
   const [onboardingGrowth, setOnboardingGrowth] = useState<any>(null);
   const [topSkillGaps, setTopSkillGaps] = useState<any>(null);
 
+  // Load cached college data on mount/username change
+  useEffect(() => {
+    const loadCache = async () => {
+      if (!userName) return;
+      try {
+        const cached = await AsyncStorage.getItem(`collegeDashboardCache_${userName}`);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (parsed.collegeData) setCollegeData(parsed.collegeData);
+          if (parsed.dashboardSummary) setDashboardSummary(parsed.dashboardSummary);
+          if (parsed.placementStats) setPlacementStats(parsed.placementStats);
+          if (parsed.branchPerformance) setBranchPerformance(parsed.branchPerformance);
+          if (parsed.driveCounts) setDriveCounts(parsed.driveCounts);
+          if (parsed.upcomingDrivesList) setUpcomingDrivesList(parsed.upcomingDrivesList);
+          if (parsed.employabilityDistribution) setEmployabilityDistribution(parsed.employabilityDistribution);
+          if (parsed.onboardingGrowth) setOnboardingGrowth(parsed.onboardingGrowth);
+          if (parsed.topSkillGaps) setTopSkillGaps(parsed.topSkillGaps);
+          setLoading(false);
+        }
+      } catch (err) {
+        console.log("Error loading mobile college cache:", err);
+      }
+    };
+    loadCache();
+  }, [userName]);
+
   const fetchDetails = useCallback(async (isRefresh = false) => {
     if (!userName) return;
-    if (!isRefresh) setLoading(true);
+    const hasData = !!collegeData;
+    if (!isRefresh && !hasData) setLoading(true);
     try {
       const res = await getCollegeDetails(userName);
       const data = res?.data || res?.message?.data || res?.message;
@@ -130,81 +158,86 @@ export const CollegeOverviewScreen = () => {
           getTopSkillGaps(collegeEmail)
         ]);
 
+        let freshStats = null;
+        let freshBranch = [];
+        let freshDriveCounts = null;
+        let freshDrivesList = [];
+        let freshSummary = null;
+        let freshDistribution = null;
+        let freshGrowth = null;
+        let freshSkillGaps = null;
+
         if (statsRes.status === "fulfilled") {
           const raw = statsRes.value?.message ?? statsRes.value?.data ?? statsRes.value;
-          if (raw && raw.data) {
-            setPlacementStats(raw.data);
-          } else if (raw) {
-            setPlacementStats(raw);
-          }
+          freshStats = (raw && raw.data) ? raw.data : raw;
+          setPlacementStats(freshStats);
         }
 
         if (branchRes.status === "fulfilled") {
           const raw = branchRes.value?.message ?? branchRes.value?.data ?? branchRes.value;
           if (raw && raw.data) {
-            setBranchPerformance(raw.data);
+            freshBranch = raw.data;
           } else if (Array.isArray(raw)) {
-            setBranchPerformance(raw);
+            freshBranch = raw;
           } else if (raw && Array.isArray(raw.message)) {
-            setBranchPerformance(raw.message);
+            freshBranch = raw.message;
           }
+          setBranchPerformance(freshBranch);
         }
 
         if (driveCountRes.status === "fulfilled") {
           const raw = driveCountRes.value?.message ?? driveCountRes.value?.data ?? driveCountRes.value;
-          if (raw && raw.data) {
-            setDriveCounts(raw.data);
-          } else if (raw) {
-            setDriveCounts(raw);
-          }
+          freshDriveCounts = (raw && raw.data) ? raw.data : raw;
+          setDriveCounts(freshDriveCounts);
         }
 
         if (drivesRes.status === "fulfilled") {
           const raw = drivesRes.value?.data ?? drivesRes.value?.message?.data ?? drivesRes.value?.message ?? drivesRes.value;
-          let drivesArray: any[] = [];
           if (raw && typeof raw === 'object') {
-            drivesArray = Array.isArray(raw.campus_drives)
+            freshDrivesList = Array.isArray(raw.campus_drives)
               ? raw.campus_drives
               : (Array.isArray(raw) ? raw : []);
           }
-          setUpcomingDrivesList(drivesArray);
+          setUpcomingDrivesList(freshDrivesList);
         }
 
         if (summaryRes.status === "fulfilled") {
           const raw = summaryRes.value?.message ?? summaryRes.value?.data ?? summaryRes.value;
-          if (raw && raw.data) {
-            setDashboardSummary(raw.data);
-          } else if (raw) {
-            setDashboardSummary(raw);
-          }
+          freshSummary = (raw && raw.data) ? raw.data : raw;
+          setDashboardSummary(freshSummary);
         }
 
         if (distributionRes.status === "fulfilled") {
           const raw = distributionRes.value?.message ?? distributionRes.value?.data ?? distributionRes.value;
-          if (raw && raw.data) {
-            setEmployabilityDistribution(raw.data);
-          } else if (raw) {
-            setEmployabilityDistribution(raw);
-          }
+          freshDistribution = (raw && raw.data) ? raw.data : raw;
+          setEmployabilityDistribution(freshDistribution);
         }
 
         if (growthRes.status === "fulfilled") {
           const raw = growthRes.value?.message ?? growthRes.value?.data ?? growthRes.value;
-          if (raw && raw.data) {
-            setOnboardingGrowth(raw.data);
-          } else if (raw) {
-            setOnboardingGrowth(raw);
-          }
+          freshGrowth = (raw && raw.data) ? raw.data : raw;
+          setOnboardingGrowth(freshGrowth);
         }
 
         if (skillGapsRes.status === "fulfilled") {
           const raw = skillGapsRes.value?.message ?? skillGapsRes.value?.data ?? skillGapsRes.value;
-          if (raw && raw.data) {
-            setTopSkillGaps(raw.data);
-          } else if (raw) {
-            setTopSkillGaps(raw);
-          }
+          freshSkillGaps = (raw && raw.data) ? raw.data : raw;
+          setTopSkillGaps(freshSkillGaps);
         }
+
+        // Cache all items in AsyncStorage
+        const cacheData = {
+          collegeData: data,
+          dashboardSummary: freshSummary,
+          placementStats: freshStats,
+          branchPerformance: freshBranch,
+          driveCounts: freshDriveCounts,
+          upcomingDrivesList: freshDrivesList,
+          employabilityDistribution: freshDistribution,
+          onboardingGrowth: freshGrowth,
+          topSkillGaps: freshSkillGaps,
+        };
+        await AsyncStorage.setItem(`collegeDashboardCache_${userName}`, JSON.stringify(cacheData));
       }
     } catch (err) {
       console.error("Error fetching college details on dashboard overview:", err);
@@ -212,7 +245,7 @@ export const CollegeOverviewScreen = () => {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [userName]);
+  }, [userName, collegeData]);
 
   useEffect(() => {
     fetchDetails();
