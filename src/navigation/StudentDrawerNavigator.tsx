@@ -17,13 +17,15 @@ import {
   Calendar,
   BookOpen,
   History,
-  Video
+  Video,
+  Target
 } from 'lucide-react-native';
 
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { StudentPathScreen } from '@/screens/Dashboards/StudentDashboard/StudentPathScreen';
 import { StudentCommunityScreen } from '@/screens/Dashboards/StudentDashboard/StudentCommunityScreen';
 import { StudentInternshipScreen } from '@/screens/Dashboards/StudentDashboard/StudentInternshipScreen';
+import { StudentProjectsScreen } from '@/screens/Dashboards/StudentDashboard/StudentProjectsScreen';
 import { StudentHabitsScreen } from '@/screens/Dashboards/StudentDashboard/StudentHabitsScreen';
 import { StudentMentorsScreen } from '@/screens/Dashboards/StudentDashboard/StudentMentorsScreen';
 import { StudentEventsScreen } from '@/screens/Dashboards/StudentDashboard/StudentEventsScreen';
@@ -92,6 +94,13 @@ export const StudentDrawerNavigator = () => {
         component={StudentCommunityScreen}
         options={{
           drawerIcon: ({ color, size }) => <Users color={color} size={size} />
+        }}
+      />
+      <Drawer.Screen
+        name="Projects"
+        component={StudentProjectsScreen}
+        options={{
+          drawerIcon: ({ color, size }) => <Target color={color} size={size} />
         }}
       />
       <Drawer.Screen

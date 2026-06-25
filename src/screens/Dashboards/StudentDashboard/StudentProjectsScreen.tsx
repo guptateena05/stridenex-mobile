@@ -15,35 +15,30 @@ import { colors } from '@/theme/colors';
 import { typography } from '@/theme/typography';
 import { 
   Briefcase, 
-  Send, 
   CheckCircle2, 
   Calendar, 
-  MapPin, 
   Clock, 
-  IndianRupee,
-  ShieldCheck,
-  Bookmark,
   TrendingUp,
   X,
   Target,
   Trophy,
-  GraduationCap,
-  Info
+  Info,
+  ArrowRight
 } from 'lucide-react-native';
 import Animated, { FadeInUp, FadeInRight } from 'react-native-reanimated';
 import { StatsCard } from '@/components/dashboard/StatsCard';
 import { useAuth } from '@/context/AuthContext';
 import { 
-  getStudentInternshipList, 
-  createStudentApplication, 
+  getStudentProjectList, 
+  createStudentProjectEnrollment, 
   getStudentByEmail 
 } from '@/api/student.services';
 
-export const StudentInternshipScreen = () => {
+export const StudentProjectsScreen = () => {
   const { userName } = useAuth();
   
   // Data list
-  const [internships, setInternships] = useState<any[]>([]);
+  const [projects, setProjects] = useState<any[]>([]);
   
   // States
   const [loading, setLoading] = useState(true);
@@ -51,7 +46,7 @@ export const StudentInternshipScreen = () => {
   const [applying, setApplying] = useState<string | null>(null);
   
   // Details Modal
-  const [selectedInternship, setSelectedInternship] = useState<any>(null);
+  const [selectedProject, setSelectedProject] = useState<any>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   
   // Cached student profile info
@@ -71,20 +66,20 @@ export const StudentInternshipScreen = () => {
     }
   };
 
-  // Fetch Internships list
-  const fetchInternshipsData = async (profileData?: any) => {
+  // Fetch Projects list
+  const fetchProjectsData = async (profileData?: any) => {
     try {
       const profile = profileData || studentProfile || {};
-      const response = await getStudentInternshipList(
+      const response = await getStudentProjectList(
         userName || undefined,
         profile.course || null,
         profile.department || null,
         profile.academic_year || null
       );
       const data = response?.message?.data || response?.data || response || [];
-      setInternships(Array.isArray(data) ? data : []);
+      setProjects(Array.isArray(data) ? data : []);
     } catch (err) {
-      console.error("Error fetching internships:", err);
+      console.error("Error fetching projects:", err);
     }
   };
 
@@ -96,7 +91,7 @@ export const StudentInternshipScreen = () => {
     const profile = await fetchStudentProfile();
     
     // Fetch lists
-    await fetchInternshipsData(profile);
+    await fetchProjectsData(profile);
     
     setLoading(false);
   }, [userName]);
@@ -108,76 +103,58 @@ export const StudentInternshipScreen = () => {
   const onRefresh = async () => {
     setRefreshing(true);
     const profile = await fetchStudentProfile();
-    await fetchInternshipsData(profile);
+    await fetchProjectsData(profile);
     setRefreshing(false);
   };
 
-  // Apply for Internship handler
-  const handleApplyInternship = async (internship: any) => {
+  // Enroll in Project handler
+  const handleEnrollProject = async (project: any) => {
     if (!userName) {
-      Alert.alert("Authentication Required", "Please log in to apply.");
+      Alert.alert("Authentication Required", "Please log in to enroll.");
       return;
     }
 
     try {
-      setApplying(internship.name);
+      setApplying(project.name);
       const payload = {
         student: userName,
-        internship: internship.name,
-        industry: internship.industry,
+        project: project.name,
+        industry: project.industry || "",
         status: "Applied",
-        applied_on: new Date().toISOString().slice(0, 19).replace('T', ' '),
-        match_score: 100.0,
+        applied_on: new Date().toISOString().slice(0, 19).replace("T", " "),
+        resume: null,
+        match_score: 0.0,
+        notes: "Enrolled from Student Dashboard",
       };
 
-      const response = await createStudentApplication(payload);
+      const response = await createStudentProjectEnrollment(payload);
 
       if (response && (response.status === 200 || response.status === "200" || response.message?.status === 200)) {
-        Alert.alert("Success", `Applied successfully for ${internship.role_name || internship.title || 'the internship'}!`);
+        Alert.alert("Success", `Successfully applied/enrolled in ${project.project_name || 'the project'}!`);
         loadData(false);
       } else {
         Alert.alert("Error", response?.message || "Something went wrong. Please try again.");
       }
     } catch (err: any) {
-      console.error("Application error:", err);
+      console.error("Enrollment error:", err);
       Alert.alert("Error", err?.message || "Something went wrong. Please try again.");
     } finally {
       setApplying(null);
     }
   };
 
-  // Helper for Internship status styling
-  const getInternshipStatusConfig = (status: string) => {
-    const s = status?.toLowerCase();
-    switch (s) {
-      case 'applied':
-        return { bg: "#EFF6FF", text: "#2563EB", border: "#DBEAFE", label: "Applied" };
-      case 'shortlisted':
-        return { bg: "#ECFDF5", text: "#059669", border: "#D1FAE5", label: "Shortlisted" };
-      case 'interview scheduled':
-        return { bg: "#F5F3FF", text: "#7C3AED", border: "#EDE9FE", label: "Interview Scheduled" };
-      case 'rejected':
-        return { bg: "#FEF2F2", text: "#DC2626", border: "#FEE2E2", label: "Rejected" };
-      case 'selected':
-        return { bg: "#FFFBEB", text: "#D97706", border: "#FEF3C7", label: "Selected" };
-      default:
-        return { bg: "#F8FAFC", text: "#64748B", border: "#E2E8F0", label: status || "N/A" };
-    }
-  };
-
-  // Computed stats lists
-  const internshipStats = useMemo(() => [
-    { id: 1, title: "APPLIED", value: internships.filter(i => i.applied_status === "Applied").length, icon: Send, color: "#3B82F6" },
-    { id: 2, title: "SHORTLISTED", value: internships.filter(i => i.applied_status === "Shortlisted").length, icon: CheckCircle2, color: "#10B981" },
-    { id: 3, title: "INTERVIEWS", value: internships.filter(i => i.applied_status === "Interview Scheduled").length, icon: Calendar, color: "#8B5CF6" },
-    { id: 4, title: "MATCHING", value: internships.length, icon: Briefcase, color: colors.accent.DEFAULT },
-  ], [internships]);
+  const projectStats = useMemo(() => [
+    { id: 1, title: "AVAILABLE", value: projects.length, icon: Briefcase, color: colors.accent.DEFAULT },
+    { id: 2, title: "APPLIED", value: projects.filter(p => p.applied_status && p.applied_status !== "Not Applied").length, icon: Target, color: "#3B82F6" },
+    { id: 3, title: "COMPLETED", value: projects.filter(p => p.status === "Completed").length, icon: CheckCircle2, color: "#10B981" },
+    { id: 4, title: "CREDITS", value: 0, icon: Trophy, color: "#8B5CF6" },
+  ], [projects]);
 
   if (loading) {
     return (
       <SafeAreaView style={[styles.safeArea, styles.centered]}>
         <ActivityIndicator size="large" color={colors.accent.DEFAULT} />
-        <Text style={styles.loadingText}>Fetching internships...</Text>
+        <Text style={styles.loadingText}>Fetching projects...</Text>
       </SafeAreaView>
     );
   }
@@ -196,15 +173,15 @@ export const StudentInternshipScreen = () => {
         <Animated.View entering={FadeInUp.delay(100)} style={styles.header}>
           <View style={styles.headerBadge}>
             <Briefcase size={10} color={colors.accent.DEFAULT} />
-            <Text style={styles.headerBadgeText}>CAREER OPPORTUNITIES</Text>
+            <Text style={styles.headerBadgeText}>INDUSTRY RESEARCH & DEV</Text>
           </View>
-          <Text style={styles.title}>Internship Ledger</Text>
-          <Text style={styles.subtitle}>Apply to verified roles and tracking slots</Text>
+          <Text style={styles.title}>Industrial Projects</Text>
+          <Text style={styles.subtitle}>Contribute to industry-level codebases</Text>
         </Animated.View>
 
         {/* Stats Row */}
         <Animated.View entering={FadeInRight.delay(200)} style={styles.statsRow}>
-          {internshipStats.map((stat) => (
+          {projectStats.map((stat) => (
             <StatsCard 
               key={stat.id}
               title={stat.title}
@@ -217,7 +194,7 @@ export const StudentInternshipScreen = () => {
 
         {/* Matching Header */}
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitleSimple}>Open Openings</Text>
+          <Text style={styles.sectionTitleSimple}>Open Projects</Text>
           <TouchableOpacity style={styles.filterButton} activeOpacity={0.7}>
             <TrendingUp size={14} color="#64748B" />
             <Text style={styles.filterText}>Relevance</Text>
@@ -226,54 +203,43 @@ export const StudentInternshipScreen = () => {
 
         {/* Listings */}
         <View style={styles.listContainer}>
-          {internships.length === 0 ? (
+          {projects.length === 0 ? (
             <View style={styles.emptyContainer}>
               <Briefcase size={40} color="#CBD5E1" />
-              <Text style={styles.emptyText}>No matching internships found.</Text>
+              <Text style={styles.emptyText}>No matching projects found.</Text>
             </View>
           ) : (
-            internships.map((internship, index) => {
-              const statusConf = getInternshipStatusConfig(internship.applied_status || "");
-              const isClosed = internship.status?.toLowerCase() === 'closed';
-              const hasApplied = internship.applied_status && internship.applied_status !== "Not Applied";
-              const isCurrentApplying = applying === internship.name;
+            projects.map((project, index) => {
+              const isClosed = project.status?.toLowerCase() === 'disabled' || project.status?.toLowerCase() === 'disable';
+              const hasApplied = project.applied_status && project.applied_status !== "Not Applied";
+              const isCurrentApplying = applying === project.name;
 
               return (
                 <Animated.View 
-                  key={internship.name || index} 
+                  key={project.name || index} 
                   entering={FadeInUp.delay(300 + index * 100)}
-                  style={styles.internshipCard}
+                  style={styles.projectCard}
                 >
                   <View style={styles.cardTop}>
                     <View style={styles.companyInfo}>
-                      <View style={[styles.companyLogo, { backgroundColor: '#FFF7ED', borderColor: '#FFEDD5' }]}>
-                        <Text style={[styles.logoText, { color: colors.accent.DEFAULT }]}>
-                          {(internship.role_name || internship.title || "I")[0]}
-                        </Text>
+                      <View style={[styles.companyLogo, { backgroundColor: '#EFF6FF', borderColor: '#DBEAFE' }]}>
+                        <Briefcase size={20} color="#2563EB" />
                       </View>
                       <View style={{ flex: 1 }}>
                         <Text style={styles.jobTitle} numberOfLines={1}>
-                          {internship.role_name || internship.title || "Internship Role"}
+                          {project.project_name ? project.project_name.trim() : "Project Name"}
                         </Text>
                         <Text style={styles.companyName} numberOfLines={1}>
-                          {internship.industry || "Industry Partner"}
+                          {project.industry || "Industry Partner"}
                         </Text>
                       </View>
                     </View>
-                    
-                    <View style={styles.matchBadge}>
-                      <Text style={[styles.matchValue, { color: '#059669' }]}>
-                        {internship.match_score || 100}%
-                      </Text>
-                      <Text style={styles.matchLabel}>MATCH</Text>
-                    </View>
                   </View>
 
-                  {/* Status Badges */}
                   <View style={styles.statusBadgesRow}>
                     {isClosed ? (
                       <View style={[styles.statusTag, styles.statusClosed]}>
-                        <Text style={styles.statusTagTextClosed}>Closed</Text>
+                        <Text style={styles.statusTagTextClosed}>Disabled</Text>
                       </View>
                     ) : (
                       <View style={[styles.statusTag, styles.statusActive]}>
@@ -282,27 +248,27 @@ export const StudentInternshipScreen = () => {
                     )}
                     
                     {hasApplied && (
-                      <View style={[styles.statusTag, { backgroundColor: statusConf.bg, borderColor: statusConf.border }]}>
-                        <Text style={[styles.statusTagTextActive, { color: statusConf.text }]}>
-                          {statusConf.label}
+                      <View style={[styles.statusTag, { backgroundColor: '#EFF6FF', borderColor: '#DBEAFE' }]}>
+                        <Text style={[styles.statusTagTextActive, { color: '#2563EB' }]}>
+                          {project.applied_status}
                         </Text>
                       </View>
                     )}
                   </View>
 
+                  <Text style={styles.projectDesc} numberOfLines={2}>
+                    {project.description || "Contribute to real-world industrial projects and build your portfolio."}
+                  </Text>
+
                   <View style={styles.badgeRow}>
                     <View style={styles.infoBadge}>
-                      <MapPin size={10} color="#64748B" />
-                      <Text style={styles.badgeText}>{internship.location || "Remote"}</Text>
+                      <Clock size={10} color="#64748B" />
+                      <Text style={styles.badgeText}>{project.duration} Days</Text>
                     </View>
                     <View style={styles.infoBadge}>
-                      <Clock size={10} color="#64748B" />
-                      <Text style={styles.badgeText}>{internship.duration || "3 Months"}</Text>
-                    </View>
-                    <View style={[styles.infoBadge, { backgroundColor: '#ECFDF5', borderColor: '#D1FAE5' }]}>
-                      <IndianRupee size={10} color="#059669" />
-                      <Text style={[styles.badgeText, { color: '#059669', fontWeight: '700' }]}>
-                        {internship.stipend || "Best in Industry"}
+                      <Calendar size={10} color="#64748B" />
+                      <Text style={styles.badgeText}>
+                        Deadline: {project.application_deadline ? project.application_deadline.split("-").reverse().join("/") : "Open"}
                       </Text>
                     </View>
                   </View>
@@ -316,13 +282,13 @@ export const StudentInternshipScreen = () => {
                       ]}
                       disabled={isClosed || hasApplied || isCurrentApplying}
                       activeOpacity={0.7}
-                      onPress={() => handleApplyInternship(internship)}
+                      onPress={() => handleEnrollProject(project)}
                     >
                       {isCurrentApplying ? (
                         <ActivityIndicator size="small" color="#fff" />
                       ) : (
                         <Text style={styles.applyButtonText}>
-                          {hasApplied ? statusConf.label : isClosed ? 'Closed' : 'Apply Now'}
+                          {hasApplied ? 'Applied' : isClosed ? 'Disabled' : 'Apply Now'}
                         </Text>
                       )}
                     </TouchableOpacity>
@@ -330,7 +296,7 @@ export const StudentInternshipScreen = () => {
                       style={styles.detailsButton}
                       activeOpacity={0.7}
                       onPress={() => {
-                        setSelectedInternship(internship);
+                        setSelectedProject(project);
                         setShowDetailsModal(true);
                       }}
                     >
@@ -363,10 +329,10 @@ export const StudentInternshipScreen = () => {
                 </View>
                 <View style={{ flex: 1, marginRight: 8 }}>
                   <Text style={styles.modalTitleText} numberOfLines={1}>
-                    {selectedInternship?.role_name || selectedInternship?.title || 'Internship Details'}
+                    {selectedProject?.project_name || 'Project Details'}
                   </Text>
                   <Text style={styles.modalSubtitleText} numberOfLines={1}>
-                    {selectedInternship?.industry || 'Industry Partner'}
+                    {selectedProject?.industry || 'Industry Partner'}
                   </Text>
                 </View>
               </View>
@@ -388,32 +354,34 @@ export const StudentInternshipScreen = () => {
                 <View style={styles.metaBoxContainer}>
                   <View style={styles.metaItem}>
                     <View style={[styles.metaIconWrap, { backgroundColor: '#EFF6FF' }]}>
-                      <MapPin size={16} color="#2563EB" />
+                      <Clock size={16} color="#2563EB" />
                     </View>
                     <View>
-                      <Text style={styles.metaLabelText}>LOCATION</Text>
-                      <Text style={styles.metaValText}>{selectedInternship?.location || 'Remote'}</Text>
+                      <Text style={styles.metaLabelText}>DURATION</Text>
+                      <Text style={styles.metaValText}>{selectedProject?.duration} Days</Text>
                     </View>
                   </View>
 
                   <View style={styles.metaItem}>
-                    <View style={[styles.metaIconWrap, { backgroundColor: '#ECFDF5' }]}>
-                      <IndianRupee size={16} color="#059669" />
+                    <View style={[styles.metaIconWrap, { backgroundColor: '#FFFBEB' }]}>
+                      <Calendar size={16} color="#D97706" />
                     </View>
                     <View>
-                      <Text style={styles.metaLabelText}>STIPEND</Text>
-                      <Text style={styles.metaValText}>{selectedInternship?.stipend || 'Best in Industry'}</Text>
+                      <Text style={styles.metaLabelText}>APPLICATION DEADLINE</Text>
+                      <Text style={styles.metaValText}>
+                        {selectedProject?.application_deadline ? selectedProject.application_deadline.split("-").reverse().join("/") : 'Open'}
+                      </Text>
                     </View>
                   </View>
 
                   <View style={styles.metaItem}>
                     <View style={[styles.metaIconWrap, { backgroundColor: '#F5F3FF' }]}>
-                      <Clock size={16} color="#7C3AED" />
+                      <Calendar size={16} color="#7C3AED" />
                     </View>
                     <View>
-                      <Text style={styles.metaLabelText}>DURATION</Text>
+                      <Text style={styles.metaLabelText}>PROJECT PERIOD</Text>
                       <Text style={styles.metaValText}>
-                        {selectedInternship?.duration ? `${selectedInternship.duration} Days` : 'Not specified'}
+                        {selectedProject?.start_date ? selectedProject.start_date.split("-").reverse().join("/") : 'TBA'} — {selectedProject?.end_date ? selectedProject.end_date.split("-").reverse().join("/") : 'TBA'}
                       </Text>
                     </View>
                   </View>
@@ -423,7 +391,7 @@ export const StudentInternshipScreen = () => {
                 <Text style={styles.modalSectionLabel}>About</Text>
                 <View style={styles.descCard}>
                   <Text style={styles.descCardText}>
-                    {selectedInternship?.description || "No description provided by the industry partner."}
+                    {selectedProject?.description || "Contribute to real-world industrial projects and build your portfolio with top industry mentors."}
                   </Text>
                 </View>
 
@@ -433,23 +401,23 @@ export const StudentInternshipScreen = () => {
                   <View style={styles.gridCard}>
                     <Text style={styles.metaLabelText}>ELIGIBILITY</Text>
                     <Text style={styles.gridValText}>
-                      {selectedInternship?.eligibility || "Open to all relevant backgrounds."}
+                      {selectedProject?.eligibility || "Open to all relevant backgrounds."}
                     </Text>
                   </View>
                   <View style={styles.gridCard}>
                     <Text style={styles.metaLabelText}>OPENINGS</Text>
                     <Text style={styles.gridValText}>
-                      {selectedInternship?.openings || 1} candidates
+                      {selectedProject?.openings || 1} candidates
                     </Text>
                   </View>
                 </View>
 
                 {/* Skills requirement */}
-                {selectedInternship?.skills && Array.isArray(selectedInternship.skills) && selectedInternship.skills.length > 0 && (
+                {selectedProject?.skills && Array.isArray(selectedProject.skills) && selectedProject.skills.length > 0 && (
                   <>
                     <Text style={styles.modalSectionLabel}>Skills Required</Text>
                     <View style={styles.skillsTagRow}>
-                      {selectedInternship.skills.map((s: any, sIdx: number) => (
+                      {selectedProject.skills.map((s: any, sIdx: number) => (
                         <View key={sIdx} style={styles.skillBadgeBox}>
                           <Text style={styles.skillBadgeText}>{s.skill}</Text>
                         </View>
@@ -472,18 +440,18 @@ export const StudentInternshipScreen = () => {
               
               <TouchableOpacity 
                 activeOpacity={0.7}
-                disabled={selectedInternship?.status?.toLowerCase() === 'closed' || (selectedInternship?.applied_status && selectedInternship.applied_status !== "Not Applied")}
+                disabled={selectedProject?.status?.toLowerCase() === 'disabled' || selectedProject?.status?.toLowerCase() === 'disable' || (selectedProject?.applied_status && selectedProject.applied_status !== "Not Applied")}
                 onPress={() => {
-                  handleApplyInternship(selectedInternship);
+                  handleEnrollProject(selectedProject);
                   setShowDetailsModal(false);
                 }}
                 style={[
                   styles.modalApplyBtn,
-                  (selectedInternship?.status?.toLowerCase() === 'closed' || (selectedInternship?.applied_status && selectedInternship.applied_status !== "Not Applied")) && styles.disabledButton
+                  (selectedProject?.status?.toLowerCase() === 'disabled' || selectedProject?.status?.toLowerCase() === 'disable' || (selectedProject?.applied_status && selectedProject.applied_status !== "Not Applied")) && styles.disabledButton
                 ]}
               >
                 <Text style={styles.modalApplyBtnText}>
-                  {selectedInternship?.applied_status && selectedInternship.applied_status !== "Not Applied" ? selectedInternship.applied_status : 'Apply Now'}
+                  {selectedProject?.applied_status && selectedProject.applied_status !== "Not Applied" ? 'Applied' : 'Apply Now'}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -606,7 +574,7 @@ const styles = StyleSheet.create({
     color: '#64748B',
     textAlign: 'center',
   },
-  internshipCard: {
+  projectCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 24,
     padding: 20,
@@ -638,10 +606,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1,
   },
-  logoText: {
-    fontSize: 18,
-    fontWeight: '900',
-  },
   jobTitle: {
     fontSize: 15,
     fontWeight: '800',
@@ -651,19 +615,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: '#64748B',
-    marginTop: 1,
-  },
-  matchBadge: {
-    alignItems: 'flex-end',
-  },
-  matchValue: {
-    fontSize: 18,
-    fontWeight: '900',
-  },
-  matchLabel: {
-    fontSize: 8,
-    fontWeight: '800',
-    color: '#94A3B8',
     marginTop: 1,
   },
   statusBadgesRow: {
@@ -697,6 +648,13 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#DC2626',
     textTransform: 'uppercase',
+  },
+  projectDesc: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#64748B',
+    lineHeight: 16,
+    marginBottom: 12,
   },
   badgeRow: {
     flexDirection: 'row',

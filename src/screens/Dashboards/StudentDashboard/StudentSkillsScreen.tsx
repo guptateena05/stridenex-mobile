@@ -36,7 +36,9 @@ import {
   getSkillLedger, 
   getEmployabilityScore, 
   createStudentSkill, 
-  addSkillEvidence 
+  addSkillEvidence,
+  getSkillTestQuestions,
+  submitSkillTest
 } from '@/api/student.services';
 import DynamicForm from '@/components/forms/DynamicForm';
 import { FormField } from '@/components/forms/DynamicField';
@@ -59,6 +61,17 @@ export const StudentSkillsScreen = () => {
   // Submitting states
   const [submittingSkill, setSubmittingSkill] = useState(false);
   const [submittingEvidence, setSubmittingEvidence] = useState(false);
+
+  // Skill Verification States
+  const [isTestModalOpen, setIsTestModalOpen] = useState(false);
+  const [testSessionId, setTestSessionId] = useState<string>('');
+  const [testQuestions, setTestQuestions] = useState<any[]>([]);
+  const [testSkill, setTestSkill] = useState<string>('');
+  const [testLevel, setTestLevel] = useState<string>('');
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [userAnswers, setUserAnswers] = useState<Record<number, string>>({});
+  const [isSubmittingTest, setIsSubmittingTest] = useState(false);
+  const [testResult, setTestResult] = useState<any>(null);
 
   // Fetch skill data from API
   const fetchSkillStats = async (showLoadingSpinner = true) => {
@@ -216,59 +229,65 @@ export const StudentSkillsScreen = () => {
     }
   ], []);
 
-  // Handle skill creation submit
+  // Handle skill creation verify & test trigger
   const handleCreateSkill = async (formData: any) => {
     if (!userName) return;
     setSubmittingSkill(true);
     try {
-      const payload = {
-        student: userName,
-        skill: formData.skill,
-        current_level: formData.current_level,
-        status: 'Active',
-        first_acquired: new Date().toISOString().split('T')[0],
-        last_demonstrated: '',
-        self_declared: 1,
-        ai_verified: 0,
-        is_public: 1
-      };
+      const response = await getSkillTestQuestions(userName, formData.skill, formData.current_level);
+      const data = response?.message || response?.data || response;
 
-      const response = await createStudentSkill(payload);
+      if (data && data.questions && data.questions.length > 0) {
+        setTestQuestions(data.questions);
+        setTestSessionId(data.session_id);
+        setTestSkill(formData.skill);
+        setTestLevel(formData.current_level);
+        setUserAnswers({});
+        setCurrentQuestionIndex(0);
+        setTestResult(null);
 
-      const isErrorObj = response?.message?.status === 'error' || response?.status === 'error';
-      const errMsg = response?.message?.message || response?.message || '';
-      const serverMsgStr = response?._server_messages || '';
-      
-      const isDuplicate = 
-        (typeof errMsg === 'string' && (errMsg.includes('Duplicate entry') || errMsg.includes('already exists') || errMsg.includes('IntegrityError'))) ||
-        (typeof serverMsgStr === 'string' && serverMsgStr.includes('already exists'));
-
-      if (isErrorObj && isDuplicate) {
-        Alert.alert('Info', `You have already added "${formData.skill}" to your skills!`);
-        return;
-      } else if (isErrorObj) {
-        Alert.alert('Error', errMsg || 'Failed to create skill');
-        return;
-      }
-
-      Alert.alert('Success', 'Skill added successfully!');
-      setIsSkillModalVisible(false);
-      fetchSkillStats(false);
-    } catch (err: any) {
-      console.error('Error creating skill:', err);
-      const innerErrMsg = err?.response?.data?.message?.message || err?.response?.data?.message || err?.message || '';
-      const serverMsgStr = err?.response?.data?._server_messages || '';
-      const isDuplicate = 
-        (typeof innerErrMsg === 'string' && (innerErrMsg.includes('Duplicate entry') || innerErrMsg.includes('already exists') || innerErrMsg.includes('IntegrityError'))) ||
-        (typeof serverMsgStr === 'string' && serverMsgStr.includes('already exists'));
-
-      if (isDuplicate) {
-        Alert.alert('Info', `You have already added "${formData.skill}" to your skills!`);
+        setIsSkillModalVisible(false);
+        setIsTestModalOpen(true);
       } else {
-        Alert.alert('Error', err?.message || 'Failed to add skill. Please try again.');
+        Alert.alert('Info', 'No test questions available for this skill and level.');
       }
+    } catch (err: any) {
+      console.error('Error fetching skill questions:', err);
+      Alert.alert('Error', err?.message || 'Failed to load skill test questions');
     } finally {
       setSubmittingSkill(false);
+    }
+  };
+
+  const handleSubmitTest = async () => {
+    const unansweredCount = testQuestions.length - Object.keys(userAnswers).length;
+    if (unansweredCount > 0) {
+      Alert.alert('Incomplete', `Please answer all questions before submitting. (${unansweredCount} remaining)`);
+      return;
+    }
+
+    try {
+      setIsSubmittingTest(true);
+      
+      const answersPayload = testQuestions.map((q, idx) => ({
+        question_index: q.index !== undefined ? q.index : idx,
+        answer: userAnswers[idx] || ""
+      }));
+
+      const response = await submitSkillTest(testSessionId, answersPayload);
+      const data = response?.message || response?.data || response;
+
+      if (data) {
+        setTestResult(data);
+        fetchSkillStats(false);
+      } else {
+        Alert.alert('Error', 'Failed to retrieve test result.');
+      }
+    } catch (err: any) {
+      console.error('Error submitting test:', err);
+      Alert.alert('Error', err?.message || 'Failed to submit skill test');
+    } finally {
+      setIsSubmittingTest(false);
     }
   };
 
@@ -425,7 +444,7 @@ export const StudentSkillsScreen = () => {
                    fields={skillFields}
                    onSubmit={handleCreateSkill}
                    loading={submittingSkill}
-                   buttonLabel="Declare Skill"
+                   buttonLabel="Verify Skill"
                  />
                </View>
             </ScrollView>
@@ -504,6 +523,244 @@ export const StudentSkillsScreen = () => {
             </ScrollView>
           </View>
         </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Skill Verification Test Modal */}
+      <Modal animationType="slide" transparent={true} visible={isTestModalOpen} onRequestClose={() => setIsTestModalOpen(false)}>
+        <SafeAreaView style={styles.testModalOverlay}>
+          <View style={styles.testModalContainer}>
+            {/* Header */}
+            <View style={styles.testModalHeader}>
+              <View style={styles.testHeaderInfo}>
+                <View style={styles.testIconContainer}>
+                  {testResult ? (
+                    <ShieldCheck size={20} color="#fff" />
+                  ) : (
+                    <Award size={20} color="#fff" />
+                  )}
+                </View>
+                <View>
+                  <Text style={styles.testHeaderTitle}>
+                    {testResult ? 'Verification Result' : 'Skill Assessment'}
+                  </Text>
+                  <Text style={styles.testHeaderSubtitle}>
+                    {testSkill} • {testLevel}
+                  </Text>
+                </View>
+              </View>
+              <TouchableOpacity onPress={() => setIsTestModalOpen(false)} style={styles.testCloseBtn}>
+                <X size={20} color="#000" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Body content */}
+            {!testResult ? (
+              // Test Questions View
+              <View style={styles.testBody}>
+                {/* Progress Indicator */}
+                <View style={styles.progressBarBg}>
+                  <View 
+                    style={[
+                      styles.progressBarFill, 
+                      { width: `${((currentQuestionIndex + 1) / testQuestions.length) * 100}%` }
+                    ]} 
+                  />
+                </View>
+                <View style={styles.progressTextRow}>
+                  <Text style={styles.progressText}>PROGRESS</Text>
+                  <Text style={styles.progressText}>
+                    QUESTION {currentQuestionIndex + 1} OF {testQuestions.length}
+                  </Text>
+                </View>
+
+                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.testScrollContent}>
+                  {/* Question Card */}
+                  <View style={styles.questionCard}>
+                    <View style={styles.difficultyBadge}>
+                      <Text style={styles.difficultyText}>
+                        {testQuestions[currentQuestionIndex]?.difficulty?.toUpperCase() || 'MEDIUM'}
+                      </Text>
+                    </View>
+                    <Text style={styles.questionText}>
+                      {testQuestions[currentQuestionIndex]?.question}
+                    </Text>
+                  </View>
+
+                  {/* Options */}
+                  <View style={styles.optionsContainer}>
+                    {testQuestions[currentQuestionIndex]?.options?.map((option: string, oIdx: number) => {
+                      const isSelected = userAnswers[currentQuestionIndex] === option;
+                      return (
+                        <TouchableOpacity
+                          key={oIdx}
+                          onPress={() => {
+                            setUserAnswers(prev => ({
+                              ...prev,
+                              [currentQuestionIndex]: option
+                            }));
+                          }}
+                          activeOpacity={0.7}
+                          style={[
+                            styles.optionButton,
+                            isSelected && styles.optionButtonSelected
+                          ]}
+                        >
+                          <View style={[
+                            styles.optionRadio,
+                            isSelected && styles.optionRadioSelected
+                          ]}>
+                            {isSelected && <View style={styles.optionRadioDot} />}
+                          </View>
+                          <Text style={[
+                            styles.optionText,
+                            isSelected && styles.optionTextSelected
+                          ]}>
+                            {option}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                </ScrollView>
+
+                {/* Footer Controls */}
+                <View style={styles.testFooter}>
+                  <TouchableOpacity
+                    onPress={() => {
+                      if (currentQuestionIndex > 0) {
+                        setCurrentQuestionIndex(prev => prev - 1);
+                      } else {
+                        setIsTestModalOpen(false);
+                      }
+                    }}
+                    style={styles.testBackBtn}
+                  >
+                    <Text style={styles.testBackBtnText}>
+                      {currentQuestionIndex > 0 ? 'Back' : 'Cancel'}
+                    </Text>
+                  </TouchableOpacity>
+
+                  {currentQuestionIndex < testQuestions.length - 1 ? (
+                    <TouchableOpacity
+                      onPress={() => {
+                        if (!userAnswers[currentQuestionIndex]) {
+                          Alert.alert('Select Answer', 'Please choose an option to continue.');
+                          return;
+                        }
+                        setCurrentQuestionIndex(prev => prev + 1);
+                      }}
+                      style={styles.testNextBtn}
+                    >
+                      <Text style={styles.testNextBtnText}>Next</Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <TouchableOpacity
+                      onPress={handleSubmitTest}
+                      disabled={isSubmittingTest}
+                      style={[styles.testSubmitBtn, isSubmittingTest && styles.disabledBtn]}
+                    >
+                      {isSubmittingTest ? (
+                        <ActivityIndicator size="small" color="#fff" />
+                      ) : (
+                        <Text style={styles.testSubmitBtnText}>Submit</Text>
+                      )}
+                    </TouchableOpacity>
+                  )}
+                </View>
+              </View>
+            ) : (
+              // Test Result Scorecard View
+              <View style={styles.testBody}>
+                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.resultScrollContent}>
+                  {/* Circular/Badge Scorecard */}
+                  <View style={styles.scorecardMain}>
+                    <View style={styles.scoreCircle}>
+                      <Text style={styles.scorePercentText}>{testResult.score || 0}%</Text>
+                      <Text style={styles.scoreLabel}>SCORE</Text>
+                    </View>
+
+                    <View style={[
+                      styles.resultStatusBadge,
+                      { backgroundColor: testResult.passed ? '#ECFDF5' : '#FEF2F2', borderColor: testResult.passed ? '#A7F3D0' : '#FECACA' }
+                    ]}>
+                      <Text style={[
+                        styles.resultStatusText,
+                        { color: testResult.passed ? '#065F46' : '#991B1B' }
+                      ]}>
+                        {testResult.passed ? 'VERIFICATION PASSED' : 'VERIFICATION FAILED'}
+                      </Text>
+                    </View>
+
+                    <Text style={styles.correctAnswersText}>
+                      Correct Answers: <Text style={{fontWeight: '800', color: '#1E293B'}}>{testResult.total_correct || 0}</Text> / {testResult.total_questions || 0}
+                    </Text>
+                  </View>
+
+                  {/* Feedback Summary */}
+                  {testResult.feedback?.summary && (
+                    <View style={styles.feedbackSection}>
+                      <Text style={styles.sectionHeaderText}>AI SUMMARY</Text>
+                      <View style={styles.feedbackSummaryCard}>
+                        <Text style={styles.feedbackSummaryText}>{testResult.feedback.summary}</Text>
+                      </View>
+                    </View>
+                  )}
+
+                  {/* Strengths & Gaps */}
+                  <View style={styles.strengthsGapsContainer}>
+                    {testResult.feedback?.strengths && testResult.feedback.strengths.length > 0 && (
+                      <View style={styles.halfFeedbackSection}>
+                        <Text style={[styles.sectionHeaderText, { color: '#059669' }]}>STRENGTHS</Text>
+                        <View style={styles.strengthsCard}>
+                          {testResult.feedback.strengths.map((str: string, sIdx: number) => (
+                            <View key={sIdx} style={styles.bulletItem}>
+                              <Text style={styles.bulletIcon}>✓</Text>
+                              <Text style={styles.bulletText}>{str}</Text>
+                            </View>
+                          ))}
+                        </View>
+                      </View>
+                    )}
+
+                    {testResult.feedback?.gaps && testResult.feedback.gaps.length > 0 && (
+                      <View style={styles.halfFeedbackSection}>
+                        <Text style={[styles.sectionHeaderText, { color: '#D97706' }]}>AREAS TO IMPROVE</Text>
+                        <View style={styles.gapsCard}>
+                          {testResult.feedback.gaps.map((gap: string, gIdx: number) => (
+                            <View key={gIdx} style={styles.bulletItem}>
+                              <Text style={[styles.bulletIcon, { color: '#D97706' }]}>⚠</Text>
+                              <Text style={styles.bulletText}>{gap}</Text>
+                            </View>
+                          ))}
+                        </View>
+                      </View>
+                    )}
+                  </View>
+
+                  {/* Next Steps */}
+                  {testResult.feedback?.next_step && (
+                    <View style={styles.feedbackSection}>
+                      <Text style={[styles.sectionHeaderText, { color: '#2563EB' }]}>RECOMMENDED NEXT STEPS</Text>
+                      <View style={styles.nextStepsCard}>
+                        <Text style={styles.nextStepsText}>{testResult.feedback.next_step}</Text>
+                      </View>
+                    </View>
+                  )}
+                </ScrollView>
+
+                {/* Footer close button */}
+                <View style={styles.resultFooter}>
+                  <TouchableOpacity
+                    onPress={() => setIsTestModalOpen(false)}
+                    style={styles.doneBtn}
+                  >
+                    <Text style={styles.doneBtnText}>Close Result</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+          </View>
+        </SafeAreaView>
       </Modal>
     </SafeAreaView>
   );
@@ -824,5 +1081,364 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     fontSize: 14,
     fontFamily: typography.fontFamily.display,
+  },
+  testModalOverlay: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+  },
+  testModalContainer: {
+    flex: 1,
+  },
+  testModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1.5,
+    borderBottomColor: '#F1F5F9',
+    backgroundColor: '#FFFFFF',
+  },
+  testHeaderInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  testIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: colors.accent.DEFAULT,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  testHeaderTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  testHeaderSubtitle: {
+    fontSize: 12,
+    color: '#64748B',
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  testCloseBtn: {
+    padding: 8,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 20,
+  },
+  testBody: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+  },
+  progressBarBg: {
+    height: 6,
+    backgroundColor: '#E2E8F0',
+    width: '100%',
+  },
+  progressBarFill: {
+    height: '100%',
+    backgroundColor: colors.accent.DEFAULT,
+  },
+  progressTextRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 8,
+  },
+  progressText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#94A3B8',
+    letterSpacing: 1,
+  },
+  testScrollContent: {
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 40,
+  },
+  questionCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 20,
+    borderWidth: 1.5,
+    borderColor: '#F1F5F9',
+    marginBottom: 20,
+    shadowColor: '#64748B',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.03,
+    shadowRadius: 10,
+    elevation: 2,
+  },
+  difficultyBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(255, 107, 0, 0.08)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    marginBottom: 12,
+  },
+  difficultyText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: colors.accent.DEFAULT,
+    letterSpacing: 0.5,
+  },
+  questionText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1E293B',
+    lineHeight: 22,
+  },
+  optionsContainer: {
+    gap: 12,
+  },
+  optionButton: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    borderRadius: 16,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  optionButtonSelected: {
+    borderColor: colors.accent.DEFAULT,
+    backgroundColor: 'rgba(255, 107, 0, 0.02)',
+  },
+  optionRadio: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: '#CBD5E1',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  optionRadioSelected: {
+    borderColor: colors.accent.DEFAULT,
+  },
+  optionRadioDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: colors.accent.DEFAULT,
+  },
+  optionText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#475569',
+    flex: 1,
+  },
+  optionTextSelected: {
+    color: '#0F172A',
+    fontWeight: '700',
+  },
+  testFooter: {
+    flexDirection: 'row',
+    padding: 20,
+    backgroundColor: '#FFFFFF',
+    borderTopWidth: 1.5,
+    borderTopColor: '#F1F5F9',
+    gap: 16,
+  },
+  testBackBtn: {
+    flex: 1,
+    height: 50,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  testBackBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#64748B',
+  },
+  testNextBtn: {
+    flex: 1,
+    height: 50,
+    borderRadius: 16,
+    backgroundColor: colors.accent.DEFAULT,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  testNextBtnText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
+  testSubmitBtn: {
+    flex: 1,
+    height: 50,
+    borderRadius: 16,
+    backgroundColor: '#10B981',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  testSubmitBtnText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
+  disabledBtn: {
+    opacity: 0.6,
+  },
+  resultScrollContent: {
+    padding: 20,
+    paddingBottom: 40,
+  },
+  scorecardMain: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 24,
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: '#F1F5F9',
+    shadowColor: '#64748B',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.04,
+    shadowRadius: 15,
+    elevation: 3,
+    marginBottom: 20,
+  },
+  scoreCircle: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    borderWidth: 8,
+    borderColor: colors.accent.DEFAULT,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  scorePercentText: {
+    fontSize: 22,
+    fontWeight: '900',
+    color: '#0F172A',
+  },
+  scoreLabel: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#94A3B8',
+    letterSpacing: 1,
+    marginTop: 2,
+  },
+  resultStatusBadge: {
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    marginBottom: 12,
+  },
+  resultStatusText: {
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  correctAnswersText: {
+    fontSize: 12,
+    color: '#64748B',
+    fontWeight: '600',
+  },
+  feedbackSection: {
+    marginBottom: 20,
+  },
+  sectionHeaderText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#94A3B8',
+    letterSpacing: 1.2,
+    marginBottom: 8,
+    marginLeft: 4,
+  },
+  feedbackSummaryCard: {
+    backgroundColor: 'rgba(37, 99, 235, 0.03)',
+    borderWidth: 1,
+    borderColor: 'rgba(37, 99, 235, 0.1)',
+    borderRadius: 20,
+    padding: 16,
+  },
+  feedbackSummaryText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#334155',
+    lineHeight: 18,
+  },
+  strengthsGapsContainer: {
+    flexDirection: 'column',
+    gap: 20,
+    marginBottom: 20,
+  },
+  halfFeedbackSection: {
+    flex: 1,
+  },
+  strengthsCard: {
+    backgroundColor: 'rgba(16, 185, 129, 0.03)',
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.1)',
+    borderRadius: 20,
+    padding: 16,
+    gap: 10,
+  },
+  gapsCard: {
+    backgroundColor: 'rgba(217, 119, 6, 0.03)',
+    borderWidth: 1,
+    borderColor: 'rgba(217, 119, 6, 0.1)',
+    borderRadius: 20,
+    padding: 16,
+    gap: 10,
+  },
+  bulletItem: {
+    flexDirection: 'row',
+    gap: 8,
+    alignItems: 'flex-start',
+  },
+  bulletIcon: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#10B981',
+    marginTop: -2,
+  },
+  bulletText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#334155',
+    flex: 1,
+    lineHeight: 16,
+  },
+  nextStepsCard: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: '#F1F5F9',
+    borderRadius: 20,
+    padding: 16,
+  },
+  nextStepsText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#475569',
+    lineHeight: 17,
+  },
+  resultFooter: {
+    padding: 20,
+    backgroundColor: '#FFFFFF',
+    borderTopWidth: 1.5,
+    borderTopColor: '#F1F5F9',
+  },
+  doneBtn: {
+    backgroundColor: '#0F172A',
+    height: 50,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  doneBtnText: {
+    color: '#FFFFFF',
+    fontWeight: '800',
+    fontSize: 14,
   },
 });
