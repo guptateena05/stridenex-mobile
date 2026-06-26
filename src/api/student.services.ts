@@ -217,4 +217,190 @@ export const createStudentProjectEnrollment = async (data: any) => {
   }
 };
 
+/**
+ * Fetch student habits dashboard.
+ */
+export const getStudentDashboardHabits = async (studentEmail: string) => {
+  try {
+    const response = await api.post(
+      "method/nexedu.habits_builder.api.get_student_dashboard",
+      { student: studentEmail }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching student habits dashboard:", error);
+    throw error;
+  }
+};
+
+/**
+ * Log daily habits.
+ */
+export const logDailyHabits = async (data: any) => {
+  try {
+    const response = await api.post(
+      "method/nexedu.habits_builder.api.log_daily_habits",
+      data
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error logging daily habits:", error);
+    throw error;
+  }
+};
+
+/**
+ * Update habit log status.
+ */
+export const updateLogStatus = async (logName: string, status: string) => {
+  try {
+    const response = await api.post(
+      "method/nexedu.habits_builder.api.update_log_status",
+      { log_name: logName, status }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error updating log status:", error);
+    throw error;
+  }
+};
+
+/**
+ * Create a new habit plan.
+ */
+export const createHabitPlan = async (data: any) => {
+  try {
+    const response = await api.post(
+      "method/nexedu.habits_builder.api.create_habit_plan",
+      data
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error creating habit plan:", error);
+    throw error;
+  }
+};
+
+/**
+ * Fetch student habit plans.
+ */
+export const getStudentPlans = async (studentEmail: string, status?: string) => {
+  try {
+    const payload: any = { student: studentEmail };
+    if (status) payload.status = status;
+    const response = await api.post(
+      "method/nexedu.habits_builder.api.get_student_plans",
+      payload
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching student plans:", error);
+    throw error;
+  }
+};
+
+/**
+ * Fetch habit streaks for a student.
+ */
+export const getHabitStreaks = async (studentEmail: string) => {
+  try {
+    const response = await api.post(
+      "method/nexedu.habits_builder.api.get_habit_streaks",
+      { student: studentEmail }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching habit streaks:", error);
+    throw error;
+  }
+};
+
+/**
+ * Fetch habit history.
+ */
+export const getHabitHistory = async (studentEmail: string, habit: string, days: number = 30) => {
+  try {
+    const response = await api.post(
+      "method/nexedu.habits_builder.api.get_habit_history",
+      { student: studentEmail, habit, days }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching habit history:", error);
+    throw error;
+  }
+};
+
+/**
+ * Fetch today's pending habits.
+ */
+export const getTodaysPendingHabits = async (studentEmail: string) => {
+  try {
+    const response = await api.post(
+      "method/nexedu.habits_builder.api.get_todays_pending_habits",
+      { student: studentEmail }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching today's pending habits:", error);
+    throw error;
+  }
+};
+
+/**
+ * Fetch habit plan summary.
+ */
+export const getPlanSummary = async (planName: string) => {
+  try {
+    const response = await api.post(
+      "method/nexedu.habits_builder.api.get_plan_summary",
+      { plan_name: planName }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching plan summary:", error);
+    throw error;
+  }
+};
+
+/**
+ * Complete habit plan status.
+ */
+export const completeHabitPlanStatus = async (planName: string, habitName: string, student: string) => {
+  try {
+    const response = await api.post(
+      "method/nexedu.habits_builder.api.complete_habit_plan_status",
+      {
+        plan_name: planName,
+        habit_name: habitName,
+        student: student
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error completing habit plan status:", error);
+    throw error;
+  }
+};
+
+/**
+ * Delete habit plan.
+ */
+export const deleteHabitPlan = async (planName: string, habitName: string, student: string) => {
+  try {
+    const response = await api.post(
+      "method/nexedu.habits_builder.api.delete_habit_plan",
+      {
+        plan_name: planName,
+        habit_name: habitName,
+        student: student
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error deleting habit plan:", error);
+    throw error;
+  }
+};
+
 
