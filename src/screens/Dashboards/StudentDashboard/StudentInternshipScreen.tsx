@@ -79,7 +79,7 @@ export const StudentInternshipScreen = () => {
         userName || undefined,
         profile.course || null,
         profile.department || null,
-        profile.academic_year || null
+        profile.current_year || profile.academic_year || null
       );
       const data = response?.message?.data || response?.data || response || [];
       setInternships(Array.isArray(data) ? data : []);

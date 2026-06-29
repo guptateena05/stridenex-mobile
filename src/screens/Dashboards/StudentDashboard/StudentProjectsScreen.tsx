@@ -74,7 +74,7 @@ export const StudentProjectsScreen = () => {
         userName || undefined,
         profile.course || null,
         profile.department || null,
-        profile.academic_year || null
+        profile.current_year || profile.academic_year || null
       );
       const data = response?.message?.data || response?.data || response || [];
       setProjects(Array.isArray(data) ? data : []);

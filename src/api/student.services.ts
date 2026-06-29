@@ -130,6 +130,16 @@ export const submitSkillTest = async (sessionId: string, answers: any[]) => {
   }
 };
 
+export const mapYearToWord = (year: any): string | null => {
+  if (!year) return null;
+  const str = String(year).trim().toLowerCase();
+  if (str === "1" || str.includes("1st") || str.includes("first")) return "First Year";
+  if (str === "2" || str.includes("2nd") || str.includes("second")) return "Second Year";
+  if (str === "3" || str.includes("3rd") || str.includes("third")) return "Third Year";
+  if (str === "4" || str.includes("4th") || str.includes("final") || str.includes("fourth")) return "Final Year";
+  return year;
+};
+
 /**
  * Fetch all available internships for students.
  */
@@ -140,13 +150,15 @@ export const getStudentInternshipList = async (
   academicYear?: string | null
 ) => {
   try {
+    const yearWord = mapYearToWord(academicYear);
     const response = await api.get(
       "method/stridenex_app.stridenex_app.doctype.internship.internship.get_internship_list",
       {
         params: {
           student: studentEmail || "",
           course: course || "null",
-          department: department || "null"
+          department: department || "null",
+          current_year: yearWord || "null"
         }
       }
     );
@@ -167,6 +179,7 @@ export const getStudentProjectList = async (
   academicYear?: string | null
 ) => {
   try {
+    const yearWord = mapYearToWord(academicYear);
     const response = await api.get(
       "method/stridenex_app.stridenex_app.doctype.industry_project.industry_project.get_project_list",
       {
@@ -174,7 +187,7 @@ export const getStudentProjectList = async (
           student: studentEmail || "",
           course: course || "null",
           department: department || "null",
-          academic_year: academicYear || "null"
+          current_year: yearWord || "null"
         }
       }
     );

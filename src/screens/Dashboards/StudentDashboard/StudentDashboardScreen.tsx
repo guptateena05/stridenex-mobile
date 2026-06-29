@@ -15,7 +15,7 @@ import { AlertsAgendaCard } from '@/components/dashboard/AlertsAgendaCard';
 import { TrendingUp, Award, Briefcase, Bot, X } from 'lucide-react-native';
 
 import Animated, { FadeInUp, FadeInRight } from 'react-native-reanimated';
-import { getStudentByEmail, updateStudent } from '@/api/student.services';
+import { getStudentByEmail, updateStudent, mapYearToWord } from '@/api/student.services';
 import DynamicForm from '@/components/forms/DynamicForm';
 import { FormField } from '@/components/forms/DynamicField';
 
@@ -106,7 +106,7 @@ export const StudentDashboardScreen = () => {
       stream: studentData.stream || "",
       course: studentData.course || "",
       semester: studentData.semester || "",
-      academic_year: studentData.academic_year || "",
+      current_year: mapYearToWord(studentData.current_year || studentData.academic_year) || "",
       date_of_birth: studentData.date_of_birth || "",
       gender: studentData.gender || "",
       linkedin: studentData.linkedin || "",
@@ -132,7 +132,7 @@ export const StudentDashboardScreen = () => {
         stream: formData.stream || studentData?.stream || "",
         course: formData.course || studentData?.course || "",
         semester: formData.semester || studentData?.semester || "",
-        academic_year: formData.academic_year || studentData?.academic_year || "",
+        current_year: mapYearToWord(formData.current_year) || mapYearToWord(studentData?.current_year || studentData?.academic_year) || "",
         date_of_birth: formData.date_of_birth || studentData?.date_of_birth || "",
         gender: formData.gender || studentData?.gender || "",
         linkedin: formData.linkedin || studentData?.linkedin || "",
@@ -226,11 +226,12 @@ export const StudentDashboardScreen = () => {
       layout: 'full',
     },
     {
-      fieldname: 'academic_year',
-      label: 'Academic Year',
-      fieldtype: 'Data',
+      fieldname: 'current_year',
+      label: 'Current Year',
+      fieldtype: 'Select',
       required: true,
-      placeholder: 'Enter Academic Year',
+      placeholder: 'Select Current Year',
+      options: ['First Year', 'Second Year', 'Third Year', 'Final Year'],
       layout: 'full',
     },
     {

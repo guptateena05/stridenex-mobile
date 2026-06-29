@@ -269,7 +269,7 @@ export const CollegePlacementScreen = ({ route }: any) => {
       : [];
 
     const company = dbDrive.industry || dbDrive.industry_name || (dbDrive.name && dbDrive.name.includes("-") ? dbDrive.name.split("-")[0] : dbDrive.name) || "";
-    const role = dbDrive.role || (Array.isArray(dbDrive.designation) && dbDrive.designation[0] ? (dbDrive.designation[0].designation || dbDrive.designation[0].name) : "") || dbDrive.job_title || "—";
+    const role = dbDrive.job_title || dbDrive.role || (Array.isArray(dbDrive.designation) && dbDrive.designation[0] ? (dbDrive.designation[0].designation || dbDrive.designation[0].name) : "") || "—";
 
     const stats = {
       shortlisted: dbDrive.shortlisted !== undefined && dbDrive.shortlisted !== null ? Number(dbDrive.shortlisted) : 0,
@@ -827,7 +827,7 @@ export const CollegePlacementScreen = ({ route }: any) => {
         job_type: formData.job_type,
         backlog: Number(formData.backlog) || 0,
         criteria: String(formData.min_cgpa).includes("CGPA") ? formData.min_cgpa : `${Number(formData.min_cgpa).toFixed(1)} CGPA`,
-        role: formData.role,
+        job_title: formData.role,
         designation: [],
         branches: branchesArray,
         required_skill: skillsArray
