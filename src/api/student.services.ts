@@ -416,4 +416,156 @@ export const deleteHabitPlan = async (planName: string, habitName: string, stude
   }
 };
 
+/**
+ * Fetch mentor list for students.
+ */
+export const getMentorList = async (page: number = 1, page_size: number = 20, search?: string) => {
+  try {
+    const response = await api.get(
+      "method/stridenex_app.api_stridenex_app.mentor.mentor.get_mentor_list",
+      {
+        params: {
+          page,
+          page_size,
+          ...(search ? { search } : {})
+        }
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching mentor list:", error);
+    throw error;
+  }
+};
+
+/**
+ * Fetch mentor slot calendar.
+ */
+export const getMentorSlotCalendar = async (mentorEmail: string) => {
+  try {
+    const response = await api.get(
+      "method/stridenex_app.stridenex_app.doctype.mentor_session_booking.mentor_session_booking.get_slot_calendar",
+      { params: { mentor: mentorEmail } }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching mentor slot calendar:", error);
+    throw error;
+  }
+};
+
+/**
+ * Book a mentor slot.
+ */
+export const bookMentorSlot = async (data: Record<string, string>) => {
+  try {
+    const response = await api.get(
+      "method/stridenex_app.stridenex_app.doctype.mentor_session_booking.mentor_session_booking.book_slot",
+      { params: data }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error booking mentor slot:", error);
+    throw error;
+  }
+};
+
+/**
+ * Fetch the next available slot for a mentor.
+ */
+export const getMentorNextAvailableSlot = async (mentorEmail: string) => {
+  try {
+    const response = await api.post(
+      "method/stridenex_app.stridenex_app.doctype.mentor_offering.mentor_offering._get_next_available_slot",
+      { mentor: mentorEmail }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching mentor next available slot:", error);
+    throw error;
+  }
+};
+
+/**
+ * Get booked sessions for a student.
+ */
+export const getBookedSessions = async (studentEmail: string) => {
+  try {
+    const response = await api.get(
+      `method/stridenex_app.stridenex_app.doctype.mentor_session_booking.mentor_session_booking.get_booked_sessions`,
+      { params: { student_email: studentEmail } }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching booked sessions:", error);
+    throw error;
+  }
+};
+
+/**
+ * Fetch mentor offerings list.
+ */
+export const getMentorOfferings = async (mentorEmail: string) => {
+  try {
+    const response = await api.get(
+      `method/stridenex_app.stridenex_app.doctype.mentor_offering.mentor_offering.get_mentor_offerings`,
+      { params: { mentor: mentorEmail } }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching mentor offerings:", error);
+    throw error;
+  }
+};
+
+/**
+ * Fetch master data for a specific doctype.
+ */
+export const getMasterData = async (doctype: string, additionalPayload: any = {}) => {
+  try {
+    const response = await api.post(
+      "method/stridenex_app.api_stridenex_app.college.master.get_master_data",
+      { doctype, ...additionalPayload }
+    );
+    return response.data;
+  } catch (error) {
+    console.error(`Error fetching master data for ${doctype}:`, error);
+    throw error;
+  }
+};
+
+/**
+ * Create a student event registration.
+ */
+export const createStudentEventRegistration = async (data: any) => {
+  try {
+    const response = await api.post(
+      "method/stridenex_app.stridenex_app.doctype.student_event_registeration.student_event_registeration.create_student_event_registeration",
+      data
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error creating student event registration:", error);
+    throw error;
+  }
+};
+
+/**
+ * Fetch college event list for a specific college and student.
+ */
+export const getCollegeEventList = async (college: string, studentEmail: string) => {
+  try {
+    const response = await api.get(
+      "method/stridenex_app.stridenex_app.doctype.college_event.college_event.get_college_event_list",
+      { params: { college, student: studentEmail } }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching college event list:", error);
+    throw error;
+  }
+};
+
+
+
 
