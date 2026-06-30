@@ -76,7 +76,7 @@ export const StudentProjectsScreen = () => {
         profile.department || null,
         profile.current_year || profile.academic_year || null
       );
-      const data = response?.message?.data || response?.data || response || [];
+      const data = response?.message?.data?.projects || response?.data?.projects || response?.message?.data || response?.data || response || [];
       setProjects(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error("Error fetching projects:", err);

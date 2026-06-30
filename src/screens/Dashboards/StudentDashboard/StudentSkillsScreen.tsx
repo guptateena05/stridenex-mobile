@@ -9,7 +9,8 @@ import {
   Platform, 
   Alert, 
   TouchableOpacity, 
-  ActivityIndicator 
+  ActivityIndicator,
+  TextInput
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '@/theme/colors';
@@ -269,16 +270,41 @@ export const StudentSkillsScreen = () => {
     try {
       setIsSubmittingTest(true);
       
-      const answersPayload = testQuestions.map((q, idx) => ({
-        question_index: q.index !== undefined ? q.index : idx,
-        answer: userAnswers[idx] || ""
-      }));
+      const answersPayload: Record<string, string> = {};
+      testQuestions.forEach((q, idx) => {
+        const questionText = q.question;
+        const answerText = userAnswers[idx] || "";
+        answersPayload[questionText] = answerText;
+      });
 
-      const response = await submitSkillTest(testSessionId, answersPayload);
+      const response = await submitSkillTest({
+        student: userName || "",
+        skill: testSkill,
+        level: testLevel,
+        answers: answersPayload
+      });
       const data = response?.message || response?.data || response;
 
       if (data) {
         setTestResult(data);
+
+        // If passed, create student skill in DB
+        if (data.passed) {
+          try {
+            await createStudentSkill({
+              student: userName || "",
+              skill: testSkill,
+              current_level: testLevel,
+              ai_verified: 1
+            });
+            Alert.alert('Success', 'Skill verified and added successfully!');
+          } catch (createErr) {
+            console.error('Error saving verified skill to DB:', createErr);
+          }
+        } else {
+          Alert.alert('Verification Failed', `Skill test failed. Score: ${data.score || 0}%`);
+        }
+
         fetchSkillStats(false);
       } else {
         Alert.alert('Error', 'Failed to retrieve test result.');
@@ -586,40 +612,57 @@ export const StudentSkillsScreen = () => {
                     </Text>
                   </View>
 
-                  {/* Options */}
+                  {/* Options / Text Box */}
                   <View style={styles.optionsContainer}>
-                    {testQuestions[currentQuestionIndex]?.options?.map((option: string, oIdx: number) => {
-                      const isSelected = userAnswers[currentQuestionIndex] === option;
-                      return (
-                        <TouchableOpacity
-                          key={oIdx}
-                          onPress={() => {
-                            setUserAnswers(prev => ({
-                              ...prev,
-                              [currentQuestionIndex]: option
-                            }));
-                          }}
-                          activeOpacity={0.7}
-                          style={[
-                            styles.optionButton,
-                            isSelected && styles.optionButtonSelected
-                          ]}
-                        >
-                          <View style={[
-                            styles.optionRadio,
-                            isSelected && styles.optionRadioSelected
-                          ]}>
-                            {isSelected && <View style={styles.optionRadioDot} />}
-                          </View>
-                          <Text style={[
-                            styles.optionText,
-                            isSelected && styles.optionTextSelected
-                          ]}>
-                            {option}
-                          </Text>
-                        </TouchableOpacity>
-                      );
-                    })}
+                    {testQuestions[currentQuestionIndex]?.type === 'mcq' ? (
+                      testQuestions[currentQuestionIndex]?.options?.map((option: string, oIdx: number) => {
+                        const isSelected = userAnswers[currentQuestionIndex] === option;
+                        return (
+                          <TouchableOpacity
+                            key={oIdx}
+                            onPress={() => {
+                              setUserAnswers(prev => ({
+                                ...prev,
+                                [currentQuestionIndex]: option
+                              }));
+                            }}
+                            activeOpacity={0.7}
+                            style={[
+                              styles.optionButton,
+                              isSelected && styles.optionButtonSelected
+                            ]}
+                          >
+                            <View style={[
+                              styles.optionRadio,
+                              isSelected && styles.optionRadioSelected
+                            ]}>
+                              {isSelected && <View style={styles.optionRadioDot} />}
+                            </View>
+                            <Text style={[
+                              styles.optionText,
+                              isSelected && styles.optionTextSelected
+                            ]}>
+                              {option}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })
+                    ) : (
+                      <TextInput
+                        value={userAnswers[currentQuestionIndex] || ''}
+                        onChangeText={(text) => {
+                          setUserAnswers(prev => ({
+                            ...prev,
+                            [currentQuestionIndex]: text
+                          }));
+                        }}
+                        placeholder="Type your answer here..."
+                        placeholderTextColor="#94A3B8"
+                        multiline={true}
+                        numberOfLines={6}
+                        style={styles.answerInput}
+                      />
+                    )}
                   </View>
                 </ScrollView>
 
@@ -744,6 +787,49 @@ export const StudentSkillsScreen = () => {
                       <View style={styles.nextStepsCard}>
                         <Text style={styles.nextStepsText}>{testResult.feedback.next_step}</Text>
                       </View>
+                    </View>
+                  )}
+
+                  {/* Question Breakdown */}
+                  {testResult.breakdown && testResult.breakdown.length > 0 && (
+                    <View style={styles.feedbackSection}>
+                      <Text style={[styles.sectionHeaderText, { color: '#475569' }]}>QUESTION BREAKDOWN</Text>
+                      {testResult.breakdown.map((item: any, bIdx: number) => {
+                        const isCorrect = !!item.is_correct;
+                        return (
+                          <View key={bIdx} style={styles.breakdownCard}>
+                            <View style={styles.breakdownHeader}>
+                              <View style={styles.questionIndexBadge}>
+                                <Text style={styles.questionIndexText}>QUESTION {item.index || bIdx + 1}</Text>
+                              </View>
+                              <View style={[
+                                styles.correctnessBadge,
+                                { backgroundColor: isCorrect ? '#ECFDF5' : '#FEF2F2' }
+                              ]}>
+                                <Text style={[
+                                  styles.correctnessText,
+                                  { color: isCorrect ? '#059669' : '#DC2626' }
+                                ]}>
+                                  {isCorrect ? 'Correct' : 'Incorrect'} ({item.answer_score || 0} pts)
+                                </Text>
+                              </View>
+                            </View>
+                            <Text style={styles.breakdownQuestionText}>{item.question}</Text>
+                            
+                            <View style={styles.userAnswerBox}>
+                              <Text style={styles.answerBoxLabel}>YOUR ANSWER:</Text>
+                              <Text style={styles.userAnswerText}>{item.selected_answer || 'Empty'}</Text>
+                            </View>
+                            
+                            {item.evaluation_comment ? (
+                              <View style={styles.commentBox}>
+                                <Text style={styles.commentBoxLabel}>AI EVALUATION:</Text>
+                                <Text style={styles.commentText}>{item.evaluation_comment}</Text>
+                              </View>
+                            ) : null}
+                          </View>
+                        );
+                      })}
                     </View>
                   )}
                 </ScrollView>
@@ -1208,6 +1294,17 @@ const styles = StyleSheet.create({
     borderColor: colors.accent.DEFAULT,
     backgroundColor: 'rgba(255, 107, 0, 0.02)',
   },
+  answerInput: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    borderRadius: 16,
+    padding: 16,
+    fontSize: 14,
+    color: '#1E293B',
+    minHeight: 120,
+    textAlignVertical: 'top',
+  },
   optionRadio: {
     width: 20,
     height: 20,
@@ -1422,6 +1519,85 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#475569',
     lineHeight: 17,
+  },
+  breakdownCard: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    borderRadius: 20,
+    padding: 16,
+    marginBottom: 12,
+  },
+  breakdownHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  questionIndexBadge: {
+    backgroundColor: '#E2E8F0',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  questionIndexText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#475569',
+  },
+  correctnessBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  correctnessText: {
+    fontSize: 10,
+    fontWeight: '800',
+  },
+  breakdownQuestionText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1E293B',
+    lineHeight: 18,
+    marginBottom: 10,
+  },
+  userAnswerBox: {
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+    borderRadius: 12,
+    padding: 10,
+    marginBottom: 8,
+  },
+  answerBoxLabel: {
+    fontSize: 8,
+    fontWeight: '800',
+    color: '#94A3B8',
+    marginBottom: 2,
+  },
+  userAnswerText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#334155',
+  },
+  commentBox: {
+    backgroundColor: 'rgba(37, 99, 235, 0.03)',
+    borderWidth: 1,
+    borderColor: 'rgba(37, 99, 235, 0.1)',
+    borderRadius: 12,
+    padding: 10,
+  },
+  commentBoxLabel: {
+    fontSize: 8,
+    fontWeight: '800',
+    color: '#3B82F6',
+    marginBottom: 2,
+  },
+  commentText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#1E293B',
+    lineHeight: 16,
   },
   resultFooter: {
     padding: 20,

@@ -603,7 +603,7 @@ export const StudentMentorsScreen = () => {
             <Animated.View entering={FadeInUp.delay(150)} style={styles.searchContainer}>
               <Search size={18} color="#94A3B8" style={styles.searchIcon} />
               <TextInput 
-                placeholder="Search mentors..." 
+                placeholder="search for email" 
                 placeholderTextColor="#94A3B8"
                 style={styles.searchInput}
                 value={searchVal}
