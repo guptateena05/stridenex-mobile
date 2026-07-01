@@ -196,7 +196,8 @@ export const getStudentInternshipList = async (
   studentEmail?: string,
   course?: string | null,
   department?: string | null,
-  academicYear?: string | null
+  academicYear?: string | null,
+  search?: string
 ) => {
   try {
     const yearWord = mapYearToWord(academicYear);
@@ -207,7 +208,8 @@ export const getStudentInternshipList = async (
           student: studentEmail || "",
           course: course || "null",
           department: department || "null",
-          current_year: yearWord || "null"
+          current_year: yearWord || "null",
+          search: search || ""
         }
       }
     );
@@ -225,7 +227,8 @@ export const getStudentProjectList = async (
   studentEmail?: string,
   course?: string | null,
   department?: string | null,
-  academicYear?: string | null
+  academicYear?: string | null,
+  search?: string
 ) => {
   try {
     const yearWord = mapYearToWord(academicYear);
@@ -236,7 +239,8 @@ export const getStudentProjectList = async (
           student: studentEmail || "",
           course: course || "null",
           department: department || "null",
-          current_year: yearWord || "null"
+          current_year: yearWord || "null",
+          search: search || ""
         }
       }
     );

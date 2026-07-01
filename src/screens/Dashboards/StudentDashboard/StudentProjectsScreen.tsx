@@ -8,7 +8,8 @@ import {
   ActivityIndicator, 
   Alert, 
   Modal,
-  RefreshControl
+  RefreshControl,
+  TextInput
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '@/theme/colors';
@@ -23,7 +24,8 @@ import {
   Target,
   Trophy,
   Info,
-  ArrowRight
+  ArrowRight,
+  Search
 } from 'lucide-react-native';
 import Animated, { FadeInUp, FadeInRight } from 'react-native-reanimated';
 import { StatsCard } from '@/components/dashboard/StatsCard';
@@ -66,22 +68,25 @@ export const StudentProjectsScreen = () => {
     }
   };
 
+  const [search, setSearch] = useState("");
+
   // Fetch Projects list
-  const fetchProjectsData = async (profileData?: any) => {
+  const fetchProjectsData = useCallback(async (profileData?: any, searchVal?: string) => {
     try {
       const profile = profileData || studentProfile || {};
       const response = await getStudentProjectList(
         userName || undefined,
         profile.course || null,
         profile.department || null,
-        profile.current_year || profile.academic_year || null
+        profile.current_year || profile.academic_year || null,
+        searchVal !== undefined ? searchVal : search
       );
       const data = response?.message?.data?.projects || response?.data?.projects || response?.message?.data || response?.data || response || [];
       setProjects(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error("Error fetching projects:", err);
     }
-  };
+  }, [userName, studentProfile, search]);
 
   // Load all data
   const loadData = useCallback(async (showIndicator = true) => {
@@ -91,19 +96,30 @@ export const StudentProjectsScreen = () => {
     const profile = await fetchStudentProfile();
     
     // Fetch lists
-    await fetchProjectsData(profile);
+    await fetchProjectsData(profile, search);
     
     setLoading(false);
-  }, [userName]);
+  }, [userName, search, fetchProjectsData]);
 
   useEffect(() => {
     loadData();
   }, [userName]);
 
+  // Debounced search trigger
+  useEffect(() => {
+    const delayDebounceFn = setTimeout(() => {
+      if (studentProfile) {
+        fetchProjectsData(studentProfile, search);
+      }
+    }, 500);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [search]);
+
   const onRefresh = async () => {
     setRefreshing(true);
     const profile = await fetchStudentProfile();
-    await fetchProjectsData(profile);
+    await fetchProjectsData(profile, search);
     setRefreshing(false);
   };
 
@@ -190,6 +206,20 @@ export const StudentProjectsScreen = () => {
               color={stat.color}
             />
           ))}
+        </Animated.View>
+
+        {/* Search Bar */}
+        <Animated.View entering={FadeInUp.delay(250)} style={styles.searchContainer}>
+          <Search size={18} color="#94A3B8" style={styles.searchIcon} />
+          <TextInput 
+            placeholder="Search projects..." 
+            placeholderTextColor="#94A3B8"
+            style={styles.searchInput}
+            value={search}
+            onChangeText={setSearch}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
         </Animated.View>
 
         {/* Matching Header */}
@@ -904,5 +934,32 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '800',
     color: '#FFFFFF',
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 4,
+    marginTop: 16,
+    marginBottom: 8,
+    borderWidth: 1.5,
+    borderColor: '#F1F5F9',
+    shadowColor: '#64748B',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.03,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  searchIcon: {
+    marginRight: 10,
+  },
+  searchInput: {
+    flex: 1,
+    height: 45,
+    fontSize: 14,
+    color: '#1E293B',
+    fontWeight: '500',
   },
 });

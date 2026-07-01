@@ -232,7 +232,7 @@ export const StudentSkillsScreen = () => {
 
   // Handle skill creation verify & test trigger
   const handleCreateSkill = async (formData: any) => {
-    if (!userName) return;
+    if (!userName || submittingSkill) return;
     setSubmittingSkill(true);
     try {
       const response = await getSkillTestQuestions(userName, formData.skill, formData.current_level);
@@ -261,6 +261,7 @@ export const StudentSkillsScreen = () => {
   };
 
   const handleSubmitTest = async () => {
+    if (isSubmittingTest) return;
     const unansweredCount = testQuestions.length - Object.keys(userAnswers).length;
     if (unansweredCount > 0) {
       Alert.alert('Incomplete', `Please answer all questions before submitting. (${unansweredCount} remaining)`);
