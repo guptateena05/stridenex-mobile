@@ -1,5 +1,9 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions } from 'react-native';
+"use client";
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Switch } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '@/theme/colors';
 import { typography } from '@/theme/typography';
@@ -9,48 +13,170 @@ import {
   Circle, 
   TrendingUp, 
   ChevronRight, 
-  Zap, 
-  LayoutDashboard,
-  Cpu,
-  Database,
-  LineChart
+  Cpu, 
+  Database, 
+  LineChart 
 } from 'lucide-react-native';
 import Animated, { FadeInUp, FadeInRight } from 'react-native-reanimated';
-
-const roadmap = [
-  { title: "Python Fundamentals", subtitle: "Complete Python Basics course", date: "Jan 12", status: "completed" },
-  { title: "Data Structures & Algo", subtitle: "DSA + 30 LeetCode problems", date: "Jan 28", status: "completed" },
-  { title: "SQL & Database Design", subtitle: "Advanced SQL + 2 projects", date: "Feb 5", status: "completed" },
-  { title: "Machine Learning Basics", subtitle: "Sklearn, Pandas - Active", date: "Due Mar 1", status: "active" },
-  { title: "ML Capstone Project", subtitle: "Industry live project submission", date: "Mar 30", status: "upcoming" },
-  { title: "Data Science Internship", subtitle: "Apply to shortlisted companies", date: "Apr-Jun", status: "upcoming" },
-];
-
-const alternatePaths = [
-  { 
-    title: "ML Engineer", 
-    fit: "88%", 
-    skills: ["Python", "TF", "MLOps"], 
-    color: "#EF4444", 
-    icon: Cpu 
-  },
-  { 
-    title: "Data Analyst", 
-    fit: "82%", 
-    skills: ["SQL", "Excel", "Tableau"], 
-    color: "#3B82F6", 
-    icon: Database 
-  },
-  { 
-    title: "AI Researcher", 
-    fit: "71%", 
-    skills: ["ML", "Maths", "Papers"], 
-    color: "#8B5CF6", 
-    icon: LineChart 
-  },
-];
+import { useAuth } from '@/context/AuthContext';
+import { getStudentCareerPath, getRecommendedPaths } from '@/api/student.services';
 
 export const StudentPathScreen = () => {
+  const { userName } = useAuth();
+  const [loading, setLoading] = useState(true);
+  const [activePath, setActivePath] = useState<any>(null);
+  const [recommendedPaths, setRecommendedPaths] = useState<any[]>([]);
+
+  // Section visibility states
+  const [showActivePath, setShowActivePath] = useState(true);
+  const [showAiSuggestions, setShowAiSuggestions] = useState(true);
+  const [showAlternatePaths, setShowAlternatePaths] = useState(true);
+  const [activeTab, setActiveTab] = useState<'active' | 'alternate'>('active');
+
+  const fetchData = useCallback(async () => {
+    const studentEmail = userName || 'ac1@gmail.com';
+    setLoading(true);
+    try {
+      const [careerRes, recommendedRes] = await Promise.allSettled([
+        getStudentCareerPath(studentEmail),
+        getRecommendedPaths(studentEmail),
+      ]);
+
+      if (careerRes.status === 'fulfilled' && careerRes.value?.message) {
+        setActivePath(careerRes.value.message);
+      }
+      if (recommendedRes.status === 'fulfilled' && recommendedRes.value?.message) {
+        const message = recommendedRes.value.message;
+        setRecommendedPaths(Array.isArray(message) ? message : []);
+      }
+    } catch (error) {
+      console.error("Error fetching path data:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, [userName]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  const defaultRoadmap = [
+    { title: "Python Fundamentals", subtitle: "Complete Python Basics course", date: "Jan 12", status: "completed" },
+    { title: "Data Structures & Algo", subtitle: "DSA + 30 LeetCode problems", date: "Jan 28", status: "completed" },
+    { title: "SQL & Database Design", subtitle: "Advanced SQL + 2 projects", date: "Feb 5", status: "completed" },
+    { title: "Machine Learning Basics", subtitle: "Sklearn, Pandas - Active", date: "Due Mar 1", status: "active" },
+    { title: "ML Capstone Project", subtitle: "Industry live project submission", date: "Mar 30", status: "upcoming" },
+    { title: "Data Science Internship", subtitle: "Apply to shortlisted companies", date: "Apr-Jun", status: "upcoming" },
+  ];
+
+  const defaultRecommended = [
+    { 
+      title: "ML Engineer", 
+      fit: "88%", 
+      skills: ["Python", "TF", "MLOps"], 
+      color: "#EF4444", 
+      icon: Cpu 
+    },
+    { 
+      title: "Data Analyst", 
+      fit: "82%", 
+      skills: ["SQL", "Excel", "Tableau"], 
+      color: "#3B82F6", 
+      icon: Database 
+    },
+    { 
+      title: "AI Researcher", 
+      fit: "71%", 
+      skills: ["ML", "Maths", "Papers"], 
+      color: "#8B5CF6", 
+      icon: LineChart 
+    },
+  ];
+
+  const pathData = activePath?.data || activePath;
+  const activePathTitle = pathData?.career_path || pathData?.career_path_name || pathData?.path_name || pathData?.title || "Data Scientist";
+  const activePathProgress = pathData?.progress !== undefined 
+    ? pathData?.progress 
+    : (pathData?.total_skills 
+        ? Math.round(((pathData.matched_count || 0) / pathData.total_skills) * 100) 
+        : (pathData?.completion_rate || 58));
+  const estCompletion = pathData?.estimated_completion || pathData?.est_completion || (pathData?.estimated_duration ? `${pathData.estimated_duration} Year(s)` : "Apr 2025");
+  const targetRole = pathData?.target_role || pathData?.target || "Data Scientist @ Startup";
+
+  const rawSteps = pathData?.milestones || pathData?.roadmap || pathData?.steps || pathData?.path_items || pathData?.items;
+  
+  let firstIncompleteFound = false;
+  const roadmap = Array.isArray(rawSteps) && rawSteps.length > 0 
+    ? rawSteps.map((step: any) => {
+        const skillName = step.skill;
+        let status = "upcoming";
+        
+        // Find if this skill is matched
+        const isMatched = pathData?.matched_skills?.some((s: any) => 
+          (typeof s === 'string' ? s.toLowerCase() === skillName?.toLowerCase() : s?.skill?.toLowerCase() === skillName?.toLowerCase())
+        );
+
+        if (isMatched) {
+          status = "completed";
+        } else {
+          const isPartial = pathData?.partial_skills?.some((s: any) => 
+            (typeof s === 'string' ? s.toLowerCase() === skillName?.toLowerCase() : s?.skill?.toLowerCase() === skillName?.toLowerCase())
+          );
+          if (isPartial) {
+            status = "active";
+            firstIncompleteFound = true;
+          } else if (!firstIncompleteFound) {
+            status = "active";
+            firstIncompleteFound = true;
+          } else {
+            status = "upcoming";
+          }
+        }
+
+        return {
+          title: step.milestone_title || step.title || step.step_name || step.name || "Untitled Step",
+          skill: step.skill || "",
+          required_skill_level: step.required_skill_level || step.level || "Beginner",
+          category: step.category || "Fundamental",
+          topic: step.topic || "",
+          subtopic: step.subtopic || "",
+          is_mandatory: step.is_mandatory !== undefined ? step.is_mandatory : 1,
+          milestone_type: step.milestone_type || "Learn",
+          linked_resource_type: step.linked_resource_type || "Course",
+          date: step.date || step.due_date || step.target_date || step.estimated_date || (step.duration_days ? `${step.duration_days} Days` : ""),
+          status: step.status || status
+        };
+      })
+    : defaultRoadmap;
+
+  const alternatePaths = recommendedPaths.length > 0
+    ? recommendedPaths.map((path: any) => {
+        const fitScore = path.fit_score || path.score || path.match_percentage || 80;
+        const color = fitScore >= 85 ? "#EF4444" : fitScore >= 75 ? "#3B82F6" : "#8B5CF6";
+        const icon = fitScore >= 85 ? Cpu : fitScore >= 75 ? Database : LineChart;
+        return {
+          title: path.title || path.career_path || path.name || "Career Path",
+          fit: `${fitScore}%`,
+          skills: Array.isArray(path.skills) 
+            ? path.skills 
+            : (typeof path.skills === 'string' 
+                ? path.skills.split(',').map((s: string) => s.trim()) 
+                : (path.tags || [])),
+          color,
+          icon
+        };
+      })
+    : defaultRecommended;
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={colors.accent.DEFAULT} />
+        <Text style={styles.loadingText}>Syncing Paths...</Text>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.safeArea} edges={['bottom']}>
       <ScrollView 
@@ -58,7 +184,6 @@ export const StudentPathScreen = () => {
         contentContainerStyle={styles.content} 
         showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
         <Animated.View entering={FadeInUp.delay(100)} style={styles.header}>
           <View style={styles.headerBadge}>
             <Target size={10} color={colors.accent.DEFAULT} />
@@ -68,120 +193,259 @@ export const StudentPathScreen = () => {
           <Text style={styles.subtitle}>Curated roadmap based on your goals</Text>
         </Animated.View>
 
-        {/* Active Path Roadmap Card */}
-        <Animated.View entering={FadeInUp.delay(200)} style={styles.premiumCard}>
-          <View style={styles.cardHeader}>
-            <View style={styles.cardHeaderTitle}>
-              <View style={[styles.titleIcon, { backgroundColor: 'rgba(59, 130, 246, 0.1)' }]}>
-                <Target size={16} color="#2563EB" />
+        {/* Segmented Tab Switcher */}
+        <Animated.View entering={FadeInUp.delay(120)} style={styles.tabSwitcherContainer}>
+          <TouchableOpacity 
+            style={[styles.tabBtn, activeTab === 'active' && styles.activeTabBtn]}
+            onPress={() => setActiveTab('active')}
+          >
+            <Text style={[styles.tabBtnText, activeTab === 'active' && styles.activeTabBtnText]}>
+              Active Path
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.tabBtn, activeTab === 'alternate' && styles.activeTabBtn]}
+            onPress={() => setActiveTab('alternate')}
+          >
+            <Text style={[styles.tabBtnText, activeTab === 'alternate' && styles.activeTabBtnText]}>
+              Alternate Paths ({alternatePaths.length})
+            </Text>
+          </TouchableOpacity>
+        </Animated.View>
+
+        {activeTab === 'active' ? (
+          <Animated.View entering={FadeInUp.delay(200)} style={styles.premiumCard}>
+            <View style={styles.cardHeader}>
+              <View style={styles.cardHeaderTitle}>
+                <View style={[styles.titleIcon, { backgroundColor: 'rgba(59, 130, 246, 0.1)' }]}>
+                  <Target size={16} color="#2563EB" />
+                </View>
+                <Text style={styles.sectionTitle}>Active: {activePathTitle}</Text>
               </View>
-              <Text style={styles.sectionTitle}>Active: Data Scientist</Text>
+              <Switch
+                value={showActivePath}
+                onValueChange={setShowActivePath}
+                trackColor={{ false: "#E2E8F0", true: "#BFDBFE" }}
+                thumbColor={showActivePath ? "#2563EB" : "#94A3B8"}
+              />
             </View>
-            <TouchableOpacity style={styles.expandButton}>
-              <Text style={styles.expandText}>OVERVIEW</Text>
-              <ChevronRight size={14} color="#94A3B8" />
-            </TouchableOpacity>
-          </View>
 
-          <View style={styles.progressSection}>
-            <View style={styles.progressHeader}>
-               <Text style={styles.progressLabel}>Current Progress</Text>
-               <Text style={styles.progressValue}>58%</Text>
-            </View>
-            <View style={styles.progressBarBg}>
-               <Animated.View 
-                 style={[styles.progressBarFill, { width: '58%' }]} 
-               />
-            </View>
-            <View style={styles.progressFooter}>
-               <TrendingUp size={12} color="#64748B" />
-               <Text style={styles.progressFooterText}>Est. completion: Apr 2025</Text>
-            </View>
-          </View>
+            {showActivePath && (
+              <>
+                <View style={styles.progressSection}>
+                  <View style={styles.progressHeader}>
+                     <Text style={styles.progressLabel}>Current Progress</Text>
+                     <Text style={styles.progressValue}>{activePathProgress}%</Text>
+                  </View>
+                  <View style={styles.progressBarBg}>
+                     <Animated.View 
+                       style={[styles.progressBarFill, { width: `${activePathProgress}%` }]} 
+                     />
+                  </View>
+                  <View style={styles.progressFooter}>
+                     <TrendingUp size={12} color="#64748B" />
+                     <Text style={styles.progressFooterText}>Est. completion: {estCompletion} • Target: {targetRole}</Text>
+                  </View>
 
-          <View style={styles.timelineContainer}>
-            {roadmap.map((step, idx) => (
-              <View key={idx} style={[styles.timelineItem, step.status === 'upcoming' && styles.upcomingStep]}>
-                <View style={styles.timelineLeft}>
-                   <View style={[styles.timelineDotContainer, step.status === 'upcoming' && styles.upcomingDot]}>
-                      {step.status === 'completed' ? (
-                        <CheckCircle2 size={18} color="#10B981" />
-                      ) : step.status === 'active' ? (
-                        <View style={styles.activeDotOutline}>
-                           <View style={styles.activeDotInner} />
+                  {pathData && (pathData.difficulty_level || pathData.average_salary || pathData.missing_count !== undefined) && (
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 12 }}>
+                      {pathData.difficulty_level && (
+                        <View style={{ backgroundColor: '#F1F5F9', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }}>
+                          <Text style={{ fontSize: 10, fontWeight: '700', color: '#475569' }}>Difficulty: {pathData.difficulty_level}</Text>
+                        </View>
+                      )}
+                      {pathData.average_salary && (
+                        <View style={{ backgroundColor: '#ECFDF5', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }}>
+                          <Text style={{ fontSize: 10, fontWeight: '700', color: '#047857' }}>Avg Salary: {pathData.average_salary} LPA</Text>
+                        </View>
+                      )}
+                      {pathData.missing_count !== undefined && (
+                        <View style={{ backgroundColor: '#FEF3C7', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }}>
+                          <Text style={{ fontSize: 10, fontWeight: '700', color: '#B45309' }}>Missing Skills: {pathData.missing_count}</Text>
+                        </View>
+                      )}
+                    </View>
+                  )}
+                </View>
+
+                {/* Prerequisites and Missing Skills details */}
+                {pathData && (
+                  <View style={{ borderTopWidth: 1, borderTopColor: '#F1F5F9', paddingTop: 16, marginTop: 16, gap: 12 }}>
+                    {/* Prerequisites */}
+                    <View style={{ backgroundColor: '#F8FAFC', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: '#E2E8F0' }}>
+                      <Text style={{ fontSize: 11, fontWeight: '800', color: '#1E293B', marginBottom: 8 }}>🔑 PREREQUISITE SKILLS</Text>
+                      {Array.isArray(pathData.prerequisite_skills) && pathData.prerequisite_skills.length > 0 ? (
+                        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                          {pathData.prerequisite_skills.map((prereq: any, idx: number) => {
+                            const skillName = prereq.prerequisite_skills || prereq.skill || prereq.name || "";
+                            const skillLevel = prereq.level || prereq.required_level || "Beginner";
+                            return (
+                              <View key={idx} style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, borderWidth: 1, borderColor: '#E2E8F0' }}>
+                                <Text style={{ fontSize: 10, fontWeight: '700', color: '#334155' }}>{skillName} </Text>
+                                <Text style={{ fontSize: 8, fontWeight: '800', color: '#2563EB', backgroundColor: '#EFF6FF', paddingHorizontal: 4, paddingVertical: 2, borderRadius: 4 }}>{skillLevel}</Text>
+                              </View>
+                            );
+                          })}
                         </View>
                       ) : (
-                        <Circle size={18} color="#CBD5E1" />
+                        <Text style={{ fontSize: 10, fontStyle: 'italic', color: '#94A3B8' }}>No prerequisites required</Text>
                       )}
-                   </View>
-                   {idx < roadmap.length - 1 && <View style={styles.timelineConnector} />}
+                    </View>
+
+                    {/* Missing Skills */}
+                    <View style={{ backgroundColor: 'rgba(251, 191, 36, 0.05)', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: 'rgba(251, 191, 36, 0.2)' }}>
+                      <Text style={{ fontSize: 11, fontWeight: '800', color: '#B45309', marginBottom: 8 }}>⚠️ MISSING SKILLS TO ACQUIRE</Text>
+                      {Array.isArray(pathData.missing_skills) && pathData.missing_skills.length > 0 ? (
+                        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                          {pathData.missing_skills.map((missing: any, idx: number) => {
+                            const skillName = missing.skill || missing.name || "";
+                            const skillLevel = missing.required_level || missing.level || "Beginner";
+                            return (
+                              <View key={idx} style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, borderWidth: 1, borderColor: '#FDE68A' }}>
+                                <Text style={{ fontSize: 10, fontWeight: '700', color: '#334155' }}>{skillName} </Text>
+                                <Text style={{ fontSize: 8, fontWeight: '800', color: '#D97706', backgroundColor: '#FEF3C7', paddingHorizontal: 4, paddingVertical: 2, borderRadius: 4 }}>{skillLevel}</Text>
+                              </View>
+                            );
+                          })}
+                        </View>
+                      ) : (
+                        <Text style={{ fontSize: 10, fontStyle: 'italic', color: '#059669' }}>🎉 All skills matched! You are fully qualified.</Text>
+                      )}
+                    </View>
+                  </View>
+                )}
+
+                <View style={styles.timelineContainer}>
+                  {roadmap.map((step: any, idx) => (
+                    <View key={idx} style={[styles.timelineItem, step.status === 'upcoming' && styles.upcomingStep]}>
+                      <View style={styles.timelineLeft}>
+                         <View style={[styles.timelineDotContainer, step.status === 'upcoming' && styles.upcomingDot]}>
+                            {step.status === 'completed' ? (
+                              <CheckCircle2 size={18} color="#10B981" />
+                            ) : step.status === 'active' ? (
+                              <View style={styles.activeDotOutline}>
+                                 <View style={styles.activeDotInner} />
+                              </View>
+                            ) : (
+                              <Circle size={18} color="#CBD5E1" />
+                            )}
+                         </View>
+                         {idx < roadmap.length - 1 && <View style={styles.timelineConnector} />}
+                      </View>
+                      <View style={styles.timelineRight}>
+                         <View style={styles.stepHeader}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap', flex: 1 }}>
+                              <Text style={[styles.stepTitle, step.status === 'active' && styles.activeStepTitle]}>{step.title}</Text>
+                              {step.is_mandatory === 1 && (
+                                <View style={{ backgroundColor: '#FEE2E2', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, borderWidth: 0.5, borderColor: '#FCA5A5' }}>
+                                  <Text style={{ fontSize: 8, fontWeight: 'bold', color: '#EF4444' }}>Mandatory</Text>
+                                </View>
+                              )}
+                              {step.milestone_type && (
+                                <View style={{ backgroundColor: '#EFF6FF', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, borderWidth: 0.5, borderColor: '#BFDBFE' }}>
+                                  <Text style={{ fontSize: 8, fontWeight: 'bold', color: '#3B82F6' }}>{step.milestone_type}</Text>
+                                </View>
+                              )}
+                            </View>
+                            <Text style={styles.stepDate}>{step.date}</Text>
+                         </View>
+
+                         <View style={{ backgroundColor: '#F8FAFC', borderRadius: 10, padding: 10, marginTop: 6, borderWidth: 1, borderColor: '#E2E8F0', gap: 4 }}>
+                           <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                             <Text style={{ fontSize: 10, color: '#64748B', fontWeight: '600' }}>Skill: <Text style={{ color: '#334155', fontWeight: '700' }}>{step.skill} ({step.required_skill_level})</Text></Text>
+                             <Text style={{ fontSize: 10, color: '#64748B', fontWeight: '600' }}>Cat: <Text style={{ color: '#334155', fontWeight: '700' }}>{step.category}</Text></Text>
+                           </View>
+                           {(step.topic || step.subtopic) && (
+                             <Text style={{ fontSize: 10, color: '#64748B', fontWeight: '600', marginTop: 2 }}>
+                               Focus: <Text style={{ color: '#334155', fontWeight: '700' }}>{step.topic || "N/A"}{step.subtopic ? ` → ${step.subtopic}` : ""}</Text>
+                             </Text>
+                           )}
+                           {step.linked_resource_type && (
+                             <Text style={{ fontSize: 10, color: '#64748B', fontWeight: '600', marginTop: 2 }}>
+                               Resource: <Text style={{ color: '#334155', fontWeight: '700' }}>{step.linked_resource_type}</Text>
+                             </Text>
+                           )}
+                         </View>
+                      </View>
+                    </View>
+                  ))}
                 </View>
-                <View style={styles.timelineRight}>
-                   <View style={styles.stepHeader}>
-                      <Text style={[styles.stepTitle, step.status === 'active' && styles.activeStepTitle]}>{step.title}</Text>
-                      <Text style={styles.stepDate}>{step.date}</Text>
-                   </View>
-                   <Text style={styles.stepSubtitle}>{step.subtitle}</Text>
-                </View>
-              </View>
+              </>
+            )}
+          </Animated.View>
+        ) : (
+          <View>
+            <View style={[styles.sectionHeader, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]}>
+               <Text style={styles.sectionTitleSimple}>Alternate Paths</Text>
+               <Switch
+                 value={showAlternatePaths}
+                 onValueChange={setShowAlternatePaths}
+                 trackColor={{ false: "#E2E8F0", true: "#BFDBFE" }}
+                 thumbColor={showAlternatePaths ? "#2563EB" : "#94A3B8"}
+               />
+            </View>
+
+            {showAlternatePaths && alternatePaths.map((path, index) => (
+              <Animated.View 
+                key={index} 
+                entering={FadeInRight.delay(200 + index * 100)}
+                style={styles.pathItemCard}
+              >
+                 <View style={styles.pathItemLeft}>
+                     <View style={[styles.pathIconContainer, { backgroundColor: `${path.color}10` }]}>
+                        <path.icon size={20} color={path.color} />
+                     </View>
+                     <View style={styles.pathItemInfo}>
+                        <Text style={styles.pathItemTitle}>{path.title}</Text>
+                        <View style={styles.skillBadgeRow}>
+                           {path.skills.map((skill: string, si: number) => (
+                             <View key={si} style={styles.skillBadge}>
+                                <Text style={styles.skillBadgeText}>{skill}</Text>
+                             </View>
+                           ))}
+                        </View>
+                     </View>
+                 </View>
+                 <View style={styles.pathItemRight}>
+                    <Text style={[styles.fitScore, { color: path.color }]}>{path.fit}</Text>
+                    <Text style={styles.fitLabel}>FIT SCORE</Text>
+                 </View>
+              </Animated.View>
             ))}
           </View>
-        </Animated.View>
+        )}
 
-        {/* AI Suggestion Card */}
-        <Animated.View entering={FadeInUp.delay(300)} style={styles.aiCard}>
-          <View style={styles.aiCardHeader}>
-             <Text style={styles.aiEmoji}>🤖</Text>
-             <Text style={styles.aiTitle}>AI Path Suggetions</Text>
-          </View>
-          <View style={styles.aiContentCard}>
-             <View style={styles.aiGlow} />
-             <Text style={styles.aiContentText}>
-               Based on your psychometric profile, add <Text style={styles.aiHighlight}>Feature Engineering</Text> next — it will boost your ML project quality by ~30%.
-             </Text>
-             <View style={styles.aiActions}>
-                <TouchableOpacity style={styles.aiButtonPrimary}>
-                   <Text style={styles.aiButtonTextPrimary}>Accept</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.aiButtonSecondary}>
-                   <Text style={styles.aiButtonTextSecondary}>Other Paths</Text>
-                </TouchableOpacity>
-             </View>
-          </View>
-        </Animated.View>
-
-        {/* Alternate Paths */}
-        <View style={styles.sectionHeader}>
-           <Text style={styles.sectionTitleSimple}>Alternate Paths</Text>
-        </View>
-
-        {alternatePaths.map((path, index) => (
-          <Animated.View 
-            key={index} 
-            entering={FadeInRight.delay(400 + index * 100)}
-            style={styles.pathItemCard}
-          >
-             <View style={styles.pathItemLeft}>
-                 <View style={[styles.pathIconContainer, { backgroundColor: `${path.color}10` }]}>
-                    <path.icon size={20} color={path.color} />
-                 </View>
-                 <View style={styles.pathItemInfo}>
-                    <Text style={styles.pathItemTitle}>{path.title}</Text>
-                    <View style={styles.skillBadgeRow}>
-                       {path.skills.map((skill, si) => (
-                         <View key={si} style={styles.skillBadge}>
-                            <Text style={styles.skillBadgeText}>{skill}</Text>
-                         </View>
-                       ))}
-                    </View>
-                 </View>
-             </View>
-             <View style={styles.pathItemRight}>
-                <Text style={[styles.fitScore, { color: path.color }]}>{path.fit}</Text>
-                <Text style={styles.fitLabel}>FIT SCORE</Text>
-             </View>
+        {/* AI part stays on both tabs */}
+        {showAiSuggestions && (
+          <Animated.View entering={FadeInUp.delay(300)} style={styles.aiCard}>
+            <View style={[styles.aiCardHeader, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]}>
+               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <Text style={styles.aiEmoji}>🤖</Text>
+                  <Text style={styles.aiTitle}>AI Path Suggestions</Text>
+               </View>
+               <Switch
+                 value={showAiSuggestions}
+                 onValueChange={setShowAiSuggestions}
+                 trackColor={{ false: "#E2E8F0", true: "#BFDBFE" }}
+                 thumbColor={showAiSuggestions ? "#2563EB" : "#94A3B8"}
+               />
+            </View>
+            <View style={styles.aiContentCard}>
+               <View style={styles.aiGlow} />
+               <Text style={styles.aiContentText}>
+                 Based on your psychometric profile, add <Text style={styles.aiHighlight}>Feature Engineering</Text> next — it will boost your ML project quality by ~30%.
+               </Text>
+               <View style={styles.aiActions}>
+                  <TouchableOpacity style={styles.aiButtonPrimary}>
+                     <Text style={styles.aiButtonTextPrimary}>Accept</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.aiButtonSecondary}>
+                     <Text style={styles.aiButtonTextSecondary}>Other Paths</Text>
+                  </TouchableOpacity>
+               </View>
+            </View>
           </Animated.View>
-        ))}
+        )}
 
         <View style={styles.footerSpacer} />
       </ScrollView>
@@ -201,6 +465,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 24,
     paddingBottom: 40,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#64748B',
+    fontWeight: '600',
   },
   header: {
     marginBottom: 16,
@@ -523,6 +799,7 @@ const styles = StyleSheet.create({
   },
   skillBadgeRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 6,
   },
   skillBadge: {
@@ -553,5 +830,38 @@ const styles = StyleSheet.create({
   },
   footerSpacer: {
     height: 40,
+  },
+  tabSwitcherContainer: { 
+    flexDirection: 'row', 
+    backgroundColor: '#F1F5F9', 
+    borderRadius: 16, 
+    padding: 4, 
+    marginBottom: 20, 
+    borderWidth: 1, 
+    borderColor: '#E2E8F0' 
+  },
+  tabBtn: { 
+    flex: 1, 
+    paddingVertical: 10, 
+    borderRadius: 12, 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    backgroundColor: 'transparent' 
+  },
+  activeTabBtn: { 
+    backgroundColor: '#FFF', 
+    shadowColor: '#64748B', 
+    shadowOffset: { width: 0, height: 2 }, 
+    shadowOpacity: 0.1, 
+    shadowRadius: 4, 
+    elevation: 2 
+  },
+  tabBtnText: { 
+    fontSize: 12, 
+    fontWeight: '700', 
+    color: '#64748B' 
+  },
+  activeTabBtnText: { 
+    color: '#0F172A' 
   }
 });

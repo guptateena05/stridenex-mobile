@@ -619,6 +619,38 @@ export const getCollegeEventList = async (college: string, studentEmail: string)
   }
 };
 
+/**
+ * Fetch student career path.
+ */
+export const getStudentCareerPath = async (studentEmail: string) => {
+  try {
+    const response = await api.get(
+      "method/nexedu.path_finder.app_api.get_student_career_path",
+      { params: { student: studentEmail } }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching student career path:", error);
+    throw error;
+  }
+};
+
+/**
+ * Fetch recommended paths.
+ */
+export const getRecommendedPaths = async (studentEmail: string) => {
+  try {
+    const response = await api.get(
+      "method/nexedu.path_finder.app_api.get_recommended_paths",
+      { params: { student: studentEmail } }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching recommended paths:", error);
+    throw error;
+  }
+};
+
 
 
 
