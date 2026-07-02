@@ -3,7 +3,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Switch } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Switch, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '@/theme/colors';
 import { typography } from '@/theme/typography';
@@ -19,13 +19,14 @@ import {
 } from 'lucide-react-native';
 import Animated, { FadeInUp, FadeInRight } from 'react-native-reanimated';
 import { useAuth } from '@/context/AuthContext';
-import { getStudentCareerPath, getRecommendedPaths } from '@/api/student.services';
+import { getStudentCareerPath, getRecommendedPaths, enrollStudentPath } from '@/api/student.services';
 
 export const StudentPathScreen = () => {
   const { userName } = useAuth();
   const [loading, setLoading] = useState(true);
   const [activePath, setActivePath] = useState<any>(null);
   const [recommendedPaths, setRecommendedPaths] = useState<any[]>([]);
+  const [enrollingPath, setEnrollingPath] = useState<string | null>(null);
 
   // Section visibility states
   const [showActivePath, setShowActivePath] = useState(true);
@@ -60,6 +61,23 @@ export const StudentPathScreen = () => {
     fetchData();
   }, [fetchData]);
 
+  const handleEnrollPath = async (careerPathName: string) => {
+    const studentEmail = userName || 'ac1@gmail.com';
+    try {
+      setEnrollingPath(careerPathName);
+      const res = await enrollStudentPath(studentEmail, careerPathName);
+      if (res) {
+        Alert.alert("Success", `Successfully enrolled in path: ${careerPathName}`);
+        await fetchData();
+      }
+    } catch (err: any) {
+      console.error("Enrollment failed:", err);
+      Alert.alert("Error", err?.response?.data?.message || err?.message || "Failed to switch career path. Please try again.");
+    } finally {
+      setEnrollingPath(null);
+    }
+  };
+
   const defaultRoadmap = [
     { title: "Python Fundamentals", subtitle: "Complete Python Basics course", date: "Jan 12", status: "completed" },
     { title: "Data Structures & Algo", subtitle: "DSA + 30 LeetCode problems", date: "Jan 28", status: "completed" },
@@ -70,27 +88,45 @@ export const StudentPathScreen = () => {
   ];
 
   const defaultRecommended = [
-    { 
-      title: "ML Engineer", 
-      fit: "88%", 
-      skills: ["Python", "TF", "MLOps"], 
-      color: "#EF4444", 
-      icon: Cpu 
+    {
+      career_path: "ML Engineer",
+      path_name: "ML Engineer",
+      target_role: "Developer",
+      difficulty_level: "Beginner-Friendly",
+      fit_score: 0.0,
+      matched_count: 0,
+      partial_count: 0,
+      missing_count: 3,
+      total_skills: 3,
+      estimated_duration: 1,
+      average_salary: 6.0
     },
-    { 
-      title: "Data Analyst", 
-      fit: "82%", 
-      skills: ["SQL", "Excel", "Tableau"], 
-      color: "#3B82F6", 
-      icon: Database 
+    {
+      career_path: "Data Science",
+      path_name: "Data Science",
+      target_role: "Data Scientist",
+      difficulty_level: "Beginner-Friendly",
+      fit_score: 0.0,
+      matched_count: 0,
+      partial_count: 0,
+      missing_count: 3,
+      total_skills: 3,
+      estimated_duration: 1,
+      average_salary: 6.0
     },
-    { 
-      title: "AI Researcher", 
-      fit: "71%", 
-      skills: ["ML", "Maths", "Papers"], 
-      color: "#8B5CF6", 
-      icon: LineChart 
-    },
+    {
+      career_path: "Data Analyst",
+      path_name: "Data Analyst",
+      target_role: "Data analyst",
+      difficulty_level: "Beginner-Friendly",
+      fit_score: 0.0,
+      matched_count: 0,
+      partial_count: 0,
+      missing_count: 3,
+      total_skills: 3,
+      estimated_duration: 1,
+      average_salary: 5.0
+    }
   ];
 
   const pathData = activePath?.data || activePath;
@@ -149,24 +185,30 @@ export const StudentPathScreen = () => {
       })
     : defaultRoadmap;
 
-  const alternatePaths = recommendedPaths.length > 0
-    ? recommendedPaths.map((path: any) => {
-        const fitScore = path.fit_score || path.score || path.match_percentage || 80;
-        const color = fitScore >= 85 ? "#EF4444" : fitScore >= 75 ? "#3B82F6" : "#8B5CF6";
-        const icon = fitScore >= 85 ? Cpu : fitScore >= 75 ? Database : LineChart;
-        return {
-          title: path.title || path.career_path || path.name || "Career Path",
-          fit: `${fitScore}%`,
-          skills: Array.isArray(path.skills) 
-            ? path.skills 
-            : (typeof path.skills === 'string' 
-                ? path.skills.split(',').map((s: string) => s.trim()) 
-                : (path.tags || [])),
-          color,
-          icon
-        };
-      })
-    : defaultRecommended;
+  const rawAlternatePaths = recommendedPaths.length > 0 ? recommendedPaths : defaultRecommended;
+  const alternatePaths = rawAlternatePaths.map((path: any) => {
+    const fitScore = typeof path.fit_score === 'number' ? path.fit_score : (typeof path.score === 'number' ? path.score : (typeof path.match_percentage === 'number' ? path.match_percentage : 80));
+    const color = fitScore >= 85 ? "#EF4444" : fitScore >= 75 ? "#3B82F6" : "#8B5CF6";
+    const icon = fitScore >= 85 ? Cpu : fitScore >= 75 ? Database : LineChart;
+    return {
+      title: path.career_path || path.path_name || path.title || "Career Path",
+      fit: `${fitScore}%`,
+      skills: Array.isArray(path.skills) 
+        ? path.skills 
+        : (typeof path.skills === 'string' 
+            ? path.skills.split(',').map((s: string) => s.trim()) 
+            : (path.tags || [])),
+      targetRole: path.target_role || "N/A",
+      difficulty: path.difficulty_level || "Beginner",
+      matchedCount: path.matched_count !== undefined ? path.matched_count : 0,
+      missingCount: path.missing_count !== undefined ? path.missing_count : 0,
+      totalSkills: path.total_skills !== undefined ? path.total_skills : 0,
+      duration: path.estimated_duration !== undefined ? path.estimated_duration : 1,
+      salary: path.average_salary !== undefined ? path.average_salary : 0,
+      color,
+      icon
+    };
+  });
 
   if (loading) {
     return (
@@ -391,19 +433,80 @@ export const StudentPathScreen = () => {
                 entering={FadeInRight.delay(200 + index * 100)}
                 style={styles.pathItemCard}
               >
-                 <View style={styles.pathItemLeft}>
+                 <View style={[styles.pathItemLeft, { flex: 1 }]}>
                      <View style={[styles.pathIconContainer, { backgroundColor: `${path.color}10` }]}>
                         <path.icon size={20} color={path.color} />
                      </View>
-                     <View style={styles.pathItemInfo}>
+                     <View style={[styles.pathItemInfo, { flex: 1 }]}>
                         <Text style={styles.pathItemTitle}>{path.title}</Text>
-                        <View style={styles.skillBadgeRow}>
-                           {path.skills.map((skill: string, si: number) => (
-                             <View key={si} style={styles.skillBadge}>
-                                <Text style={styles.skillBadgeText}>{skill}</Text>
+                        {path.targetRole && (
+                           <Text style={{ fontSize: 10, color: '#64748B', fontWeight: '500', marginBottom: 2 }}>Target: {path.targetRole}</Text>
+                        )}
+                        
+                        {/* Details Badges */}
+                        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginBottom: 4 }}>
+                           {path.difficulty && (
+                             <View style={{ backgroundColor: '#F1F5F9', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                                <Text style={{ fontSize: 8, fontWeight: '700', color: '#475569' }}>{path.difficulty}</Text>
                              </View>
-                           ))}
+                           )}
+                           {path.salary > 0 && (
+                             <View style={{ backgroundColor: '#ECFDF5', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                                <Text style={{ fontSize: 8, fontWeight: '700', color: '#047857' }}>{path.salary} LPA</Text>
+                             </View>
+                           )}
+                           {path.duration > 0 && (
+                             <View style={{ backgroundColor: '#EFF6FF', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                                <Text style={{ fontSize: 8, fontWeight: '700', color: '#1E40AF' }}>{path.duration} Yr</Text>
+                             </View>
+                           )}
+                           {path.totalSkills > 0 && (
+                             <View style={{ backgroundColor: '#FEF3C7', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                                <Text style={{ fontSize: 8, fontWeight: '700', color: '#B45309' }}>Skills: {path.matchedCount}/{path.totalSkills}</Text>
+                             </View>
+                           )}
                         </View>
+
+                        {path.skills && path.skills.length > 0 && (
+                          <View style={styles.skillBadgeRow}>
+                             {path.skills.map((skill: string, si: number) => (
+                               <View key={si} style={styles.skillBadge}>
+                                  <Text style={styles.skillBadgeText}>{skill}</Text>
+                               </View>
+                             ))}
+                          </View>
+                        )}
+                        
+                        <View style={{ marginTop: 8, flexDirection: 'row' }}>
+                           <TouchableOpacity
+                             onPress={() => handleEnrollPath(path.title)}
+                             disabled={enrollingPath !== null || activePathTitle?.toLowerCase() === path.title?.toLowerCase()}
+                             style={{
+                               paddingHorizontal: 10,
+                               paddingVertical: 6,
+                               borderRadius: 6,
+                               borderWidth: activePathTitle?.toLowerCase() === path.title?.toLowerCase() ? 1 : 0,
+                               borderColor: activePathTitle?.toLowerCase() === path.title?.toLowerCase() ? '#A7F3D0' : 'transparent',
+                               backgroundColor: activePathTitle?.toLowerCase() === path.title?.toLowerCase() ? '#ECFDF5' : '#2563EB',
+                               flexDirection: 'row',
+                               alignItems: 'center',
+                               gap: 4
+                             }}
+                           >
+                             {enrollingPath === path.title && (
+                               <ActivityIndicator size="small" color="#FFFFFF" style={{ marginRight: 2 }} />
+                             )}
+                             <Text
+                               style={{
+                                 fontSize: 10,
+                                 fontWeight: '800',
+                                 color: activePathTitle?.toLowerCase() === path.title?.toLowerCase() ? '#047857' : '#FFFFFF'
+                               }}
+                             >
+                               {enrollingPath === path.title ? "Enrolling..." : (activePathTitle?.toLowerCase() === path.title?.toLowerCase() ? "Active" : "Set Active")}
+                             </Text>
+                           </TouchableOpacity>
+                         </View>
                      </View>
                  </View>
                  <View style={styles.pathItemRight}>
