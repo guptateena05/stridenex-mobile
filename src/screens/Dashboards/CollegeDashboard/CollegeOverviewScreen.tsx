@@ -330,6 +330,8 @@ export const CollegeOverviewScreen = () => {
         tahsil: formData.tahsil || collegeData?.tahsil || collegeData?.taluka || "",
         taluka: formData.tahsil || collegeData?.tahsil || collegeData?.taluka || "",
         city: formData.city || collegeData?.city || "",
+        address_line_1: collegeData?.address_line_1 || collegeData?.address_line1 || "",
+        address_line_2: collegeData?.address_line_2 || collegeData?.address_line2 || "",
       };
 
       await updateCollegeDetails(userName, payload);
