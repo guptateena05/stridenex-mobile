@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { 
   View, 
   Text, 
@@ -83,11 +83,18 @@ export const CollegeOverviewScreen = () => {
   const { userName } = useAuth();
   const navigation = useNavigation<any>();
   const [collegeData, setCollegeData] = useState<any>(null);
+  const collegeDataRef = useRef<any>(null);
+
+  useEffect(() => {
+    collegeDataRef.current = collegeData;
+  }, [collegeData]);
+
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [updateLoading, setUpdateLoading] = useState(false);
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
   const [profileFormValues, setProfileFormValues] = useState<any>({});
+  const [isCurrentFocused, setIsCurrentFocused] = useState(false);
 
   const [dashboardSummary, setDashboardSummary] = useState<any>(null);
   const [placementStats, setPlacementStats] = useState<any>(null);
@@ -126,7 +133,7 @@ export const CollegeOverviewScreen = () => {
 
   const fetchDetails = useCallback(async (isRefresh = false) => {
     if (!userName) return;
-    const hasData = !!collegeData;
+    const hasData = !!collegeDataRef.current;
     if (!isRefresh && !hasData) setLoading(true);
     try {
       const res = await getCollegeDetails(userName);
@@ -245,11 +252,28 @@ export const CollegeOverviewScreen = () => {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [userName, collegeData]);
+  }, [userName]);
 
+  // Set focus state and load details when navigation focus event occurs
   useEffect(() => {
-    fetchDetails();
-  }, [fetchDetails]);
+    const unsubscribeFocus = navigation.addListener('focus', () => {
+      setIsCurrentFocused(true);
+      fetchDetails();
+    });
+    const unsubscribeBlur = navigation.addListener('blur', () => {
+      setIsCurrentFocused(false);
+    });
+
+    if (navigation.isFocused && navigation.isFocused()) {
+      setIsCurrentFocused(true);
+      fetchDetails();
+    }
+
+    return () => {
+      unsubscribeFocus();
+      unsubscribeBlur();
+    };
+  }, [navigation, fetchDetails]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);

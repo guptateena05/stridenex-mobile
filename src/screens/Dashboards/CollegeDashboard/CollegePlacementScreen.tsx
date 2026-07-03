@@ -10,6 +10,7 @@ import { Send, Star, Calendar, BarChart, Building2, TrendingUp, Award, ChevronDo
 import { useAuth } from '@/context/AuthContext';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
 import {
   getCollegeDetails,
   getCollegeDrives,
@@ -38,6 +39,8 @@ import { api } from '@/api/api.services';
 export const CollegePlacementScreen = ({ route }: any) => {
   const insets = useSafeAreaInsets();
   const { userName } = useAuth();
+  const navigation = useNavigation<any>();
+  const [isCurrentFocused, setIsCurrentFocused] = useState(false);
   
   const formatDateToDDMMYYYY = (dateStr: string) => {
     if (!dateStr || dateStr === 'N/A') return "";
@@ -52,10 +55,30 @@ export const CollegePlacementScreen = ({ route }: any) => {
   const [activeTab, setActiveTab] = useState<'drives' | 'tracker' | 'eligibility' | 'stats'>(routeTab as any);
 
   useEffect(() => {
-    if (route?.params?.tab) {
+    if (route?.params?.tab && route.params.tab !== activeTab) {
       setActiveTab(route.params.tab);
     }
-  }, [route?.params?.tab]);
+  }, [route?.params?.tab, activeTab]);
+
+  const getTabTitle = () => {
+    switch (activeTab) {
+      case 'drives': return 'Active Drives';
+      case 'tracker': return 'Placement Tracker';
+      case 'eligibility': return 'Eligibility Checker';
+      case 'stats': return 'Placement Stats';
+      default: return 'Placement Tracker';
+    }
+  };
+
+  const getTabSubtitle = () => {
+    switch (activeTab) {
+      case 'drives': return 'Manage and track active institutional placement drives';
+      case 'tracker': return 'Institutional student placement funnel tracker';
+      case 'eligibility': return 'Verify and check student eligibility for active drives';
+      case 'stats': return 'Comprehensive placement statistics and analytics';
+      default: return 'Institutional placement funnel and drive performance';
+    }
+  };
 
   const [collegeDetails, setCollegeDetails] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -107,6 +130,7 @@ export const CollegePlacementScreen = ({ route }: any) => {
 
   // Fetch branches dynamically
   useEffect(() => {
+    if (!isCurrentFocused) return;
     const fetchBranches = async () => {
       try {
         const res = await getMasterData("College Department");
@@ -122,10 +146,11 @@ export const CollegePlacementScreen = ({ route }: any) => {
       }
     };
     fetchBranches();
-  }, []);
+  }, [isCurrentFocused]);
 
   // Fetch skills dynamically
   useEffect(() => {
+    if (!isCurrentFocused) return;
     const fetchSkills = async () => {
       try {
         const res = await getMasterData("Skill");
@@ -141,7 +166,7 @@ export const CollegePlacementScreen = ({ route }: any) => {
       }
     };
     fetchSkills();
-  }, []);
+  }, [isCurrentFocused]);
 
   // STATS TAB STATE
   const [placementStats, setPlacementStats] = useState<any>(null);
@@ -510,31 +535,40 @@ export const CollegePlacementScreen = ({ route }: any) => {
       const data = collegeRes?.data || collegeRes?.message?.data || collegeRes?.message;
       if (data) {
         setCollegeDetails(data);
-        const collegeName = data.name || data.college_name || userName;
-
-        if (activeTab === 'drives') {
-          await fetchDrivesTab(collegeName);
-        } else if (activeTab === 'tracker') {
-          await fetchTrackerTab(collegeName);
-        } else if (activeTab === 'stats') {
-          await fetchStatsTab(collegeName);
-        }
       }
     } catch (err) {
-      console.error("Error fetching college profile placement details:", err);
+      console.error("Error fetching college profile details:", err);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [userName, activeTab]);
+  }, [userName]);
 
+  // Set focus state and load details when navigation focus event occurs
   useEffect(() => {
-    fetchAllDetails();
-  }, [fetchAllDetails]);
+    const unsubscribeFocus = navigation.addListener('focus', () => {
+      setIsCurrentFocused(true);
+      fetchAllDetails();
+    });
+    const unsubscribeBlur = navigation.addListener('blur', () => {
+      setIsCurrentFocused(false);
+    });
+
+    // Fallback/Initial check (if navigation stack is already focused on mount)
+    if (navigation.isFocused && navigation.isFocused()) {
+      setIsCurrentFocused(true);
+      fetchAllDetails();
+    }
+
+    return () => {
+      unsubscribeFocus();
+      unsubscribeBlur();
+    };
+  }, [navigation, fetchAllDetails]);
 
   // Load Eligibility data when tab is active or filters change
   useEffect(() => {
-    if (!collegeDetails || activeTab !== 'eligibility') return;
+    if (!isCurrentFocused || !collegeDetails || activeTab !== 'eligibility') return;
     const collegeName = collegeDetails.name || collegeDetails.college_name || userName;
     
     const delayDebounceFn = setTimeout(() => {
@@ -542,11 +576,11 @@ export const CollegePlacementScreen = ({ route }: any) => {
     }, 500);
 
     return () => clearTimeout(delayDebounceFn);
-  }, [eligibilityBranches, eligibilityCgpa, eligibilityBacklog, eligibilityAcademicYear, activeTab, collegeDetails]);
+  }, [eligibilityBranches, eligibilityCgpa, eligibilityBacklog, eligibilityAcademicYear, activeTab, collegeDetails, isCurrentFocused]);
 
   // Handle active tab change for other tabs
   useEffect(() => {
-    if (!collegeDetails || activeTab === 'eligibility') return;
+    if (!isCurrentFocused || !collegeDetails || activeTab === 'eligibility') return;
     const collegeName = collegeDetails.name || collegeDetails.college_name || userName;
     
     if (activeTab === 'drives') {
@@ -556,7 +590,7 @@ export const CollegePlacementScreen = ({ route }: any) => {
     } else if (activeTab === 'stats') {
       fetchStatsTab(collegeName);
     }
-  }, [activeTab, collegeDetails]);
+  }, [activeTab, collegeDetails, isCurrentFocused]);
 
   const onRefresh = useCallback(async () => {
     if (!userName) return;
@@ -666,10 +700,11 @@ export const CollegePlacementScreen = ({ route }: any) => {
   };
 
   useEffect(() => {
+    if (!isCurrentFocused) return;
     if (selectedDrive && selectedDriveStatusFilter !== 'Eligible') {
       refreshDrivePlacementList(selectedDriveStatusFilter);
     }
-  }, [selectedDriveStatusFilter, selectedDrive]);
+  }, [selectedDriveStatusFilter, selectedDrive, isCurrentFocused]);
 
   const parseErrorMessage = (err: any): string => {
     if (!err) return "";
@@ -1154,14 +1189,16 @@ export const CollegePlacementScreen = ({ route }: any) => {
         </View>
 
         {/* Gradient Header Banner */}
-        <Card style={{ backgroundColor: '#0F172A', borderRadius: 20, padding: 18, borderStyle: 'solid', borderWidth: 1, borderColor: '#1E293B', gap: 12 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-            <View style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: 'rgba(255, 255, 255, 0.1)', alignItems: 'center', justifyContent: 'center' }}>
-              <Text style={{ color: '#FFF', fontSize: 18, fontWeight: '800' }}>{selectedDrive.company.charAt(0).toUpperCase()}</Text>
+        <Card style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 14, borderStyle: 'solid', borderWidth: 1, borderColor: '#E2E8F0', shadowColor: '#64748B', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.02, shadowRadius: 4, elevation: 1, gap: 10 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <View style={{ width: 40, height: 40, borderRadius: 10, backgroundColor: 'rgba(16, 185, 129, 0.1)', alignItems: 'center', justifyContent: 'center' }}>
+              <Text style={{ color: '#059669', fontSize: 16, fontWeight: '800' }}>{(selectedDrive.company || '').charAt(0).toUpperCase()}</Text>
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 16, fontWeight: '800', color: '#FFF' }}>{selectedDrive.company}</Text>
-              <Text style={{ fontSize: 12, color: '#94A3B8', fontWeight: '600', marginTop: 2 }}>{selectedDrive.role}</Text>
+              <Text style={{ fontSize: 15, fontWeight: '800', color: '#1E293B' }}>{selectedDrive.company}</Text>
+              {selectedDrive.role && selectedDrive.role !== '_' ? (
+                <Text style={{ fontSize: 11, color: '#64748B', fontWeight: '600', marginTop: 1 }}>{selectedDrive.role}</Text>
+              ) : null}
             </View>
             <View style={[styles.statusBadge, selectedDrive.status === "Closed" ? styles.statusBadgeClosed : styles.statusBadgeOpen]}>
               <Text style={[styles.statusText, selectedDrive.status === "Closed" ? styles.statusTextClosed : styles.statusTextOpen]}>
@@ -1170,18 +1207,18 @@ export const CollegePlacementScreen = ({ route }: any) => {
             </View>
           </View>
 
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', borderTopWidth: 1, borderBottomWidth: 1, borderColor: '#1E293B', paddingVertical: 10, marginTop: 4 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-              <Briefcase size={12} color="#94A3B8" />
-              <Text style={{ fontSize: 10, fontWeight: '600', color: '#CBD5E1' }}>{selectedDrive.type}</Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#F8FAFC', paddingHorizontal: 8, paddingVertical: 5, borderRadius: 8, borderWidth: 1, borderColor: '#F1F5F9' }}>
+              <Briefcase size={11} color="#64748B" />
+              <Text style={{ fontSize: 10, fontWeight: '700', color: '#475569' }}>{selectedDrive.type}</Text>
             </View>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-              <Award size={12} color="#94A3B8" />
-              <Text style={{ fontSize: 10, fontWeight: '600', color: '#CBD5E1' }}>{selectedDrive.package}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#F8FAFC', paddingHorizontal: 8, paddingVertical: 5, borderRadius: 8, borderWidth: 1, borderColor: '#F1F5F9' }}>
+              <Award size={11} color="#64748B" />
+              <Text style={{ fontSize: 10, fontWeight: '700', color: '#475569' }}>{selectedDrive.package}</Text>
             </View>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-              <Calendar size={12} color="#94A3B8" />
-              <Text style={{ fontSize: 10, fontWeight: '600', color: '#CBD5E1' }}>{formatDateToDDMMYYYY(selectedDrive.driveDate) || "N/A"}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#F8FAFC', paddingHorizontal: 8, paddingVertical: 5, borderRadius: 8, borderWidth: 1, borderColor: '#F1F5F9' }}>
+              <Calendar size={11} color="#64748B" />
+              <Text style={{ fontSize: 10, fontWeight: '700', color: '#475569' }}>{formatDateToDDMMYYYY(selectedDrive.driveDate) || "N/A"}</Text>
             </View>
           </View>
         </Card>
@@ -1568,8 +1605,8 @@ export const CollegePlacementScreen = ({ route }: any) => {
                   <TrendingUp size={10} color="#059669" />
                   <Text style={styles.headerBadgeText}>PLACEMENTS</Text>
                 </View>
-                <Text style={styles.title}>Placement Tracker</Text>
-                <Text style={styles.subtitle}>Institutional placement funnel and drive performance</Text>
+                <Text style={styles.title}>{getTabTitle()}</Text>
+                <Text style={styles.subtitle}>{getTabSubtitle()}</Text>
               </View>
               
               {activeTab === 'drives' && (
