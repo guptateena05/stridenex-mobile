@@ -35,7 +35,7 @@ export const IndustryDrawerNavigator = () => {
       drawerContent={(props) => <CustomDrawerContent {...props} />}
       screenOptions={{
         header: () => <DashboardHeader />,
-        drawerActiveBackgroundColor: 'rgba(147, 51, 234, 0.1)', // purple[600] with 10% opacity
+        drawerActiveBackgroundColor: 'rgba(10, 128, 153, 0.1)', // #0A8099 with 10% opacity
         drawerActiveTintColor: colors.purple[600],
         drawerInactiveTintColor: colors.text.secondary,
         drawerLabelStyle: {

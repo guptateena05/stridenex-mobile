@@ -41,8 +41,8 @@ export const colors = {
     900: '#7c2d12',
   },
   purple: {
-    500: '#a855f7',
-    600: '#9333ea',
+    500: '#E6F5F8',
+    600: '#0A8099',
   },
   violet: {
     50: '#f5f3ff',

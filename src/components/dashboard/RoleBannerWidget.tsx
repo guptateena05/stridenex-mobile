@@ -26,10 +26,10 @@ export const RoleBannerWidget = ({ fullName, date, role, progress, theme = 'oran
   let iconColor = '#EA580C';
 
   if (isPurple) {
-    gradStart = '#A855F7';
-    gradEnd = '#7E22CE';
-    shadowColor = '#7E22CE';
-    iconColor = '#9333EA';
+    gradStart = '#2EA0B6'; // Soothing teal-cyan
+    gradEnd = '#0A8099';   // Primary teal-cyan
+    shadowColor = '#0A8099';
+    iconColor = '#0A8099';
   } else if (isMentor) {
     gradStart = '#4c1d95'; // violet-900
     gradEnd = '#2e1065';   // violet-950
@@ -43,7 +43,7 @@ export const RoleBannerWidget = ({ fullName, date, role, progress, theme = 'oran
   }
 
   const getIcon = (iconName?: string) => {
-    switch(iconName) {
+    switch (iconName) {
       case 'Users': return <Users size={16} color={iconColor} />;
       case 'Calendar': return <Calendar size={16} color={iconColor} />;
       case 'Award': return <Award size={16} color={iconColor} />;
@@ -53,9 +53,11 @@ export const RoleBannerWidget = ({ fullName, date, role, progress, theme = 'oran
     }
   };
 
+  const displayGreetingName = fullName ? (fullName.split(' ')[0] || 'User') : 'User';
+
   return (
     <View style={[styles.container, { backgroundColor: gradStart, shadowColor }]}>
-      <View style={StyleSheet.absoluteFill}>
+      <View style={[StyleSheet.absoluteFill, { zIndex: 1 }]}>
         <Svg height="100%" width="100%">
           <Defs>
             <SvgGradient id="headerGrad" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -69,7 +71,7 @@ export const RoleBannerWidget = ({ fullName, date, role, progress, theme = 'oran
         </Svg>
       </View>
 
-      <View style={styles.content}>
+      <View style={[styles.content, { zIndex: 2 }]}>
         <View style={styles.topSection}>
           <View style={{ flex: 1, paddingRight: 16 }}>
             {title ? (
@@ -81,7 +83,7 @@ export const RoleBannerWidget = ({ fullName, date, role, progress, theme = 'oran
               </>
             ) : (
               <>
-                <Text style={styles.greeting}>Hello, {fullName.split(' ')[0]}!</Text>
+                <Text style={styles.greeting}>Hello, {displayGreetingName}!</Text>
                 <View style={styles.dateRow}>
                   <Calendar size={12} color="rgba(255, 255, 255, 0.8)" />
                   <Text style={styles.dateText}>{date} • {role}</Text>

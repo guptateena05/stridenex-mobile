@@ -163,7 +163,7 @@ export const IndustryCompanyProfileScreen = () => {
   }, [fetchSkills, fetchPipelineCounts]);
 
   const companyStats = useMemo(() => [
-    { label: "Industry", value: industryData?.industry_sector || "N/A", icon: Layers, color: "#3B82F6", bg: "#EFF6FF" },
+    { label: "Industry", value: industryData?.industry_sector || "N/A", icon: Layers, color: "#0A8099", bg: "#E6F5F8" },
     { label: "Size", value: industryData?.employee_head_count || "N/A", icon: Users, color: "#F97316", bg: "#FFF7ED" },
     { label: "HQ", value: industryData?.headquarters || "N/A", icon: MapPin, color: "#10B981", bg: "#ECFDF5" },
     { label: "Website", value: industryData?.company_website || "N/A", icon: Globe, color: "#6366F1", bg: "#EEF2FF" },
@@ -1185,7 +1185,7 @@ const styles = StyleSheet.create({
 
   header: { marginBottom: 12, paddingHorizontal: 4 },
   headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 },
-  headerBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(147, 51, 234, 0.08)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
+  headerBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(10, 128, 153, 0.08)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
   headerBadgeText: { fontSize: 8, fontWeight: '800', color: colors.purple[600], letterSpacing: 0.5 },
   title: { fontSize: 22, fontWeight: '800', color: '#0F172A', fontFamily: typography.fontFamily.display, letterSpacing: -0.5 },
   subtitle: { fontSize: 12, color: '#64748B', fontWeight: '500' },
@@ -1291,15 +1291,15 @@ const styles = StyleSheet.create({
   locationHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
   locationLabel: { fontSize: 10, fontWeight: '800', color: '#64748B', letterSpacing: 0.5, marginBottom: 6 },
   useLocationBtn: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  useLocationText: { fontSize: 10, fontWeight: '700', color: '#2563EB' },
+  useLocationText: { fontSize: 10, fontWeight: '700', color: '#0A8099' },
   locationInputWrapper: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, backgroundColor: '#FFF' },
   locationInput: { flex: 1, height: 48, paddingHorizontal: 12, fontSize: 14, color: '#0F172A' },
 
   mapPreviewContainer: { borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, overflow: 'hidden', marginTop: 8 },
   mapPreviewHeader: { padding: 12, backgroundColor: '#F8FAFC', borderBottomWidth: 1, borderBottomColor: '#E2E8F0', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   mapPreviewSub: { fontSize: 10, color: '#64748B' },
-  adjustMapBtn: { backgroundColor: '#EEF2FF', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 6 },
-  adjustMapText: { fontSize: 9, fontWeight: '800', color: '#4F46E5', letterSpacing: 0.5 },
+  adjustMapBtn: { backgroundColor: '#E6F5F8', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 6 },
+  adjustMapText: { fontSize: 9, fontWeight: '800', color: '#0A8099', letterSpacing: 0.5 },
   mapStaticContainer: { height: 120, backgroundColor: '#E2E8F0', position: 'relative', overflow: 'hidden' },
   mapGridPattern: { flex: 1, opacity: 0.4 },
   mapRoad1: { position: 'absolute', top: '40%', left: 0, right: 0, height: 12, backgroundColor: '#FFF', transform: [{ rotate: '-5deg' }] },

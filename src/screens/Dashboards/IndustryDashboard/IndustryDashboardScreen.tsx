@@ -216,7 +216,7 @@ export const IndustryDashboardScreen = () => {
             <View style={[styles.card, { marginTop: 16 }]}>
               <Text style={styles.cardTitle}>Quick Actions</Text>
               <TouchableOpacity style={styles.actionBtn} onPress={() => navigation.navigate('Internships', { openForm: true })}>
-                <View style={[styles.actionIconBox, { backgroundColor: 'rgba(147, 51, 234, 0.1)' }]}>
+                <View style={[styles.actionIconBox, { backgroundColor: 'rgba(10, 128, 153, 0.1)' }]}>
                   <Briefcase size={16} color={colors.purple[600]} />
                 </View>
                 <Text style={styles.actionBtnText}>Post New Internship</Text>
@@ -244,7 +244,7 @@ const styles = StyleSheet.create({
   contentBottom: { paddingHorizontal: 16, marginTop: 24 },
   header: { marginBottom: 12, paddingHorizontal: 4 },
   headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 },
-  headerBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(147, 51, 234, 0.08)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
+  headerBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(10, 128, 153, 0.08)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
   headerBadgeText: { fontSize: 8, fontWeight: '800', color: colors.purple[600], letterSpacing: 0.5 },
   title: { fontSize: 22, fontWeight: '800', color: '#0F172A', fontFamily: typography.fontFamily.display, letterSpacing: -0.5 },
   subtitle: { fontSize: 12, color: '#64748B', fontWeight: '500' },

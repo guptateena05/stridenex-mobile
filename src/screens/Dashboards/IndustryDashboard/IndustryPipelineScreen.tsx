@@ -471,7 +471,7 @@ const styles = StyleSheet.create({
   
   header: { paddingHorizontal: 20, paddingTop: 16, marginBottom: 16 },
   headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 },
-  headerBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(147, 51, 234, 0.08)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
+  headerBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(10, 128, 153, 0.08)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
   headerBadgeText: { fontSize: 8, fontWeight: '800', color: colors.purple[600], letterSpacing: 0.5 },
   title: { fontSize: 28, fontWeight: '800', color: '#0F172A', fontFamily: typography.fontFamily.display },
   subtitle: { fontSize: 13, color: '#64748B', fontWeight: '500' },
@@ -549,7 +549,7 @@ const styles = StyleSheet.create({
   pickerContent: { backgroundColor: '#FFF', borderRadius: 24, padding: 8 },
   pickerHeader: { fontSize: 16, fontWeight: '800', color: '#0F172A', padding: 20, textAlign: 'center', borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
   pickerItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, borderRadius: 16 },
-  pickerItemActive: { backgroundColor: 'rgba(147, 51, 234, 0.05)' },
+  pickerItemActive: { backgroundColor: 'rgba(10, 128, 153, 0.05)' },
   pickerItemText: { fontSize: 14, fontWeight: '700', color: '#475569' },
   pickerItemTextActive: { color: colors.purple[600], fontWeight: '800' }
 });
