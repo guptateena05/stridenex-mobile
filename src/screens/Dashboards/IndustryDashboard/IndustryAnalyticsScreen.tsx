@@ -3,17 +3,17 @@ import { View, Text, StyleSheet, ScrollView, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '@/theme/colors';
 import { typography } from '@/theme/typography';
-import { Eye, Briefcase, Zap, IndianRupee, LayoutDashboard } from 'lucide-react-native';
+import { Eye, Briefcase, Zap, IndianRupee, LayoutDashboard, GraduationCap, TrendingUp } from 'lucide-react-native';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import { StatsCard } from '@/components/dashboard/StatsCard';
 
 const { width } = Dimensions.get('window');
 
 const analyticsStats = [
-  { id: 1, title: "PROFILE VIEWS", value: "48.2K", icon: Eye, color: "#3B82F6" },
+  { id: 1, title: "PROFILE VIEWS", value: "48.2K", icon: Eye, color: "#0A8099" },
   { id: 2, title: "APPLICATIONS", value: "247", icon: Briefcase, color: "#64748B" },
-  { id: 3, title: "AVG TIME (DS)", value: "4.2d", icon: Zap, color: "#10B981" },
-  { id: 4, title: "COST SAVED", value: "₹2.4L", icon: IndianRupee, color: "#059669" }
+  { id: 3, title: "AVG TIME (DS)", value: "4.2d", icon: Zap, color: "#F59E0B" },
+  { id: 4, title: "COST SAVED", value: "₹2.4L", icon: IndianRupee, color: "#16A34A" }
 ];
 
 const applicationsByRole = [
@@ -123,41 +123,44 @@ export const IndustryAnalyticsScreen = () => {
         {/* College ROI list */}
         <Animated.View entering={FadeInUp.delay(400)}>
            <Text style={styles.sectionTitle}>College ROI — Where Best Hires Come From</Text>
-           
-           {collegeROI.map(college => (
-              <View key={college.id} style={styles.collegeCard}>
-                 <View style={styles.collegeHeader}>
-                    <Text style={styles.collegeName}>{college.college}</Text>
-                    <View style={styles.matchBadge}>
-                       <Text style={[styles.matchText, { color: college.matchColor }]}>{college.match} Match</Text>
-                    </View>
-                 </View>
+            {collegeROI.map(college => (
+               <View key={college.id} style={styles.collegeCard}>
+                  <View style={styles.collegeHeader}>
+                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <GraduationCap size={16} color="#0A8099" />
+                        <Text style={styles.collegeName}>{college.college}</Text>
+                     </View>
+                     <View style={styles.matchBadgeCapsule}>
+                        <TrendingUp size={10} color="#10B981" />
+                        <Text style={styles.matchBadgeCapsuleText}>{college.match} Match</Text>
+                     </View>
+                  </View>
 
-                 <View style={styles.collegeGrid}>
-                    <View style={styles.collegeStat}>
-                       <Text style={styles.cStatValue}>{college.applications}</Text>
-                       <Text style={styles.cStatLabel}>Apps</Text>
-                    </View>
-                    <View style={styles.collegeStat}>
-                       <Text style={[styles.cStatValue, { color: '#3B82F6' }]}>{college.shortlisted}</Text>
-                       <Text style={styles.cStatLabel}>Shortlisted</Text>
-                    </View>
-                    <View style={styles.collegeStat}>
-                       <Text style={[styles.cStatValue, { color: '#10B981' }]}>{college.hired}</Text>
-                       <Text style={styles.cStatLabel}>Hired</Text>
-                    </View>
-                    <View style={styles.collegeStat}>
-                       <Text style={[styles.cStatValue, { fontSize: 13, alignSelf: 'center', marginTop: 2 }]}>{college.conversion}</Text>
-                       <Text style={styles.cStatLabel}>Conversion</Text>
-                    </View>
-                 </View>
+                  <View style={styles.collegeGrid}>
+                     <View style={styles.collegeStat}>
+                        <Text style={styles.cStatValue}>{college.applications}</Text>
+                        <Text style={styles.cStatLabel}>Apps</Text>
+                     </View>
+                     <View style={styles.collegeStat}>
+                        <Text style={[styles.cStatValue, { color: '#3B82F6' }]}>{college.shortlisted}</Text>
+                        <Text style={styles.cStatLabel}>Shortlisted</Text>
+                     </View>
+                     <View style={styles.collegeStat}>
+                        <Text style={[styles.cStatValue, { color: '#16A34A' }]}>{college.hired}</Text>
+                        <Text style={styles.cStatLabel}>Hired</Text>
+                     </View>
+                     <View style={styles.collegeStat}>
+                        <Text style={[styles.cStatValue, { fontSize: 13, alignSelf: 'center', marginTop: 2 }]}>{college.conversion}</Text>
+                        <Text style={styles.cStatLabel}>Conversion</Text>
+                     </View>
+                  </View>
 
-                 <View style={styles.ctcRow}>
-                    <Text style={styles.ctcLabel}>Avg CTC</Text>
-                    <Text style={styles.ctcValue}>{college.ctc}</Text>
-                 </View>
-              </View>
-           ))}
+                  <View style={styles.ctcRow}>
+                     <Text style={styles.ctcLabel}>Avg CTC</Text>
+                     <Text style={styles.ctcValue}>{college.ctc}</Text>
+                  </View>
+               </View>
+            ))}
         </Animated.View>
 
         <View style={styles.footerSpacer} />
@@ -203,20 +206,20 @@ const styles = StyleSheet.create({
 
   sectionTitle: { fontSize: 15, fontWeight: '800', color: '#1E293B', marginBottom: 16, paddingHorizontal: 4 },
   
-  collegeCard: { backgroundColor: '#FFF', borderRadius: 16, padding: 16, borderWidth: 1, borderBottomWidth: 3, borderColor: '#E2E8F0', marginBottom: 12 },
+  collegeCard: { backgroundColor: '#FFF', borderRadius: 16, padding: 16, borderWidth: 1, borderLeftWidth: 4, borderLeftColor: '#0A8099', borderColor: '#E2E8F0', marginBottom: 12 },
   collegeHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
-  collegeName: { fontSize: 15, fontWeight: '800', color: '#0F172A' },
-  matchBadge: { paddingHorizontal: 8, paddingVertical: 4, backgroundColor: '#F1F5F9', borderRadius: 8 },
-  matchText: { fontSize: 11, fontWeight: '800' },
+  collegeName: { fontSize: 14, fontWeight: '800', color: '#0F172A' },
+  matchBadgeCapsule: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(16, 185, 129, 0.08)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12 },
+  matchBadgeCapsuleText: { fontSize: 10, fontWeight: '800', color: '#059669' },
   
   collegeGrid: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16 },
   collegeStat: { alignItems: 'center', width: '22%' },
   cStatValue: { fontSize: 16, fontWeight: '900', color: '#475569', marginBottom: 2 },
   cStatLabel: { fontSize: 9, fontWeight: '800', color: '#94A3B8', textTransform: 'uppercase' },
 
-  ctcRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#ECFDF5', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10, borderWidth: 1, borderColor: '#D1FAE5' },
-  ctcLabel: { fontSize: 11, fontWeight: '800', color: '#059669', textTransform: 'uppercase' },
-  ctcValue: { fontSize: 14, fontWeight: '900', color: '#059669' },
+  ctcRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#E6F5F8', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10, borderWidth: 1, borderColor: '#BCE3EB' },
+  ctcLabel: { fontSize: 11, fontWeight: '800', color: '#0A8099', textTransform: 'uppercase' },
+  ctcValue: { fontSize: 14, fontWeight: '900', color: '#0A8099' },
 
   footerSpacer: { height: 40 }
 });

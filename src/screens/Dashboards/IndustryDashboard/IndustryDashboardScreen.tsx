@@ -13,7 +13,13 @@ import {
   Sparkles, 
   Award, 
   ClipboardList,
-  LayoutDashboard
+  LayoutDashboard,
+  UserCheck,
+  CheckCircle2,
+  GraduationCap,
+  Building2,
+  MessageSquare,
+  TrendingUp
 } from 'lucide-react-native';
 import Animated, { FadeInUp, FadeInRight } from 'react-native-reanimated';
 import { useNavigation } from '@react-navigation/native';
@@ -97,10 +103,10 @@ export const IndustryDashboardScreen = () => {
   }, [fetchPipelineCounts]);
 
   const dynamicStats = React.useMemo(() => [
-    { id: 1, title: "SEARCHABLE STUDENTS", value: "12,840", icon: Users, color: "#3B82F6", bg: "rgba(59, 130, 246, 0.08)" },
+    { id: 1, title: "SEARCHABLE STUDENTS", value: "12,840", icon: Users, color: "#0A8099", bg: "rgba(10, 128, 153, 0.08)" },
     { id: 2, title: "APPLICATIONS RECEIVED", value: loadingPipeline ? "..." : appliedCount.toString(), icon: ClipboardList, color: "#64748B", bg: "rgba(100, 116, 139, 0.08)" },
-    { id: 3, title: "AVG SKILL MATCH", value: "89%", icon: Award, color: "#F97316", bg: "rgba(249, 115, 22, 0.08)" },
-    { id: 4, title: "TIME TO SHORTLIST", value: "4.2d", icon: Zap, color: "#10B981", bg: "rgba(16, 185, 129, 0.08)" }
+    { id: 3, title: "AVG SKILL MATCH", value: "89%", icon: Award, color: "#F59E0B", bg: "rgba(245, 158, 11, 0.08)" },
+    { id: 4, title: "TIME TO SHORTLIST", value: "4.2d", icon: Zap, color: "#16A34A", bg: "rgba(22, 163, 74, 0.08)" }
   ], [loadingPipeline, appliedCount]);
   
   return (
@@ -156,40 +162,59 @@ export const IndustryDashboardScreen = () => {
             </View>
 
             <View style={styles.candidatesGrid}>
-              {topCandidates.map((candidate, index) => (
-                <View key={candidate.id} style={styles.candidateCard}>
-                  <View style={styles.matchBadge}>
-                    <Text style={styles.matchBadgeText}>{candidate.match}%</Text>
-                  </View>
-
-                  <View style={styles.candidateTop}>
-                    <View style={[styles.avatar, { backgroundColor: candidate.bgColor }]}>
-                      <Text style={styles.avatarText}>{candidate.initials}</Text>
+              {topCandidates.map((candidate, index) => {
+                const [collegeName, cgpaDetail] = candidate.college.split(' • ');
+                return (
+                  <View key={candidate.id} style={styles.candidateCard}>
+                    <View style={styles.matchBadgeCapsule}>
+                      <TrendingUp size={10} color="#10B981" />
+                      <Text style={styles.matchBadgeCapsuleText}>{candidate.match}% Match</Text>
                     </View>
-                    <View style={styles.candidateInfo}>
-                      <Text style={styles.candidateName}>{candidate.name}</Text>
-                      <Text style={styles.candidateCollege}>{candidate.college}</Text>
-                      <View style={styles.skillsRow}>
-                        {candidate.skills.map(skill => (
-                          <View key={skill} style={styles.skillTag}>
-                            <Text style={styles.skillTagText}>{skill}</Text>
+
+                    <View style={styles.candidateTop}>
+                      <View style={[styles.avatarCircle, { backgroundColor: candidate.bgColor + '20' }]}>
+                        <Text style={[styles.avatarCircleText, { color: candidate.bgColor }]}>{candidate.initials}</Text>
+                      </View>
+                      <View style={styles.candidateInfo}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 4 }}>
+                          <Text style={styles.candidateName}>{candidate.name}</Text>
+                          <CheckCircle2 size={12} color="#0A8099" />
+                        </View>
+                        
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 2 }}>
+                          <GraduationCap size={12} color="#64748B" />
+                          <Text style={styles.candidateCollegeText}>{collegeName}</Text>
+                        </View>
+                        
+                        {cgpaDetail ? (
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 10 }}>
+                            <Award size={12} color="#F59E0B" />
+                            <Text style={styles.candidateCollegeText}>{cgpaDetail}</Text>
                           </View>
-                        ))}
+                        ) : null}
+
+                        <View style={styles.skillsRow}>
+                          {candidate.skills.map(skill => (
+                            <View key={skill} style={styles.skillTagCustom}>
+                              <Text style={styles.skillTagCustomText}>{skill}</Text>
+                            </View>
+                          ))}
+                        </View>
                       </View>
                     </View>
-                  </View>
 
-                  <View style={styles.candidateActions}>
-                    <TouchableOpacity style={styles.inviteBtn}>
-                      <Sparkles size={14} color="#FFF" />
-                      <Text style={styles.inviteBtnText}>Invite</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.ledgerBtn}>
-                      <Text style={styles.ledgerBtnText}>View Ledger</Text>
-                    </TouchableOpacity>
+                    <View style={styles.candidateActions}>
+                      <TouchableOpacity style={styles.inviteBtn}>
+                        <Sparkles size={13} color="#FFF" />
+                        <Text style={styles.inviteBtnText}>Invite Candidate</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity style={styles.ledgerBtn}>
+                        <Text style={styles.ledgerBtnText}>View Profile</Text>
+                      </TouchableOpacity>
+                    </View>
                   </View>
-                </View>
-              ))}
+                );
+              })}
             </View>
           </Animated.View>
 
@@ -201,15 +226,27 @@ export const IndustryDashboardScreen = () => {
                 {loadingPipeline && <ActivityIndicator size="small" color={colors.purple[600]} />}
               </View>
               <View style={styles.pipelineContainer}>
-                {pipelineData.map((stage: any, idx) => (
-                  <View key={idx} style={styles.pipelineRow}>
-                    <Text style={styles.pipelineLabel}>{stage.stage}</Text>
-                    <View style={styles.pipelineBarContainer}>
-                      <View style={[styles.pipelineBarFill, { width: stage.width || '5%', backgroundColor: stage.color === '#F97316' || stage.color === '#FB923C' ? colors.purple[500] : stage.color }]} />
+                {pipelineData.map((stage: any, idx) => {
+                  let StageIcon = ClipboardList;
+                  if (idx === 1) StageIcon = Sparkles;
+                  else if (idx === 2) StageIcon = UserCheck;
+                  else if (idx === 3) StageIcon = MessageSquare;
+                  else if (idx === 4) StageIcon = Award;
+                  else if (idx === 5) StageIcon = CheckCircle2;
+
+                  return (
+                    <View key={idx} style={styles.pipelineRow}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, width: 125 }}>
+                        <StageIcon size={12} color="#64748B" />
+                        <Text style={styles.pipelineLabel} numberOfLines={1}>{stage.stage}</Text>
+                      </View>
+                      <View style={styles.pipelineBarContainer}>
+                        <View style={[styles.pipelineBarFill, { width: stage.width || '5%', backgroundColor: colors.purple[600] }]} />
+                      </View>
+                      <Text style={styles.pipelineCount}>{stage.count}</Text>
                     </View>
-                    <Text style={styles.pipelineCount}>{stage.count}</Text>
-                  </View>
-                ))}
+                  );
+                })}
               </View>
             </View>
 
@@ -248,7 +285,6 @@ const styles = StyleSheet.create({
   headerBadgeText: { fontSize: 8, fontWeight: '800', color: colors.purple[600], letterSpacing: 0.5 },
   title: { fontSize: 22, fontWeight: '800', color: '#0F172A', fontFamily: typography.fontFamily.display, letterSpacing: -0.5 },
   subtitle: { fontSize: 12, color: '#64748B', fontWeight: '500' },
-  
   statsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -265,32 +301,32 @@ const styles = StyleSheet.create({
   sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 16 },
   sectionTitle: { fontSize: 18, fontWeight: '800', color: '#1E293B' },
   candidatesGrid: { gap: 16, marginBottom: 32 },
-  candidateCard: { backgroundColor: '#FFFFFF', borderRadius: 20, padding: 20, borderWidth: 1, borderColor: '#E2E8F0', shadowColor: '#64748B', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.04, shadowRadius: 8, elevation: 1, position: 'relative' },
-  matchBadge: { position: 'absolute', top: 16, right: 16, width: 40, height: 40, borderRadius: 20, borderWidth: 3, borderColor: '#10B981', alignItems: 'center', justifyContent: 'center' },
-  matchBadgeText: { fontSize: 12, fontWeight: '800', color: '#059669' },
-  candidateTop: { flexDirection: 'row', gap: 16, marginBottom: 20 },
-  avatar: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
-  avatarText: { color: '#FFF', fontSize: 18, fontWeight: '800' },
-  candidateInfo: { flex: 1, paddingRight: 40 },
-  candidateName: { fontSize: 16, fontWeight: '800', color: '#1E293B', marginBottom: 2 },
-  candidateCollege: { fontSize: 12, color: '#64748B', fontWeight: '500', marginBottom: 8 },
-  skillsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  skillTag: { backgroundColor: '#EFF6FF', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, borderWidth: 1, borderColor: '#DBEAFE' },
-  skillTagText: { fontSize: 10, fontWeight: '700', color: '#2563EB' },
-  candidateActions: { flexDirection: 'row', gap: 12 },
-  inviteBtn: { flex: 1, backgroundColor: colors.purple[600], flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12, borderRadius: 10 },
-  inviteBtnText: { color: '#FFF', fontSize: 13, fontWeight: '700' },
-  ledgerBtn: { flex: 1, backgroundColor: '#F8FAFC', paddingVertical: 12, borderRadius: 10, borderWidth: 1, borderColor: '#E2E8F0', alignItems: 'center', justifyContent: 'center' },
-  ledgerBtnText: { color: '#475569', fontSize: 13, fontWeight: '700' },
+  candidateCard: { backgroundColor: '#FFFFFF', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: '#E2E8F0', borderLeftWidth: 4, borderLeftColor: '#0A8099', shadowColor: '#64748B', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.02, shadowRadius: 6, elevation: 1, position: 'relative' },
+  matchBadgeCapsule: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(16, 185, 129, 0.08)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12, position: 'absolute', top: 14, right: 14 },
+  matchBadgeCapsuleText: { fontSize: 10, fontWeight: '800', color: '#059669' },
+  candidateTop: { flexDirection: 'row', gap: 14, marginBottom: 16 },
+  avatarCircle: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
+  avatarCircleText: { fontSize: 16, fontWeight: '800' },
+  candidateInfo: { flex: 1, paddingRight: 70 },
+  candidateName: { fontSize: 15, fontWeight: '800', color: '#1E293B' },
+  candidateCollegeText: { fontSize: 11, color: '#64748B', fontWeight: '600' },
+  skillsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 },
+  skillTagCustom: { backgroundColor: '#E6F5F8', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, borderWidth: 1, borderColor: '#BCE3EB' },
+  skillTagCustomText: { fontSize: 10, fontWeight: '700', color: '#0A8099' },
+  candidateActions: { flexDirection: 'row', gap: 12, borderTopWidth: 1, borderColor: '#F1F5F9', paddingTop: 14 },
+  inviteBtn: { flex: 1, backgroundColor: '#0A8099', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, borderRadius: 10 },
+  inviteBtnText: { color: '#FFF', fontSize: 12, fontWeight: '700' },
+  ledgerBtn: { flex: 1, backgroundColor: '#F8FAFC', paddingVertical: 10, borderRadius: 10, borderWidth: 1, borderColor: '#E2E8F0', alignItems: 'center', justifyContent: 'center' },
+  ledgerBtnText: { color: '#475569', fontSize: 12, fontWeight: '700' },
   bottomSection: { marginBottom: 16 },
   card: { backgroundColor: '#FFFFFF', borderRadius: 20, padding: 20, borderWidth: 1, borderColor: '#E2E8F0', shadowColor: '#64748B', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.03, shadowRadius: 8 },
   cardHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
   cardTitle: { fontSize: 16, fontWeight: '800', color: '#1E293B' },
   pipelineContainer: { gap: 16 },
   pipelineRow: { flexDirection: 'row', alignItems: 'center' },
-  pipelineLabel: { width: 110, fontSize: 12, fontWeight: '600', color: '#475569' },
-  pipelineBarContainer: { flex: 1, height: 6, backgroundColor: '#F1F5F9', borderRadius: 3, marginHorizontal: 12, overflow: 'hidden' },
-  pipelineBarFill: { height: '100%', borderRadius: 3 },
+  pipelineLabel: { fontSize: 12, fontWeight: '600', color: '#475569' },
+  pipelineBarContainer: { flex: 1, height: 8, backgroundColor: '#F1F5F9', borderRadius: 4, marginHorizontal: 12, overflow: 'hidden' },
+  pipelineBarFill: { height: '100%', borderRadius: 4 },
   pipelineCount: { width: 24, textAlign: 'right', fontSize: 13, fontWeight: '800', color: '#1E293B' },
   actionBtn: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14, paddingHorizontal: 16, borderRadius: 12, borderWidth: 1, borderColor: '#E2E8F0', marginBottom: 12 },
   actionIconBox: { width: 32, height: 32, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },

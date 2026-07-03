@@ -12,9 +12,13 @@ import {
   ArrowRight,
   RefreshCcw,
   Trash2,
-  X
+  X,
+  MoreVertical,
+  AlertCircle
 } from 'lucide-react-native';
 import Animated, { FadeInUp } from 'react-native-reanimated';
+import { SkeletonLoader } from '@/components/Shared/SkeletonLoader';
+import { SwipeableRow } from '@/components/Shared/SwipeableRow';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { StatsCard } from '@/components/dashboard/StatsCard';
 import { useIndustry } from '@/context/IndustryContext';
@@ -52,6 +56,8 @@ export const IndustryProjectsScreen = () => {
   const [modalLoading, setModalLoading] = useState(false);
   const [formValues, setFormValues] = useState<any>({});
   const [editingProject, setEditingProject] = useState<any>(null);
+  const [actionSheetVisible, setActionSheetVisible] = useState(false);
+  const [selectedProjectForAction, setSelectedProjectForAction] = useState<any>(null);
 
   const companyName = industryData?.company_name || industryData?.name;
 
@@ -339,10 +345,10 @@ export const IndustryProjectsScreen = () => {
   const initialValues = useMemo(() => formValues, [formValues]);
 
   const statsCards = [
-    { label: "ACTIVE PROJECTS", value: String(stats.active), icon: Microscope, color: "#9333EA" },
-    { label: "TOTAL APPLICATIONS", value: String(stats.applications), icon: Users, color: "#3B82F6" },
-    { label: "STUDENTS AWARDED", value: "0", icon: Trophy, color: "#10B981" },
-    { label: "CONVERTED TO PPO", value: "0", icon: Briefcase, color: "#F97316" },
+    { label: "ACTIVE PROJECTS", value: String(stats.active), icon: Microscope, color: "#0A8099" },
+    { label: "TOTAL APPLICATIONS", value: String(stats.applications), icon: Users, color: "#64748B" },
+    { label: "STUDENTS AWARDED", value: "0", icon: Trophy, color: "#16A34A" },
+    { label: "CONVERTED TO PPO", value: "0", icon: Briefcase, color: "#F59E0B" },
   ];
 
   return (
@@ -383,84 +389,111 @@ export const IndustryProjectsScreen = () => {
         {/* Projects List */}
         <Animated.View entering={FadeInUp.delay(300)}>
           {loading && !refreshing ? (
-            <ActivityIndicator size="large" color={colors.purple[600]} style={{ marginTop: 40 }} />
-          ) : projects.length > 0 ? (
-            projects.map((project, index) => (
-              <Animated.View key={project.name} entering={FadeInUp.delay(350 + index * 50)} style={styles.projectCard}>
-                <TouchableOpacity
-                  activeOpacity={0.7}
-                  onPress={() => navigation.navigate('Project Pipeline', { project })}
-                >
-                  <View style={styles.cardHeaderRow}>
-                    <View style={styles.iconBox}>
-                      <Microscope size={18} color="#64748B" />
-                    </View>
-                    <View style={styles.titleInfo}>
-                      <Text style={styles.projectTitle} numberOfLines={1}>{project.project_name}</Text>
-                      <Text style={styles.projectSubtitle}>{project.industry} • {project.project_code}</Text>
-                    </View>
-                    <View style={[styles.badge, project.status?.toLowerCase() === "active" ? styles.badgeOpen : {}]}>
-                      <Text style={[styles.badgeText, project.status?.toLowerCase() === "active" ? styles.badgeTextOpen : {}]}>{project.status}</Text>
-                    </View>
-                  </View>
-
-                  <Text style={styles.description} numberOfLines={2}>{project.description}</Text>
-
-                  <View style={styles.tagsContainer}>
-                    {(project.required_skills || project.skills || []).slice(0, 3).map((skill: any, sIdx: number) => (
-                      <View key={sIdx} style={styles.tagPill}>
-                        <Text style={styles.tagText}>{skill.skill || skill.skills}</Text>
+            <View style={{ gap: 16 }}>
+              {[1, 2].map((key) => (
+                <View key={key} style={[styles.projectCard, { borderLeftWidth: 4, borderLeftColor: '#E2E8F0' }]}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                      <SkeletonLoader width={36} height={36} borderRadius={10} />
+                      <View style={{ gap: 6 }}>
+                        <SkeletonLoader width={150} height={14} />
+                        <SkeletonLoader width={100} height={10} />
                       </View>
-                    ))}
+                    </View>
+                    <SkeletonLoader width={60} height={18} borderRadius={6} />
                   </View>
-
+                  <SkeletonLoader width="100%" height={30} style={{ marginBottom: 12 }} />
+                  <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
+                    <SkeletonLoader width={60} height={14} borderRadius={4} />
+                    <SkeletonLoader width={60} height={14} borderRadius={4} />
+                  </View>
                   <View style={styles.divider} />
-
-                  <View style={styles.footerRow}>
-                    <View style={styles.metricsGrid}>
-                      <View style={styles.metricItem}>
-                        <Text style={[styles.metricValue, { color: '#F97316' }]}>{project.applied_count || 0}</Text>
-                        <Text style={styles.metricLabel}>Applied</Text>
-                      </View>
-                      <View style={styles.metricItem}>
-                        <Text style={[styles.metricValue, { color: '#3B82F6' }]}>{project.shortlisted_count || 0}</Text>
-                        <Text style={styles.metricLabel}>Shortlisted</Text>
-                      </View>
-                      <View style={styles.metricItem}>
-                        <Text style={[styles.metricValue, { color: '#10B981' }]}>{project.duration || '-'}</Text>
-                        <Text style={styles.metricLabel}>Days</Text>
-                      </View>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <View style={{ flexDirection: 'row', gap: 12 }}>
+                      <SkeletonLoader width={40} height={14} />
+                      <SkeletonLoader width={40} height={14} />
                     </View>
-
-                    <View style={styles.actionRow}>
-                      <TouchableOpacity
-                        style={[
-                          styles.actionBtn,
-                          styles.deleteBtn,
-                          (project.status?.toLowerCase() === 'disabled' || project.status?.toLowerCase() === 'disable' || project.status?.toLowerCase() === 'inactive') && styles.disabledBtn
-                        ]}
-                        onPress={() => handleDelete(project.name)}
-                        disabled={project.status?.toLowerCase() === 'disabled' || project.status?.toLowerCase() === 'disable' || project.status?.toLowerCase() === 'inactive'}
-                      >
-                        <Trash2 size={14} color={(project.status?.toLowerCase() === 'disabled' || project.status?.toLowerCase() === 'disable' || project.status?.toLowerCase() === 'inactive') ? '#CBD5E1' : colors.error} />
-                      </TouchableOpacity>
-
-                      <TouchableOpacity
-                        style={[
-                          styles.manageBtn,
-                          (project.status?.toLowerCase() === 'disabled' || project.status?.toLowerCase() === 'disable' || project.status?.toLowerCase() === 'inactive') && styles.disabledManageBtn
-                        ]}
-                        onPress={() => handleEdit(project)}
-                        disabled={project.status?.toLowerCase() === 'disabled' || project.status?.toLowerCase() === 'disable' || project.status?.toLowerCase() === 'inactive'}
-                      >
-                        <Text style={styles.manageBtnText}>Manage</Text>
-                        <ArrowRight size={12} color="#FFF" />
-                      </TouchableOpacity>
-                    </View>
+                    <SkeletonLoader width={80} height={32} borderRadius={8} />
                   </View>
-                </TouchableOpacity>
-              </Animated.View>
-            ))
+                </View>
+              ))}
+            </View>
+          ) : projects.length > 0 ? (
+            projects.map((project, index) => {
+              const accentColor = project.status?.toLowerCase() === 'active' ? '#0A8099' : '#94A3B8';
+              return (
+                <SwipeableRow
+                  key={project.name || index}
+                  onEdit={() => handleEdit(project)}
+                  onDelete={() => {
+                    Alert.alert(
+                      "Delete Project",
+                      "Are you sure you want to delete this project permanently?",
+                      [
+                        { text: "Cancel", style: "cancel" },
+                        { 
+                          text: "Delete", 
+                          style: "destructive",
+                          onPress: () => handleDelete(project.name)
+                        }
+                      ]
+                    );
+                  }}
+                  disableSwipe={project.status?.toLowerCase() === 'disabled' || project.status?.toLowerCase() === 'disable' || project.status?.toLowerCase() === 'inactive'}
+                >
+                  <Animated.View entering={FadeInUp.delay(350 + index * 50)} style={[styles.projectCard, { borderLeftWidth: 4, borderLeftColor: accentColor, marginBottom: 0 }]}>
+                    <TouchableOpacity
+                      activeOpacity={0.7}
+                      onPress={() => navigation.navigate('Project Pipeline', { project })}
+                    >
+                      <View style={styles.cardHeaderRow}>
+                        <View style={styles.iconBox}>
+                          <Microscope size={18} color="#0A8099" />
+                        </View>
+                        <View style={styles.titleInfo}>
+                          <Text style={styles.projectTitle} numberOfLines={1}>{project.project_name}</Text>
+                          <Text style={styles.projectSubtitle}>{project.industry} • {project.project_code}</Text>
+                        </View>
+                        <View style={[styles.badge, project.status?.toLowerCase() === "active" ? styles.badgeOpen : {}]}>
+                          <Text style={[styles.badgeText, project.status?.toLowerCase() === "active" ? styles.badgeTextOpen : {}]}>{project.status}</Text>
+                        </View>
+                      </View>
+
+                      <Text style={styles.description} numberOfLines={2}>{project.description}</Text>
+
+                      <View style={styles.tagsContainer}>
+                        {(project.required_skills || project.skills || []).slice(0, 3).map((skill: any, sIdx: number) => (
+                          <View key={sIdx} style={styles.tagPill}>
+                            <Text style={styles.tagText}>{skill.skill || skill.skills}</Text>
+                          </View>
+                        ))}
+                      </View>
+
+                      <View style={styles.divider} />
+
+                      <View style={styles.footerRow}>
+                        <View style={styles.metricsGrid}>
+                          <View style={styles.metricItem}>
+                            <Text style={[styles.metricValue, { color: '#F97316' }]}>{project.applied_count || 0}</Text>
+                            <Text style={styles.metricLabel}>Applied</Text>
+                          </View>
+                          <View style={styles.metricItem}>
+                            <Text style={[styles.metricValue, { color: '#3B82F6' }]}>{project.shortlisted_count || 0}</Text>
+                            <Text style={styles.metricLabel}>Shortlisted</Text>
+                          </View>
+                          <View style={styles.metricItem}>
+                            <Text style={[styles.metricValue, { color: '#16A34A' }]}>{project.duration || '-'}</Text>
+                            <Text style={styles.metricLabel}>Days</Text>
+                          </View>
+                        </View>
+
+                        <View style={styles.actionRow} />
+                      </View>
+                    </TouchableOpacity>
+                  </Animated.View>
+                </SwipeableRow>
+              );
+            })
           ) : (
             <View style={styles.emptyContainer}>
               <Briefcase size={48} color="#CBD5E1" />
@@ -505,6 +538,7 @@ export const IndustryProjectsScreen = () => {
           </View>
         </View>
       </Modal>
+
     </SafeAreaView>
   );
 };
@@ -525,7 +559,7 @@ const styles = StyleSheet.create({
 
   statsRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4, marginBottom: 24, flexWrap: 'wrap' },
 
-  projectCard: { backgroundColor: '#FFF', borderRadius: 20, padding: 16, borderWidth: 1, borderColor: '#E2E8F0', marginBottom: 16, shadowColor: '#64748B', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 4, elevation: 1 },
+  projectCard: { backgroundColor: '#FFF', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: '#E2E8F0', marginBottom: 16, shadowColor: '#64748B', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.02, shadowRadius: 6, elevation: 1 },
   cardHeaderRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
   iconBox: { width: 36, height: 36, borderRadius: 10, backgroundColor: '#F8FAFC', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#F1F5F9' },
   titleInfo: { flex: 1, marginLeft: 10 },
@@ -568,5 +602,16 @@ const styles = StyleSheet.create({
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
   modalTitle: { fontSize: 18, fontWeight: '800', color: '#0F172A' },
 
-  footerSpacer: { height: 40 }
+  footerSpacer: { height: 40 },
+  moreBtn: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0' },
+  actionSheetOverlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.4)', justifyContent: 'flex-end' },
+  actionSheetContent: { backgroundColor: '#FFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 36 },
+  actionSheetDragHandle: { width: 36, height: 4, backgroundColor: '#E2E8F0', borderRadius: 2, alignSelf: 'center', marginBottom: 16 },
+  actionSheetTitle: { fontSize: 18, fontWeight: '800', color: '#0F172A', textAlign: 'center' },
+  actionSheetSubtitle: { fontSize: 13, color: '#64748B', fontWeight: '500', textAlign: 'center', marginTop: 4, marginBottom: 24 },
+  actionSheetList: { gap: 12 },
+  actionSheetItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 16, backgroundColor: '#F8FAFC', borderRadius: 12, borderWidth: 1, borderColor: '#E2E8F0' },
+  actionSheetItemText: { fontSize: 14, fontWeight: '700', color: '#1E293B' },
+  actionSheetCancelBtn: { marginTop: 16, paddingVertical: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F1F5F9', borderRadius: 12 },
+  actionSheetCancelText: { fontSize: 14, fontWeight: '700', color: '#475569' }
 });

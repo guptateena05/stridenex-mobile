@@ -12,9 +12,13 @@ import {
   Clock,
   Trash2,
   Trophy,
-  X
+  X,
+  MoreVertical,
+  AlertCircle
 } from 'lucide-react-native';
 import Animated, { FadeInUp } from 'react-native-reanimated';
+import { SkeletonLoader } from '@/components/Shared/SkeletonLoader';
+import { SwipeableRow } from '@/components/Shared/SwipeableRow';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { StatsCard } from '@/components/dashboard/StatsCard';
 import { useIndustry } from '@/context/IndustryContext';
@@ -49,6 +53,8 @@ export const IndustryInternshipsScreen = () => {
   const [modalLoading, setModalLoading] = useState(false);
   const [formValues, setFormValues] = useState<any>({});
   const [editingInternship, setEditingInternship] = useState<any>(null);
+  const [actionSheetVisible, setActionSheetVisible] = useState(false);
+  const [selectedJobForAction, setSelectedJobForAction] = useState<any>(null);
 
   const companyName = industryData?.company_name || industryData?.name;
 
@@ -385,10 +391,10 @@ export const IndustryInternshipsScreen = () => {
   };
 
   const statsCards = [
-    { label: "ACTIVE ROLES", value: String(stats.active), icon: Briefcase, color: "#9333EA" },
-    { label: "APPLICATIONS", value: String(stats.applications), icon: Users, color: "#3B82F6" },
-    { label: "OPENINGS", value: String(stats.openings), icon: Trophy, color: "#10B981" },
-    { label: "CLOSING SOON", value: String(stats.closingSoon), icon: Clock, color: "#F97316" },
+    { label: "ACTIVE ROLES", value: String(stats.active), icon: Briefcase, color: "#0A8099" },
+    { label: "APPLICATIONS", value: String(stats.applications), icon: Users, color: "#64748B" },
+    { label: "OPENINGS", value: String(stats.openings), icon: Trophy, color: "#16A34A" },
+    { label: "CLOSING SOON", value: String(stats.closingSoon), icon: Clock, color: "#F59E0B" },
   ];
 
   return (
@@ -424,70 +430,103 @@ export const IndustryInternshipsScreen = () => {
         </Animated.View>
 
         {loading && !refreshing ? (
-          <ActivityIndicator size="large" color={colors.purple[600]} style={{ marginTop: 40 }} />
+          <View style={{ gap: 16 }}>
+            {[1, 2, 3].map((key) => (
+              <View key={key} style={[styles.card, { borderLeftWidth: 4, borderLeftColor: '#E2E8F0' }]}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                    <SkeletonLoader width={36} height={36} borderRadius={10} />
+                    <View style={{ gap: 6 }}>
+                      <SkeletonLoader width={150} height={14} />
+                      <SkeletonLoader width={100} height={10} />
+                    </View>
+                  </View>
+                  <SkeletonLoader width={60} height={18} borderRadius={6} />
+                </View>
+                <View style={{ flexDirection: 'row', gap: 12, marginBottom: 12 }}>
+                  <SkeletonLoader width={80} height={12} />
+                  <SkeletonLoader width={80} height={12} />
+                  <SkeletonLoader width={80} height={12} />
+                </View>
+                <View style={styles.divider} />
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <SkeletonLoader width={100} height={16} />
+                  <SkeletonLoader width={80} height={32} borderRadius={8} />
+                </View>
+              </View>
+            ))}
+          </View>
         ) : internships.length > 0 ? (
           <Animated.View entering={FadeInUp.delay(200)}>
-            {internships.map((job, idx) => (
-              <Animated.View key={job.name || idx} entering={FadeInUp.delay(250 + idx * 50)} style={styles.card}>
-                <View style={styles.cardHeader}>
-                  <View style={styles.titleArea}>
-                    <View style={styles.iconBox}>
-                      <Briefcase size={18} color="#64748B" />
+            {internships.map((job, idx) => {
+              const accentColor = job.status === 'Active' ? '#0A8099' : (job.status === 'Draft' ? '#F59E0B' : '#94A3B8');
+              return (
+                <SwipeableRow
+                  key={job.name || idx}
+                  onEdit={() => handleEdit(job)}
+                  onDelete={() => {
+                    Alert.alert(
+                      "Delete Posting",
+                      "Are you sure you want to delete this internship posting permanently?",
+                      [
+                        { text: "Cancel", style: "cancel" },
+                        { 
+                          text: "Delete", 
+                          style: "destructive",
+                          onPress: () => handleDelete(job.name)
+                        }
+                      ]
+                    );
+                  }}
+                  disableSwipe={job.status === 'Closed'}
+                >
+                  <Animated.View entering={FadeInUp.delay(250 + idx * 50)} style={[styles.card, { borderLeftWidth: 4, borderLeftColor: accentColor, marginBottom: 0 }]}>
+                    <View style={styles.cardHeader}>
+                      <View style={styles.titleArea}>
+                        <View style={styles.iconBox}>
+                          <Briefcase size={18} color="#0A8099" />
+                        </View>
+                        <View style={styles.titleInfo}>
+                          <Text style={styles.jobRole} numberOfLines={1}>{job.title || job.internship_title}</Text>
+                          <Text style={styles.jobSubtitle}>{job.type} • {job.work_mode || job.location}</Text>
+                        </View>
+                      </View>
+                      <View style={[styles.statusBadge, job.status === 'Active' ? styles.statusActive : (job.status === 'Draft' ? styles.statusClosing : styles.statusDisabled)]}>
+                        <Text style={[styles.statusText, job.status === 'Active' ? styles.statusTextActive : (job.status === 'Draft' ? styles.statusTextClosing : styles.statusTextDisabled)]}>
+                          {job.status}
+                        </Text>
+                      </View>
                     </View>
-                    <View style={styles.titleInfo}>
-                      <Text style={styles.jobRole} numberOfLines={1}>{job.title || job.internship_title}</Text>
-                      <Text style={styles.jobSubtitle}>{job.type} • {job.work_mode || job.location}</Text>
+
+                    <View style={styles.infoGrid}>
+                      <View style={styles.infoItem}>
+                        <Banknote size={14} color="#16A34A" />
+                        <Text style={styles.infoText}>{job.payment_mode === 'Paid' ? `₹${job.stipend}` : (job.stipend > 0 ? `₹${job.stipend}` : 'Unpaid')}</Text>
+                      </View>
+                      <View style={styles.infoItem}>
+                        <Users size={14} color="#0A8099" />
+                        <Text style={styles.infoText}>{job.openings} Openings</Text>
+                      </View>
+                      <View style={styles.infoItem}>
+                        <Calendar size={14} color="#F59E0B" />
+                        <Text style={styles.infoText}>Ends {formatDate(job.end_date)}</Text>
+                      </View>
                     </View>
-                  </View>
-                  <View style={[styles.statusBadge, job.status === 'Active' ? styles.statusActive : (job.status === 'Draft' ? styles.statusClosing : styles.statusDisabled)]}>
-                    <Text style={[styles.statusText, job.status === 'Active' ? styles.statusTextActive : (job.status === 'Draft' ? styles.statusTextClosing : styles.statusTextDisabled)]}>
-                      {job.status}
-                    </Text>
-                  </View>
-                </View>
 
-                <View style={styles.infoGrid}>
-                  <View style={styles.infoItem}>
-                    <Banknote size={14} color="#10B981" />
-                    <Text style={styles.infoText}>{job.payment_mode === 'Paid' ? `₹${job.stipend}` : (job.stipend > 0 ? `₹${job.stipend}` : 'Unpaid')}</Text>
-                  </View>
-                  <View style={styles.infoItem}>
-                    <Users size={14} color="#3B82F6" />
-                    <Text style={styles.infoText}>{job.openings} Openings</Text>
-                  </View>
-                  <View style={styles.infoItem}>
-                    <Calendar size={14} color="#F59E0B" />
-                    <Text style={styles.infoText}>Ends {formatDate(job.end_date)}</Text>
-                  </View>
-                </View>
+                    <View style={styles.divider} />
 
-                <View style={styles.divider} />
+                    <View style={styles.footerRow}>
+                      <View style={styles.appCountBox}>
+                        <Text style={styles.appCountNum}>{job.total_applications || 0}</Text>
+                        <Text style={styles.appCountLabel}>APPLICATIONS</Text>
+                      </View>
 
-                <View style={styles.footerRow}>
-                  <View style={styles.appCountBox}>
-                    <Text style={styles.appCountNum}>{job.total_applications || 0}</Text>
-                    <Text style={styles.appCountLabel}>APPLICATIONS</Text>
-                  </View>
-
-                  <View style={styles.actionRow}>
-                    <TouchableOpacity
-                      style={[styles.actionBtn, styles.deleteBtn, job.status === 'Closed' && styles.disabledBtn]}
-                      onPress={() => job.status !== 'Closed' && handleDelete(job.name)}
-                      disabled={job.status === 'Closed'}
-                    >
-                      <Trash2 size={16} color={job.status === 'Closed' ? "#94A3B8" : "#EF4444"} />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[styles.manageBtn, job.status === 'Closed' && styles.disabledManageBtn]}
-                      onPress={() => job.status !== 'Closed' && handleEdit(job)}
-                      disabled={job.status === 'Closed'}
-                    >
-                      <Text style={styles.manageBtnText}>Manage</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              </Animated.View>
-            ))}
+                      <View style={styles.actionRow} />
+                    </View>
+                  </Animated.View>
+                </SwipeableRow>
+              );
+            })}
           </Animated.View>
         ) : (
           <View style={styles.emptyContainer}>
@@ -546,6 +585,7 @@ export const IndustryInternshipsScreen = () => {
           </Animated.View>
         </View>
       </Modal>
+
     </SafeAreaView>
   );
 };
@@ -684,5 +724,16 @@ const styles = StyleSheet.create({
     padding: 24,
     paddingTop: 16
   },
-  footerSpacer: { height: 40 }
+  footerSpacer: { height: 40 },
+  moreBtn: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0' },
+  actionSheetOverlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.4)', justifyContent: 'flex-end' },
+  actionSheetContent: { backgroundColor: '#FFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 36 },
+  actionSheetDragHandle: { width: 36, height: 4, backgroundColor: '#E2E8F0', borderRadius: 2, alignSelf: 'center', marginBottom: 16 },
+  actionSheetTitle: { fontSize: 18, fontWeight: '800', color: '#0F172A', textAlign: 'center' },
+  actionSheetSubtitle: { fontSize: 13, color: '#64748B', fontWeight: '500', textAlign: 'center', marginTop: 4, marginBottom: 24 },
+  actionSheetList: { gap: 12 },
+  actionSheetItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 16, backgroundColor: '#F8FAFC', borderRadius: 12, borderWidth: 1, borderColor: '#E2E8F0' },
+  actionSheetItemText: { fontSize: 14, fontWeight: '700', color: '#1E293B' },
+  actionSheetCancelBtn: { marginTop: 16, paddingVertical: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F1F5F9', borderRadius: 12 },
+  actionSheetCancelText: { fontSize: 14, fontWeight: '700', color: '#475569' }
 });

@@ -315,7 +315,7 @@ export const updateInternship = async (name: string, data: any) => {
 export const deleteInternship = async (internshipName: string) => {
   try {
     const response = await api.post(
-      `method/stridenex_app.stridenex_app.doctype.internship.internship.inactive_internship?internship_name=${encodeURIComponent(internshipName)}`
+      `method/stridenex_app.stridenex_app.doctype.internship.internship.inactive_internship?name=${encodeURIComponent(internshipName)}`
     );
     return response.data;
   } catch (error) {

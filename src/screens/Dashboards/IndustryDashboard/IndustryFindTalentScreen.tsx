@@ -3,8 +3,9 @@ import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Refres
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '@/theme/colors';
 import { typography } from '@/theme/typography';
-import { Search, ChevronDown, Sparkles, Bookmark, UserX } from 'lucide-react-native';
+import { Search, ChevronDown, Sparkles, Bookmark, UserX, TrendingUp, CheckCircle2, GraduationCap, Award } from 'lucide-react-native';
 import Animated, { FadeInUp } from 'react-native-reanimated';
+import { SkeletonLoader } from '@/components/Shared/SkeletonLoader';
 import { useIndustry } from '@/context/IndustryContext';
 import { getFindTalentList, getMasterData } from '@/api/industry.services';
 import { Pagination } from '@/components/Shared/Pagination';
@@ -203,11 +204,25 @@ export const IndustryFindTalentScreen = () => {
           </TouchableOpacity>
 
           <View style={styles.skillsChipsRow}>
-            {suggestedSkills.map((skill, index) => (
-              <View key={skill} style={[styles.skillChip, index < 3 ? styles.skillChipActive : {}]}>
-                <Text style={[styles.skillChipText, index < 3 ? styles.skillChipTextActive : {}]}>{skill}</Text>
-              </View>
-            ))}
+            {suggestedSkills.map((skill) => {
+              const isSelected = searchVal.toLowerCase().includes(skill.toLowerCase());
+              return (
+                <TouchableOpacity 
+                  key={skill} 
+                  style={[styles.skillChip, isSelected ? styles.skillChipActive : {}]}
+                  activeOpacity={0.7}
+                  onPress={() => {
+                    if (isSelected) {
+                      setSearchVal(prev => prev.replace(new RegExp(skill + '\\s*,?\\s*', 'gi'), '').trim());
+                    } else {
+                      setSearchVal(prev => (prev ? `${prev}, ${skill}` : skill));
+                    }
+                  }}
+                >
+                  <Text style={[styles.skillChipText, isSelected ? styles.skillChipTextActive : {}]}>{skill}</Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
         </Animated.View>
 
@@ -225,9 +240,28 @@ export const IndustryFindTalentScreen = () => {
           </View>
 
           {loading ? (
-            <View style={styles.loadingWrapper}>
-              <ActivityIndicator size="large" color={colors.purple[600]} />
-              <Text style={styles.loadingText}>Fetching candidates...</Text>
+            <View style={{ gap: 16, marginTop: 8 }}>
+              {[1, 2, 3].map((key) => (
+                <View key={key} style={styles.candidateCard}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                      <SkeletonLoader width={44} height={44} borderRadius={22} />
+                      <View style={{ gap: 6 }}>
+                        <SkeletonLoader width={120} height={14} />
+                        <SkeletonLoader width={80} height={10} />
+                      </View>
+                    </View>
+                    <SkeletonLoader width={50} height={16} borderRadius={4} />
+                  </View>
+                  <SkeletonLoader width="90%" height={12} style={{ marginBottom: 6 }} />
+                  <SkeletonLoader width="70%" height={12} style={{ marginBottom: 12 }} />
+                  <View style={{ height: 1, backgroundColor: '#F1F5F9', marginVertical: 12 }} />
+                  <View style={{ flexDirection: 'row', gap: 8, justifyContent: 'flex-end', marginTop: 4 }}>
+                    <SkeletonLoader width={80} height={32} borderRadius={8} />
+                    <SkeletonLoader width={80} height={32} borderRadius={8} />
+                  </View>
+                </View>
+              ))}
             </View>
           ) : error ? (
             <View style={styles.errorWrapper}>
@@ -243,21 +277,43 @@ export const IndustryFindTalentScreen = () => {
                   const candidate = transformStudent(rawStudent);
                   return (
                     <Animated.View key={candidate.id} entering={FadeInUp.delay(50 + idx * 50)} style={styles.candidateCard}>
-                      <View style={styles.matchBadge}>
-                        <Text style={styles.matchBadgeText}>{candidate.match}%</Text>
+                      <View style={styles.matchBadgeCapsule}>
+                        <TrendingUp size={10} color="#10B981" />
+                        <Text style={styles.matchBadgeCapsuleText}>{candidate.match}% Match</Text>
                       </View>
                       
                       <View style={styles.candidateTop}>
-                        <View style={[styles.avatar, { backgroundColor: candidate.bgColor }]}>
-                          <Text style={styles.avatarText}>{candidate.initials}</Text>
+                        <View style={[styles.avatarCircle, { backgroundColor: candidate.bgColor + '20' }]}>
+                          <Text style={[styles.avatarCircleText, { color: candidate.bgColor }]}>{candidate.initials}</Text>
                         </View>
                         <View style={styles.candidateInfo}>
-                          <Text style={styles.candidateName}>{candidate.name}</Text>
-                          <Text style={styles.candidateCollege}>{candidate.college}</Text>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 4 }}>
+                            <Text style={styles.candidateName}>{candidate.name}</Text>
+                            <CheckCircle2 size={12} color="#0A8099" />
+                          </View>
+                          
+                          {(() => {
+                            const [collegeName, yearDetail] = candidate.college.split(' • ');
+                            return (
+                              <>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 2 }}>
+                                  <GraduationCap size={12} color="#64748B" />
+                                  <Text style={styles.candidateCollegeText}>{collegeName}</Text>
+                                </View>
+                                {yearDetail ? (
+                                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 10 }}>
+                                    <Award size={12} color="#F59E0B" />
+                                    <Text style={styles.candidateCollegeText}>{yearDetail}</Text>
+                                  </View>
+                                ) : null}
+                              </>
+                            );
+                          })()}
+
                           <View style={styles.skillsRow}>
                             {candidate.skills.slice(0, 3).map((skill: string, skillIdx: number) => (
-                              <View key={`${skill}-${skillIdx}`} style={styles.skillTag}>
-                                <Text style={styles.skillTagText}>{skill}</Text>
+                              <View key={`${skill}-${skillIdx}`} style={styles.skillTagCustom}>
+                                <Text style={styles.skillTagCustomText}>{skill}</Text>
                               </View>
                             ))}
                           </View>
@@ -266,14 +322,14 @@ export const IndustryFindTalentScreen = () => {
 
                       <View style={styles.candidateActions}>
                         <TouchableOpacity style={styles.inviteBtn}>
-                          <Sparkles size={14} color="#FFF" />
-                          <Text style={styles.inviteBtnText}>Invite</Text>
+                          <Sparkles size={13} color="#FFF" />
+                          <Text style={styles.inviteBtnText}>Invite Candidate</Text>
                         </TouchableOpacity>
                         <TouchableOpacity style={styles.ledgerBtn}>
-                          <Text style={styles.ledgerBtnText}>View Ledger</Text>
+                          <Text style={styles.ledgerBtnText}>View Profile</Text>
                         </TouchableOpacity>
                         <TouchableOpacity style={styles.bookmarkBtn}>
-                          <Bookmark size={20} color="#94A3B8" />
+                          <Bookmark size={18} color="#64748B" />
                         </TouchableOpacity>
                       </View>
                     </Animated.View>
@@ -411,24 +467,24 @@ const styles = StyleSheet.create({
   dropdownSmallText: { fontSize: 12, color: '#475569', fontWeight: '600' },
 
   candidatesList: { gap: 16 },
-  candidateCard: { backgroundColor: '#FFFFFF', borderRadius: 20, padding: 20, borderWidth: 1, borderColor: '#E2E8F0', shadowColor: '#64748B', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 1, position: 'relative' },
-  matchBadge: { position: 'absolute', top: 20, right: 20, width: 44, height: 44, borderRadius: 22, borderWidth: 3, borderColor: '#10B981', alignItems: 'center', justifyContent: 'center' },
-  matchBadgeText: { fontSize: 13, fontWeight: '900', color: '#059669' },
-  candidateTop: { flexDirection: 'row', gap: 16, marginBottom: 20 },
-  avatar: { width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center' },
-  avatarText: { color: '#FFF', fontSize: 18, fontWeight: '800' },
-  candidateInfo: { flex: 1, paddingRight: 40 },
-  candidateName: { fontSize: 17, fontWeight: '800', color: '#1E293B', marginBottom: 2 },
-  candidateCollege: { fontSize: 13, color: '#64748B', fontWeight: '500', marginBottom: 10 },
-  skillsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  skillTag: { backgroundColor: '#EFF6FF', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, borderWidth: 1, borderColor: '#DBEAFE' },
-  skillTagText: { fontSize: 11, fontWeight: '700', color: '#2563EB' },
-  candidateActions: { flexDirection: 'row', gap: 10 },
-  inviteBtn: { flex: 1, backgroundColor: colors.purple[600], flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12, borderRadius: 10 },
-  inviteBtnText: { color: '#FFF', fontSize: 13, fontWeight: '700' },
-  ledgerBtn: { flex: 1, backgroundColor: '#F8FAFC', paddingVertical: 12, borderRadius: 10, borderWidth: 1, borderColor: '#E2E8F0', alignItems: 'center', justifyContent: 'center' },
-  ledgerBtnText: { color: '#475569', fontSize: 13, fontWeight: '700' },
-  bookmarkBtn: { width: 44, height: 44, borderRadius: 10, borderWidth: 1, borderColor: '#E2E8F0', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFF' },
+  candidateCard: { backgroundColor: '#FFFFFF', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: '#E2E8F0', borderLeftWidth: 4, borderLeftColor: '#0A8099', shadowColor: '#64748B', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.02, shadowRadius: 6, elevation: 1, position: 'relative' },
+  matchBadgeCapsule: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(16, 185, 129, 0.08)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12, position: 'absolute', top: 14, right: 14 },
+  matchBadgeCapsuleText: { fontSize: 10, fontWeight: '800', color: '#059669' },
+  candidateTop: { flexDirection: 'row', gap: 14, marginBottom: 16 },
+  avatarCircle: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
+  avatarCircleText: { fontSize: 16, fontWeight: '800' },
+  candidateInfo: { flex: 1, paddingRight: 70 },
+  candidateName: { fontSize: 15, fontWeight: '800', color: '#1E293B' },
+  candidateCollegeText: { fontSize: 11, color: '#64748B', fontWeight: '600' },
+  skillsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 },
+  skillTagCustom: { backgroundColor: '#E6F5F8', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, borderWidth: 1, borderColor: '#BCE3EB' },
+  skillTagCustomText: { fontSize: 10, fontWeight: '700', color: '#0A8099' },
+  candidateActions: { flexDirection: 'row', gap: 10, borderTopWidth: 1, borderColor: '#F1F5F9', paddingTop: 14 },
+  inviteBtn: { flex: 1, backgroundColor: '#0A8099', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, borderRadius: 10 },
+  inviteBtnText: { color: '#FFF', fontSize: 12, fontWeight: '700' },
+  ledgerBtn: { flex: 1, backgroundColor: '#F8FAFC', paddingVertical: 10, borderRadius: 10, borderWidth: 1, borderColor: '#E2E8F0', alignItems: 'center', justifyContent: 'center' },
+  ledgerBtnText: { color: '#475569', fontSize: 12, fontWeight: '700' },
+  bookmarkBtn: { width: 40, height: 40, borderRadius: 10, borderWidth: 1, borderColor: '#E2E8F0', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFF' },
   
   loadingWrapper: { paddingVertical: 40, alignItems: 'center', justifyContent: 'center' },
   loadingText: { marginTop: 10, fontSize: 13, color: '#64748B', fontWeight: '500' },

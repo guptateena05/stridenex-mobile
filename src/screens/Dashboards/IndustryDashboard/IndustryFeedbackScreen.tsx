@@ -80,10 +80,10 @@ export const IndustryFeedbackScreen = () => {
 
         {/* Stats Row */}
         <Animated.View entering={FadeInUp.delay(200)} style={styles.statsRow}>
-           <StatsCard title="OVERALL RATING" value="4.0/5" icon={Star} color="#F97316" />
-           <StatsCard title="TOTAL REVIEWS" value="4" icon={FileText} color="#3B82F6" />
-           <StatsCard title="RECOMMEND" value="92%" icon={ThumbsUp} color="#10B981" />
-           <StatsCard title="RATING TREND" value="+0.4" icon={TrendingUp} color="#EF4444" />
+           <StatsCard title="OVERALL RATING" value="4.0/5" icon={Star} color="#F59E0B" />
+           <StatsCard title="TOTAL REVIEWS" value="4" icon={FileText} color="#64748B" />
+           <StatsCard title="RECOMMEND" value="92%" icon={ThumbsUp} color="#16A34A" />
+           <StatsCard title="RATING TREND" value="+0.4" icon={TrendingUp} color="#0A8099" />
         </Animated.View>
 
         {/* Actionable Insights */}
@@ -149,7 +149,7 @@ export const IndustryFeedbackScreen = () => {
                     <View style={styles.reviewHeader}>
                        <View style={styles.reviewerInfo}>
                           <View style={styles.reviewerAvatar}>
-                             <Users size={20} color="#6366F1" />
+                             <Users size={20} color="#0A8099" />
                           </View>
                           <View>
                              <View style={styles.reviewerNameRow}>
@@ -239,21 +239,21 @@ const styles = StyleSheet.create({
   starCol: { flexDirection: 'row', alignItems: 'center', gap: 4, width: 32 },
   starText: { fontSize: 13, fontWeight: '800', color: '#1E293B' },
   barBg: { flex: 1, height: 8, backgroundColor: '#F1F5F9', borderRadius: 4, overflow: 'hidden' },
-  barFill: { height: '100%', backgroundColor: '#10B981', borderRadius: 4 },
+  barFill: { height: '100%', backgroundColor: '#0A8099', borderRadius: 4 },
   countText: { width: 24, textAlign: 'right', fontSize: 12, fontWeight: '800', color: '#1E293B' },
 
   reviewsSectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 4, marginBottom: 16 },
   reviewsTitle: { fontSize: 18, fontWeight: '800', color: '#1E293B' },
   
   reviewsList: { gap: 16 },
-  reviewCard: { backgroundColor: '#FFF', borderRadius: 20, padding: 20, borderWidth: 1, borderColor: '#E2E8F0', shadowColor: '#64748B', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 4, elevation: 1 },
-  reviewHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 },
+  reviewCard: { backgroundColor: '#FFF', borderRadius: 16, padding: 16, borderWidth: 1, borderLeftWidth: 4, borderLeftColor: '#0A8099', borderColor: '#E2E8F0', shadowColor: '#64748B', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.02, shadowRadius: 6, elevation: 1 },
+  reviewHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 },
   reviewerInfo: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, flex: 1 },
-  reviewerAvatar: { width: 44, height: 44, borderRadius: 12, backgroundColor: '#F8FAFC', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#F1F5F9' },
+  reviewerAvatar: { width: 44, height: 44, borderRadius: 12, backgroundColor: '#E6F5F8', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#BCE3EB' },
   reviewerNameRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
   reviewerName: { fontSize: 15, fontWeight: '900', color: '#0F172A' },
-  hiddenBadge: { backgroundColor: '#EFF6FF', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, borderWidth: 1, borderColor: '#DBEAFE' },
-  hiddenBadgeText: { fontSize: 9, fontWeight: '900', color: '#2563EB', letterSpacing: 0.5 },
+  hiddenBadge: { backgroundColor: 'rgba(100, 116, 139, 0.08)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, borderWidth: 1, borderColor: '#E2E8F0' },
+  hiddenBadgeText: { fontSize: 9, fontWeight: '900', color: '#64748B', letterSpacing: 0.5 },
   roleBadge: { backgroundColor: '#F8FAFC', alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, borderWidth: 1, borderColor: '#F1F5F9' },
   roleText: { fontSize: 10, fontWeight: '800', color: '#64748B' },
   
@@ -261,17 +261,17 @@ const styles = StyleSheet.create({
   starsRow: { flexDirection: 'row', gap: 2 },
   reviewDate: { fontSize: 10, fontWeight: '800', color: '#94A3B8', letterSpacing: 0.5, textTransform: 'uppercase' },
 
-  reviewText: { fontSize: 14, color: '#334155', fontWeight: '500', lineHeight: 22, marginBottom: 20, paddingLeft: 16, borderLeftWidth: 2, borderLeftColor: '#6366F1' },
+  reviewText: { fontSize: 14, color: '#334155', fontWeight: '500', lineHeight: 22, marginBottom: 20, paddingLeft: 16, borderLeftWidth: 2, borderLeftColor: '#0A8099' },
 
   tagsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 20 },
-  tagPill: { backgroundColor: '#F8FAFC', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: '#E2E8F0' },
-  tagText: { fontSize: 10, fontWeight: '800', color: '#475569' },
+  tagPill: { backgroundColor: '#E6F5F8', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: '#BCE3EB' },
+  tagText: { fontSize: 10, fontWeight: '800', color: '#0A8099' },
 
   divider: { height: 1, backgroundColor: '#F1F5F9', marginBottom: 20 },
 
   breakdownGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 12 },
   breakdownItem: { alignItems: 'center', width: '30%' },
-  breakdownValue: { fontSize: 16, fontWeight: '900', color: '#6366F1', marginBottom: 2 },
+  breakdownValue: { fontSize: 16, fontWeight: '900', color: '#0A8099', marginBottom: 2 },
   breakdownLabel: { fontSize: 9, fontWeight: '900', color: '#64748B', textTransform: 'uppercase', letterSpacing: 0.5 },
 
   footerSpacer: { height: 40 }

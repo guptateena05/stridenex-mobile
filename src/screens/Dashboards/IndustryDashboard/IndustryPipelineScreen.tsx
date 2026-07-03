@@ -14,6 +14,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '@/theme/colors';
 import { typography } from '@/theme/typography';
+import { SkeletonLoader } from '@/components/Shared/SkeletonLoader';
 import {
   MapPin,
   Clock,
@@ -27,7 +28,9 @@ import {
   X,
   ChevronDown,
   Mail,
-  ChevronRight
+  ChevronRight,
+  GraduationCap,
+  TrendingUp
 } from 'lucide-react-native';
 import Animated, { FadeInUp, FadeInRight, Layout, SlideInRight } from 'react-native-reanimated';
 import { useIndustry } from '@/context/IndustryContext';
@@ -194,15 +197,6 @@ export const IndustryPipelineScreen = () => {
     }
   };
 
-  if (loading && !refreshing) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={colors.purple[600]} />
-        <Text style={styles.loadingText}>SYNCING PIPELINE...</Text>
-      </View>
-    );
-  }
-
   const activeColor = pipelineColumns.find(c => c.id === activeTab)?.color || colors.purple[600];
 
   return (
@@ -279,32 +273,60 @@ export const IndustryPipelineScreen = () => {
         </View>
 
         <View style={styles.cardsList}>
-          {candidates[activeTab]?.length > 0 ? (
+          {loading ? (
+            <View style={{ gap: 16 }}>
+              {[1, 2, 3].map((key) => (
+                <View key={key} style={[styles.candidateCard, { borderLeftWidth: 4, borderLeftColor: '#E2E8F0' }]}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                      <SkeletonLoader width={44} height={44} borderRadius={22} />
+                      <View style={{ gap: 6 }}>
+                        <SkeletonLoader width={120} height={14} />
+                        <SkeletonLoader width={80} height={10} />
+                      </View>
+                    </View>
+                    <SkeletonLoader width={40} height={16} borderRadius={8} />
+                  </View>
+                  <SkeletonLoader width="90%" height={12} style={{ marginBottom: 6 }} />
+                  <SkeletonLoader width="50%" height={12} style={{ marginBottom: 12 }} />
+                  <View style={{ height: 1, backgroundColor: '#F1F5F9', marginVertical: 12 }} />
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <SkeletonLoader width={100} height={12} />
+                    <SkeletonLoader width={80} height={16} borderRadius={4} />
+                  </View>
+                </View>
+              ))}
+            </View>
+          ) : candidates[activeTab]?.length > 0 ? (
             candidates[activeTab].map((candidate, cIdx) => (
               <Animated.View 
                 key={candidate.id} 
                 entering={FadeInUp.delay(cIdx * 50)}
               >
                 <TouchableOpacity 
-                  style={styles.candidateCard}
+                  style={[styles.candidateCard, { borderLeftWidth: 4, borderLeftColor: activeColor }]}
                   onPress={() => handleCardClick(candidate)}
                 >
                   <View style={styles.cardMain}>
-                    <View style={[styles.avatar, { backgroundColor: candidate.bgColor }]}>
-                      <Text style={styles.avatarText}>{candidate.initials}</Text>
+                    <View style={[styles.avatarCircle, { backgroundColor: candidate.bgColor + '20' }]}>
+                      <Text style={[styles.avatarCircleText, { color: candidate.bgColor }]}>{candidate.initials}</Text>
                     </View>
                     <View style={styles.candidateInfo}>
                       <View style={styles.nameRow}>
-                        <Text style={styles.candidateName} numberOfLines={1}>{candidate.name}</Text>
-                        <View style={styles.matchBadge}>
-                          <Text style={styles.matchText}>{candidate.match}% Match</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, flex: 1, paddingRight: 6 }}>
+                          <Text style={styles.candidateName} numberOfLines={1}>{candidate.name}</Text>
+                          <CheckCircle2 size={12} color="#0A8099" />
+                        </View>
+                        <View style={styles.matchBadgeCapsule}>
+                          <TrendingUp size={10} color="#10B981" />
+                          <Text style={styles.matchBadgeCapsuleText}>{candidate.match}%</Text>
                         </View>
                       </View>
                       <Text style={styles.candidateEmail} numberOfLines={1}>{candidate.studentEmail}</Text>
                       
                       <View style={styles.metaRow}>
                         <View style={styles.metaItem}>
-                          <MapPin size={12} color="#94A3B8" />
+                          <GraduationCap size={12} color="#94A3B8" />
                           <Text style={styles.metaText} numberOfLines={1}>{candidate.college}</Text>
                         </View>
                       </View>
@@ -491,15 +513,15 @@ const styles = StyleSheet.create({
   heroSubtitle: { fontSize: 12, color: '#64748B', fontWeight: '600', marginTop: 2 },
 
   cardsList: { padding: 16, gap: 16 },
-  candidateCard: { backgroundColor: '#FFF', borderRadius: 24, padding: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 12, elevation: 3, borderWidth: 1, borderColor: '#F1F5F9' },
-  cardMain: { flexDirection: 'row', alignItems: 'center', gap: 16 },
-  avatar: { width: 48, height: 48, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
-  avatarText: { fontSize: 18, fontWeight: '800', color: '#FFF' },
+  candidateCard: { backgroundColor: '#FFF', borderRadius: 16, padding: 16, shadowColor: '#64748B', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.02, shadowRadius: 6, elevation: 1, borderWidth: 1, borderColor: '#E2E8F0' },
+  cardMain: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  avatarCircle: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
+  avatarCircleText: { fontSize: 16, fontWeight: '800' },
   candidateInfo: { flex: 1 },
-  nameRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 },
-  candidateName: { fontSize: 16, fontWeight: '800', color: '#1E293B' },
-  matchBadge: { backgroundColor: '#ECFDF5', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
-  matchText: { fontSize: 10, fontWeight: '800', color: '#059669' },
+  nameRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 },
+  candidateName: { fontSize: 15, fontWeight: '800', color: '#1E293B' },
+  matchBadgeCapsule: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(16, 185, 129, 0.08)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12 },
+  matchBadgeCapsuleText: { fontSize: 10, fontWeight: '800', color: '#059669' },
   candidateEmail: { fontSize: 12, color: '#64748B', fontWeight: '500', marginBottom: 8 },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   metaItem: { flexDirection: 'row', alignItems: 'center', gap: 4, flex: 1 },

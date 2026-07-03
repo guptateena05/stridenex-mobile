@@ -129,8 +129,8 @@ const styles = StyleSheet.create({
   title: { fontSize: 22, fontWeight: '800', color: '#0F172A', fontFamily: typography.fontFamily.display, letterSpacing: -0.5 },
   subtitle: { fontSize: 12, color: '#64748B', fontWeight: '500', marginTop: 2 },
 
-  planCard: { backgroundColor: '#F8FAFC', padding: 24, borderRadius: 24, borderWidth: 1, borderColor: '#E2E8F0', marginBottom: 20 },
-  planCardActive: { backgroundColor: '#FFF', borderColor: colors.purple[500], shadowColor: colors.purple[500], shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.15, shadowRadius: 16, elevation: 4 },
+  planCard: { backgroundColor: '#F8FAFC', padding: 24, borderRadius: 24, borderWidth: 1, borderLeftWidth: 4, borderLeftColor: '#94A3B8', borderColor: '#E2E8F0', marginBottom: 20 },
+  planCardActive: { backgroundColor: '#FFF', borderColor: colors.purple[600], borderLeftWidth: 4, borderLeftColor: colors.purple[600], shadowColor: colors.purple[500], shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.15, shadowRadius: 16, elevation: 4 },
   
   currentBadge: { position: 'absolute', top: 16, right: 16, backgroundColor: colors.purple[600], paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12 },
   currentBadgeText: { fontSize: 10, fontWeight: '900', color: '#FFF', letterSpacing: 1 },
@@ -152,14 +152,14 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 16, fontWeight: '800', color: '#1E293B', marginBottom: 16, marginTop: 16, paddingHorizontal: 4 },
   
   billingList: { gap: 12 },
-  billingItem: { backgroundColor: '#FFF', padding: 16, borderRadius: 16, borderWidth: 1, borderColor: '#E2E8F0' },
+  billingItem: { backgroundColor: '#FFF', padding: 16, borderRadius: 16, borderWidth: 1, borderLeftWidth: 3, borderLeftColor: colors.purple[600], borderColor: '#E2E8F0' },
   billingTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
   billingDate: { fontSize: 12, fontWeight: '800', color: '#64748B' },
   billingAmount: { fontSize: 15, fontWeight: '900', color: '#1E293B' },
   billingBottomRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   billingDesc: { fontSize: 14, fontWeight: '600', color: '#334155' },
   billingActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  statusBadge: { backgroundColor: '#ECFDF5', borderColor: '#D1FAE5', borderWidth: 1, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 },
+  statusBadge: { backgroundColor: 'rgba(16, 185, 129, 0.08)', borderColor: '#D1FAE5', borderWidth: 1, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 },
   statusText: { fontSize: 10, fontWeight: '800', color: '#059669', textTransform: 'uppercase', letterSpacing: 0.5 },
   invoiceBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
   invoiceBtnText: { fontSize: 10, fontWeight: '800', color: '#475569', textTransform: 'uppercase', letterSpacing: 0.5 },

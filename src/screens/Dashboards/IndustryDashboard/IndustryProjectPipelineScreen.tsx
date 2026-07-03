@@ -15,6 +15,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '@/theme/colors';
 import { typography } from '@/theme/typography';
+import { SkeletonLoader } from '@/components/Shared/SkeletonLoader';
 import {
   MapPin,
   Clock,
@@ -229,15 +230,6 @@ export const IndustryProjectPipelineScreen = ({ route, navigation }: any) => {
     Linking.openURL(url).catch(err => Alert.alert("Error", "Cannot open resume link"));
   };
 
-  if (loading && !refreshing) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={colors.purple[600]} />
-        <Text style={styles.loadingText}>SYNCING PROJECT PIPELINE...</Text>
-      </View>
-    );
-  }
-
   const activeColor = pipelineColumns.find(c => c.id === activeTab)?.color || colors.purple[600];
 
   return (
@@ -317,23 +309,50 @@ export const IndustryProjectPipelineScreen = ({ route, navigation }: any) => {
         </View>
 
         <View style={styles.cardsList}>
-          {candidates[activeTab]?.length > 0 ? (
+          {loading ? (
+            <View style={{ gap: 16 }}>
+              {[1, 2, 3].map((key) => (
+                <View key={key} style={[styles.candidateCard, { borderLeftWidth: 4, borderLeftColor: '#E2E8F0' }]}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                      <SkeletonLoader width={44} height={44} borderRadius={22} />
+                      <View style={{ gap: 6 }}>
+                        <SkeletonLoader width={120} height={14} />
+                        <SkeletonLoader width={80} height={10} />
+                      </View>
+                    </View>
+                    <SkeletonLoader width={40} height={16} borderRadius={8} />
+                  </View>
+                  <SkeletonLoader width="90%" height={12} style={{ marginBottom: 6 }} />
+                  <SkeletonLoader width="50%" height={12} style={{ marginBottom: 12 }} />
+                  <View style={{ height: 1, backgroundColor: '#F1F5F9', marginVertical: 12 }} />
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <SkeletonLoader width={100} height={12} />
+                    <SkeletonLoader width={80} height={16} borderRadius={4} />
+                  </View>
+                </View>
+              ))}
+            </View>
+          ) : candidates[activeTab]?.length > 0 ? (
             candidates[activeTab].map((candidate, cIdx) => (
               <Animated.View
                 key={candidate.id}
                 entering={FadeInUp.delay(cIdx * 50)}
               >
                 <TouchableOpacity
-                  style={styles.candidateCard}
+                  style={[styles.candidateCard, { borderLeftWidth: 4, borderLeftColor: activeColor }]}
                   onPress={() => handleCardClick(candidate)}
                 >
                   <View style={styles.cardMain}>
-                    <View style={[styles.avatar, { backgroundColor: candidate.bgColor }]}>
-                      <Text style={styles.avatarText}>{candidate.initials}</Text>
+                    <View style={[styles.avatarCircle, { backgroundColor: candidate.bgColor + '20' }]}>
+                      <Text style={[styles.avatarCircleText, { color: candidate.bgColor }]}>{candidate.initials}</Text>
                     </View>
                     <View style={styles.candidateInfo}>
                       <View style={styles.nameRow}>
-                        <Text style={styles.candidateName} numberOfLines={1}>{candidate.student}</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, flex: 1 }}>
+                          <Text style={styles.candidateName} numberOfLines={1}>{candidate.student}</Text>
+                          <CheckCircle2 size={12} color="#0A8099" />
+                        </View>
                       </View>
                       <Text style={styles.projectText} numberOfLines={1}>Project: {candidate.project}</Text>
                     </View>
@@ -346,9 +365,9 @@ export const IndustryProjectPipelineScreen = ({ route, navigation }: any) => {
                       <Text style={styles.footerText}>Applied on {candidate.applied_on}</Text>
                     </View>
                     {candidate.resume ? (
-                      <View style={styles.resumeBadge}>
-                        <FileText size={10} color="#3B82F6" />
-                        <Text style={styles.resumeText}>Resume Attached</Text>
+                      <View style={styles.resumeBadgeCustom}>
+                        <FileText size={10} color="#0A8099" />
+                        <Text style={styles.resumeTextCustom}>Resume Attached</Text>
                       </View>
                     ) : null}
                   </View>
@@ -522,20 +541,20 @@ const styles = StyleSheet.create({
   heroSubtitle: { fontSize: 12, color: '#64748B', fontWeight: '600', marginTop: 2 },
 
   cardsList: { padding: 16, gap: 16 },
-  candidateCard: { backgroundColor: '#FFF', borderRadius: 24, padding: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 12, elevation: 3, borderWidth: 1, borderColor: '#F1F5F9' },
-  cardMain: { flexDirection: 'row', alignItems: 'center', gap: 16 },
-  avatar: { width: 48, height: 48, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
-  avatarText: { fontSize: 18, fontWeight: '800', color: '#FFF' },
+  candidateCard: { backgroundColor: '#FFF', borderRadius: 16, padding: 16, shadowColor: '#64748B', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.02, shadowRadius: 6, elevation: 1, borderWidth: 1, borderColor: '#E2E8F0' },
+  cardMain: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  avatarCircle: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
+  avatarCircleText: { fontSize: 16, fontWeight: '800' },
   candidateInfo: { flex: 1 },
-  nameRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 },
-  candidateName: { fontSize: 16, fontWeight: '800', color: '#1E293B' },
+  nameRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 },
+  candidateName: { fontSize: 15, fontWeight: '800', color: '#1E293B' },
   projectText: { fontSize: 11, fontWeight: '600', color: '#94A3B8' },
 
   cardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 16, paddingTop: 16, borderTopWidth: 1, borderTopColor: '#F1F5F9' },
   footerItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   footerText: { fontSize: 11, fontWeight: '600', color: '#64748B' },
-  resumeBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#EFF6FF', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, borderWidth: 1, borderColor: '#DBEAFE' },
-  resumeText: { fontSize: 10, fontWeight: '700', color: '#3B82F6' },
+  resumeBadgeCustom: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#E6F5F8', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, borderWidth: 1, borderColor: '#BCE3EB' },
+  resumeTextCustom: { fontSize: 10, fontWeight: '700', color: '#0A8099' },
 
   emptyState: { alignItems: 'center', justifyContent: 'center', paddingVertical: 80, paddingHorizontal: 40 },
   emptyIconCircle: { width: 80, height: 80, borderRadius: 40, backgroundColor: '#F8FAFC', alignItems: 'center', justifyContent: 'center', marginBottom: 20 },
