@@ -116,8 +116,8 @@ export const CollegePlacementScreen = ({ route }: any) => {
 
   // ELIGIBILITY TAB STATE
   const [eligibilityBranches, setEligibilityBranches] = useState<string[]>([]);
-  const [eligibilityCgpa, setEligibilityCgpa] = useState('6.0');
-  const [eligibilityBacklog, setEligibilityBacklog] = useState('0');
+  const [eligibilityCgpa, setEligibilityCgpa] = useState('');
+  const [eligibilityBacklog, setEligibilityBacklog] = useState('');
   const [eligibilityAcademicYear, setEligibilityAcademicYear] = useState("All");
   const [isYearSelectorOpen, setIsYearSelectorOpen] = useState(false);
   const availableYears = ["All", "First Year", "Second Year", "Third Year", "Final Year"];
@@ -644,7 +644,8 @@ export const CollegePlacementScreen = ({ route }: any) => {
           branch: branchParam,
           cgpa: cgpaParam,
           backlog: backlogParam,
-          drive: drive.name
+          drive: drive.name,
+          college: collegeName
         })
       ]);
 
@@ -1046,7 +1047,7 @@ export const CollegePlacementScreen = ({ route }: any) => {
   // Computations for filter items
   const filteredTrackerList = useMemo(() => {
     return trackerList.filter(item => {
-      const name = (item.student_name || item.student || item.student_id || '').toLowerCase();
+      const name = (item.student_name || item.student || `${item.first_name || ""} ${item.last_name || ""}`.trim() || item.student_id || item.name || '').toLowerCase();
       return name.includes(trackerSearch.toLowerCase());
     });
   }, [trackerList, trackerSearch]);
@@ -1286,7 +1287,7 @@ export const CollegePlacementScreen = ({ route }: any) => {
               </View>
             ) : (
               studentsToRender.map((item, index) => {
-                const stdName = item.student_name || item.student || item.student_id || "Anonymous";
+                const stdName = item.student_name || item.student || (item.first_name || item.last_name ? `${item.first_name || ""} ${item.last_name || ""}`.trim() : "") || item.student_id || item.name || "Anonymous";
                 const initials = stdName.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2);
                 const avatarColor = getAvatarColor(stdName);
                 
@@ -1804,7 +1805,7 @@ export const CollegePlacementScreen = ({ route }: any) => {
                           </View>
                         ) : (
                           filteredTrackerList.map((std, idx) => {
-                            const stdName = std.student_name || std.student || std.student_id || "Anonymous";
+                            const stdName = std.student_name || std.student || (std.first_name || std.last_name ? `${std.first_name || ""} ${std.last_name || ""}`.trim() : "") || std.student_id || std.name || "Anonymous";
                             const initials = stdName.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2);
                             const avatarColor = getAvatarColor(stdName);
                             
@@ -1816,7 +1817,7 @@ export const CollegePlacementScreen = ({ route }: any) => {
                                   </View>
                                   <View style={{ flex: 1 }}>
                                     <Text style={styles.studentName} numberOfLines={1}>{stdName}</Text>
-                                    <Text style={styles.studentSubtitle}>{std.branch || "CS"} • Yr: {std.academic_year || "—"} • CGPA: {std.cgpa || "N/A"}</Text>
+                                    <Text style={styles.studentSubtitle}>{std.branch || "CS"} • Yr: {std.current_year || std.academic_year || "—"} • CGPA: {std.cgpa || "N/A"}</Text>
                                   </View>
                                 </View>
                                 
@@ -1992,7 +1993,7 @@ export const CollegePlacementScreen = ({ route }: any) => {
                                   </View>
                                 ) : (
                                   tabEligibleStudents.map((std, idx) => {
-                                    const stdName = std.student_name || std.name || std.student_id || "Anonymous";
+                                    const stdName = std.student_name || (std.first_name || std.last_name ? `${std.first_name || ""} ${std.last_name || ""}`.trim() : "") || std.name || std.student_id || "Anonymous";
                                     const initials = stdName.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2);
                                     const avatarColor = getAvatarColor(stdName);
                                     return (
@@ -2004,12 +2005,20 @@ export const CollegePlacementScreen = ({ route }: any) => {
                                           <View style={{ flex: 1 }}>
                                             <Text style={styles.studentName} numberOfLines={1}>{stdName}</Text>
                                             <Text style={styles.studentSubtitle}>
-                                              {std.branch || std.course || "CS"} • Yr: {std.academic_year || "—"} • CGPA: {std.cgpa !== undefined && std.cgpa !== null ? std.cgpa : "—"} • Backlogs: {std.backlogs ?? std.backlog ?? 0}
+                                              {std.branch || std.course || "CS"} • Yr: {std.current_year || std.academic_year || "—"} • CGPA: {std.cgpa !== undefined && std.cgpa !== null ? std.cgpa : "—"} • Backlogs: {std.backlogs ?? std.backlog ?? 0}
                                             </Text>
                                           </View>
                                         </View>
-                                        <View style={[styles.statusBadge, styles.statusBadgeOpen]}>
-                                          <Text style={[styles.statusText, styles.statusTextOpen]}>ELIGIBLE</Text>
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                          <TouchableOpacity 
+                                            style={styles.notifyButton} 
+                                            onPress={() => handleNotifyCandidateMail(std, "eligible", "")}
+                                          >
+                                            <Text style={styles.notifyButtonText}>Notify</Text>
+                                          </TouchableOpacity>
+                                          <View style={[styles.statusBadge, styles.statusBadgeOpen]}>
+                                            <Text style={[styles.statusText, styles.statusTextOpen]}>ELIGIBLE</Text>
+                                          </View>
                                         </View>
                                       </View>
                                     );
@@ -2031,7 +2040,7 @@ export const CollegePlacementScreen = ({ route }: any) => {
                                   </View>
                                 ) : (
                                   tabNonEligibleStudents.map((std, idx) => {
-                                    const stdName = std.student_name || std.name || std.student_id || "Anonymous";
+                                    const stdName = std.student_name || (std.first_name || std.last_name ? `${std.first_name || ""} ${std.last_name || ""}`.trim() : "") || std.name || std.student_id || "Anonymous";
                                     const initials = stdName.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2);
                                     const avatarColor = getAvatarColor(stdName);
                                     return (
@@ -2043,12 +2052,20 @@ export const CollegePlacementScreen = ({ route }: any) => {
                                           <View style={{ flex: 1 }}>
                                             <Text style={styles.studentName} numberOfLines={1}>{stdName}</Text>
                                             <Text style={styles.studentSubtitle}>
-                                              {std.branch || std.course || "CS"} • Yr: {std.academic_year || "—"} • CGPA: {std.cgpa !== undefined && std.cgpa !== null ? std.cgpa : "—"} • Backlogs: {std.backlogs ?? std.backlog ?? 0}
+                                              {std.branch || std.course || "CS"} • Yr: {std.current_year || std.academic_year || "—"} • CGPA: {std.cgpa !== undefined && std.cgpa !== null ? std.cgpa : "—"} • Backlogs: {std.backlogs ?? std.backlog ?? 0}
                                             </Text>
                                           </View>
                                         </View>
-                                        <View style={[styles.statusBadge, styles.statusBadgeClosed]}>
-                                          <Text style={[styles.statusText, styles.statusTextClosed]}>INELIGIBLE</Text>
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                          <TouchableOpacity 
+                                            style={styles.notifyButton} 
+                                            onPress={() => handleNotifyCandidateMail(std, "not_eligible", "")}
+                                          >
+                                            <Text style={styles.notifyButtonText}>Notify</Text>
+                                          </TouchableOpacity>
+                                          <View style={[styles.statusBadge, styles.statusBadgeClosed]}>
+                                            <Text style={[styles.statusText, styles.statusTextClosed]}>INELIGIBLE</Text>
+                                          </View>
                                         </View>
                                       </View>
                                     );
@@ -2341,6 +2358,8 @@ const styles = StyleSheet.create({
   statusTextOpen: { color: '#10B981' },
   statusTextClosed: { color: '#EF4444' },
   statusTextShortlisted: { color: '#F59E0B' },
+  notifyButton: { backgroundColor: '#2563EB', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 6, alignItems: 'center', justifyContent: 'center' },
+  notifyButtonText: { color: '#FFF', fontSize: 10, fontWeight: '700', textTransform: 'uppercase' },
 
   driveDetails: { flexDirection: 'row', justifyContent: 'space-between', borderTopWidth: 1, borderBottomWidth: 1, borderColor: '#F1F5F9', paddingVertical: 10 },
   detailItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
