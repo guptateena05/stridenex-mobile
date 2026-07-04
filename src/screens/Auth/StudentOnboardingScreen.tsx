@@ -49,6 +49,7 @@ const StudentOnboardingScreen = () => {
   const navigation = useNavigation<any>();
   const [step, setStep] = useState<1 | 2>(1);
   const [loading, setLoading] = useState(false);
+  const [hasCreatedRecord, setHasCreatedRecord] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [emailTimer, setEmailTimer] = useState(0);
@@ -104,9 +105,31 @@ const StudentOnboardingScreen = () => {
   }, [mobileTimer]);
 
   useEffect(() => {
-    AsyncStorage.getItem('userEmail').then(val => val && setEmail(val));
-    AsyncStorage.getItem('userFirstName').then(val => val && setFirstName(val));
-    AsyncStorage.getItem('userLastName').then(val => val && setLastName(val));
+    const restoreState = async () => {
+      const savedEmail = await AsyncStorage.getItem('userEmail');
+      const savedFirstName = await AsyncStorage.getItem('userFirstName');
+      const savedLastName = await AsyncStorage.getItem('userLastName');
+      const savedOnboarding = await AsyncStorage.getItem('studentOnboardingStep');
+
+      if (savedEmail) setEmail(savedEmail);
+      if (savedFirstName) setFirstName(savedFirstName);
+      if (savedLastName) setLastName(savedLastName);
+
+      const flag = parseInt(savedOnboarding || '0', 10);
+      if (flag >= 2) {
+        // Student profile was already created — just go to Login
+        setHasCreatedRecord(true);
+        setStep(2);
+        setEmailVerified(true);
+        setMobileVerified(true);
+      } else if (flag >= 1) {
+        // Verification was done — skip OTP step and go to profile form
+        setStep(2);
+        setEmailVerified(true);
+        setMobileVerified(true);
+      }
+    };
+    restoreState();
   }, []);
 
   // Auto-populate academic year when department changes
@@ -535,6 +558,14 @@ const StudentOnboardingScreen = () => {
     setError("");
     setSuccess("");
 
+    // Guard: if student record was already created (detected on app restart),
+    // skip the create call and just navigate to Login.
+    if (hasCreatedRecord) {
+      await AsyncStorage.multiRemove(["userEmail", "userFirstName", "userLastName", "studentOnboardingStep"]);
+      setTimeout(() => { navigation.navigate("Login"); }, 500);
+      return;
+    }
+
     try {
       // Format mobile number with country code
       const formattedMobile = `+91-${mobile}`;
@@ -592,8 +623,12 @@ const StudentOnboardingScreen = () => {
       if (responseData?.status === 200 || responseData?.message === "Student registered successfully") {
         setSuccess(responseData?.message || "Student registered successfully!");
 
-        // Clear onboarding-specific AsyncStorage items
-        await AsyncStorage.multiRemove(["userEmail", "userFirstName", "userLastName"]);
+        // Mark as created in AsyncStorage so a restart won't try to create again
+        await AsyncStorage.setItem('studentOnboardingStep', '2');
+        setHasCreatedRecord(true);
+
+        // Clear onboarding-specific AsyncStorage items (including step tracker)
+        await AsyncStorage.multiRemove(["userEmail", "userFirstName", "userLastName", "studentOnboardingStep"]);
 
         // Clear any errors
         setError("");
@@ -797,7 +832,9 @@ const StudentOnboardingScreen = () => {
             {emailVerified && mobileVerified && (
               <Button
                 title="Continue to Profile"
-                onPress={() => {
+                onPress={async () => {
+                  // Persist progress so app restart returns to step 2, not OTP screen
+                  await AsyncStorage.setItem('studentOnboardingStep', '1');
                   setStep(2);
                   setError("");
                   setSuccess("");
