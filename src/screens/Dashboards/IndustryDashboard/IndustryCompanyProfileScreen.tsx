@@ -362,8 +362,9 @@ export const IndustryCompanyProfileScreen = () => {
   };
 
   const handleUpdateProfile = async () => {
-    const identifier = industryData?.name || industryData?.company_name;
-    if (!identifier) return;
+    const email = industryData?.name;
+    const companyName = industryData?.company_name;
+    if (!email || !companyName) return;
 
     setUpdateLoading(true);
     try {
@@ -380,7 +381,7 @@ export const IndustryCompanyProfileScreen = () => {
         operating_hours: profileFormValues.operating_hours || []
       };
 
-      await updateIndustry(identifier, payload);
+      await updateIndustry(email, companyName, payload);
       await refreshIndustryData();
       setIsEditModalVisible(false);
       Alert.alert('Success', 'Profile updated successfully');
