@@ -33,13 +33,13 @@ export const CollegeStudentsScreen = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedBranches, setSelectedBranches] = useState<string[]>([]);
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
-  const [selectedYear, setSelectedYear] = useState("All");
+  const [selectedYears, setSelectedYears] = useState<string[]>([]);
   const [selectedRisk, setSelectedRisk] = useState("All");
 
   // Options
   const [availableBranches, setAvailableBranches] = useState<string[]>(["CS", "CSE", "ECE", "IT", "ME", "MBA", "Civil", "EE"]);
   const [availableSkills, setAvailableSkills] = useState<string[]>(["Python", "React", "NodeJS", "TypeScript", "SQL", "Pandas"]);
-  const availableYears = ["All", "First Year", "Second Year", "Third Year", "Final Year"];
+  const availableYears = ["First Year", "Second Year", "Third Year", "Final Year"];
   const availableRisks = ["All", "Low", "Medium", "High"];
 
   // Pagination
@@ -53,6 +53,7 @@ export const CollegeStudentsScreen = () => {
 
   const branchesStr = selectedBranches.join(",");
   const skillsStr = selectedSkills.join(",");
+  const yearsStr = selectedYears.join(",");
 
   // Mapped Avatar colors helper
   const getAvatarColor = (name: string) => {
@@ -130,7 +131,7 @@ export const CollegeStudentsScreen = () => {
         college: collegeName,
         department: branchesStr,
         skill: skillsStr,
-        current_year: selectedYear === "All" ? undefined : selectedYear,
+        current_year: selectedYears.length === 1 ? selectedYears[0] : undefined,
         page: page,
         page_size: pageSize
       });
@@ -159,7 +160,7 @@ export const CollegeStudentsScreen = () => {
     } finally {
       setLoading(false);
     }
-  }, [searchQuery, branchesStr, skillsStr, selectedYear, pageSize]);
+  }, [searchQuery, branchesStr, skillsStr, yearsStr, pageSize]);
 
   // Load Initial
   const loadData = useCallback(async () => {
@@ -182,25 +183,26 @@ export const CollegeStudentsScreen = () => {
     if (name) {
       fetchStudents(name, 1, false);
     }
-  }, [branchesStr, skillsStr, selectedYear, searchQuery, collegeDetails]);
+  }, [branchesStr, skillsStr, yearsStr, searchQuery, collegeDetails]);
 
   // Local risk level and year filter matching web client-side behavior
   const filteredStudentsList = useMemo(() => {
     return studentsList.filter(student => {
       const year = student.current_year || student.year || student.academic_year || "—";
-      const matchesYear = selectedYear === "All" || 
+      const matchesYear = selectedYears.length === 0 || selectedYears.some(selectedYear => 
         String(year).toLowerCase().includes(selectedYear.toLowerCase()) ||
         (selectedYear === "First Year" && String(year).toLowerCase().includes("1st")) ||
         (selectedYear === "Second Year" && String(year).toLowerCase().includes("2nd")) ||
         (selectedYear === "Third Year" && String(year).toLowerCase().includes("3rd")) ||
-        (selectedYear === "Final Year" && String(year).toLowerCase().includes("4th"));
+        (selectedYear === "Final Year" && String(year).toLowerCase().includes("4th"))
+      );
 
       const risk = student.risk_level || student.risk || "low";
       const matchesRisk = selectedRisk === "All" || String(risk).toLowerCase() === selectedRisk.toLowerCase();
 
       return matchesYear && matchesRisk;
     });
-  }, [studentsList, selectedYear, selectedRisk]);
+  }, [studentsList, selectedYears, selectedRisk]);
 
   const handleExportCSV = () => {
     if (filteredStudentsList.length === 0) {
@@ -245,11 +247,12 @@ export const CollegeStudentsScreen = () => {
       return {
         title: 'Select Academic Year',
         options: availableYears,
-        selected: selectedYear,
-        isMultiSelect: false,
+        selected: selectedYears,
+        isMultiSelect: true,
         onSelect: (val: string) => {
-          setSelectedYear(val);
-          setSelectorType(null);
+          setSelectedYears(prev => 
+            prev.includes(val) ? prev.filter(v => v !== val) : [...prev, val]
+          );
         }
       };
     }
@@ -324,21 +327,23 @@ export const CollegeStudentsScreen = () => {
               <ChevronDown size={12} color={colors.text.secondary} style={{ marginLeft: 4 }} />
             </TouchableOpacity>
             <TouchableOpacity style={styles.filterDropdown} onPress={() => openSelector('year')}>
-              <Text style={styles.filterText} numberOfLines={1}>{selectedYear === "All" ? "All Years" : selectedYear}</Text>
+              <Text style={styles.filterText} numberOfLines={1}>
+                {selectedYears.length === 0 ? "All Years" : `${selectedYears.length} Selected`}
+              </Text>
               <ChevronDown size={12} color={colors.text.secondary} style={{ marginLeft: 4 }} />
             </TouchableOpacity>
             <TouchableOpacity style={styles.filterDropdown} onPress={() => openSelector('risk')}>
               <Text style={styles.filterText} numberOfLines={1}>{selectedRisk === "All" ? "All Risks" : selectedRisk}</Text>
               <ChevronDown size={12} color={colors.text.secondary} style={{ marginLeft: 4 }} />
             </TouchableOpacity>
-            {(searchQuery !== "" || selectedBranches.length > 0 || selectedSkills.length > 0 || selectedYear !== "All" || selectedRisk !== "All") && (
+            {(searchQuery !== "" || selectedBranches.length > 0 || selectedSkills.length > 0 || selectedYears.length > 0 || selectedRisk !== "All") && (
               <TouchableOpacity
                 style={styles.clearBtn}
                 onPress={() => {
                   setSearchQuery("");
                   setSelectedBranches([]);
                   setSelectedSkills([]);
-                  setSelectedYear("All");
+                  setSelectedYears([]);
                   setSelectedRisk("All");
                 }}
               >

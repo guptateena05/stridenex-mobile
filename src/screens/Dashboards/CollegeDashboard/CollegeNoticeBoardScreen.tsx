@@ -372,6 +372,7 @@ export const CollegeNoticeBoardScreen = () => {
       Alert.alert("Error", "College details not loaded yet.");
       return;
     }
+
     setEventModalLoading(true);
     try {
       const payload = {

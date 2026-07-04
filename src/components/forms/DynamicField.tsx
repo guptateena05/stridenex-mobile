@@ -33,6 +33,7 @@ export interface FormField {
   customPlaceholder?: string;
   minLetters?: number;
   hidden?: boolean;
+  minDate?: Date;
 }
 
 interface DynamicFieldProps {
@@ -715,6 +716,7 @@ export default function DynamicField({ field, value, onChange, onCreateCustomVal
               mode="date"
               onConfirm={handleDateConfirm}
               onCancel={() => setDatePickerVisible(false)}
+              minimumDate={field.minDate}
             />
           </>
         );

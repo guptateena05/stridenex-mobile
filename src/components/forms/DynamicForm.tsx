@@ -4,6 +4,7 @@ import DynamicField, { FormField } from './DynamicField';
 import { colors } from '@/theme/colors';
 import { typography } from '@/theme/typography';
 import { spacing } from '@/theme/spacing';
+import { disableToDateBeforeFromDate } from '@/utils/date.utils';
 
 export interface DynamicFormProps {
   fields: FormField[];
@@ -42,6 +43,18 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
   const handleChange = (name: string, value: any) => {
     setFormData((prev) => {
       const newData = { ...prev, [name]: value };
+
+      // Automatically adjust end_date/to_date if start_date/from_date becomes later
+      if (name === 'start_date' && newData.end_date) {
+        if (new Date(newData.end_date) < new Date(value)) {
+          newData.end_date = value;
+        }
+      }
+      if (name === 'from_date' && newData.to_date) {
+        if (new Date(newData.to_date) < new Date(value)) {
+          newData.to_date = value;
+        }
+      }
       
       // Clear error for this field
       if (localErrors[name]) {
@@ -96,7 +109,9 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
                   style={[styles.fieldContainer, f.layout === 'half' ? styles.halfField : styles.fullField]}
                 >
                   <DynamicField
-                    field={f}
+                    field={(f.fieldname === 'end_date' || f.fieldname === 'to_date')
+                      ? { ...f, minDate: disableToDateBeforeFromDate(formData.start_date || formData.from_date) }
+                      : f}
                     value={formData[f.fieldname]}
                     onChange={handleChange}
                     onCreateCustomValue={onCreateCustomValue ? (val) => onCreateCustomValue(f.fieldname, val) : undefined}
@@ -124,7 +139,9 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
               style={[styles.fieldContainer, f.layout === 'half' ? styles.halfField : styles.fullField]}
             >
               <DynamicField
-                field={f}
+                field={(f.fieldname === 'end_date' || f.fieldname === 'to_date')
+                  ? { ...f, minDate: disableToDateBeforeFromDate(formData.start_date || formData.from_date) }
+                  : f}
                 value={formData[f.fieldname]}
                 onChange={handleChange}
                 onCreateCustomValue={onCreateCustomValue ? (val) => onCreateCustomValue(f.fieldname, val) : undefined}
