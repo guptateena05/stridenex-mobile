@@ -7,8 +7,7 @@ import { api } from "./api.services";
 export const getCollegeDetails = async (email: string) => {
   try {
     const response = await api.get(
-      'method/stridenex_app.api_stridenex_app.college.college.get_college',
-      { params: { email } }
+      `method/stridenex_app.api_stridenex_app.college.college.get_college?email=${encodeURIComponent(email)}`
     );
     return response.data;
   } catch (error) {

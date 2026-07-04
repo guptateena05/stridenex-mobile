@@ -91,6 +91,7 @@ export const CollegePlacementScreen = ({ route }: any) => {
   const [isManageModalOpen, setIsManageModalOpen] = useState(false);
   const [drivePlacementList, setDrivePlacementList] = useState<any[]>([]);
   const [drivePlacementCounts, setDrivePlacementCounts] = useState<any>(null);
+  const [drivePlacementLoading, setDrivePlacementLoading] = useState(false);
   const [selectedDriveStatusFilter, setSelectedDriveStatusFilter] = useState<'Eligible' | 'Registered' | 'Shortlisted' | 'Selected'>('Registered');
   const [updatingStatusMap, setUpdatingStatusMap] = useState<Record<string, boolean>>({});
 
@@ -631,6 +632,7 @@ export const CollegePlacementScreen = ({ route }: any) => {
     if (!collegeName) return;
 
     try {
+      setDrivePlacementLoading(true);
       const branchParam = drive.criteria?.branches ? drive.criteria.branches.join(",") : "";
       const cgpaParam = drive.criteria?.minCgpa !== undefined ? drive.criteria.minCgpa : "";
       const backlogParam = drive.criteria?.backlogs !== undefined ? drive.criteria.backlogs : "";
@@ -682,6 +684,8 @@ export const CollegePlacementScreen = ({ route }: any) => {
       }
     } catch (err) {
       console.error("Error listing candidates on drive manage:", err);
+    } finally {
+      setDrivePlacementLoading(false);
     }
   };
 
@@ -1148,7 +1152,11 @@ export const CollegePlacementScreen = ({ route }: any) => {
 
   const renderDriveDetails = () => {
     if (!selectedDrive) return null;
-    const counts = drivePlacementCounts || { placed: 0, shortlisted: 0, applied_to_drives: 0 };
+    const counts = drivePlacementCounts || {
+      placed: selectedDrive?.stats?.selected ?? 0,
+      shortlisted: selectedDrive?.stats?.shortlisted ?? 0,
+      applied_to_drives: selectedDrive?.stats?.registered ?? 0
+    };
     const eligibleCount = driveEligibleStudents.length;
 
     // Filter students depending on active filter tab
@@ -1230,7 +1238,7 @@ export const CollegePlacementScreen = ({ route }: any) => {
             onPress={() => setSelectedDriveStatusFilter('Eligible')}
           >
             <Text style={[styles.tabBtnText, selectedDriveStatusFilter === 'Eligible' && styles.activeTabBtnText]}>
-              Eligible ({eligibleCount})
+              Eligible ({drivePlacementLoading ? '...' : eligibleCount})
             </Text>
           </TouchableOpacity>
           <TouchableOpacity 
@@ -1238,7 +1246,7 @@ export const CollegePlacementScreen = ({ route }: any) => {
             onPress={() => setSelectedDriveStatusFilter('Registered')}
           >
             <Text style={[styles.tabBtnText, selectedDriveStatusFilter === 'Registered' && styles.activeTabBtnText]}>
-              Applied ({counts.applied_to_drives ?? 0})
+              Applied ({drivePlacementLoading ? '...' : (counts.applied_to_drives ?? 0)})
             </Text>
           </TouchableOpacity>
           <TouchableOpacity 
@@ -1246,7 +1254,7 @@ export const CollegePlacementScreen = ({ route }: any) => {
             onPress={() => setSelectedDriveStatusFilter('Shortlisted')}
           >
             <Text style={[styles.tabBtnText, selectedDriveStatusFilter === 'Shortlisted' && styles.activeTabBtnText]}>
-              Shortlisted ({counts.shortlisted ?? 0})
+              Shortlisted ({drivePlacementLoading ? '...' : (counts.shortlisted ?? 0)})
             </Text>
           </TouchableOpacity>
           <TouchableOpacity 
@@ -1254,7 +1262,7 @@ export const CollegePlacementScreen = ({ route }: any) => {
             onPress={() => setSelectedDriveStatusFilter('Selected')}
           >
             <Text style={[styles.tabBtnText, selectedDriveStatusFilter === 'Selected' && styles.activeTabBtnText]}>
-              Selected ({counts.placed ?? 0})
+              Selected ({drivePlacementLoading ? '...' : (counts.placed ?? 0)})
             </Text>
           </TouchableOpacity>
         </View>
@@ -1263,11 +1271,16 @@ export const CollegePlacementScreen = ({ route }: any) => {
         <Card style={styles.sectionCard}>
           <View style={styles.sectionHeader}>
             <Users color="#64748B" size={16} />
-            <Text style={styles.sectionTitle}>Candidates ({studentsToRender.length})</Text>
+            <Text style={styles.sectionTitle}>Candidates ({drivePlacementLoading ? '...' : studentsToRender.length})</Text>
           </View>
 
           <View style={{ gap: 12 }}>
-            {studentsToRender.length === 0 ? (
+            {drivePlacementLoading ? (
+              <View style={[styles.emptyContainer, { paddingVertical: 20 }]}>
+                <ActivityIndicator size="small" color="#FF6B00" />
+                <Text style={[styles.emptyText, { marginTop: 8 }]}>Loading candidates...</Text>
+              </View>
+            ) : studentsToRender.length === 0 ? (
               <View style={styles.emptyContainer}>
                 <Text style={styles.emptyText}>No students in this stage</Text>
               </View>
@@ -1418,14 +1431,14 @@ export const CollegePlacementScreen = ({ route }: any) => {
               style={{ backgroundColor: '#FF6B00', paddingVertical: 10, borderRadius: 10, alignItems: 'center' }}
               onPress={() => triggerNotification('eligible')}
             >
-              <Text style={{ color: '#FFF', fontSize: 11, fontWeight: '800' }}>NOTIFY ALL ELIGIBLE ({eligibleCount})</Text>
+              <Text style={{ color: '#FFF', fontSize: 11, fontWeight: '800' }}>NOTIFY ALL ELIGIBLE ({drivePlacementLoading ? '...' : eligibleCount})</Text>
             </TouchableOpacity>
 
             <TouchableOpacity 
               style={{ backgroundColor: '#2563EB', paddingVertical: 10, borderRadius: 10, alignItems: 'center' }}
               onPress={() => triggerNotification('remind')}
             >
-              <Text style={{ color: '#FFF', fontSize: 11, fontWeight: '800' }}>REMIND REGISTERED ({counts.applied_to_drives ?? 0})</Text>
+              <Text style={{ color: '#FFF', fontSize: 11, fontWeight: '800' }}>REMIND REGISTERED ({drivePlacementLoading ? '...' : (counts.applied_to_drives ?? 0)})</Text>
             </TouchableOpacity>
 
             <View style={{ flexDirection: 'row', gap: 8 }}>
