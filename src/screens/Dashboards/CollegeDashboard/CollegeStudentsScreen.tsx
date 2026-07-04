@@ -130,7 +130,7 @@ export const CollegeStudentsScreen = () => {
         college: collegeName,
         department: branchesStr,
         skill: skillsStr,
-        current_year: selectedYear === "All" ? "" : selectedYear,
+        current_year: selectedYear === "All" ? undefined : selectedYear,
         page: page,
         page_size: pageSize
       });
@@ -184,14 +184,23 @@ export const CollegeStudentsScreen = () => {
     }
   }, [branchesStr, skillsStr, selectedYear, searchQuery, collegeDetails]);
 
-  // Local risk level filter matching web client-side behavior
+  // Local risk level and year filter matching web client-side behavior
   const filteredStudentsList = useMemo(() => {
     return studentsList.filter(student => {
+      const year = student.current_year || student.year || student.academic_year || "—";
+      const matchesYear = selectedYear === "All" || 
+        String(year).toLowerCase().includes(selectedYear.toLowerCase()) ||
+        (selectedYear === "First Year" && String(year).toLowerCase().includes("1st")) ||
+        (selectedYear === "Second Year" && String(year).toLowerCase().includes("2nd")) ||
+        (selectedYear === "Third Year" && String(year).toLowerCase().includes("3rd")) ||
+        (selectedYear === "Final Year" && String(year).toLowerCase().includes("4th"));
+
       const risk = student.risk_level || student.risk || "low";
       const matchesRisk = selectedRisk === "All" || String(risk).toLowerCase() === selectedRisk.toLowerCase();
-      return matchesRisk;
+
+      return matchesYear && matchesRisk;
     });
-  }, [studentsList, selectedRisk]);
+  }, [studentsList, selectedYear, selectedRisk]);
 
   const handleExportCSV = () => {
     if (filteredStudentsList.length === 0) {
@@ -262,7 +271,7 @@ export const CollegeStudentsScreen = () => {
       "Student Details",
       `Name: ${fullName}\n` +
       `Branch: ${student.branch || student.department || "—"}\n` +
-      `Year: ${student.year || student.academic_year || "—"}\n` +
+      `Year: ${student.current_year || student.year || student.academic_year || "—"}\n` +
       `Employability Score: ${student.employability_score !== undefined ? student.employability_score : (student.employability !== undefined ? student.employability : "—")}\n` +
       `Internships: ${student.internship_count !== undefined ? student.internship_count : (student.internship || "0")}\n` +
       `Status: ${student.placement_status || student.status || "—"}\n` +
@@ -361,7 +370,7 @@ export const CollegeStudentsScreen = () => {
                 <View style={styles.tableHeader}>
                   <Text style={[styles.columnLabel, { width: 180 }]}>STUDENT</Text>
                   <Text style={[styles.columnLabel, { width: 90 }]}>BRANCH</Text>
-                  <Text style={[styles.columnLabel, { width: 110 }]}>YEAR</Text>
+                  <Text style={[styles.columnLabel, { width: 110 }]}>CURRENT YEAR</Text>
                   <Text style={[styles.columnLabel, { width: 120 }]}>EMPLOYABILITY</Text>
                   <Text style={[styles.columnLabel, { width: 100 }]}>INTERNSHIP</Text>
                   <Text style={[styles.columnLabel, { width: 100 }]}>STATUS</Text>
@@ -374,7 +383,7 @@ export const CollegeStudentsScreen = () => {
                   {filteredStudentsList.map((student: any, idx: number) => {
                     const fullName = `${student.first_name || ""} ${student.last_name || ""}`.trim() || student.student_name || student.name || "—";
                     const branch = student.branch || student.department || "—";
-                    const year = student.year || student.academic_year || "—";
+                    const year = student.current_year || student.year || student.academic_year || "—";
                     const score = student.employability_score !== undefined ? student.employability_score : (student.employability !== undefined ? student.employability : 75);
                     const riskObj = getRiskDetails(student.risk_level || student.risk || "low");
                     const avatarColor = getAvatarColor(fullName);
