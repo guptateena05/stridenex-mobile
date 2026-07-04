@@ -94,15 +94,15 @@ export const CollegeDrawerNavigator = () => {
         We will also add sub-tabs here so they mount in the same Stack, 
         but we'll intercept them in CustomDrawerContent to display as an accordion.
       */}
-      <Drawer.Screen
+      {/* <Drawer.Screen
         name="NEP & UGC 2026"
         component={CollegeNepUgcScreen}
         initialParams={{ tab: 'Dashboard' }}
         options={{ drawerIcon: ({ color, size }) => <Building2 color={color} size={size} /> }}
-      />
+      /> */}
 
       {/* Accordion Hidden Sub Tabs for NEP & UGC */}
-      <Drawer.Screen
+      {/* <Drawer.Screen
         name="NEP Dashboard"
         component={CollegeNepUgcScreen}
         initialParams={{ tab: 'Dashboard' }}
@@ -148,7 +148,7 @@ export const CollegeDrawerNavigator = () => {
         name="NEP Reports"
         component={CollegeReportsScreen}
         options={{ title: 'Reports', drawerIcon: ({ color, size }) => <BarChart color={color} size={size} /> }}
-      />
+      /> */}
 
       {/* Main Tabs cont... */}
       <Drawer.Screen
@@ -161,11 +161,11 @@ export const CollegeDrawerNavigator = () => {
         component={CollegeNoticeBoardScreen}
         options={{ drawerIcon: ({ color, size }) => <BookOpen color={color} size={size} /> }}
       />
-      <Drawer.Screen
+      {/* <Drawer.Screen
         name="Reports"
         component={CollegeReportsScreen}
         options={{ drawerIcon: ({ color, size }) => <BarChart color={color} size={size} /> }}
-      />
+      /> */}
       <Drawer.Screen
         name="Plans"
         component={CollegePlansScreen}
