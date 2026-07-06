@@ -9,7 +9,8 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
-  TouchableOpacity
+  TouchableOpacity,
+  ActivityIndicator
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -98,7 +99,7 @@ export const CollegeOverviewScreen = () => {
 
   const [dashboardSummary, setDashboardSummary] = useState<any>(null);
   const [placementStats, setPlacementStats] = useState<any>(null);
-  const [branchPerformance, setBranchPerformance] = useState<any[]>([]);
+  const [branchPerformance, setBranchPerformance] = useState<any[] | null>(null);
   const [driveCounts, setDriveCounts] = useState<any>(null);
   const [upcomingDrivesList, setUpcomingDrivesList] = useState<any[]>([]);
   const [employabilityDistribution, setEmployabilityDistribution] = useState<any>(null);
@@ -166,9 +167,9 @@ export const CollegeOverviewScreen = () => {
         ]);
 
         let freshStats = null;
-        let freshBranch = [];
+        let freshBranch: any[] = [];
         let freshDriveCounts = null;
-        let freshDrivesList = [];
+        let freshDrivesList: any[] = [];
         let freshSummary = null;
         let freshDistribution = null;
         let freshGrowth = null;
@@ -188,7 +189,12 @@ export const CollegeOverviewScreen = () => {
             freshBranch = raw;
           } else if (raw && Array.isArray(raw.message)) {
             freshBranch = raw.message;
+          } else {
+            freshBranch = [];
           }
+          setBranchPerformance(freshBranch);
+        } else {
+          freshBranch = [];
           setBranchPerformance(freshBranch);
         }
 
@@ -393,15 +399,8 @@ export const CollegeOverviewScreen = () => {
   }, [employabilityDistribution]);
 
   const displayBranchData = useMemo(() => {
-    if (!branchPerformance || branchPerformance.length === 0) {
-      return [
-        { label: 'Computer Science', value: '420', progress: 87, color: '#10B981' },
-        { label: 'Electronics', value: '380', progress: 74, color: '#10B981' },
-        { label: 'Mechanical', value: '340', progress: 62, color: '#10B981' },
-        { label: 'Civil', value: '290', progress: 58, color: '#F59E0B' },
-        { label: 'MBA', value: '180', progress: 79, color: '#10B981' },
-        { label: 'Chemical', value: '240', progress: 65, color: '#10B981' },
-      ];
+    if (branchPerformance === null) {
+      return null;
     }
     return branchPerformance.map((b: any) => {
       const branchName = b.department || "—";
@@ -501,32 +500,39 @@ export const CollegeOverviewScreen = () => {
   }, [upcomingDrivesList]);
 
   const dynamicStats = useMemo(() => {
+    const formatApiValue = (val: any) => {
+      if (val === undefined || val === null) {
+        return "0";
+      }
+      return String(val);
+    };
+
     return [
       {
         id: 1,
         title: 'ACTIVE STUDENTS',
-        value: dashboardSummary !== null && dashboardSummary !== undefined ? String(dashboardSummary.active_students) : '2,847',
+        value: dashboardSummary !== null && dashboardSummary !== undefined ? formatApiValue(dashboardSummary.active_students) : '0',
         icon: Users,
         color: '#3B82F6'
       },
       {
         id: 2,
         title: 'AVG EMPLOYABILITY',
-        value: dashboardSummary !== null && dashboardSummary !== undefined ? String(dashboardSummary.avg_employability) : '78',
+        value: dashboardSummary !== null && dashboardSummary !== undefined ? formatApiValue(dashboardSummary.avg_employability) : '0',
         icon: TrendingUp,
         color: '#10B981'
       },
       {
         id: 3,
         title: 'AT-RISK STUDENTS',
-        value: dashboardSummary !== null && dashboardSummary !== undefined ? String(dashboardSummary.at_risk_students) : '143',
+        value: dashboardSummary !== null && dashboardSummary !== undefined ? formatApiValue(dashboardSummary.at_risk_students) : '0',
         icon: AlertTriangle,
         color: '#EF4444'
       },
       {
         id: 4,
         title: 'NEW THIS SEMESTER',
-        value: dashboardSummary !== null && dashboardSummary !== undefined ? String(dashboardSummary.new_this_semester) : '38',
+        value: dashboardSummary !== null && dashboardSummary !== undefined ? formatApiValue(dashboardSummary.new_this_semester) : '0',
         icon: GraduationCap,
         color: '#F59E0B'
       }
@@ -728,17 +734,25 @@ export const CollegeOverviewScreen = () => {
             <Text style={styles.sectionTitle}>Branch-wise Performance</Text>
           </View>
           <View style={styles.listContainer}>
-            {displayBranchData.map((item, idx) => (
-              <View key={idx} style={styles.listItem}>
-                <View style={styles.listItemTextRow}>
-                  <Text style={styles.listItemLabel}>{item.label}</Text>
-                  <Text style={styles.listItemValue}>{item.progress.toFixed(1)}% ({item.value})</Text>
-                </View>
-                <View style={styles.progressBarBg}>
-                  <View style={[styles.progressBarFill, { width: `${item.progress}%`, backgroundColor: item.color }]} />
-                </View>
+            {displayBranchData === null ? (
+              <ActivityIndicator size="small" color="#10B981" style={{ paddingVertical: 20 }} />
+            ) : displayBranchData.length === 0 ? (
+              <View style={styles.emptyStateContainer}>
+                <Text style={styles.emptyStateText}>No branch performance data found</Text>
               </View>
-            ))}
+            ) : (
+              displayBranchData.map((item, idx) => (
+                <View key={idx} style={styles.listItem}>
+                  <View style={styles.listItemTextRow}>
+                    <Text style={styles.listItemLabel}>{item.label}</Text>
+                    <Text style={styles.listItemValue}>{item.progress.toFixed(1)}% ({item.value})</Text>
+                  </View>
+                  <View style={styles.progressBarBg}>
+                    <View style={[styles.progressBarFill, { width: `${item.progress}%`, backgroundColor: item.color }]} />
+                  </View>
+                </View>
+              ))
+            )}
           </View>
         </Card>
 
