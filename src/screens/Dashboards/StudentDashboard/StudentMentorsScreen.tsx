@@ -83,6 +83,8 @@ export const StudentMentorsScreen = () => {
   const [isBooking, setIsBooking] = useState(false);
 
   // Debounced search logic
+  const searchInputRef = useRef<TextInput>(null);
+
   const handleSearchChange = (val: string) => {
     setSearchVal(val);
     if (debounceTimeoutRef.current) {
@@ -91,7 +93,7 @@ export const StudentMentorsScreen = () => {
     debounceTimeoutRef.current = setTimeout(() => {
       setSearchQuery(val);
       setCurrentPage(1);
-    }, 500);
+    }, 1000);
   };
 
   useEffect(() => {
@@ -101,6 +103,14 @@ export const StudentMentorsScreen = () => {
       }
     };
   }, []);
+
+  useEffect(() => {
+    if (!loading && searchVal && searchInputRef.current) {
+      if (!searchInputRef.current.isFocused()) {
+        searchInputRef.current.focus();
+      }
+    }
+  }, [loading, searchVal]);
 
   // Fetch mentors list
   const fetchMentorsList = useCallback(async (page: number, search: string) => {
@@ -603,6 +613,7 @@ export const StudentMentorsScreen = () => {
             <Animated.View entering={FadeInUp.delay(150)} style={styles.searchContainer}>
               <Search size={18} color="#94A3B8" style={styles.searchIcon} />
               <TextInput 
+                ref={searchInputRef}
                 placeholder="search for email" 
                 placeholderTextColor="#94A3B8"
                 style={styles.searchInput}
