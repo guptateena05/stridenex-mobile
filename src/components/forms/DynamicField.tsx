@@ -34,6 +34,7 @@ export interface FormField {
   minLetters?: number;
   hidden?: boolean;
   minDate?: Date;
+  maxDate?: Date;
 }
 
 interface DynamicFieldProps {
@@ -717,6 +718,7 @@ export default function DynamicField({ field, value, onChange, onCreateCustomVal
               onConfirm={handleDateConfirm}
               onCancel={() => setDatePickerVisible(false)}
               minimumDate={field.minDate}
+              maximumDate={field.maxDate}
             />
           </>
         );

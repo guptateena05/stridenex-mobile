@@ -61,13 +61,14 @@ export interface OtpVerification {
 }
 
 // Send mobile OTP
-export const sendMobileOTP = async (mobileNo: string): Promise<OtpResponse> => {
+export const sendMobileOTP = async (mobileNo: string, email: string): Promise<OtpResponse> => {
     try {
         const response = await api.get(
             `method/stridenex_app.api_stridenex_app.app.send_mobile_otp`,
             {
                 params: {
-                    mobile_no: mobileNo
+                    mobile_no: mobileNo,
+                    email: email
                 }
             }
         );
@@ -79,10 +80,10 @@ export const sendMobileOTP = async (mobileNo: string): Promise<OtpResponse> => {
 };
 
 // Verify mobile OTP
-export const verifyMobileOTP = async (mobileNo: string, otp: string): Promise<any> => {
+export const verifyMobileOTP = async (mobileNo: string, otp: string, email: string): Promise<any> => {
     try {
         const response = await api.get(
-            `method/stridenex_app.api_stridenex_app.app.validate_mobile_otp?mobile_no=${encodeURIComponent(mobileNo)}&otp=${encodeURIComponent(otp)}`
+            `method/stridenex_app.api_stridenex_app.app.validate_mobile_otp?mobile_no=${encodeURIComponent(mobileNo)}&otp=${encodeURIComponent(otp)}&email=${encodeURIComponent(email)}`
         );
         return response.data;
     } catch (error) {

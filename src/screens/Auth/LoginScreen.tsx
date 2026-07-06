@@ -99,7 +99,7 @@ export const LoginScreen = () => {
 
         if (userRole === 'College') {
           const isOnboardedVal = parseInt(data.is_onboarded ?? '0', 10);
-          if (isOnboardedVal < 3) {
+          if (isOnboardedVal < 4) {
             const userEmail = data.user || username;
             await AsyncStorage.setItem('userEmail', userEmail);
             const webOnboardingUrl = `https://testwebstridenex.quantcloud.in/onboarding/college?source=mobile`;
@@ -114,6 +114,24 @@ export const LoginScreen = () => {
                 role: 'college',
               }
             });
+            return;
+          }
+        }
+
+        if (userRole === 'Student') {
+          const isOnboardedVal = parseInt(data.is_onboarded ?? '0', 10);
+          if (isOnboardedVal < 2) {
+            const userEmail = data.user || username;
+            await AsyncStorage.setItem('userEmail', userEmail);
+            await AsyncStorage.setItem('studentOnboardingStep', String(isOnboardedVal));
+            if (data.full_name) {
+              const nameParts = data.full_name.trim().split(/\s+/);
+              const firstName = nameParts[0] || '';
+              const lastName = nameParts.slice(1).join(' ') || '';
+              await AsyncStorage.setItem('userFirstName', firstName);
+              await AsyncStorage.setItem('userLastName', lastName);
+            }
+            (navigation as any).navigate('StudentOnboarding');
             return;
           }
         }

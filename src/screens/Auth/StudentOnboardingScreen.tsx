@@ -5,7 +5,7 @@ import {
 import { AnimatedAuthLayout } from '@/components/layout/AnimatedAuthLayout';
 import { Input } from '@/components/Shared/Input';
 import { Button } from '@/components/Shared/Button';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import { sendEmailOTP, verifyEmailOTP, sendMobileOTP, verifyMobileOTP, createStudent } from '@/api/onboarding.services';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors } from '@/theme/colors';
@@ -45,7 +45,6 @@ interface DynamicFormDataType {
 }
 
 const StudentOnboardingScreen = () => {
-  const router = useRoute<any>();
   const navigation = useNavigation<any>();
   const [step, setStep] = useState<1 | 2>(1);
   const [loading, setLoading] = useState(false);
@@ -110,10 +109,12 @@ const StudentOnboardingScreen = () => {
       const savedFirstName = await AsyncStorage.getItem('userFirstName');
       const savedLastName = await AsyncStorage.getItem('userLastName');
       const savedOnboarding = await AsyncStorage.getItem('studentOnboardingStep');
+      const savedMobile = await AsyncStorage.getItem('userMobileNo');
 
       if (savedEmail) setEmail(savedEmail);
       if (savedFirstName) setFirstName(savedFirstName);
       if (savedLastName) setLastName(savedLastName);
+      if (savedMobile) setMobile(savedMobile);
 
       const flag = parseInt(savedOnboarding || '0', 10);
       if (flag >= 2) {
@@ -184,7 +185,7 @@ const StudentOnboardingScreen = () => {
     if (mobile.length !== 10) { setError("Enter 10 digit mobile number"); return; }
     setError(""); setSuccess(""); setLoading(true);
     try {
-      const res = await sendMobileOTP(mobile);
+      const res = await sendMobileOTP(mobile, email);
       if (res?.message === "OTP sent successfully") {
         setSuccess("OTP sent successfully");
         setMobileOtpSent(true);
@@ -200,10 +201,11 @@ const StudentOnboardingScreen = () => {
   const handleVerifyMobile = async () => {
     setError(""); setSuccess(""); setLoading(true);
     try {
-      const res = await verifyMobileOTP(mobile, mobileOtp);
+      const res = await verifyMobileOTP(mobile, mobileOtp, email);
       if (res?.message === "Mobile number verified successfully") {
         setMobileVerified(true);
         setSuccess("Mobile verified successfully");
+        await AsyncStorage.setItem('userMobileNo', mobile);
       } else {
         setError(res?.message || "Invalid OTP");
       }
@@ -542,7 +544,6 @@ const StudentOnboardingScreen = () => {
     });
     if (!data.courses || data.courses.length === 0) errs.courses = 'Please select at least one course type';
     if (!data.skills || data.skills.length === 0) errs.skills = 'Please select at least one skill';
-    if (!data.careerInterest || data.careerInterest.length === 0) errs.careerInterest = 'Please select at least one career interest';
 
     setFormErrors(errs);
     return Object.keys(errs).length === 0;
@@ -561,14 +562,14 @@ const StudentOnboardingScreen = () => {
     // Guard: if student record was already created (detected on app restart),
     // skip the create call and just navigate to Login.
     if (hasCreatedRecord) {
-      await AsyncStorage.multiRemove(["userEmail", "userFirstName", "userLastName", "studentOnboardingStep"]);
+      await AsyncStorage.multiRemove(["userEmail", "userFirstName", "userLastName", "studentOnboardingStep", "userMobileNo"]);
       setTimeout(() => { navigation.navigate("Login"); }, 500);
       return;
     }
 
     try {
       // Format mobile number with country code
-      const formattedMobile = `+91-${mobile}`;
+      const formattedMobile = mobile ? `+91-${mobile}` : "";
 
       // Format courses type as array of objects
       const coursesTypeArray = (data.courses || []).map((course: string) => ({
@@ -628,7 +629,7 @@ const StudentOnboardingScreen = () => {
         setHasCreatedRecord(true);
 
         // Clear onboarding-specific AsyncStorage items (including step tracker)
-        await AsyncStorage.multiRemove(["userEmail", "userFirstName", "userLastName", "studentOnboardingStep"]);
+        await AsyncStorage.multiRemove(["userEmail", "userFirstName", "userLastName", "studentOnboardingStep", "userMobileNo"]);
 
         // Clear any errors
         setError("");
@@ -734,7 +735,7 @@ const StudentOnboardingScreen = () => {
                 }}
                 autoCapitalize="none"
                 keyboardType="email-address"
-                editable={!emailVerified}
+                editable={false}
               />
 
               {!emailOtpSent && !emailVerified && (
@@ -909,8 +910,13 @@ const StudentOnboardingScreen = () => {
                 title="Back to Verification"
                 onPress={() => setStep(1)}
                 variant="outline"
+                size="sm"
+                fullWidth={false}
               />
             </View>
+            <TouchableOpacity onPress={() => navigation.navigate('Login')} style={styles.skipContainer}>
+              <Text style={styles.skipTextBtn}>Skip Onboarding</Text>
+            </TouchableOpacity>
           </ScrollView>
         )}
       </View>
@@ -994,7 +1000,9 @@ const styles = StyleSheet.create({
   },
   backButtonContainer: {
     marginTop: spacing.md,
-    marginBottom: spacing.xl
+    marginBottom: spacing.xl,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   scrollView: {
     flex: 1,

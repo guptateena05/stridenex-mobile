@@ -131,7 +131,7 @@ export const IndustryDashboardScreen = () => {
           <Animated.View entering={FadeInUp.delay(150)} style={{ marginBottom: 12 }}>
             <RoleBannerWidget 
               fullName={userFullName || 'HR Team'} 
-              date="Wednesday, 01 April"
+              date={new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })}
               role="Industry Dashboard"
               progress={100}
               theme="purple"

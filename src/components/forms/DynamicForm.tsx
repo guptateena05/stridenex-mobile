@@ -6,6 +6,14 @@ import { typography } from '@/theme/typography';
 import { spacing } from '@/theme/spacing';
 import { disableToDateBeforeFromDate } from '@/utils/date.utils';
 
+const getOneDayPriorDate = (dateStr: string): Date | undefined => {
+  if (!dateStr) return undefined;
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return undefined;
+  d.setDate(d.getDate() - 1);
+  return d;
+};
+
 export interface DynamicFormProps {
   fields: FormField[];
   onSubmit: (data: any) => void;
@@ -53,6 +61,28 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
       if (name === 'from_date' && newData.to_date) {
         if (new Date(newData.to_date) < new Date(value)) {
           newData.to_date = value;
+        }
+      }
+      
+      // Automatically adjust registeration_deadline if drive_date becomes earlier than registeration_deadline + 1 day
+      if (name === 'drive_date' && newData.registeration_deadline && value) {
+        const drive = new Date(value);
+        const reg = new Date(newData.registeration_deadline);
+        if (!isNaN(drive.getTime()) && !isNaN(reg.getTime())) {
+          drive.setDate(drive.getDate() - 1);
+          if (reg > drive) {
+            newData.registeration_deadline = drive.toISOString().split('T')[0];
+          }
+        }
+      }
+      if (name === 'registeration_deadline' && newData.drive_date && value) {
+        const drive = new Date(newData.drive_date);
+        const reg = new Date(value);
+        if (!isNaN(drive.getTime()) && !isNaN(reg.getTime())) {
+          drive.setDate(drive.getDate() - 1);
+          if (reg > drive) {
+            newData.registeration_deadline = drive.toISOString().split('T')[0];
+          }
         }
       }
       
@@ -111,7 +141,9 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
                   <DynamicField
                     field={(f.fieldname === 'end_date' || f.fieldname === 'to_date')
                       ? { ...f, minDate: disableToDateBeforeFromDate(formData.start_date || formData.from_date) }
-                      : f}
+                      : (f.fieldname === 'registeration_deadline' && formData.drive_date)
+                        ? { ...f, maxDate: getOneDayPriorDate(formData.drive_date) }
+                        : f}
                     value={formData[f.fieldname]}
                     onChange={handleChange}
                     onCreateCustomValue={onCreateCustomValue ? (val) => onCreateCustomValue(f.fieldname, val) : undefined}
@@ -141,7 +173,9 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
               <DynamicField
                 field={(f.fieldname === 'end_date' || f.fieldname === 'to_date')
                   ? { ...f, minDate: disableToDateBeforeFromDate(formData.start_date || formData.from_date) }
-                  : f}
+                  : (f.fieldname === 'registeration_deadline' && formData.drive_date)
+                    ? { ...f, maxDate: getOneDayPriorDate(formData.drive_date) }
+                    : f}
                 value={formData[f.fieldname]}
                 onChange={handleChange}
                 onCreateCustomValue={onCreateCustomValue ? (val) => onCreateCustomValue(f.fieldname, val) : undefined}
