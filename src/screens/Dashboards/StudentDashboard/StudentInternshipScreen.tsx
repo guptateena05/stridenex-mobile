@@ -46,7 +46,7 @@ export const StudentInternshipScreen = () => {
   
   // Data list
   const [internships, setInternships] = useState<any[]>([]);
-  
+  const [statistics, setStatistics] = useState({ total_internships: 0, scheduled_interview_count: 0 });
   // States
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -86,8 +86,14 @@ export const StudentInternshipScreen = () => {
         profile.current_year || profile.academic_year || null,
         searchVal !== undefined ? searchVal : search
       );
-      const data = response?.message?.data || response?.data || response || [];
+      const rawResp = response?.message ?? response;
+      const data = rawResp?.data?.internships || rawResp?.internships || [];
+      const stats = rawResp?.data?.statistics || rawResp?.statistics || {};
       setInternships(Array.isArray(data) ? data : []);
+      setStatistics({
+        total_internships: stats.total_internships ?? data.length,
+        scheduled_interview_count: stats.scheduled_interview_count ?? 0,
+      });
     } catch (err) {
       console.error("Error fetching internships:", err);
     }
@@ -172,6 +178,8 @@ export const StudentInternshipScreen = () => {
         return { bg: "#ECFDF5", text: "#059669", border: "#D1FAE5", label: "Shortlisted" };
       case 'interview scheduled':
         return { bg: "#F5F3FF", text: "#7C3AED", border: "#EDE9FE", label: "Interview Scheduled" };
+      case 'tech interview':
+        return { bg: "#EDE9FE", text: "#6D28D9", border: "#DDD6FE", label: "Tech Interview" };
       case 'rejected':
         return { bg: "#FEF2F2", text: "#DC2626", border: "#FEE2E2", label: "Rejected" };
       case 'selected':
@@ -185,9 +193,9 @@ export const StudentInternshipScreen = () => {
   const internshipStats = useMemo(() => [
     { id: 1, title: "APPLIED", value: internships.filter(i => i.applied_status === "Applied").length, icon: Send, color: "#3B82F6" },
     { id: 2, title: "SHORTLISTED", value: internships.filter(i => i.applied_status === "Shortlisted").length, icon: CheckCircle2, color: "#10B981" },
-    { id: 3, title: "INTERVIEWS", value: internships.filter(i => i.applied_status === "Interview Scheduled").length, icon: Calendar, color: "#8B5CF6" },
-    { id: 4, title: "MATCHING", value: internships.length, icon: Briefcase, color: colors.accent.DEFAULT },
-  ], [internships]);
+    { id: 3, title: "INTERVIEWS", value: statistics.scheduled_interview_count, icon: Calendar, color: "#8B5CF6" },
+    { id: 4, title: "MATCHING", value: statistics.total_internships || internships.length, icon: Briefcase, color: colors.accent.DEFAULT },
+  ], [internships, statistics]);
 
   if (loading) {
     return (
@@ -320,22 +328,46 @@ export const StudentInternshipScreen = () => {
                     )}
                   </View>
 
+                  {/* Info Badges */}
                   <View style={styles.badgeRow}>
                     <View style={styles.infoBadge}>
                       <MapPin size={10} color="#64748B" />
-                      <Text style={styles.badgeText}>{internship.location || "Remote"}</Text>
+                      <Text style={styles.badgeText}>{internship.work_mode || internship.location || "Remote"}</Text>
                     </View>
                     <View style={styles.infoBadge}>
                       <Clock size={10} color="#64748B" />
-                      <Text style={styles.badgeText}>{internship.duration || "3 Months"}</Text>
+                      <Text style={styles.badgeText}>{internship.duration ? `${internship.duration} Days` : "3 Months"}</Text>
                     </View>
                     <View style={[styles.infoBadge, { backgroundColor: '#ECFDF5', borderColor: '#D1FAE5' }]}>
                       <IndianRupee size={10} color="#059669" />
                       <Text style={[styles.badgeText, { color: '#059669', fontWeight: '700' }]}>
-                        {internship.stipend || "Best in Industry"}
+                        {internship.stipend ? `₹${Number(internship.stipend).toLocaleString('en-IN')}` : "Best in Industry"}
                       </Text>
                     </View>
+                    {internship.openings ? (
+                      <View style={[styles.infoBadge, { backgroundColor: '#EFF6FF', borderColor: '#DBEAFE' }]}>
+                        <Text style={[styles.badgeText, { color: '#2563EB', fontWeight: '700' }]}>
+                          {internship.openings} Opening{internship.openings !== 1 ? 's' : ''}
+                        </Text>
+                      </View>
+                    ) : null}
                   </View>
+
+                  {/* Skills Tags */}
+                  {internship.skills && internship.skills.length > 0 && (
+                    <View style={styles.skillsRow}>
+                      {internship.skills.slice(0, 4).map((s: any, si: number) => (
+                        <View key={si} style={styles.skillChip}>
+                          <Text style={styles.skillChipText}>{s.skill}</Text>
+                        </View>
+                      ))}
+                      {internship.skills.length > 4 && (
+                        <View style={styles.skillChipMore}>
+                          <Text style={styles.skillChipMoreText}>+{internship.skills.length - 4}</Text>
+                        </View>
+                      )}
+                    </View>
+                  )}
 
                   <View style={styles.cardActions}>
                     <TouchableOpacity 
@@ -730,11 +762,16 @@ const styles = StyleSheet.create({
     color: '#DC2626',
     textTransform: 'uppercase',
   },
+  skillsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 12 },
+  skillChip: { backgroundColor: '#F0F9FF', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, borderWidth: 1, borderColor: '#BAE6FD' },
+  skillChipText: { fontSize: 10, fontWeight: '700', color: '#0369A1' },
+  skillChipMore: { backgroundColor: '#F8FAFC', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, borderWidth: 1, borderColor: '#E2E8F0' },
+  skillChipMoreText: { fontSize: 10, fontWeight: '700', color: '#64748B' },
   badgeRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
-    marginBottom: 20,
+    marginBottom: 12,
   },
   infoBadge: {
     flexDirection: 'row',

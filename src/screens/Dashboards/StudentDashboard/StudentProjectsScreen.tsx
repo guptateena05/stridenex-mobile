@@ -41,7 +41,8 @@ export const StudentProjectsScreen = () => {
   
   // Data list
   const [projects, setProjects] = useState<any[]>([]);
-  
+  const [statistics, setStatistics] = useState({ total_projects: 0, total_applied: 0, total_completed: 0, total_awarded: 0 });
+  const [pagination, setPagination] = useState<any>(null);
   // States
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -81,8 +82,18 @@ export const StudentProjectsScreen = () => {
         profile.current_year || profile.academic_year || null,
         searchVal !== undefined ? searchVal : search
       );
-      const data = response?.message?.data?.projects || response?.data?.projects || response?.message?.data || response?.data || response || [];
+      const rawResp = response?.message ?? response;
+      const data = rawResp?.data?.projects || rawResp?.projects || [];
+      const stats = rawResp?.data?.statistics || rawResp?.statistics || {};
+      const pag = rawResp?.data?.pagination || rawResp?.pagination || null;
       setProjects(Array.isArray(data) ? data : []);
+      setStatistics({
+        total_projects: stats.total_projects ?? data.length,
+        total_applied: stats.total_applied ?? 0,
+        total_completed: stats.total_completed ?? 0,
+        total_awarded: stats.total_awarded ?? 0,
+      });
+      setPagination(pag);
     } catch (err) {
       console.error("Error fetching projects:", err);
     }
@@ -160,11 +171,11 @@ export const StudentProjectsScreen = () => {
   };
 
   const projectStats = useMemo(() => [
-    { id: 1, title: "AVAILABLE", value: projects.length, icon: Briefcase, color: colors.accent.DEFAULT },
-    { id: 2, title: "APPLIED", value: projects.filter(p => p.applied_status && p.applied_status !== "Not Applied").length, icon: Target, color: "#3B82F6" },
-    { id: 3, title: "COMPLETED", value: projects.filter(p => p.status === "Completed").length, icon: CheckCircle2, color: "#10B981" },
-    { id: 4, title: "CREDITS", value: 0, icon: Trophy, color: "#8B5CF6" },
-  ], [projects]);
+    { id: 1, title: "AVAILABLE", value: statistics.total_projects || projects.length, icon: Briefcase, color: colors.accent.DEFAULT },
+    { id: 2, title: "APPLIED", value: statistics.total_applied, icon: Target, color: "#3B82F6" },
+    { id: 3, title: "COMPLETED", value: statistics.total_completed, icon: CheckCircle2, color: "#10B981" },
+    { id: 4, title: "AWARDED", value: statistics.total_awarded, icon: Trophy, color: "#8B5CF6" },
+  ], [statistics, projects.length]);
 
   if (loading) {
     return (
@@ -266,6 +277,7 @@ export const StudentProjectsScreen = () => {
                     </View>
                   </View>
 
+                  {/* Status Badges */}
                   <View style={styles.statusBadgesRow}>
                     {isClosed ? (
                       <View style={[styles.statusTag, styles.statusClosed]}>
@@ -278,8 +290,16 @@ export const StudentProjectsScreen = () => {
                     )}
                     
                     {hasApplied && (
-                      <View style={[styles.statusTag, { backgroundColor: '#EFF6FF', borderColor: '#DBEAFE' }]}>
-                        <Text style={[styles.statusTagTextActive, { color: '#2563EB' }]}>
+                      <View style={[styles.statusTag, 
+                        project.applied_status === 'Shortlisted'
+                          ? { backgroundColor: '#F5F3FF', borderColor: '#DDD6FE' }
+                          : { backgroundColor: '#EFF6FF', borderColor: '#DBEAFE' }
+                      ]}>
+                        <Text style={[styles.statusTagTextActive, 
+                          project.applied_status === 'Shortlisted' 
+                            ? { color: '#7C3AED' } 
+                            : { color: '#2563EB' }
+                        ]}>
                           {project.applied_status}
                         </Text>
                       </View>
@@ -289,6 +309,22 @@ export const StudentProjectsScreen = () => {
                   <Text style={styles.projectDesc} numberOfLines={2}>
                     {project.description || "Contribute to real-world industrial projects and build your portfolio."}
                   </Text>
+
+                  {/* Skills Tags */}
+                  {project.skills && project.skills.length > 0 && (
+                    <View style={styles.skillsRow}>
+                      {project.skills.slice(0, 4).map((s: any, si: number) => (
+                        <View key={si} style={styles.skillChip}>
+                          <Text style={styles.skillChipText}>{s.skill}</Text>
+                        </View>
+                      ))}
+                      {project.skills.length > 4 && (
+                        <View style={styles.skillChipMore}>
+                          <Text style={styles.skillChipMoreText}>+{project.skills.length - 4}</Text>
+                        </View>
+                      )}
+                    </View>
+                  )}
 
                   <View style={styles.badgeRow}>
                     <View style={styles.infoBadge}>
@@ -688,6 +724,12 @@ const styles = StyleSheet.create({
     lineHeight: 16,
     marginBottom: 12,
   },
+  skillsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 12 },
+  skillChip: { backgroundColor: '#F0F9FF', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, borderWidth: 1, borderColor: '#BAE6FD' },
+  skillChipText: { fontSize: 10, fontWeight: '700', color: '#0369A1' },
+  skillChipMore: { backgroundColor: '#F8FAFC', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, borderWidth: 1, borderColor: '#E2E8F0' },
+  skillChipMoreText: { fontSize: 10, fontWeight: '700', color: '#64748B' },
+
   badgeRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
