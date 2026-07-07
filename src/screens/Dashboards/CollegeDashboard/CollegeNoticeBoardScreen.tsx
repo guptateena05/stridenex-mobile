@@ -18,6 +18,8 @@ import { typography } from '@/theme/typography';
 import { spacing, borderRadius } from '@/theme/spacing';
 import { Card } from '@/components/Shared/Card';
 import Animated, { FadeInUp, FadeInRight } from 'react-native-reanimated';
+import { SwipeableRow } from '@/components/Shared/SwipeableRow';
+import { SkeletonLoader } from '@/components/Shared/SkeletonLoader';
 import {
   Calendar,
   Plus,
@@ -101,7 +103,7 @@ export const CollegeNoticeBoardScreen = () => {
     if (!collegeName) return;
     if (!isSilent) setEventsLoading(true);
     try {
-      const res = await getCollegeEvents(collegeName, page, 5); // 5 events per page
+      const res = await getCollegeEvents(collegeName, page, 10); // 10 events per page
       const data = res?.data || res?.message?.data || res?.message || res;
       if (data && typeof data === 'object') {
         const eventsArray = Array.isArray(data.events) ? data.events : (Array.isArray(data) ? data : []);
@@ -128,7 +130,7 @@ export const CollegeNoticeBoardScreen = () => {
     if (!collegeName) return;
     if (!isSilent) setNoticesLoading(true);
     try {
-      const res = await getCollegeNotices(collegeName, page, 5); // 5 notices per page
+      const res = await getCollegeNotices(collegeName, page, 10); // 10 notices per page
       const data = res?.data || res?.message?.data || res?.message || res;
       if (data && typeof data === 'object') {
         const noticesArray = Array.isArray(data.notice)
@@ -466,14 +468,7 @@ export const CollegeNoticeBoardScreen = () => {
     );
   };
 
-  if (loading) {
-    return (
-      <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color="#0F172A" />
-        <Text style={styles.loadingText}>Loading Announcements...</Text>
-      </View>
-    );
-  }
+  // Skeletons will load inline inside respective tabs instead of full screen.
 
   const collegeName = collegeDetails?.name || collegeDetails?.college_name;
 
@@ -536,8 +531,25 @@ export const CollegeNoticeBoardScreen = () => {
               <Text style={styles.sectionLabel}>ACTIVE EVENTS & COMPETITIONS</Text>
             </View>
 
-            {eventsLoading ? (
-              <ActivityIndicator size="small" color="#0F172A" style={{ marginVertical: 20 }} />
+            {loading || eventsLoading ? (
+              <View style={{ gap: 16 }}>
+                {[1, 2].map((i) => (
+                  <View key={i} style={[styles.eventCard, { borderLeftWidth: 4, borderLeftColor: '#E2E8F0', padding: 16 }]}>
+                    <View style={styles.eventHeader}>
+                      <SkeletonLoader width={80} height={18} borderRadius={4} />
+                      <SkeletonLoader width={80} height={14} />
+                    </View>
+                    <SkeletonLoader width="80%" height={16} style={{ marginTop: 12 }} />
+                    <View style={{ flexDirection: 'row', gap: 12, marginTop: 12 }}>
+                      <SkeletonLoader width={100} height={12} />
+                      <SkeletonLoader width={80} height={12} />
+                    </View>
+                    <View style={{ marginTop: 12 }}>
+                      <SkeletonLoader width={100} height={20} borderRadius={4} />
+                    </View>
+                  </View>
+                ))}
+              </View>
             ) : eventsList.length === 0 ? (
               <Card style={styles.emptyCard}>
                 <Trophy size={32} color="#94A3B8" style={{ marginBottom: 8 }} />
@@ -551,9 +563,16 @@ export const CollegeNoticeBoardScreen = () => {
                 {eventsList.map((event, idx) => {
                   const theme = getEventTheme(event.event_type);
                   const daysLeft = getDaysLeft(event.start_date);
+                  const isActive = daysLeft > 0;
+                  const borderColor = isActive ? '#059669' : '#94A3B8';
                   return (
-                    <Animated.View key={event.name || idx} entering={FadeInRight.delay(100 + idx * 50)}>
-                      <Card style={styles.eventCard}>
+                    <SwipeableRow
+                      key={event.name || idx}
+                      onEdit={() => handleOpenEventModal(event)}
+                      editBgColor="#ecfdf5"
+                      editTextColor="#059669"
+                    >
+                      <Card style={[styles.eventCard, { borderLeftWidth: 4, borderLeftColor: borderColor, marginBottom: 0 }]}>
                         <View style={styles.eventHeader}>
                           <View style={[styles.typeBadge, { backgroundColor: theme.bgColor }]}>
                             <Text style={[styles.typeBadgeText, { color: theme.color }]}>{event.event_type}</Text>
@@ -598,38 +617,31 @@ export const CollegeNoticeBoardScreen = () => {
                             <Text style={styles.prizeAmount}>{event.price}</Text>
                           </View>
                         </View>
-
-                        <View style={styles.eventActions}>
-                          <TouchableOpacity style={styles.applyBtn} onPress={() => handleOpenEventModal(event)}>
-                            <Edit2 size={12} color="#FFF" style={{ marginRight: 4 }} />
-                            <Text style={styles.applyBtnText}>Edit Event</Text>
-                          </TouchableOpacity>
-                        </View>
                       </Card>
-                    </Animated.View>
+                    </SwipeableRow>
                   );
                 })}
+              </View>
+            )}
 
-                {/* Events Pagination */}
-                {eventsTotalPages > 1 && (
-                  <View style={styles.paginationRow}>
-                    <TouchableOpacity
-                      disabled={eventsPage <= 1}
-                      onPress={() => fetchEvents(collegeName, eventsPage - 1)}
-                      style={[styles.pageBtn, eventsPage <= 1 && styles.pageBtnDisabled]}
-                    >
-                      <ChevronLeft size={16} color={eventsPage <= 1 ? "#CBD5E1" : "#0F172A"} />
-                    </TouchableOpacity>
-                    <Text style={styles.pageIndicator}>{eventsPage} of {eventsTotalPages}</Text>
-                    <TouchableOpacity
-                      disabled={eventsPage >= eventsTotalPages}
-                      onPress={() => fetchEvents(collegeName, eventsPage + 1)}
-                      style={[styles.pageBtn, eventsPage >= eventsTotalPages && styles.pageBtnDisabled]}
-                    >
-                      <ChevronRight size={16} color={eventsPage >= eventsTotalPages ? "#CBD5E1" : "#0F172A"} />
-                    </TouchableOpacity>
-                  </View>
-                )}
+            {/* Events Pagination */}
+            {eventsTotalPages > 1 && (
+              <View style={styles.paginationRow}>
+                <TouchableOpacity
+                  disabled={eventsPage <= 1}
+                  onPress={() => fetchEvents(collegeName, eventsPage - 1)}
+                  style={[styles.pageBtn, eventsPage <= 1 && styles.pageBtnDisabled]}
+                >
+                  <ChevronLeft size={16} color={eventsPage <= 1 ? "#CBD5E1" : "#0F172A"} />
+                </TouchableOpacity>
+                <Text style={styles.pageIndicator}>{eventsPage} of {eventsTotalPages}</Text>
+                <TouchableOpacity
+                  disabled={eventsPage >= eventsTotalPages}
+                  onPress={() => fetchEvents(collegeName, eventsPage + 1)}
+                  style={[styles.pageBtn, eventsPage >= eventsTotalPages && styles.pageBtnDisabled]}
+                >
+                  <ChevronRight size={16} color={eventsPage >= eventsTotalPages ? "#CBD5E1" : "#0F172A"} />
+                </TouchableOpacity>
               </View>
             )}
           </View>
@@ -637,49 +649,57 @@ export const CollegeNoticeBoardScreen = () => {
 
         {/* Notices Tab */}
         {activeTab === 'notices' && (
-          <Card style={styles.sectionCard}>
-            <View style={styles.sectionHeader}>
-              <View style={styles.sectionHeaderLeft}>
-                <FileText color="#64748B" size={18} />
-                <Text style={styles.sectionTitle}>Digital Notices</Text>
-              </View>
+          <View>
+            <View style={styles.sectionTitleRow}>
+              <Text style={styles.sectionLabel}>DIGITAL ANNOUNCEMENTS</Text>
             </View>
             
-            {noticesLoading ? (
-              <ActivityIndicator size="small" color="#0F172A" style={{ marginVertical: 20 }} />
-            ) : noticesList.length === 0 ? (
-              <View style={styles.emptyNoticeContainer}>
-                <FileText size={24} color="#94A3B8" style={{ marginBottom: 6 }} />
-                <Text style={styles.emptyNoticeText}>No notices posted yet</Text>
+            {loading || noticesLoading ? (
+              <View style={{ gap: 16 }}>
+                {[1, 2, 3].map((i) => (
+                  <View key={i} style={[styles.noticeCard, { borderLeftWidth: 4, borderLeftColor: '#E2E8F0', padding: 16 }]}>
+                    <View style={styles.noticeTopRow}>
+                      <SkeletonLoader width={60} height={12} />
+                      <SkeletonLoader width={60} height={10} />
+                    </View>
+                    <SkeletonLoader width="90%" height={14} style={{ marginTop: 8 }} />
+                    <SkeletonLoader width="50%" height={10} style={{ marginTop: 6 }} />
+                  </View>
+                ))}
               </View>
+            ) : noticesList.length === 0 ? (
+              <Card style={styles.emptyCard}>
+                <FileText size={32} color="#94A3B8" style={{ marginBottom: 8 }} />
+                <Text style={styles.emptyText}>No notices posted yet</Text>
+                <TouchableOpacity style={styles.emptyBtn} onPress={() => handleOpenNoticeModal()}>
+                  <Text style={styles.emptyBtnText}>Post Notice</Text>
+                </TouchableOpacity>
+              </Card>
             ) : (
-              <View style={styles.listContainer}>
+              <View style={styles.eventsStack}>
                 {noticesList.map((notice, idx) => {
                   const noticeColor = getNoticeColor(notice.notice_type);
                   return (
-                    <View key={notice.name || idx} style={[styles.noticeRow, idx === noticesList.length - 1 && styles.noBorder]}>
-                      <View style={[styles.noticeIndicator, { backgroundColor: noticeColor }]} />
-                      <View style={styles.noticeInfo}>
-                        <View style={styles.noticeTopRow}>
-                          <Text style={styles.noticeCategory}>{notice.notice_type}</Text>
-                          <Text style={styles.noticeDate}>{formatNoticeDate(notice.date)}</Text>
+                    <SwipeableRow
+                      key={notice.name || idx}
+                      onEdit={() => handleOpenNoticeModal(notice)}
+                      onDelete={() => handleDeleteNotice(notice.name)}
+                      editBgColor="#ecfdf5"
+                      editTextColor="#059669"
+                    >
+                      <Card style={[styles.noticeCard, { borderLeftWidth: 4, borderLeftColor: noticeColor || '#059669', marginBottom: 0 }]}>
+                        <View style={styles.noticeInfo}>
+                          <View style={styles.noticeTopRow}>
+                            <Text style={styles.noticeCategory}>{notice.notice_type}</Text>
+                            <Text style={styles.noticeDate}>{formatNoticeDate(notice.date)}</Text>
+                          </View>
+                          <Text style={styles.noticeText} numberOfLines={3}>{notice.notice}</Text>
+                          {notice.company && (
+                            <Text style={styles.noticePartner}>Partner: {notice.company}</Text>
+                          )}
                         </View>
-                        <Text style={styles.noticeText} numberOfLines={3}>{notice.notice}</Text>
-                        {notice.company && (
-                          <Text style={styles.noticePartner}>Partner: {notice.company}</Text>
-                        )}
-                      </View>
-                      
-                      {/* Notice Action Buttons */}
-                      <View style={styles.noticeActionsContainer}>
-                        <TouchableOpacity onPress={() => handleOpenNoticeModal(notice)} style={styles.iconActionBtn}>
-                          <Edit2 size={12} color="#64748B" />
-                        </TouchableOpacity>
-                        <TouchableOpacity onPress={() => handleDeleteNotice(notice.name)} style={styles.iconActionBtn}>
-                          <Trash2 size={12} color="#EF4444" />
-                        </TouchableOpacity>
-                      </View>
-                    </View>
+                      </Card>
+                    </SwipeableRow>
                   );
                 })}
               </View>
@@ -705,7 +725,7 @@ export const CollegeNoticeBoardScreen = () => {
                 </TouchableOpacity>
               </View>
             )}
-          </Card>
+          </View>
         )}
       </ScrollView>
 
@@ -801,24 +821,24 @@ const styles = StyleSheet.create({
   sectionLabel: { fontSize: 10, fontWeight: '800', color: '#94A3B8', letterSpacing: 0.5 },
 
   eventsStack: { gap: 16, marginBottom: 24 },
-  eventCard: { backgroundColor: '#FFF', borderRadius: 20, padding: 20, borderWidth: 1, borderColor: '#E2E8F0' },
-  eventHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+  eventCard: { backgroundColor: '#FFF', borderRadius: 16, padding: 14, borderWidth: 1, borderColor: '#E2E8F0' },
+  eventHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
   typeBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
   typeBadgeText: { fontSize: 9, fontWeight: '800', textTransform: 'uppercase' },
   daysBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#F8FAFC', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, borderWidth: 1, borderColor: '#F1F5F9' },
   daysBadgeText: { fontSize: 8, fontWeight: '800', color: '#64748B' },
   
-  eventTitle: { fontSize: 18, fontWeight: '800', color: '#1E293B', marginBottom: 12, fontFamily: typography.fontFamily.display },
+  eventTitle: { fontSize: 15, fontWeight: '800', color: '#1E293B', marginBottom: 8, fontFamily: typography.fontFamily.display },
   
-  eventMetaRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginBottom: 20 },
+  eventMetaRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
   metaItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   metaLabelText: { fontSize: 12, fontWeight: '600', color: '#64748B' },
   metaDivider: { width: 4, height: 4, borderRadius: 2, backgroundColor: '#E2E8F0' },
 
-  prizeHighlight: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#F8FAFC', padding: 12, borderRadius: 12, marginBottom: 20, borderWidth: 1, borderColor: '#F1F5F9' },
-  prizeIconBox: { width: 36, height: 36, borderRadius: 10, backgroundColor: '#FFF', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#F1F5F9' },
-  prizeLabel: { fontSize: 8, fontWeight: '800', color: '#94A3B8', letterSpacing: 0.5 },
-  prizeAmount: { fontSize: 16, fontWeight: '800', color: '#1E293B' },
+  prizeHighlight: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#F8FAFC', padding: 8, borderRadius: 10, marginBottom: 0, borderWidth: 1, borderColor: '#F1F5F9' },
+  prizeIconBox: { width: 28, height: 28, borderRadius: 6, backgroundColor: '#FFF', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#F1F5F9' },
+  prizeLabel: { fontSize: 7, fontWeight: '800', color: '#94A3B8', letterSpacing: 0.5 },
+  prizeAmount: { fontSize: 14, fontWeight: '800', color: '#1E293B' },
 
   eventActions: { flexDirection: 'row', gap: 12 },
   applyBtn: { flex: 1, backgroundColor: '#0F172A', paddingVertical: 12, borderRadius: 12, alignItems: 'center', flexDirection: 'row', justifyContent: 'center' },
@@ -832,16 +852,27 @@ const styles = StyleSheet.create({
   postNoticeBtnText: { fontSize: 11, fontWeight: '800', color: '#2563EB' },
 
   listContainer: { gap: 0 },
+  noticeCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 16,
+    borderWidth: 1.5,
+    borderColor: '#F1F5F9',
+    shadowColor: '#64748B',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.02,
+    shadowRadius: 8,
+    elevation: 2,
+  },
   noticeRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#F8FAFC' },
   noBorder: { borderBottomWidth: 0, paddingBottom: 0 },
   noticeIndicator: { width: 3, height: 36, borderRadius: 2, marginRight: 12 },
-  noticeInfo: { flex: 1, marginRight: 8 },
+  noticeInfo: { flex: 1 },
   noticeTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
   noticeCategory: { fontSize: 10, fontWeight: '800', color: '#64748B', textTransform: 'uppercase' },
   noticeDate: { fontSize: 10, fontWeight: '700', color: '#94A3B8' },
   noticeText: { fontSize: 14, fontWeight: '600', color: '#1E293B', lineHeight: 20 },
   noticePartner: { fontSize: 11, fontWeight: '700', color: '#64748B', marginTop: 4 },
-
   noticeActionsContainer: { flexDirection: 'row', gap: 8, alignItems: 'center' },
   iconActionBtn: { padding: 6, backgroundColor: '#F8FAFC', borderRadius: 8, borderWidth: 1, borderColor: '#E2E8F0' },
 

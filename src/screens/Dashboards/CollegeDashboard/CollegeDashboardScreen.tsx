@@ -93,7 +93,7 @@ const styles = StyleSheet.create({
   statValue: { fontSize: typography.fontSize.xl, fontWeight: 'bold', color: colors.navy, marginBottom: 4 },
   changeBadge: { backgroundColor: colors.background.light || '#f1f5f9', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, alignSelf: 'flex-start' },
   changeText: { fontSize: 10, color: colors.text.secondary, fontWeight: '500' },
-  card: { marginBottom: spacing.md, padding: spacing.md, borderRadius: borderRadius.xl, backgroundColor: '#fff' },
+  card: { marginBottom: spacing.md, padding: spacing.md, borderRadius: borderRadius.xl, backgroundColor: '#fff', borderLeftWidth: 4, borderLeftColor: '#059669' },
   nepHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.md },
   nepTitle: { color: '#fff', fontSize: typography.fontSize.lg, fontWeight: 'bold', fontFamily: typography.fontFamily.display },
   nepSub: { color: 'rgba(255,255,255,0.7)', fontSize: typography.fontSize.sm, marginTop: 2 },

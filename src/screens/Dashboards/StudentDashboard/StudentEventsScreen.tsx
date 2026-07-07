@@ -29,10 +29,12 @@ import {
   CheckCircle2,
   AlertCircle,
   Search,
-  X
+  X,
+  Plus
 } from 'lucide-react-native';
 import Animated, { FadeInUp, FadeInRight } from 'react-native-reanimated';
 import { useAuth } from '@/context/AuthContext';
+import { SwipeableRow } from '@/components/Shared/SwipeableRow';
 import { 
   getMasterData, 
   getStudentByEmail, 
@@ -394,7 +396,7 @@ export const StudentEventsScreen = () => {
         {activeTab === 'events' ? (
           <View>
             {/* Search Bar */}
-            <Animated.View entering={FadeInUp.delay(150)} style={styles.searchContainer}>
+            <View style={styles.searchContainer}>
               <Search size={18} color="#94A3B8" style={styles.searchIcon} />
               <TextInput 
                 placeholder="Search events..." 
@@ -403,7 +405,7 @@ export const StudentEventsScreen = () => {
                 value={searchVal}
                 onChangeText={setSearchVal}
               />
-            </Animated.View>
+            </View>
 
             {loading ? (
               <View style={styles.loaderBox}>
@@ -419,78 +421,62 @@ export const StudentEventsScreen = () => {
               <View style={styles.listContainer}>
                 {filteredEvents.map((event, index) => {
                   const isRegistered = registeredEventIds.includes(event.name) || event.registrationStatus === "Register";
+                  const eventActions = [
+                    {
+                      label: isRegistered ? 'Registered' : 'Register',
+                      icon: isRegistered ? CheckCircle2 : Plus,
+                      bgColor: isRegistered ? '#DCFCE7' : '#FFF7ED',
+                      color: isRegistered ? '#10B981' : '#FF6B00',
+                      onPress: () => handleRegister(event)
+                    },
+                    {
+                      label: 'Details',
+                      icon: Eye,
+                      bgColor: '#EFF6FF',
+                      color: '#3B82F6',
+                      onPress: () => setSelectedEvent(event)
+                    }
+                  ];
                   return (
-                    <Animated.View 
-                      key={event.id} 
-                      entering={FadeInUp.delay(200 + index * 50)}
-                      style={styles.eventCard}
-                    >
-                      <View style={styles.cardHeader}>
-                        <View style={styles.eventInfo}>
-                          <View style={[styles.iconBox, { backgroundColor: event.bgColor }]}>
-                            <Trophy size={20} color={event.color} />
-                          </View>
-                          <View style={{ flex: 1 }}>
-                            <Text style={styles.eventTitle} numberOfLines={1}>{event.title}</Text>
-                            <Text style={styles.eventType}>{event.type}</Text>
-                          </View>
-                        </View>
-                        {event.daysLeft > 0 && (
-                          <View style={[styles.daysLeftBadge, { backgroundColor: event.bgColor, borderColor: event.borderColor }]}>
-                            <Clock size={10} color={event.color} />
-                            <Text style={[styles.daysLeftText, { color: event.color }]}>{event.daysLeft} days left</Text>
-                          </View>
-                        )}
-                      </View>
-
-                      {/* Event Details */}
-                      <View style={styles.detailsRow}>
-                        <View style={styles.detailItem}>
-                          <Calendar size={14} color="#94A3B8" />
-                          <Text style={styles.detailText} numberOfLines={1}>{event.date.split(" ")[0]}</Text>
-                        </View>
-                        <View style={styles.detailItem}>
-                          <Users size={14} color="#94A3B8" />
-                          <Text style={styles.detailText}>{event.participants}</Text>
-                        </View>
-                        <View style={styles.detailItem}>
-                          <IndianRupee size={14} color="#94A3B8" />
-                          <Text style={styles.prizeText}>{event.prize}</Text>
-                        </View>
-                      </View>
-
-                      {/* Actions */}
-                      <View style={styles.actionsRow}>
-                        <TouchableOpacity
-                          style={[
-                            styles.registerButton,
-                            isRegistered && styles.registeredBtn,
-                            registeringId === event.name && { opacity: 0.7 }
-                          ]}
-                          disabled={registeringId === event.name}
-                          onPress={() => handleRegister(event)}
-                        >
-                          {registeringId === event.name ? (
-                            <ActivityIndicator color="#FFFFFF" size="small" />
-                          ) : isRegistered ? (
-                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                              <CheckCircle2 size={14} color="#FFFFFF" />
-                              <Text style={styles.registerButtonText}>Registered</Text>
+                    <SwipeableRow key={event.id} actions={eventActions}>
+                      <View 
+                        style={[styles.eventCard, { marginBottom: 0 }]}
+                      >
+                        <View style={styles.cardHeader}>
+                          <View style={styles.eventInfo}>
+                            <View style={[styles.iconBox, { backgroundColor: event.bgColor }]}>
+                              <Trophy size={20} color={event.color} />
                             </View>
-                          ) : (
-                            <Text style={styles.registerButtonText}>Register Now</Text>
+                            <View style={{ flex: 1 }}>
+                              <Text style={styles.eventTitle} numberOfLines={1}>{event.title}</Text>
+                              <Text style={styles.eventType}>{event.type}</Text>
+                            </View>
+                          </View>
+                          {event.daysLeft > 0 && (
+                            <View style={[styles.daysLeftBadge, { backgroundColor: event.bgColor, borderColor: event.borderColor }]}>
+                              <Clock size={10} color={event.color} />
+                              <Text style={[styles.daysLeftText, { color: event.color }]}>{event.daysLeft} days left</Text>
+                            </View>
                           )}
-                        </TouchableOpacity>
+                        </View>
 
-                        <TouchableOpacity 
-                          style={styles.detailsButton}
-                          onPress={() => setSelectedEvent(event)}
-                        >
-                          <Eye size={14} color="#64748B" />
-                          <Text style={styles.detailsButtonText}>Details</Text>
-                        </TouchableOpacity>
+                        {/* Event Details */}
+                        <View style={styles.detailsRow}>
+                          <View style={styles.detailItem}>
+                            <Calendar size={14} color="#94A3B8" />
+                            <Text style={styles.detailText} numberOfLines={1}>{event.date.split(" ")[0]}</Text>
+                          </View>
+                          <View style={styles.detailItem}>
+                            <Users size={14} color="#94A3B8" />
+                            <Text style={styles.detailText}>{event.participants}</Text>
+                          </View>
+                          <View style={styles.detailItem}>
+                            <IndianRupee size={14} color="#94A3B8" />
+                            <Text style={styles.prizeText}>{event.prize}</Text>
+                          </View>
+                        </View>
                       </View>
-                    </Animated.View>
+                    </SwipeableRow>
                   );
                 })}
               </View>
@@ -590,7 +576,7 @@ const styles = StyleSheet.create({
   tabBtnText: { fontSize: 12, fontWeight: '700', color: '#64748B' },
   activeTabBtnText: { color: '#0F172A' },
   
-  searchContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 16, paddingHorizontal: 16, paddingVertical: 4, marginBottom: 20, borderWidth: 1.5, borderColor: '#F1F5F9', shadowColor: '#64748B', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.03, shadowRadius: 8, elevation: 2 },
+  searchContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 16, paddingHorizontal: 16, paddingVertical: 4, marginBottom: 20, borderWidth: 1.5, borderColor: '#E2E8F0' },
   searchIcon: { marginRight: 8 },
   searchInput: { flex: 1, height: 44, fontSize: 14, color: '#1E293B', fontWeight: '500' },
   
@@ -601,7 +587,7 @@ const styles = StyleSheet.create({
   emptyText: { fontSize: 13, color: '#64748B', fontWeight: '600', marginTop: 10, textAlign: 'center' },
 
   listContainer: { gap: 16, marginBottom: 20 },
-  eventCard: { backgroundColor: '#FFFFFF', borderRadius: 24, padding: 20, borderWidth: 1.5, borderColor: '#F1F5F9', shadowColor: '#64748B', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.04, shadowRadius: 12, elevation: 3 },
+  eventCard: { backgroundColor: '#FFFFFF', borderRadius: 24, padding: 20, borderTopWidth: 1.5, borderBottomWidth: 1.5, borderRightWidth: 1.5, borderLeftWidth: 4, borderLeftColor: '#FF6B00', borderColor: '#F1F5F9', shadowColor: '#64748B', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.04, shadowRadius: 12, elevation: 3 },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 },
   eventInfo: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
   iconBox: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
@@ -622,7 +608,7 @@ const styles = StyleSheet.create({
   detailsButton: { flex: 0.8, flexDirection: 'row', justifyContent: 'center', backgroundColor: '#F8FAFC', paddingVertical: 12, borderRadius: 12, borderWidth: 1.5, borderColor: '#F1F5F9', alignItems: 'center', gap: 6 },
   detailsButtonText: { color: '#475569', fontSize: 13, fontWeight: '700' },
   
-  noticeContainer: { backgroundColor: '#FFFFFF', borderRadius: 20, padding: 8, borderWidth: 1.5, borderColor: '#F1F5F9', marginBottom: 20 },
+  noticeContainer: { backgroundColor: '#FFFFFF', borderRadius: 20, padding: 8, borderTopWidth: 1.5, borderBottomWidth: 1.5, borderRightWidth: 1.5, borderLeftWidth: 4, borderLeftColor: '#FF6B00', borderColor: '#F1F5F9', marginBottom: 20 },
   noticeItem: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, borderBottomWidth: 1, borderBottomColor: '#F8FAFC' },
   noticeIconBox: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   noticeContent: { flex: 1 },

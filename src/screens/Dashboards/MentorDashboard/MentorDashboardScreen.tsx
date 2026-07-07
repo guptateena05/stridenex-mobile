@@ -733,7 +733,7 @@ const styles = StyleSheet.create({
 
   statsRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4, marginBottom: 16 },
 
-  card: { backgroundColor: '#FFF', borderRadius: 20, padding: 16, borderWidth: 1, borderColor: '#E2E8F0', shadowColor: '#64748B', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 4, elevation: 1, marginBottom: 16 },
+  card: { backgroundColor: '#FFF', borderRadius: 20, padding: 16, borderWidth: 1, borderColor: '#E2E8F0', borderLeftWidth: 4, borderLeftColor: '#7C3AED', shadowColor: '#64748B', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 4, elevation: 1, marginBottom: 16 },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
   cardTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   cardTitle: { fontSize: 16, fontWeight: '800', color: '#1E293B' },
@@ -780,7 +780,7 @@ const styles = StyleSheet.create({
   reviewBtn: { backgroundColor: '#4c1d95', paddingVertical: 12, borderRadius: 10, alignItems: 'center' },
   reviewBtnText: { color: '#FFF', fontSize: 13, fontWeight: '800' },
 
-  activityCard: { backgroundColor: '#FFF', borderRadius: 20, borderWidth: 1, borderColor: '#E2E8F0', padding: 16 },
+  activityCard: { backgroundColor: '#FFF', borderRadius: 20, borderWidth: 1, borderColor: '#E2E8F0', borderLeftWidth: 4, borderLeftColor: '#7C3AED', padding: 16 },
   activityHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: '#F1F5F9', marginBottom: 12 },
   activityTitle: { fontSize: 16, fontWeight: '800', color: '#1E293B' },
   activityList: { gap: 12 },

@@ -610,6 +610,8 @@ const styles = StyleSheet.create({
     padding: 20,
     borderWidth: 1.5,
     borderColor: '#F1F5F9',
+    borderLeftWidth: 4,
+    borderLeftColor: '#FF6B00',
     shadowColor: '#64748B',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.04,

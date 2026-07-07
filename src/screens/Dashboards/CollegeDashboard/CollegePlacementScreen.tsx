@@ -8,6 +8,8 @@ import { StatsCard } from '@/components/dashboard/StatsCard';
 import Animated, { FadeInUp, FadeInRight } from 'react-native-reanimated';
 import { Send, Star, Calendar, BarChart, Building2, TrendingUp, Award, ChevronDown, ChevronRight, Briefcase, Search, X, Sliders, CheckCircle2, AlertCircle, Plus, Download, ArrowLeft, Mail, Bell, Trash2, Edit, Clock, IndianRupee, Users, Trophy, FileText } from 'lucide-react-native';
 import { useAuth } from '@/context/AuthContext';
+import { SwipeableRow } from '@/components/Shared/SwipeableRow';
+import { SkeletonLoader } from '@/components/Shared/SkeletonLoader';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -1188,11 +1190,11 @@ export const CollegePlacementScreen = ({ route }: any) => {
             </TouchableOpacity>
 
             <TouchableOpacity 
-              style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(255, 107, 0, 0.1)', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12 }}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(5, 150, 105, 0.1)', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12 }}
               onPress={() => openEditDrive(selectedDrive)}
             >
-              <Edit size={14} color="#FF6B00" />
-              <Text style={{ fontSize: 11, fontWeight: '700', color: '#FF6B00' }}>Edit</Text>
+              <Edit size={14} color="#059669" />
+              <Text style={{ fontSize: 11, fontWeight: '700', color: '#059669' }}>Edit</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -1269,22 +1271,22 @@ export const CollegePlacementScreen = ({ route }: any) => {
         </View>
 
         {/* Student Candidates List */}
-        <Card style={styles.sectionCard}>
-          <View style={styles.sectionHeader}>
+        <View style={{ gap: 12 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 4, marginBottom: 4 }}>
             <Users color="#64748B" size={16} />
-            <Text style={styles.sectionTitle}>Candidates ({drivePlacementLoading ? '...' : studentsToRender.length})</Text>
+            <Text style={{ fontSize: 14, fontWeight: '800', color: '#1E293B' }}>Candidates ({drivePlacementLoading ? '...' : studentsToRender.length})</Text>
           </View>
 
-          <View style={{ gap: 12 }}>
+          <View style={{ gap: 0 }}>
             {drivePlacementLoading ? (
-              <View style={[styles.emptyContainer, { paddingVertical: 20 }]}>
-                <ActivityIndicator size="small" color="#FF6B00" />
+              <Card style={[styles.emptyCard, { paddingVertical: 20 }]}>
+                <ActivityIndicator size="small" color="#059669" />
                 <Text style={[styles.emptyText, { marginTop: 8 }]}>Loading candidates...</Text>
-              </View>
+              </Card>
             ) : studentsToRender.length === 0 ? (
-              <View style={styles.emptyContainer}>
+              <Card style={styles.emptyCard}>
                 <Text style={styles.emptyText}>No students in this stage</Text>
-              </View>
+              </Card>
             ) : (
               studentsToRender.map((item, index) => {
                 const stdName = item.student_name || item.student || (item.first_name || item.last_name ? `${item.first_name || ""} ${item.last_name || ""}`.trim() : "") || item.student_id || item.name || "Anonymous";
@@ -1292,81 +1294,83 @@ export const CollegePlacementScreen = ({ route }: any) => {
                 const avatarColor = getAvatarColor(stdName);
                 
                 return (
-                  <View key={item.application_id || item.student_id || index} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 8, borderBottomWidth: index === studentsToRender.length - 1 ? 0 : 1, borderBottomColor: '#F1F5F9' }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 8 }}>
-                      <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: avatarColor, alignItems: 'center', justifyContent: 'center', marginRight: 8 }}>
-                        <Text style={{ color: '#FFF', fontSize: 11, fontWeight: '800' }}>{initials}</Text>
-                      </View>
-                      <View style={{ flex: 1 }}>
-                        <Text style={{ fontSize: 12, fontWeight: '800', color: '#1E293B' }} numberOfLines={1}>{stdName}</Text>
-                        <Text style={{ fontSize: 10, color: '#64748B', fontWeight: '500', marginTop: 1 }}>
-                          {item.branch || item.course || "CS"} • CGPA: {item.cgpa !== undefined && item.cgpa !== null ? item.cgpa : "—"} • Backlogs: {item.backlog !== undefined && item.backlog !== null ? item.backlog : (item.backlogs !== undefined ? item.backlogs : 0)}
-                        </Text>
-                      </View>
-                    </View>
-
-                    {/* Action Group */}
-                    <View style={styles.actionGroup}>
-                      {selectedDriveStatusFilter === 'Eligible' && (
-                        <TouchableOpacity 
-                          style={[styles.actionBtn, { backgroundColor: 'rgba(37, 99, 235, 0.1)' }]}
-                          onPress={() => handleNotifyCandidateMail(item, "eligible", selectedDrive.company || selectedDrive.name)}
-                        >
-                          <Text style={[styles.actionBtnText, { color: '#2563EB' }]}>Notify</Text>
-                        </TouchableOpacity>
-                      )}
-
-                      {selectedDriveStatusFilter === 'Registered' && (
-                        <>
-                          <TouchableOpacity 
-                            style={[styles.actionBtn, styles.btnShortlist]}
-                            disabled={updatingStatusMap[item.application_id]}
-                            onPress={() => handleUpdateStatus(item.application_id, stdName, item.email || item.email_id || item.student_email || item.name, "Shortlisted")}
-                          >
-                            <Text style={[styles.actionBtnText, { color: '#D97706' }]}>Shortlist</Text>
-                          </TouchableOpacity>
-                          <TouchableOpacity 
-                            style={[styles.actionBtn, styles.btnReject]}
-                            disabled={updatingStatusMap[item.application_id]}
-                            onPress={() => handleUpdateStatus(item.application_id, stdName, item.email || item.email_id || item.student_email || item.name, "Rejected")}
-                          >
-                            <Text style={[styles.actionBtnText, { color: '#DC2626' }]}>Reject</Text>
-                          </TouchableOpacity>
-                        </>
-                      )}
-                      
-                      {selectedDriveStatusFilter === 'Shortlisted' && (
-                        <>
-                          <TouchableOpacity 
-                            style={[styles.actionBtn, styles.btnSelect]}
-                            disabled={updatingStatusMap[item.application_id]}
-                            onPress={() => handleUpdateStatus(item.application_id, stdName, item.email || item.email_id || item.student_email || item.name, "Selected")}
-                          >
-                            <Text style={[styles.actionBtnText, { color: '#059669' }]}>Select</Text>
-                          </TouchableOpacity>
-                          <TouchableOpacity 
-                            style={[styles.actionBtn, styles.btnReject]}
-                            disabled={updatingStatusMap[item.application_id]}
-                            onPress={() => handleUpdateStatus(item.application_id, stdName, item.email || item.email_id || item.student_email || item.name, "Rejected")}
-                          >
-                            <Text style={[styles.actionBtnText, { color: '#DC2626' }]}>Reject</Text>
-                          </TouchableOpacity>
-                        </>
-                      )}
-
-                      {selectedDriveStatusFilter === 'Selected' && (
-                        <View style={styles.placedBadge}>
-                          <CheckCircle2 size={12} color="#059669" />
-                          <Text style={styles.placedBadgeText}>Placed</Text>
+                  <Card key={item.application_id || item.student_id || index} style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 12, borderWidth: 1, borderColor: '#F1F5F9', borderLeftWidth: 4, borderLeftColor: '#059669', marginBottom: 12 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 8 }}>
+                        <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: avatarColor, alignItems: 'center', justifyContent: 'center', marginRight: 8 }}>
+                          <Text style={{ color: '#FFF', fontSize: 11, fontWeight: '800' }}>{initials}</Text>
                         </View>
-                      )}
+                        <View style={{ flex: 1 }}>
+                          <Text style={{ fontSize: 12, fontWeight: '800', color: '#1E293B' }} numberOfLines={1}>{stdName}</Text>
+                          <Text style={{ fontSize: 10, color: '#64748B', fontWeight: '500', marginTop: 1 }}>
+                            {item.branch || item.course || "CS"} • CGPA: {item.cgpa !== undefined && item.cgpa !== null ? item.cgpa : "—"} • Backlogs: {item.backlog !== undefined && item.backlog !== null ? item.backlog : (item.backlogs !== undefined ? item.backlogs : 0)}
+                          </Text>
+                        </View>
+                      </View>
+
+                      {/* Action Group */}
+                      <View style={styles.actionGroup}>
+                        {selectedDriveStatusFilter === 'Eligible' && (
+                          <TouchableOpacity 
+                            style={[styles.actionBtn, { backgroundColor: 'rgba(37, 99, 235, 0.1)' }]}
+                            onPress={() => handleNotifyCandidateMail(item, "eligible", selectedDrive.company || selectedDrive.name)}
+                          >
+                            <Text style={[styles.actionBtnText, { color: '#2563EB' }]}>Notify</Text>
+                          </TouchableOpacity>
+                        )}
+
+                        {selectedDriveStatusFilter === 'Registered' && (
+                          <>
+                            <TouchableOpacity 
+                              style={[styles.actionBtn, styles.btnShortlist]}
+                              disabled={updatingStatusMap[item.application_id]}
+                              onPress={() => handleUpdateStatus(item.application_id, stdName, item.email || item.email_id || item.student_email || item.name, "Shortlisted")}
+                            >
+                              <Text style={[styles.actionBtnText, { color: '#D97706' }]}>Shortlist</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity 
+                              style={[styles.actionBtn, styles.btnReject]}
+                              disabled={updatingStatusMap[item.application_id]}
+                              onPress={() => handleUpdateStatus(item.application_id, stdName, item.email || item.email_id || item.student_email || item.name, "Rejected")}
+                            >
+                              <Text style={[styles.actionBtnText, { color: '#EF4444' }]}>Reject</Text>
+                            </TouchableOpacity>
+                          </>
+                        )}
+
+                        {selectedDriveStatusFilter === 'Shortlisted' && (
+                          <>
+                            <TouchableOpacity 
+                              style={[styles.actionBtn, styles.btnSelect]}
+                              disabled={updatingStatusMap[item.application_id]}
+                              onPress={() => handleUpdateStatus(item.application_id, stdName, item.email || item.email_id || item.student_email || item.name, "Selected")}
+                            >
+                              <Text style={[styles.actionBtnText, { color: '#10B981' }]}>Select</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity 
+                              style={[styles.actionBtn, styles.btnReject]}
+                              disabled={updatingStatusMap[item.application_id]}
+                              onPress={() => handleUpdateStatus(item.application_id, stdName, item.email || item.email_id || item.student_email || item.name, "Rejected")}
+                            >
+                              <Text style={[styles.actionBtnText, { color: '#EF4444' }]}>Reject</Text>
+                            </TouchableOpacity>
+                          </>
+                        )}
+
+                        {selectedDriveStatusFilter === 'Selected' && (
+                          <View style={styles.placedBadge}>
+                            <CheckCircle2 size={12} color="#059669" />
+                            <Text style={styles.placedBadgeText}>Placed</Text>
+                          </View>
+                        )}
+                      </View>
                     </View>
-                  </View>
+                  </Card>
                 );
               })
             )}
           </View>
-        </Card>
+        </View>
 
         {/* Criteria & Notifications Cards */}
         <Card style={styles.sectionCard}>
@@ -1648,9 +1652,41 @@ export const CollegePlacementScreen = ({ route }: any) => {
         )}
 
         {loading && !refreshing ? (
-          <View style={styles.loaderContainer}>
-            <ActivityIndicator size="large" color="#FF6B00" />
-            <Text style={styles.loaderText}>Loading placement console...</Text>
+          <View style={{ gap: 16, padding: 16 }}>
+            {/* Skeleton Stats Grid */}
+            <View style={[styles.metricsGrid, { marginBottom: 12 }]}>
+              <View style={{ flex: 1, height: 75, padding: 12, backgroundColor: '#FFF', borderRadius: 16, borderWidth: 1, borderColor: '#F1F5F9' }}>
+                <SkeletonLoader width={50} height={12} />
+                <SkeletonLoader width={30} height={20} style={{ marginTop: 8 }} />
+              </View>
+              <View style={{ flex: 1, height: 75, padding: 12, backgroundColor: '#FFF', borderRadius: 16, borderWidth: 1, borderColor: '#F1F5F9' }}>
+                <SkeletonLoader width={50} height={12} />
+                <SkeletonLoader width={30} height={20} style={{ marginTop: 8 }} />
+              </View>
+              <View style={{ flex: 1, height: 75, padding: 12, backgroundColor: '#FFF', borderRadius: 16, borderWidth: 1, borderColor: '#F1F5F9' }}>
+                <SkeletonLoader width={50} height={12} />
+                <SkeletonLoader width={30} height={20} style={{ marginTop: 8 }} />
+              </View>
+            </View>
+
+            {/* Skeleton Drives */}
+            {[1, 2].map((i) => (
+              <View key={i} style={[styles.driveCard, { borderLeftWidth: 4, borderLeftColor: '#E2E8F0', padding: 16 }]}>
+                <View style={styles.driveHeader}>
+                  <SkeletonLoader width={36} height={36} borderRadius={18} />
+                  <View style={{ flex: 1, marginLeft: 12, gap: 6 }}>
+                    <SkeletonLoader width={120} height={14} />
+                    <SkeletonLoader width={80} height={10} />
+                  </View>
+                  <SkeletonLoader width={50} height={16} borderRadius={4} />
+                </View>
+                <View style={[styles.driveDetails, { marginTop: 12, gap: 12 }]}>
+                  <SkeletonLoader width={60} height={12} />
+                  <SkeletonLoader width={60} height={12} />
+                  <SkeletonLoader width={100} height={12} />
+                </View>
+              </View>
+            ))}
           </View>
         ) : (
           <Animated.View entering={FadeInUp.delay(100)}>
@@ -1700,50 +1736,61 @@ export const CollegePlacementScreen = ({ route }: any) => {
                         drivesList.map((drive, idx) => {
                           const initial = drive.company.charAt(0).toUpperCase();
                           const avatarColor = getAvatarColor(drive.company);
+                          const isActive = drive.status !== "Closed";
+                          const borderLeftColor = isActive ? '#059669' : '#94A3B8';
 
                           return (
-                            <Card key={drive.id || idx} style={styles.driveCard}>
-                              <View style={styles.driveHeader}>
-                                <View style={[styles.companyAvatar, { backgroundColor: avatarColor }]}>
-                                  <Text style={styles.companyAvatarText}>{initial}</Text>
+                            <SwipeableRow
+                              key={drive.id || idx}
+                              onEdit={() => openEditDrive(drive)}
+                              onDelete={() => handleDeleteDrive(drive.name)}
+                              disableSwipe={drive.status === "Closed"}
+                              editBgColor="#ecfdf5"
+                              editTextColor="#059669"
+                            >
+                              <Card style={[styles.driveCard, { borderLeftWidth: 4, borderLeftColor, marginBottom: 0 }]}>
+                                <View style={styles.driveHeader}>
+                                  <View style={[styles.companyAvatar, { backgroundColor: avatarColor }]}>
+                                    <Text style={styles.companyAvatarText}>{initial}</Text>
+                                  </View>
+                                  <View style={{ flex: 1 }}>
+                                    <Text style={styles.companyName}>{drive.company}</Text>
+                                    <Text style={styles.roleName}>{drive.role}</Text>
+                                  </View>
+                                  <View style={[styles.statusBadge, drive.status === "Closed" ? styles.statusBadgeClosed : styles.statusBadgeOpen]}>
+                                    <Text style={[styles.statusText, drive.status === "Closed" ? styles.statusTextClosed : styles.statusTextOpen]}>
+                                      {drive.status}
+                                    </Text>
+                                  </View>
                                 </View>
-                                <View style={{ flex: 1 }}>
-                                  <Text style={styles.companyName}>{drive.company}</Text>
-                                  <Text style={styles.roleName}>{drive.role}</Text>
-                                </View>
-                                <View style={[styles.statusBadge, drive.status === "Closed" ? styles.statusBadgeClosed : styles.statusBadgeOpen]}>
-                                  <Text style={[styles.statusText, drive.status === "Closed" ? styles.statusTextClosed : styles.statusTextOpen]}>
-                                    {drive.status}
-                                  </Text>
-                                </View>
-                              </View>
 
-                              <View style={styles.driveDetails}>
-                                <View style={styles.detailItem}>
-                                  <Briefcase size={14} color="#64748B" />
-                                  <Text style={styles.detailText}>{drive.type}</Text>
+                                <View style={styles.driveDetails}>
+                                  <View style={styles.detailItem}>
+                                    <Briefcase size={14} color="#64748B" />
+                                    <Text style={styles.detailText}>{drive.type}</Text>
+                                  </View>
+                                  <View style={styles.detailItem}>
+                                    <Award size={14} color="#64748B" />
+                                    <Text style={styles.detailText}>{drive.package}</Text>
+                                  </View>
+                                  <View style={styles.detailItem}>
+                                    <Calendar size={14} color="#64748B" />
+                                    <Text style={styles.detailText}>Date: {formatDateToDDMMYYYY(drive.driveDate) || "N/A"}</Text>
+                                  </View>
                                 </View>
-                                <View style={styles.detailItem}>
-                                  <Award size={14} color="#64748B" />
-                                  <Text style={styles.detailText}>{drive.package}</Text>
-                                </View>
-                                <View style={styles.detailItem}>
-                                  <Calendar size={14} color="#64748B" />
-                                  <Text style={styles.detailText}>Date: {formatDateToDDMMYYYY(drive.driveDate) || "N/A"}</Text>
-                                </View>
-                              </View>
 
-                              <View style={styles.driveFooter}>
-                                <Text style={styles.deadlineText}>Deadline: {formatDateToDDMMYYYY(drive.regDeadline) || "N/A"}</Text>
-                                <TouchableOpacity 
-                                  style={styles.manageBtn}
-                                  onPress={() => handleManageDrive(drive)}
-                                >
-                                  <Text style={styles.manageBtnText}>Manage</Text>
-                                  <ChevronRight size={14} color="#FFF" />
-                                </TouchableOpacity>
-                              </View>
-                            </Card>
+                                <View style={styles.driveFooter}>
+                                  <Text style={styles.deadlineText}>Deadline: {formatDateToDDMMYYYY(drive.regDeadline) || "N/A"}</Text>
+                                  <TouchableOpacity 
+                                    style={styles.manageBtn}
+                                    onPress={() => handleManageDrive(drive)}
+                                  >
+                                    <Text style={styles.manageBtnText}>Manage</Text>
+                                    <ChevronRight size={14} color="#FFF" />
+                                  </TouchableOpacity>
+                                </View>
+                              </Card>
+                            </SwipeableRow>
                           );
                         })
                       )}
@@ -1798,20 +1845,20 @@ export const CollegePlacementScreen = ({ route }: any) => {
                     </View>
 
                     {/* Student application rows */}
-                    <Card style={styles.sectionCard}>
-                      <View style={styles.listContainer}>
-                        {filteredTrackerList.length === 0 ? (
-                          <View style={styles.emptyContainer}>
-                            <Text style={styles.emptyText}>No candidates found</Text>
-                          </View>
-                        ) : (
-                          filteredTrackerList.map((std, idx) => {
-                            const stdName = std.student_name || std.student || (std.first_name || std.last_name ? `${std.first_name || ""} ${std.last_name || ""}`.trim() : "") || std.student_id || std.name || "Anonymous";
-                            const initials = stdName.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2);
-                            const avatarColor = getAvatarColor(stdName);
-                            
-                            return (
-                              <View key={std.application_id || idx} style={[styles.studentRow, idx === filteredTrackerList.length - 1 && styles.noBorder]}>
+                    <View style={{ gap: 0 }}>
+                      {filteredTrackerList.length === 0 ? (
+                        <Card style={styles.emptyCard}>
+                          <Text style={styles.emptyText}>No candidates found</Text>
+                        </Card>
+                      ) : (
+                        filteredTrackerList.map((std, idx) => {
+                          const stdName = std.student_name || std.student || (std.first_name || std.last_name ? `${std.first_name || ""} ${std.last_name || ""}`.trim() : "") || std.student_id || std.name || "Anonymous";
+                          const initials = stdName.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2);
+                          const avatarColor = getAvatarColor(stdName);
+                          
+                          return (
+                            <Card key={std.application_id || idx} style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 12, borderWidth: 1, borderColor: '#F1F5F9', borderLeftWidth: 4, borderLeftColor: '#059669', marginBottom: 12 }}>
+                              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                                 <View style={styles.leftSection}>
                                   <View style={[styles.avatarCircle, { backgroundColor: avatarColor }]}>
                                     <Text style={styles.avatarCircleText}>{initials}</Text>
@@ -1839,11 +1886,11 @@ export const CollegePlacementScreen = ({ route }: any) => {
                                   ) : null}
                                 </View>
                               </View>
-                            );
-                          })
-                        )}
-                      </View>
-                    </Card>
+                            </Card>
+                          );
+                        })
+                      )}
+                    </View>
                   </View>
                 )}
 
@@ -2396,7 +2443,7 @@ const styles = StyleSheet.create({
   studentSimpleSub: { fontSize: 11, color: '#64748B', fontWeight: '500', marginTop: 1 },
 
   // Stats tab styles
-  sectionCard: { backgroundColor: '#FFF', borderRadius: 20, padding: 20, marginBottom: 16, borderWidth: 1, borderColor: '#E2E8F0' },
+  sectionCard: { backgroundColor: '#FFF', borderRadius: 20, padding: 20, marginBottom: 16, borderWidth: 1, borderColor: '#E2E8F0', borderLeftWidth: 4, borderLeftColor: '#059669' },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 20, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
   sectionTitle: { fontSize: 15, fontWeight: '800', color: '#1E293B' },
   sectionSubtitle: { fontSize: 10, fontWeight: '800', color: '#94A3B8', textTransform: 'uppercase', letterSpacing: 0.5 },

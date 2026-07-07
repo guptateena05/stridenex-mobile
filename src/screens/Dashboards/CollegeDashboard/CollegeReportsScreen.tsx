@@ -128,7 +128,7 @@ const styles = StyleSheet.create({
   
   statsRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4, marginBottom: 24 },
 
-  insightCard: { backgroundColor: '#FFF', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: '#F1F5F9', marginBottom: 24 },
+  insightCard: { backgroundColor: '#FFF', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: '#F1F5F9', borderLeftWidth: 4, borderLeftColor: '#059669', marginBottom: 24 },
   insightTop: { flexDirection: 'row', gap: 12 },
   insightIconBox: { width: 32, height: 32, borderRadius: 10, backgroundColor: '#ECFDF5', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#D1FAE5' },
   insightText: { fontSize: 13, fontWeight: '800', color: '#0F172A', marginBottom: 4 },
@@ -137,7 +137,7 @@ const styles = StyleSheet.create({
   sectionTitleRow: { marginBottom: 12, marginTop: 8 },
   sectionLabel: { fontSize: 10, fontWeight: '800', color: '#64748B', letterSpacing: 1 },
 
-  ledgerCard: { padding: 0, borderRadius: 20, backgroundColor: '#FFF', overflow: 'hidden', marginBottom: 24, borderWidth: 1, borderColor: '#F1F5F9' },
+  ledgerCard: { padding: 0, borderRadius: 20, backgroundColor: '#FFF', overflow: 'hidden', marginBottom: 24, borderWidth: 1, borderColor: '#F1F5F9', borderLeftWidth: 4, borderLeftColor: '#059669' },
   ledgerRow: { flexDirection: 'row', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
   noBorder: { borderBottomWidth: 0 },
   priorityIndicator: { width: 3, height: 36, borderRadius: 2, marginRight: 12 },

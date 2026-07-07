@@ -475,7 +475,7 @@ const styles = StyleSheet.create({
   bookmarkBtn: { padding: 4 },
 
   savedSection: { marginBottom: 24, paddingHorizontal: 16 },
-  savedCard: { backgroundColor: '#FFFFFF', borderRadius: 20, borderWidth: 1.5, borderColor: '#F1F5F9' },
+  savedCard: { backgroundColor: '#FFFFFF', borderRadius: 20, borderWidth: 1.5, borderColor: '#F1F5F9', borderLeftWidth: 4, borderLeftColor: '#FF6B00' },
   savedHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, padding: 16, borderBottomWidth: 1, borderBottomColor: '#F8FAFC' },
   savedTitleText: { fontSize: 14, fontWeight: '800', color: '#1E293B' },
   savedList: { padding: 16, gap: 16 },

@@ -172,7 +172,7 @@ const styles = StyleSheet.create({
   },
   
   listContainer: { gap: 16, marginBottom: 32 },
-  planCard: { backgroundColor: '#FFFFFF', borderRadius: 24, padding: 24, borderWidth: 1.5, borderColor: '#F1F5F9', shadowColor: '#64748B', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.04, shadowRadius: 12, elevation: 3 },
+  planCard: { backgroundColor: '#FFFFFF', borderRadius: 24, padding: 24, borderWidth: 1.5, borderColor: '#F1F5F9', borderLeftWidth: 4, borderLeftColor: '#FF6B00', shadowColor: '#64748B', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.04, shadowRadius: 12, elevation: 3 },
   planCardPopular: { borderColor: '#FDBA74', backgroundColor: '#FFF7ED' },
   
   popularBadgeWrapper: { position: 'absolute', top: -10, left: 24, zIndex: 10 },

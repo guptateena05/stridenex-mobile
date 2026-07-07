@@ -32,6 +32,8 @@ import {
 } from 'lucide-react-native';
 import Animated, { FadeInUp, FadeInRight } from 'react-native-reanimated';
 import { useAuth } from '@/context/AuthContext';
+import { SwipeableRow } from '@/components/Shared/SwipeableRow';
+import { SkeletonLoader } from '@/components/Shared/SkeletonLoader';
 import {
   getStudentDashboardHabits,
   getTodaysPendingHabits,
@@ -441,16 +443,7 @@ export const StudentHabitsScreen = () => {
     }
   };
 
-  if (loading && !refreshing) {
-    return (
-      <SafeAreaView style={styles.safeArea}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.accent.DEFAULT} />
-          <Text style={styles.loadingText}>Syncing Habits...</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
+  // Skeletons will load inline below instead of blocking the full screen.
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['bottom']}>
@@ -602,69 +595,89 @@ export const StudentHabitsScreen = () => {
         </View>
 
         <View style={styles.listContainer}>
-          {habitPlans.length === 0 ? (
+          {loading && !refreshing ? (
+            [1, 2].map((i) => (
+              <View key={i} style={[styles.habitCard, { borderLeftWidth: 4, borderLeftColor: '#E2E8F0', padding: 16 }]}>
+                <View style={styles.habitMainInfo}>
+                  <SkeletonLoader width={40} height={40} borderRadius={12} />
+                  <View style={[styles.habitTextInfo, { marginLeft: 12, gap: 6, flex: 1 }]}>
+                    <SkeletonLoader width={150} height={14} />
+                    <View style={{ flexDirection: 'row', gap: 6 }}>
+                      <SkeletonLoader width={60} height={16} borderRadius={4} />
+                      <SkeletonLoader width={50} height={16} borderRadius={4} />
+                    </View>
+                  </View>
+                </View>
+                <View style={[styles.habitBottomHalf, { marginTop: 12, gap: 12, justifyContent: 'space-between', alignItems: 'center' }]}>
+                  <SkeletonLoader width="80%" height={24} borderRadius={8} />
+                  <SkeletonLoader width={36} height={20} borderRadius={6} />
+                </View>
+              </View>
+            ))
+          ) : habitPlans.length === 0 ? (
             <View style={styles.emptyContainer}>
               <Target size={36} color="#94A3B8" />
               <Text style={styles.emptyText}>No active habit plans found</Text>
             </View>
           ) : (
-            habitPlans.map((habit, index) => (
-              <Animated.View
-                key={habit.id}
-                entering={FadeInUp.delay(300 + index * 100)}
-                style={styles.habitCard}
-              >
-                <View style={styles.habitMainInfo}>
-                  <View style={[styles.habitIconContainer, { backgroundColor: getBgColorForCategory(habit.category) }]}>
-                    {(() => {
-                      const CategoryIcon = getIconForCategory(habit.category);
-                      return <CategoryIcon size={20} color={getColorForCategory(habit.category)} />;
-                    })()}
-                  </View>
-                  <View style={styles.habitTextInfo}>
-                    <Text style={styles.habitTitle}>{habit.title}</Text>
-                    <View style={styles.habitTagsRow}>
-                      <View style={styles.categoryBadge}>
-                        <Text style={styles.categoryBadgeText}>{habit.category}</Text>
+            habitPlans.map((habit, index) => {
+              const isActive = habit.planStatus === 'Active';
+              const borderLeftColor = isActive ? colors.accent.DEFAULT : '#94A3B8';
+              return (
+                <SwipeableRow
+                  key={habit.id}
+                  onDelete={() => handleDeleteHabit(habit)}
+                >
+                  <View
+                    style={[styles.habitCard, { borderLeftWidth: 4, borderLeftColor, marginBottom: 0 }]}
+                  >
+                    <View style={styles.habitMainInfo}>
+                      <View style={[styles.habitIconContainer, { backgroundColor: getBgColorForCategory(habit.category) }]}>
+                        {(() => {
+                          const CategoryIcon = getIconForCategory(habit.category);
+                          return <CategoryIcon size={20} color={getColorForCategory(habit.category)} />;
+                        })()}
                       </View>
-                      <View style={styles.streakBadge}>
-                        <Flame size={10} color={colors.accent.DEFAULT} />
-                        <Text style={styles.streakBadgeText}>{habit.streak} days</Text>
+                      <View style={styles.habitTextInfo}>
+                        <Text style={styles.habitTitle}>{habit.title}</Text>
+                        <View style={styles.habitTagsRow}>
+                          <View style={styles.categoryBadge}>
+                            <Text style={styles.categoryBadgeText}>{habit.category}</Text>
+                          </View>
+                          <View style={styles.streakBadge}>
+                            <Flame size={10} color={colors.accent.DEFAULT} />
+                            <Text style={styles.streakBadgeText}>{habit.streak} days</Text>
+                          </View>
+                        </View>
+                      </View>
+                    </View>
+
+                    {/* Mini Tracker & Progress */}
+                    <View style={styles.habitBottomHalf}>
+                      <View style={styles.miniWeekRow}>
+                        {habit.weeklyData.map((done: boolean, dIdx: number) => (
+                          <View
+                            key={dIdx}
+                            style={[
+                              styles.miniDayNode,
+                              done ? styles.miniDayNodeActive : styles.miniDayNodeInactive
+                            ]}
+                          >
+                            <Text style={[
+                              styles.miniDayText,
+                              done ? styles.miniDayTextActive : styles.miniDayTextInactive
+                            ]}>{weekDays[dIdx]}</Text>
+                          </View>
+                        ))}
+                      </View>
+                      <View style={styles.miniProgressBox}>
+                        <Text style={styles.miniProgressText}>{habit.progress}%</Text>
                       </View>
                     </View>
                   </View>
-                  <TouchableOpacity
-                    style={styles.deleteHabitBtn}
-                    onPress={() => handleDeleteHabit(habit)}
-                  >
-                    <Trash2 size={16} color="#EF4444" />
-                  </TouchableOpacity>
-                </View>
-
-                {/* Mini Tracker & Progress */}
-                <View style={styles.habitBottomHalf}>
-                  <View style={styles.miniWeekRow}>
-                    {habit.weeklyData.map((done: boolean, dIdx: number) => (
-                      <View
-                        key={dIdx}
-                        style={[
-                          styles.miniDayNode,
-                          done ? styles.miniDayNodeActive : styles.miniDayNodeInactive
-                        ]}
-                      >
-                        <Text style={[
-                          styles.miniDayText,
-                          done ? styles.miniDayTextActive : styles.miniDayTextInactive
-                        ]}>{weekDays[dIdx]}</Text>
-                      </View>
-                    ))}
-                  </View>
-                  <View style={styles.miniProgressBox}>
-                    <Text style={styles.miniProgressText}>{habit.progress}%</Text>
-                  </View>
-                </View>
-              </Animated.View>
-            ))
+                </SwipeableRow>
+              );
+            })
           )}
         </View>
 
@@ -979,7 +992,7 @@ const styles = StyleSheet.create({
   listContainer: { gap: 14 },
   emptyContainer: { padding: 32, alignItems: 'center', justifyContent: 'center', gap: 10, backgroundColor: '#FFFFFF', borderRadius: 20, borderWidth: 1.5, borderColor: '#F1F5F9' },
   emptyText: { fontSize: 13, color: '#94A3B8', fontWeight: '600' },
-  habitCard: { backgroundColor: '#FFFFFF', borderRadius: 20, padding: 16, borderWidth: 1.5, borderColor: '#F1F5F9', shadowColor: '#64748B', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.04, shadowRadius: 10, elevation: 3 },
+  habitCard: { backgroundColor: '#FFFFFF', borderRadius: 20, padding: 16, borderTopWidth: 1.5, borderBottomWidth: 1.5, borderRightWidth: 1.5, borderColor: '#F1F5F9', shadowColor: '#64748B', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.04, shadowRadius: 10, elevation: 3 },
   habitMainInfo: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16 },
   habitIconContainer: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   habitTextInfo: { flex: 1 },
@@ -1007,7 +1020,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFF7ED',
     borderRadius: 20,
     padding: 16,
-    borderWidth: 1.5,
+    borderTopWidth: 1.5,
+    borderBottomWidth: 1.5,
+    borderRightWidth: 1.5,
+    borderLeftWidth: 4,
+    borderLeftColor: '#FF6B00',
     borderColor: '#FFEDD5',
     marginTop: 24,
     marginBottom: 10

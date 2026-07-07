@@ -22,10 +22,14 @@ import {
   Award,
   X,
   AlertCircle,
-  Edit2
+  Edit2,
+  Play,
+  Pause
 } from 'lucide-react-native';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import { useAuth } from '@/context/AuthContext';
+import { SwipeableRow, SwipeAction } from '@/components/Shared/SwipeableRow';
+import { SkeletonLoader } from '@/components/Shared/SkeletonLoader';
 import {
   getMentorOfferings,
   createMentorOffering,
@@ -329,16 +333,7 @@ export const MentorOfferingsScreen = () => {
     setIsModalVisible(true);
   };
 
-  if (loading && offerings.length === 0) {
-    return (
-      <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-        <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color="#4c1d95" />
-          <Text style={styles.loadingText}>Loading offerings...</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
+  // Skeletons will load inline inside the offerings list instead of full screen.
 
   if (error && offerings.length === 0) {
     return (
@@ -383,7 +378,37 @@ export const MentorOfferingsScreen = () => {
           </TouchableOpacity>
         </Animated.View>
 
-        {offerings.length === 0 ? (
+        {loading && offerings.length === 0 ? (
+          <View style={styles.list}>
+            {[1, 2].map((i) => (
+              <View key={i} style={[styles.card, { borderLeftWidth: 4, borderLeftColor: '#E2E8F0', padding: 16 }]}>
+                <View style={styles.cardHeader}>
+                  <SkeletonLoader width={120} height={16} />
+                  <SkeletonLoader width={60} height={18} borderRadius={6} />
+                </View>
+                <View style={[styles.badgesRow, { marginTop: 8, gap: 8 }]}>
+                  <SkeletonLoader width={80} height={16} borderRadius={4} />
+                  <SkeletonLoader width={60} height={16} borderRadius={4} />
+                  <SkeletonLoader width={50} height={16} />
+                </View>
+                <View style={[styles.statsContainer, { marginTop: 12, paddingVertical: 12 }]}>
+                  <View style={{ flex: 1, alignItems: 'center' }}>
+                    <SkeletonLoader width={40} height={16} />
+                    <SkeletonLoader width={50} height={10} style={{ marginTop: 4 }} />
+                  </View>
+                  <View style={{ flex: 1, alignItems: 'center' }}>
+                    <SkeletonLoader width={30} height={16} />
+                    <SkeletonLoader width={50} height={10} style={{ marginTop: 4 }} />
+                  </View>
+                  <View style={{ flex: 1, alignItems: 'center' }}>
+                    <SkeletonLoader width={40} height={16} />
+                    <SkeletonLoader width={50} height={10} style={{ marginTop: 4 }} />
+                  </View>
+                </View>
+              </View>
+            ))}
+          </View>
+        ) : offerings.length === 0 ? (
           <Animated.View entering={FadeInUp.delay(150)} style={styles.emptyCard}>
             <View style={styles.emptyIconBox}>
               <Plus size={28} color="#94A3B8" />
@@ -398,77 +423,83 @@ export const MentorOfferingsScreen = () => {
           <View style={styles.list}>
             {offerings.map((pkg, i) => {
               const isLive = pkg.status === 'Live';
-              const isPaused = pkg.status === 'Paused';
+              const borderLeftColor = isLive ? '#7C3AED' : '#94A3B8';
 
-              return (
-                <Animated.View
-                  key={pkg.name || i}
-                  entering={FadeInUp.delay(150 + i * 50)}
-                  style={[styles.card, !isLive && styles.cardInactive]}
-                >
-                  <View style={styles.cardHeader}>
-                    <Text style={styles.pkgTitle} numberOfLines={1}>{pkg.title}</Text>
-                    <View style={[styles.statusBadge, {
-                      backgroundColor: isLive ? '#ECFDF5' : isPaused ? '#FFFBEB' : '#F1F5F9',
-                      borderColor: isLive ? '#D1FAE5' : isPaused ? '#FEF3C7' : '#E2E8F0'
-                    }]}>
-                      <View style={[styles.statusDot, { backgroundColor: isLive ? '#10B981' : isPaused ? '#F59E0B' : '#94A3B8' }]} />
-                      <Text style={[styles.statusText, { color: isLive ? '#059669' : isPaused ? '#D97706' : '#64748B' }]}>
-                        {pkg.status ? pkg.status.toUpperCase() : 'DRAFT'}
-                      </Text>
-                    </View>
-                  </View>
+              const swipeActions: SwipeAction[] = [
+                 {
+                   label: 'Edit',
+                   icon: Edit2,
+                   color: '#7C3AED',
+                   bgColor: '#f5f3ff',
+                   onPress: () => handleEditOffering(pkg)
+                 },
+                 {
+                   label: isLive ? 'Pause' : 'Activate',
+                   icon: isLive ? Pause : Play,
+                   color: isLive ? '#D97706' : '#10B981',
+                   bgColor: isLive ? '#FFFBEB' : '#ECFDF5',
+                   onPress: () => handleStatusToggle(pkg)
+                 }
+               ];
 
-                  <View style={styles.badgesRow}>
-                    <View style={styles.typeBadge}>
-                      <Text style={styles.typeBadgeText}>{pkg.offering_type || '1:1 Mentorship'}</Text>
-                    </View>
-                    <View style={styles.durationBadge}>
-                      <Clock size={14} color="#64748B" />
-                      <Text style={styles.durationText}>{pkg.duration_minutes ? `${pkg.duration_minutes} min` : '60 min'}</Text>
-                    </View>
-                    <Text style={[styles.categoryText, { color: pkg.category === 'Technical' ? '#EA580C' : '#2563EB' }]}>
-                      {pkg.category || 'General'}
-                    </Text>
-                  </View>
+               return (
+                 <SwipeableRow
+                   key={pkg.name || i}
+                   actions={swipeActions}
+                 >
+                   <Animated.View
+                     entering={FadeInUp.delay(150 + i * 50)}
+                     style={[styles.card, !isLive && styles.cardInactive, { borderLeftWidth: 4, borderLeftColor, marginBottom: 0 }]}
+                   >
+                     <View style={styles.cardHeader}>
+                       <Text style={styles.pkgTitle} numberOfLines={1}>{pkg.title}</Text>
+                       <View style={[styles.statusBadge, {
+                         backgroundColor: isLive ? '#ECFDF5' : pkg.status === 'Paused' ? '#FFFBEB' : '#F1F5F9',
+                         borderColor: isLive ? '#D1FAE5' : pkg.status === 'Paused' ? '#FEF3C7' : '#E2E8F0'
+                       }]}>
+                         <View style={[styles.statusDot, { backgroundColor: isLive ? '#10B981' : pkg.status === 'Paused' ? '#F59E0B' : '#94A3B8' }]} />
+                         <Text style={[styles.statusText, { color: isLive ? '#059669' : pkg.status === 'Paused' ? '#D97706' : '#64748B' }]}>
+                           {pkg.status ? pkg.status.toUpperCase() : 'DRAFT'}
+                         </Text>
+                       </View>
+                     </View>
 
-                  <View style={styles.statsContainer}>
-                    <View style={styles.statColumn}>
-                      <Text style={styles.statValue}>₹{pkg.price_per_session || '0'}</Text>
-                      <Text style={styles.statLabel}>Per Session</Text>
-                    </View>
-                    <View style={styles.columnDivider} />
-                    <View style={styles.statColumn}>
-                      <Text style={styles.statValue}>{pkg.total_bookings || 0}</Text>
-                      <Text style={styles.statLabel}>Bookings</Text>
-                    </View>
-                    <View style={styles.columnDivider} />
-                    <View style={styles.statColumn}>
-                      <View style={styles.ratingRow}>
-                        <Star size={14} color="#EAB308" fill="#EAB308" />
-                        <Text style={[styles.statValue, { marginLeft: 4 }]}>
-                          {Number(pkg.avg_rating || 0).toFixed(0)}
-                        </Text>
-                      </View>
-                      <Text style={styles.statLabel}>Rating</Text>
-                    </View>
-                  </View>
+                     <View style={styles.badgesRow}>
+                       <View style={styles.typeBadge}>
+                         <Text style={styles.typeBadgeText}>{pkg.offering_type || '1:1 Mentorship'}</Text>
+                       </View>
+                       <View style={styles.durationBadge}>
+                         <Clock size={14} color="#64748B" />
+                         <Text style={styles.durationText}>{pkg.duration_minutes ? `${pkg.duration_minutes} min` : '60 min'}</Text>
+                       </View>
+                       <Text style={[styles.categoryText, { color: pkg.category === 'Technical' ? '#EA580C' : '#2563EB' }]}>
+                         {pkg.category || 'General'}
+                       </Text>
+                     </View>
 
-                  <View style={styles.actionsContainer}>
-                    <TouchableOpacity style={styles.btnOutline} onPress={() => handleEditOffering(pkg)}>
-                      <Edit2 size={14} color="#334155" style={{ marginRight: 6 }} />
-                      <Text style={styles.btnOutlineText}>Edit</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={styles.btnOutline}
-                      onPress={() => handleStatusToggle(pkg)}
-                    >
-                      <Text style={styles.btnOutlineText}>
-                        {isLive ? 'Pause' : 'Activate'}
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-                </Animated.View>
+                     <View style={styles.statsContainer}>
+                       <View style={styles.statColumn}>
+                         <Text style={styles.statValue}>₹{pkg.price_per_session || '0'}</Text>
+                         <Text style={styles.statLabel}>Per Session</Text>
+                       </View>
+                       <View style={styles.columnDivider} />
+                       <View style={styles.statColumn}>
+                         <Text style={styles.statValue}>{pkg.total_bookings || 0}</Text>
+                         <Text style={styles.statLabel}>Bookings</Text>
+                       </View>
+                       <View style={styles.columnDivider} />
+                       <View style={styles.statColumn}>
+                         <View style={styles.ratingRow}>
+                           <Star size={14} color="#EAB308" fill="#EAB308" />
+                           <Text style={[styles.statValue, { marginLeft: 4 }]}>
+                             {Number(pkg.avg_rating || 0).toFixed(0)}
+                           </Text>
+                         </View>
+                         <Text style={styles.statLabel}>Rating</Text>
+                       </View>
+                     </View>
+                   </Animated.View>
+                 </SwipeableRow>
               );
             })}
           </View>

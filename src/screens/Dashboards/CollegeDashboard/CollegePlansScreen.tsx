@@ -138,7 +138,7 @@ const styles = StyleSheet.create({
   title: { fontSize: 22, fontWeight: '800', color: '#0F172A', fontFamily: typography.fontFamily.display, letterSpacing: -0.5 },
   subtitle: { fontSize: 12, color: '#64748B', fontWeight: '500', marginTop: 2 },
   
-  planCard: { backgroundColor: '#FFF', borderRadius: 20, padding: 24, marginBottom: 24, borderWidth: 1, borderColor: '#E2E8F0' },
+  planCard: { backgroundColor: '#FFF', borderRadius: 20, padding: 24, marginBottom: 24, borderWidth: 1, borderColor: '#E2E8F0', borderLeftWidth: 4, borderLeftColor: '#059669' },
   activePlanCard: { borderColor: '#059669', borderWidth: 2 },
   planHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 },
   planLabel: { fontSize: 8, fontWeight: '800', color: '#059669', letterSpacing: 1, marginBottom: 4 },
@@ -161,7 +161,7 @@ const styles = StyleSheet.create({
   sectionTitleRow: { marginBottom: 12, paddingHorizontal: 4 },
   sectionLabel: { fontSize: 10, fontWeight: '800', color: '#94A3B8', letterSpacing: 0.5 },
 
-  upgradeCard: { backgroundColor: '#FFF', borderRadius: 20, padding: 20, marginBottom: 24, borderWidth: 1, borderColor: '#E2E8F0' },
+  upgradeCard: { backgroundColor: '#FFF', borderRadius: 20, padding: 20, marginBottom: 24, borderWidth: 1, borderColor: '#E2E8F0', borderLeftWidth: 4, borderLeftColor: '#059669' },
   upgradeTop: { flexDirection: 'row', alignItems: 'center', gap: 16, marginBottom: 16 },
   upgradeIconBox: { width: 44, height: 44, borderRadius: 12, backgroundColor: '#F8FAFC', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#F1F5F9' },
   upgradeTitle: { fontSize: 15, fontWeight: '800', color: '#1E293B' },
@@ -170,7 +170,7 @@ const styles = StyleSheet.create({
   downgradeBtn: { width: '100%', paddingVertical: 10, borderRadius: 10, borderWidth: 1, borderColor: '#E2E8F0', alignItems: 'center' },
   downgradeBtnText: { fontSize: 12, fontWeight: '700', color: '#64748B' },
 
-  ledgerCard: { backgroundColor: '#FFF', borderRadius: 20, padding: 20, marginBottom: 16, borderWidth: 1, borderColor: '#E2E8F0' },
+  ledgerCard: { backgroundColor: '#FFF', borderRadius: 20, padding: 20, marginBottom: 16, borderWidth: 1, borderColor: '#E2E8F0', borderLeftWidth: 4, borderLeftColor: '#059669' },
   ledgerHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 20, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
   ledgerTitle: { fontSize: 15, fontWeight: '800', color: '#1E293B' },
 

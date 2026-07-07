@@ -37,6 +37,7 @@ import {
 } from 'lucide-react-native';
 import Animated, { FadeInUp, FadeInRight } from 'react-native-reanimated';
 import { useAuth } from '@/context/AuthContext';
+import { SwipeableRow } from '@/components/Shared/SwipeableRow';
 import { 
   getMentorList, 
   getMentorSlotCalendar, 
@@ -352,6 +353,24 @@ export const StudentMentorsScreen = () => {
     }
   };
 
+  const handleCancelSession = (session: any) => {
+    Alert.alert(
+      "Cancel Session",
+      `Are you sure you want to cancel the session with ${session.mentor}?`,
+      [
+        { text: "No", style: "cancel" },
+        { 
+          text: "Yes, Cancel", 
+          style: "destructive", 
+          onPress: () => {
+            setBookedSessions(prev => prev.filter(s => s.name !== session.name));
+            Alert.alert("Success", "Session cancelled successfully!");
+          } 
+        }
+      ]
+    );
+  };
+
   const renderBookingModal = () => {
     if (!selectedMentor) return null;
     return (
@@ -651,103 +670,97 @@ export const StudentMentorsScreen = () => {
                 <View style={styles.listContainer}>
                   {mentors.map((mentor, index) => {
                     const booked = isSessionAlreadyBooked(mentor);
+                    const mentorActions = [
+                      {
+                        label: booked ? 'Booked' : 'Book Slot',
+                        icon: BookOpen,
+                        bgColor: booked ? '#F1F5F9' : '#FFF7ED',
+                        color: booked ? '#94A3B8' : '#FF6B00',
+                        onPress: () => {
+                          if (!booked) {
+                            handleOpenBooking(mentor);
+                          }
+                        }
+                      }
+                    ];
                     return (
-                      <Animated.View 
-                        key={mentor.id} 
-                        entering={FadeInUp.delay(200 + index * 50)}
-                        style={styles.mentorCard}
-                      >
-                        <View style={styles.cardHeader}>
-                          <View style={styles.mentorInfo}>
-                            {mentor.profileImage ? (
-                              <View style={styles.avatar}>
-                                <View style={[StyleSheet.absoluteFill, { borderRadius: 24, overflow: 'hidden' }]} />
-                                <Animated.Image 
-                                  source={{ uri: mentor.profileImage }} 
-                                  style={{ width: 48, height: 48, borderRadius: 24 }}
-                                />
-                              </View>
-                            ) : (
-                              <View style={[styles.avatar, { backgroundColor: mentor.avatarColor }]}>
-                                <Text style={styles.avatarText}>{mentor.initials}</Text>
-                              </View>
-                            )}
-                            <View style={styles.mentorDetails}>
-                              <Text style={styles.mentorName} numberOfLines={1}>{mentor.name}</Text>
-                              <View style={styles.roleCompanyRow}>
-                                <Briefcase size={10} color="#64748B" />
-                                <Text style={styles.roleCompanyText} numberOfLines={1}>
-                                  {mentor.role} • {mentor.company}
-                                </Text>
+                      <SwipeableRow key={mentor.id} actions={mentorActions}>
+                        <View 
+                          style={[styles.mentorCard, { marginBottom: 0 }]}
+                        >
+                          <View style={styles.cardHeader}>
+                            <View style={styles.mentorInfo}>
+                              {mentor.profileImage ? (
+                                <View style={styles.avatar}>
+                                  <View style={[StyleSheet.absoluteFill, { borderRadius: 24, overflow: 'hidden' }]} />
+                                  <Animated.Image 
+                                    source={{ uri: mentor.profileImage }} 
+                                    style={{ width: 48, height: 48, borderRadius: 24 }}
+                                  />
+                                </View>
+                              ) : (
+                                <View style={[styles.avatar, { backgroundColor: mentor.avatarColor }]}>
+                                  <Text style={styles.avatarText}>{mentor.initials}</Text>
+                                </View>
+                              )}
+                              <View style={styles.mentorDetails}>
+                                <Text style={styles.mentorName} numberOfLines={1}>{mentor.name}</Text>
+                                <View style={styles.roleCompanyRow}>
+                                  <Briefcase size={10} color="#64748B" />
+                                  <Text style={styles.roleCompanyText} numberOfLines={1}>
+                                    {mentor.role} • {mentor.company}
+                                  </Text>
+                                </View>
                               </View>
                             </View>
-                          </View>
-                          <View style={[
-                            styles.availBadge, 
-                            booked ? styles.bookedBadge : styles.availableBadge
-                          ]}>
-                            <Text style={[
-                              styles.availText,
-                              booked ? styles.bookedText : styles.availableText
+                            <View style={[
+                              styles.availBadge, 
+                              booked ? styles.bookedBadge : styles.availableBadge
                             ]}>
-                              {booked ? 'Booked' : 'Available'}
+                              <Text style={[
+                                styles.availText,
+                                booked ? styles.bookedText : styles.availableText
+                              ]}>
+                                {booked ? 'Booked' : 'Available'}
+                              </Text>
+                            </View>
+                          </View>
+
+                          {/* Expertise Tags */}
+                          {mentor.expertise && mentor.expertise.length > 0 && (
+                            <View style={styles.tagsContainer}>
+                              {mentor.expertise.map((exp: string, idx: number) => (
+                                <View key={idx} style={styles.tagBadge}>
+                                  <Text style={styles.tagText}>{exp}</Text>
+                                </View>
+                              ))}
+                            </View>
+                          )}
+
+                          {/* Stats Row */}
+                          <View style={styles.statsRow}>
+                            <View style={styles.statItem}>
+                              <Star size={14} color="#FBBF24" fill="#FBBF24" />
+                              <Text style={styles.ratingText}>{Number(mentor.rating).toFixed(1)}</Text>
+                              <Text style={styles.sessionsText}>({mentor.sessions})</Text>
+                            </View>
+                            <View style={styles.statDivider} />
+                            <View style={styles.statItem}>
+                              <Clock size={14} color="#94A3B8" />
+                              <Text style={styles.rateText}>{mentor.hourlyRate}</Text>
+                            </View>
+                          </View>
+
+                          {/* Next Available */}
+                          <View style={styles.nextAvailBox}>
+                            <Calendar size={14} color="#64748B" />
+                            <Text style={styles.nextAvailLabel}>Next available: </Text>
+                            <Text style={styles.nextAvailValue} numberOfLines={1}>
+                              {mentor.nextAvailableSlot || mentor.availability}
                             </Text>
                           </View>
                         </View>
-
-                        {/* Expertise Tags */}
-                        {mentor.expertise && mentor.expertise.length > 0 && (
-                          <View style={styles.tagsContainer}>
-                            {mentor.expertise.map((exp: string, idx: number) => (
-                              <View key={idx} style={styles.tagBadge}>
-                                <Text style={styles.tagText}>{exp}</Text>
-                              </View>
-                            ))}
-                          </View>
-                        )}
-
-                        {/* Stats Row */}
-                        <View style={styles.statsRow}>
-                          <View style={styles.statItem}>
-                            <Star size={14} color="#FBBF24" fill="#FBBF24" />
-                            <Text style={styles.ratingText}>{Number(mentor.rating).toFixed(1)}</Text>
-                            <Text style={styles.sessionsText}>({mentor.sessions})</Text>
-                          </View>
-                          <View style={styles.statDivider} />
-                          <View style={styles.statItem}>
-                            <Clock size={14} color="#94A3B8" />
-                            <Text style={styles.rateText}>{mentor.hourlyRate}</Text>
-                          </View>
-                        </View>
-
-                        {/* Next Available */}
-                        <View style={styles.nextAvailBox}>
-                          <Calendar size={14} color="#64748B" />
-                          <Text style={styles.nextAvailLabel}>Next available: </Text>
-                          <Text style={styles.nextAvailValue} numberOfLines={1}>
-                            {mentor.nextAvailableSlot || mentor.availability}
-                          </Text>
-                        </View>
-
-                        {/* Actions */}
-                        <View style={styles.actionsRow}>
-                          {booked ? (
-                            <View style={styles.bookedButtonContainer}>
-                              <Text style={styles.bookedButtonLabel}>Already Booked</Text>
-                            </View>
-                          ) : (
-                            <TouchableOpacity 
-                              style={styles.bookButton}
-                              onPress={() => handleOpenBooking(mentor)}
-                            >
-                              <Text style={styles.bookButtonText}>Book Session</Text>
-                            </TouchableOpacity>
-                          )}
-                          <View style={styles.iconButton}>
-                            <ChevronRight size={18} color="#64748B" />
-                          </View>
-                        </View>
-                      </Animated.View>
+                      </SwipeableRow>
                     );
                   })}
                 </View>
@@ -801,64 +814,69 @@ export const StudentMentorsScreen = () => {
                   const isMedium = session.priority === 'Medium';
                   
                   return (
-                    <View key={idx} style={styles.sessionCard}>
-                      <View style={styles.sessionHeaderRow}>
-                        <Text style={styles.sessionName} numberOfLines={1}>{session.name}</Text>
-                        <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center' }}>
-                          <View style={[
-                            styles.priorityBadge,
-                            isHigh ? styles.highPriority : (isMedium ? styles.mediumPriority : styles.lowPriority)
-                          ]}>
-                            <Text style={[
-                              styles.priorityText,
-                              isHigh ? styles.highPriorityText : (isMedium ? styles.mediumPriorityText : styles.lowPriorityText)
+                    <SwipeableRow
+                      key={session.id || idx}
+                      onDelete={() => handleCancelSession(session)}
+                    >
+                      <View style={[styles.sessionCard, { marginBottom: 0 }]}>
+                        <View style={styles.sessionHeaderRow}>
+                          <Text style={styles.sessionName} numberOfLines={1}>{session.name}</Text>
+                          <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center' }}>
+                            <View style={[
+                              styles.priorityBadge,
+                              isHigh ? styles.highPriority : (isMedium ? styles.mediumPriority : styles.lowPriority)
                             ]}>
-                              {session.priority}
-                            </Text>
-                          </View>
-                          <View style={[
-                            styles.statusBadge,
-                            session.status === 'Scheduled' && styles.statusScheduled,
-                            session.status === 'Completed' && styles.statusCompleted,
-                            session.status === 'Cancelled' && styles.statusCancelled
-                          ]}>
-                            <Text style={[
-                              styles.statusText,
-                              session.status === 'Scheduled' && styles.statusScheduledText,
-                              session.status === 'Completed' && styles.statusCompletedText,
-                              session.status === 'Cancelled' && styles.statusCancelledText
+                              <Text style={[
+                                styles.priorityText,
+                                isHigh ? styles.highPriorityText : (isMedium ? styles.mediumPriorityText : styles.lowPriorityText)
+                              ]}>
+                                {session.priority}
+                              </Text>
+                            </View>
+                            <View style={[
+                              styles.statusBadge,
+                              session.status === 'Scheduled' && styles.statusScheduled,
+                              session.status === 'Completed' && styles.statusCompleted,
+                              session.status === 'Cancelled' && styles.statusCancelled
                             ]}>
-                              {session.status}
-                            </Text>
+                              <Text style={[
+                                styles.statusText,
+                                session.status === 'Scheduled' && styles.statusScheduledText,
+                                session.status === 'Completed' && styles.statusCompletedText,
+                                session.status === 'Cancelled' && styles.statusCancelledText
+                              ]}>
+                                {session.status}
+                              </Text>
+                            </View>
                           </View>
                         </View>
-                      </View>
 
-                      <View style={styles.sessionInfoGrid}>
-                        <View style={styles.sessionInfoItem}>
-                          <Mail size={12} color="#64748B" />
-                          <Text style={styles.sessionInfoVal} numberOfLines={1}>Mentor: {session.mentor}</Text>
+                        <View style={styles.sessionInfoGrid}>
+                          <View style={styles.sessionInfoItem}>
+                            <Mail size={12} color="#64748B" />
+                            <Text style={styles.sessionInfoVal} numberOfLines={1}>Mentor: {session.mentor}</Text>
+                          </View>
+                          <View style={styles.sessionInfoItem}>
+                            <Calendar size={12} color="#64748B" />
+                            <Text style={styles.sessionInfoVal}>{dateFormatted}</Text>
+                          </View>
+                          <View style={styles.sessionInfoItem}>
+                            <Clock size={12} color="#64748B" />
+                            <Text style={styles.sessionInfoVal}>{session.from_time} - {session.to_time}</Text>
+                          </View>
+                          <View style={styles.sessionInfoItem}>
+                            <Target size={12} color="#64748B" />
+                            <Text style={styles.sessionInfoVal} numberOfLines={1}>{session.topic || "General Mentorship"}</Text>
+                          </View>
                         </View>
-                        <View style={styles.sessionInfoItem}>
-                          <Calendar size={12} color="#64748B" />
-                          <Text style={styles.sessionInfoVal}>{dateFormatted}</Text>
-                        </View>
-                        <View style={styles.sessionInfoItem}>
-                          <Clock size={12} color="#64748B" />
-                          <Text style={styles.sessionInfoVal}>{session.from_time} - {session.to_time}</Text>
-                        </View>
-                        <View style={styles.sessionInfoItem}>
-                          <Target size={12} color="#64748B" />
-                          <Text style={styles.sessionInfoVal} numberOfLines={1}>{session.topic || "General Mentorship"}</Text>
-                        </View>
-                      </View>
 
-                      <View style={styles.sessionFooterRow}>
-                        <Text style={styles.sessionFooterVal}>Type: {session.session_type || "1:1"}</Text>
-                        <Text style={styles.sessionFooterVal}>Duration: {session.duration || "N/A"}</Text>
-                        <Text style={styles.sessionFooterVal}>Offering: {session.offering_type || "General"}</Text>
+                        <View style={styles.sessionFooterRow}>
+                          <Text style={styles.sessionFooterVal}>Type: {session.session_type || "1:1"}</Text>
+                          <Text style={styles.sessionFooterVal}>Duration: {session.duration || "N/A"}</Text>
+                          <Text style={styles.sessionFooterVal}>Offering: {session.offering_type || "General"}</Text>
+                        </View>
                       </View>
-                    </View>
+                    </SwipeableRow>
                   );
                 })}
               </View>
@@ -901,7 +919,7 @@ const styles = StyleSheet.create({
   emptyText: { fontSize: 13, color: '#64748B', fontWeight: '600', marginTop: 10, textAlign: 'center', lineHeight: 18 },
 
   listContainer: { gap: 16 },
-  mentorCard: { backgroundColor: '#FFFFFF', borderRadius: 24, padding: 20, borderWidth: 1.5, borderColor: '#F1F5F9', shadowColor: '#64748B', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.04, shadowRadius: 12, elevation: 3 },
+  mentorCard: { backgroundColor: '#FFFFFF', borderRadius: 24, padding: 20, borderTopWidth: 1.5, borderBottomWidth: 1.5, borderRightWidth: 1.5, borderLeftWidth: 4, borderLeftColor: '#FF6B00', borderColor: '#F1F5F9', shadowColor: '#64748B', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.04, shadowRadius: 12, elevation: 3 },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 },
   mentorInfo: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
   avatar: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', overflow: 'hidden', borderWidth: 1.5, borderColor: '#F1F5F9' },
@@ -960,7 +978,7 @@ const styles = StyleSheet.create({
   sessionEmptyText: { fontSize: 12, color: '#64748B', fontWeight: '700' },
   sessionEmptySub: { fontSize: 11, color: '#94A3B8', marginTop: 2, textAlign: 'center' },
 
-  sessionCard: { backgroundColor: '#FFFFFF', borderRadius: 20, padding: 16, borderWidth: 1.5, borderColor: '#F1F5F9', shadowColor: '#64748B', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.02, shadowRadius: 8, elevation: 1 },
+  sessionCard: { backgroundColor: '#FFFFFF', borderRadius: 20, padding: 16, borderTopWidth: 1.5, borderBottomWidth: 1.5, borderRightWidth: 1.5, borderLeftWidth: 4, borderLeftColor: '#FF6B00', borderColor: '#F1F5F9', shadowColor: '#64748B', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.02, shadowRadius: 8, elevation: 1 },
   sessionHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
   sessionName: { fontSize: 14, fontWeight: '800', color: '#1E293B', flex: 1, marginRight: 8 },
   priorityBadge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, borderWidth: 1 },
@@ -998,7 +1016,7 @@ const styles = StyleSheet.create({
   modalLoaderText: { fontSize: 12, color: '#64748B', fontWeight: '600', marginTop: 10 },
   sectionLabel: { fontSize: 11, fontWeight: '800', color: '#94A3B8', letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 12 },
 
-  offeringCard: { backgroundColor: '#FFFFFF', borderRadius: 16, padding: 16, borderWidth: 1.5, borderColor: '#F1F5F9', marginBottom: 12, flexDirection: 'row', alignItems: 'center', gap: 12 },
+  offeringCard: { backgroundColor: '#FFFFFF', borderRadius: 16, padding: 16, borderWidth: 1.5, borderColor: '#F1F5F9', borderLeftWidth: 4, borderLeftColor: '#FF6B00', marginBottom: 12, flexDirection: 'row', alignItems: 'center', gap: 12 },
   offeringTitle: { fontSize: 14, fontWeight: '800', color: '#1E293B' },
   offeringDesc: { fontSize: 11, color: '#64748B', fontWeight: '500', marginTop: 2, marginBottom: 6, lineHeight: 15 },
   offeringMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },

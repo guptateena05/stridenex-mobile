@@ -729,7 +729,7 @@ const styles = StyleSheet.create({
   exportBtn: { backgroundColor: '#F97316', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   exportText: { fontSize: 10, fontWeight: '700', color: '#fff' },
 
-  tableCard: { padding: 0, borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: colors.border },
+  tableCard: { padding: 0, borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: colors.border, borderLeftWidth: 4, borderLeftColor: '#059669' },
   tableHeader: { flexDirection: 'row', backgroundColor: '#F8FAFC', paddingVertical: 14, paddingHorizontal: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border },
   columnLabel: { fontSize: 10, fontWeight: '700', color: colors.text.secondary, letterSpacing: 0.5 },
   
@@ -759,7 +759,7 @@ const styles = StyleSheet.create({
   loaderContainer: { alignItems: 'center', justifyContent: 'center', paddingVertical: 40 },
   loaderText: { marginTop: 8, fontSize: 13, color: '#64748B', fontWeight: '500' },
 
-  emptyCard: { alignItems: 'center', justifyContent: 'center', paddingVertical: 40, borderStyle: 'dashed', borderWidth: 1, borderColor: '#CBD5E1' },
+  emptyCard: { alignItems: 'center', justifyContent: 'center', paddingVertical: 40, borderStyle: 'dashed', borderWidth: 1, borderColor: '#CBD5E1', borderLeftWidth: 4, borderLeftColor: '#059669' },
   emptyText: { fontSize: 13, color: '#64748B', fontWeight: '500' },
 
   paginationRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 12, marginTop: 12, marginBottom: 24 },
