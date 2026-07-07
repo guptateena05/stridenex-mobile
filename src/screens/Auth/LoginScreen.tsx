@@ -60,7 +60,7 @@ export const LoginScreen = () => {
           if (isOnboardedVal < 3) {
             const userEmail = data.user || username;
             await AsyncStorage.setItem('userEmail', userEmail);
-            const webOnboardingUrl = `https://testwebstridenex.quantcloud.in/onboarding/industry?source=mobile`;
+            const webOnboardingUrl = `https://testwebstridenex.quantcloud.in/onboarding/industry?source=mobile&apiKey=${encodeURIComponent(api_key || '')}&apiSecret=${encodeURIComponent(api_secret || '')}`;
             (navigation as any).navigate('WebOnboarding', {
               url: webOnboardingUrl,
               sessionData: {
@@ -81,7 +81,7 @@ export const LoginScreen = () => {
           if (isOnboardedVal < 3) {
             const userEmail = data.user || username;
             await AsyncStorage.setItem('userEmail', userEmail);
-            const webOnboardingUrl = `https://testwebstridenex.quantcloud.in/onboarding/mentor?source=mobile`;
+            const webOnboardingUrl = `https://testwebstridenex.quantcloud.in/onboarding/mentor?source=mobile&apiKey=${encodeURIComponent(api_key || '')}&apiSecret=${encodeURIComponent(api_secret || '')}`;
             (navigation as any).navigate('WebOnboarding', {
               url: webOnboardingUrl,
               sessionData: {
@@ -102,7 +102,7 @@ export const LoginScreen = () => {
           if (isOnboardedVal < 4) {
             const userEmail = data.user || username;
             await AsyncStorage.setItem('userEmail', userEmail);
-            const webOnboardingUrl = `https://testwebstridenex.quantcloud.in/onboarding/college?source=mobile`;
+            const webOnboardingUrl = `https://testwebstridenex.quantcloud.in/onboarding/college?source=mobile&apiKey=${encodeURIComponent(api_key || '')}&apiSecret=${encodeURIComponent(api_secret || '')}`;
             (navigation as any).navigate('WebOnboarding', {
               url: webOnboardingUrl,
               sessionData: {

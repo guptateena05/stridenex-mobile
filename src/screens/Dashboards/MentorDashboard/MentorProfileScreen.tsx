@@ -579,6 +579,7 @@ export const MentorProfileScreen = () => {
                  onChange={handleFormChange}
                  loading={updateLoading}
                  buttonLabel="Save Changes"
+                 accentColor={colors.violet[600]}
                />
             </ScrollView>
           </Animated.View>

@@ -43,9 +43,10 @@ interface DynamicFieldProps {
   onChange: (name: string, value: any) => void;
   onCreateCustomValue?: (value: string) => Promise<void>;
   error?: string;
+  accentColor?: string;
 }
 
-export default function DynamicField({ field, value, onChange, onCreateCustomValue, error }: DynamicFieldProps) {
+export default function DynamicField({ field, value, onChange, onCreateCustomValue, error, accentColor: accentColorProp }: DynamicFieldProps) {
   const [options, setOptions] = useState<Array<{ value: string; label: string }>>([]);
   const [filteredOptions, setFilteredOptions] = useState<Array<{ value: string; label: string }>>([]);
   const [loading, setLoading] = useState(false);
@@ -57,10 +58,15 @@ export default function DynamicField({ field, value, onChange, onCreateCustomVal
   const [showPassword, setShowPassword] = useState(false);
   const [fileName, setFileName] = useState<string>('');
   const [isDatePickerVisible, setDatePickerVisible] = useState(false);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [hasNext, setHasNext] = useState(false);
+  const [hasPrev, setHasPrev] = useState(false);
 
   const searchInputRef = useRef<TextInput>(null);
   const customInputRef = useRef<TextInput>(null);
   const fetchedRef = useRef<boolean>(false);
+  const lastSearchTermRef = useRef<string>('');
 
   const hasOthersOption = field.allowCustom === true;
 
@@ -70,20 +76,25 @@ export default function DynamicField({ field, value, onChange, onCreateCustomVal
   };
 
   const backgroundColor = getColor(colors.background);
-  const accentColor = getColor(colors.accent);
+  const accentColor = accentColorProp || getColor(colors.accent);
   const textPrimary = getColor(colors.text?.primary);
   const textSecondary = getColor(colors.text?.secondary);
   const borderColor = getColor(colors.border);
   const errorColor = getColor(colors.error);
   const successColor = getColor(colors.success);
 
-  const fetchOptions = useCallback(async () => {
-    if (!field.apiEndpoint) return;
-    if (field.disabled) return;
-    if (field.apiEndpoint.includes('master.get_master_data') && (!field.apiParams || !field.apiParams.doctype)) {
+  const fieldRef = useRef(field);
+  useEffect(() => {
+    fieldRef.current = field;
+  }, [field]);
+
+  const fetchOptions = useCallback(async (pageNum = 1, searchTxt = '') => {
+    const currentField = fieldRef.current;
+    if (!currentField.apiEndpoint) return;
+    if (currentField.disabled) return;
+    if (currentField.apiEndpoint.includes('master.get_master_data') && (!currentField.apiParams || !currentField.apiParams.doctype)) {
       return;
     }
-    if (fetchedRef.current && options.length > 0) return;
 
     setLoading(true);
     setFetchError('');
@@ -91,32 +102,77 @@ export default function DynamicField({ field, value, onChange, onCreateCustomVal
       let response;
       let responseData;
 
-      if (field.apiEndpoint.includes('master.get_master_data')) {
-        response = await api.post(field.apiEndpoint, field.apiParams || {});
+      if (currentField.apiEndpoint.includes('master.get_master_data')) {
+        const body = {
+          ...(currentField.apiParams || {}),
+          search: searchTxt,
+          page: pageNum
+        };
+        const doctype = currentField.apiParams?.doctype || '';
+        const separator = currentField.apiEndpoint.includes('?') ? '&' : '?';
+        const url = `${currentField.apiEndpoint}${separator}page=${pageNum}&search=${encodeURIComponent(searchTxt)}&doctype=${doctype}`;
+        response = await api.post(url, body);
         responseData = response.data;
       } else {
-        response = await api.get(field.apiEndpoint, { params: field.apiParams });
+        response = await api.get(currentField.apiEndpoint, {
+          params: {
+            ...(currentField.apiParams || {}),
+            page: pageNum,
+            page_size: 20,
+            search: searchTxt
+          }
+        });
         responseData = response.data;
       }
 
       let data = [];
+      let nextFlag = false;
+      let prevFlag = false;
+      let totalPgs = 1;
 
-      if (Array.isArray(responseData)) {
-        data = responseData;
-      } else if (responseData.data && Array.isArray(responseData.data)) {
-        data = responseData.data;
-      } else if (responseData.message && Array.isArray(responseData.message)) {
-        data = responseData.message;
-      } else if (responseData.message && responseData.message.data && Array.isArray(responseData.message.data)) {
-        data = responseData.message.data;
-      } else if (responseData.message && responseData.message.message && Array.isArray(responseData.message.message)) {
-        data = responseData.message.message;
+      if (responseData) {
+        if (responseData.pagination) {
+          data = responseData.data || [];
+          nextFlag = responseData.pagination.has_next === true;
+          prevFlag = responseData.pagination.has_prev === true;
+          const totalCount = responseData.pagination.total_count || 0;
+          const pageSize = responseData.pagination.page_size || 20;
+          totalPgs = Math.ceil(totalCount / pageSize) || 1;
+        } else if (responseData.data && responseData.data.pagination) {
+          data = responseData.data.data || [];
+          const pag = responseData.data.pagination;
+          nextFlag = pag.has_next === true;
+          prevFlag = pag.has_prev === true;
+          const totalCount = pag.total_count || 0;
+          const pageSize = pag.page_size || 20;
+          totalPgs = Math.ceil(totalCount / pageSize) || 1;
+        } else if (responseData.message && responseData.message.pagination) {
+          data = responseData.message.data || [];
+          const pag = responseData.message.pagination;
+          nextFlag = pag.has_next === true;
+          prevFlag = pag.has_prev === true;
+          const totalCount = pag.total_count || 0;
+          const pageSize = pag.page_size || 20;
+          totalPgs = Math.ceil(totalCount / pageSize) || 1;
+        } else {
+          if (Array.isArray(responseData)) {
+            data = responseData;
+          } else if (responseData.data && Array.isArray(responseData.data)) {
+            data = responseData.data;
+          } else if (responseData.message && Array.isArray(responseData.message)) {
+            data = responseData.message;
+          } else if (responseData.message?.data && Array.isArray(responseData.message.data)) {
+            data = responseData.message.data;
+          } else if (responseData.message?.message && Array.isArray(responseData.message.message)) {
+            data = responseData.message.message;
+          }
+        }
       }
 
+      let mappedOptions = [];
       if (data.length > 0) {
-        let mappedOptions;
-        if (field.mapOptions) {
-          mappedOptions = field.mapOptions(data);
+        if (currentField.mapOptions) {
+          mappedOptions = currentField.mapOptions(data);
         } else {
           mappedOptions = data.map((item: any) => {
             const val = item.name || item.value || item.specialization || item.skill || item.designation || item.round || item.domain || item.sub_domain || (typeof item === 'string' ? item : '');
@@ -127,44 +183,67 @@ export default function DynamicField({ field, value, onChange, onCreateCustomVal
             };
           });
         }
-        setOptions(mappedOptions);
-        setFilteredOptions(mappedOptions);
-        fetchedRef.current = true;
-      } else {
-        setOptions([]);
-        setFilteredOptions([]);
+      }
+
+      setOptions(mappedOptions);
+      setFilteredOptions(mappedOptions);
+      if (mappedOptions.length === 0) {
         setFetchError('No options available');
       }
+
+      setHasNext(nextFlag || data.length === 20);
+      setHasPrev(prevFlag || pageNum > 1);
+      setTotalPages(totalPgs);
+      setPage(pageNum);
+      fetchedRef.current = true;
     } catch (err: any) {
-      console.warn(`Error fetching ${field.fieldname}:`, err);
-      setFetchError(err?.message || `Failed to load ${field.label}`);
-      setOptions([]);
-      setFilteredOptions([]);
+      console.warn(`Error fetching ${currentField.fieldname}:`, err);
+      setFetchError(err?.message || `Failed to load ${currentField.label}`);
     } finally {
       setLoading(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [field.apiEndpoint, field.apiParams, field.mapOptions, field.fieldname, field.label, field.disabled]);
+  }, []);
 
   const serializedParams = JSON.stringify(field.apiParams);
   useEffect(() => {
     fetchedRef.current = false;
     setOptions([]);
     setFilteredOptions([]);
+    setPage(1);
+    setTotalPages(1);
+    setHasNext(false);
+    setHasPrev(false);
   }, [serializedParams, field.apiEndpoint]);
 
+  // Effect for local searching/filtering options when there's no apiEndpoint
   useEffect(() => {
-    if (options.length > 0) {
+    if (!field.apiEndpoint) {
       const filtered = options.filter(option =>
         option.label.toLowerCase().includes(searchTerm.toLowerCase())
       );
       setFilteredOptions(filtered);
     }
-  }, [searchTerm, options]);
+  }, [searchTerm, options, field.apiEndpoint]);
+
+  // Effect for API-based search option fetching with debounce
+  useEffect(() => {
+    if (!field.apiEndpoint) return;
+    if (!isOpen) return;
+
+    const delayDebounce = setTimeout(() => {
+      if (searchTerm !== lastSearchTermRef.current) {
+        lastSearchTermRef.current = searchTerm;
+        fetchOptions(1, searchTerm);
+      }
+    }, 400);
+
+    return () => clearTimeout(delayDebounce);
+  }, [searchTerm, isOpen, field.apiEndpoint, fetchOptions]);
 
   useEffect(() => {
     if (field.apiEndpoint && value && !fetchedRef.current && !field.disabled) {
-      fetchOptions();
+      fetchOptions(1, '');
+      lastSearchTermRef.current = '';
     }
   }, [field.apiEndpoint, value, fetchOptions, field.disabled]);
 
@@ -172,9 +251,10 @@ export default function DynamicField({ field, value, onChange, onCreateCustomVal
     if (field.read_only || field.disabled) return;
 
     if (!fetchedRef.current || options.length === 0) {
-      fetchOptions();
+      fetchOptions(1, '');
     }
 
+    lastSearchTermRef.current = '';
     setIsOpen(true);
     setSearchTerm('');
     setShowCustomInput(false);
@@ -318,7 +398,7 @@ export default function DynamicField({ field, value, onChange, onCreateCustomVal
         statusBarTranslucent={true}
       >
         <View style={[styles.modalOverlay, { backgroundColor: 'rgba(0, 0, 0, 0.5)' }]}>
-          <View style={[styles.modalContent, { backgroundColor: backgroundColor, maxHeight: '90%', minHeight: 400, height: 'auto' }]}>
+          <View style={[styles.modalContent, { backgroundColor: backgroundColor, maxHeight: '90%', minHeight: 400, height: 550 }]}>
             <View style={[styles.modalHeader, { borderBottomColor: borderColor }]}>
               <Text style={[styles.modalTitle, { color: textPrimary }]}>Select {field.label}</Text>
               <TouchableOpacity onPress={() => setIsOpen(false)} style={styles.closeButton}>
@@ -339,50 +419,89 @@ export default function DynamicField({ field, value, onChange, onCreateCustomVal
                   />
                 </View>
 
-                {loading ? (
-                  <ActivityIndicator size="large" color={accentColor} style={styles.loader} />
-                ) : fetchError ? (
-                  <View style={styles.errorContainer}>
-                    <Text style={[styles.errorMessage, { color: errorColor }]}>{fetchError}</Text>
-                    <TouchableOpacity onPress={fetchOptions} style={[styles.retryButton, { backgroundColor: accentColor }]}>
-                      <Text style={styles.retryText}>Retry</Text>
+                <View style={{ flex: 1, minHeight: 200, position: 'relative' }}>
+                  {fetchError && !loading ? (
+                    <View style={styles.errorContainer}>
+                      <Text style={[styles.errorMessage, { color: errorColor }]}>{fetchError}</Text>
+                      <TouchableOpacity onPress={() => fetchOptions(page, searchTerm)} style={[styles.retryButton, { backgroundColor: accentColor }]}>
+                        <Text style={styles.retryText}>Retry</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ) : (
+                    <FlatList
+                      data={filteredOptions}
+                      keyExtractor={(item, index) => item.value + index}
+                      renderItem={({ item }) => {
+                        const isSelected = field.multiSelect
+                          ? (Array.isArray(value) && value.includes(item.value))
+                          : (value === item.value);
+
+                        return (
+                          <TouchableOpacity
+                            style={[
+                              styles.optionItem,
+                              { borderBottomColor: borderColor },
+                              isSelected && { backgroundColor: accentColor + '10' }
+                            ]}
+                            onPress={() => field.multiSelect ? handleMultiSelect(item.value) : handleSingleSelect(item.value)}
+                          >
+                            <Text style={[
+                              styles.optionText,
+                              { color: textPrimary },
+                              isSelected && { color: accentColor }
+                            ]}>
+                              {item.label}
+                            </Text>
+                            {isSelected && (
+                              <Text style={[styles.checkIcon, { color: accentColor }]}>✓</Text>
+                            )}
+                          </TouchableOpacity>
+                        );
+                      }}
+                      ListEmptyComponent={
+                        !loading ? (
+                          <Text style={[styles.emptyText, { color: textSecondary }]}>No options available</Text>
+                        ) : null
+                      }
+                    />
+                  )}
+
+                  {loading && (
+                    <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(255, 255, 255, 0.7)', justifyContent: 'center', alignItems: 'center', zIndex: 10 }]}>
+                      <ActivityIndicator size="large" color={accentColor} />
+                    </View>
+                  )}
+                </View>
+
+                {/* Pagination Controls */}
+                {field.apiEndpoint && !fetchError && (hasNext || hasPrev || totalPages > 1) && (
+                  <View style={styles.paginationContainer}>
+                    <TouchableOpacity
+                      disabled={!hasPrev || loading}
+                      onPress={() => fetchOptions(page - 1, searchTerm)}
+                      style={[
+                        styles.pageButton, 
+                        { backgroundColor: hasPrev ? accentColor : '#cbd5e1', opacity: loading ? 0.5 : 1 }
+                      ]}
+                    >
+                      <Text style={[styles.pageButtonText, { color: hasPrev ? '#ffffff' : '#64748b' }]}>Previous</Text>
+                    </TouchableOpacity>
+                    
+                    <Text style={[styles.pageInfoText, { color: textPrimary }]}>
+                      Page {page} of {totalPages}
+                    </Text>
+
+                    <TouchableOpacity
+                      disabled={!hasNext || loading}
+                      onPress={() => fetchOptions(page + 1, searchTerm)}
+                      style={[
+                        styles.pageButton, 
+                        { backgroundColor: hasNext ? accentColor : '#cbd5e1', opacity: loading ? 0.5 : 1 }
+                      ]}
+                    >
+                      <Text style={[styles.pageButtonText, { color: hasNext ? '#ffffff' : '#64748b' }]}>Next</Text>
                     </TouchableOpacity>
                   </View>
-                ) : (
-                  <FlatList
-                    data={filteredOptions}
-                    keyExtractor={(item, index) => item.value + index}
-                    renderItem={({ item }) => {
-                      const isSelected = field.multiSelect
-                        ? (Array.isArray(value) && value.includes(item.value))
-                        : (value === item.value);
-
-                      return (
-                        <TouchableOpacity
-                          style={[
-                            styles.optionItem,
-                            { borderBottomColor: borderColor },
-                            isSelected && { backgroundColor: accentColor + '10' }
-                          ]}
-                          onPress={() => field.multiSelect ? handleMultiSelect(item.value) : handleSingleSelect(item.value)}
-                        >
-                          <Text style={[
-                            styles.optionText,
-                            { color: textPrimary },
-                            isSelected && { color: accentColor }
-                          ]}>
-                            {item.label}
-                          </Text>
-                          {isSelected && (
-                            <Text style={[styles.checkIcon, { color: accentColor }]}>✓</Text>
-                          )}
-                        </TouchableOpacity>
-                      );
-                    }}
-                    ListEmptyComponent={
-                      <Text style={[styles.emptyText, { color: textSecondary }]}>No options available</Text>
-                    }
-                  />
                 )}
 
                 {hasOthersOption && (
@@ -460,7 +579,7 @@ export default function DynamicField({ field, value, onChange, onCreateCustomVal
         statusBarTranslucent={true}
       >
         <View style={[styles.modalOverlay, { backgroundColor: 'rgba(0, 0, 0, 0.5)' }]}>
-          <View style={[styles.modalContent, { backgroundColor: backgroundColor, maxHeight: '90%', minHeight: 400, height: 'auto' }]}>
+          <View style={[styles.modalContent, { backgroundColor: backgroundColor, maxHeight: '90%', minHeight: 400, height: 550 }]}>
             <View style={[styles.modalHeader, { borderBottomColor: borderColor }]}>
               <Text style={[styles.modalTitle, { color: textPrimary }]}>Select {field.label}</Text>
               <TouchableOpacity onPress={() => setIsOpen(false)} style={styles.closeButton}>
@@ -1106,5 +1225,29 @@ const styles = StyleSheet.create({
   flatList: {
     flex: 1,
     marginBottom: Platform.OS === 'ios' ? 0 : 0,
+  },
+  paginationContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#e2e8f0',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e2e8f0',
+  },
+  pageButton: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+  },
+  pageButtonText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  pageInfoText: {
+    fontSize: 12,
+    fontWeight: '600',
   },
 });

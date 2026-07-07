@@ -13,6 +13,7 @@ import {
   Alert
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { colors } from '@/theme/colors';
 import { typography } from '@/theme/typography';
 import {
   Plus,
@@ -508,6 +509,7 @@ export const MentorOfferingsScreen = () => {
                 onChange={handleFormChange}
                 loading={modalLoading}
                 buttonLabel={editingOffering ? 'Save Changes' : 'Create Offering'}
+                accentColor={colors.violet[600]}
               />
             </ScrollView>
           </View>

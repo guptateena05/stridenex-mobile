@@ -858,6 +858,7 @@ export const IndustryCompanyProfileScreen = () => {
                 onCreateCustomValue={handleCreateCustomValue}
                 buttonLabel=""
                 loading={updateLoading}
+                accentColor={colors.purple[600]}
               />
 
               {/* Operating Hours Section */}
@@ -1136,6 +1137,7 @@ export const IndustryCompanyProfileScreen = () => {
                 onCreateCustomValue={handleCreateCustomValue}
                 buttonLabel="Save Skill Domain"
                 loading={updateLoading}
+                accentColor={colors.purple[600]}
               />
             </ScrollView>
           </View>
@@ -1164,6 +1166,7 @@ export const IndustryCompanyProfileScreen = () => {
                 onSubmit={handleHiringSubmit}
                 buttonLabel="Save Round"
                 loading={updateLoading}
+                accentColor={colors.purple[600]}
               />
             </ScrollView>
           </View>

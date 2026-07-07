@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -42,6 +42,20 @@ export const CollegeStudentsScreen = () => {
   const availableYears = ["First Year", "Second Year", "Third Year", "Final Year"];
   const availableRisks = ["All", "Low", "Medium", "High"];
 
+  const [branchPage, setBranchPage] = useState(1);
+  const [branchTotalPages, setBranchTotalPages] = useState(1);
+  const [branchHasNext, setBranchHasNext] = useState(false);
+  const [branchHasPrev, setBranchHasPrev] = useState(false);
+  const [branchSearch, setBranchSearch] = useState("");
+  const lastBranchSearchRef = useRef("");
+
+  const [skillPage, setSkillPage] = useState(1);
+  const [skillTotalPages, setSkillTotalPages] = useState(1);
+  const [skillHasNext, setSkillHasNext] = useState(false);
+  const [skillHasPrev, setSkillHasPrev] = useState(false);
+  const [skillSearch, setSkillSearch] = useState("");
+  const lastSkillSearchRef = useRef("");
+
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize] = useState(10);
@@ -70,39 +84,87 @@ export const CollegeStudentsScreen = () => {
     return { color: colors.success, label: 'Low' };
   };
 
-  // Fetch available branches and skills from master API
-  useEffect(() => {
-    const fetchBranches = async () => {
-      try {
-        const res = await getMasterData("College Department");
-        const raw = res?.data ?? res?.message?.data ?? res?.message ?? res;
-        const arr = Array.isArray(raw) ? raw : (Array.isArray(raw?.data) ? raw.data : []);
-        if (arr.length > 0) {
-          const names = arr.map((item: any) => item.branch_name || item.branch || item.name || String(item)).filter(Boolean);
-          setAvailableBranches(Array.from(new Set([...names, "CS", "CSE", "ECE", "IT", "ME", "MBA", "Civil", "EE"])));
-        }
-      } catch (err) {
-        console.error("Failed to load branches master:", err);
+  const fetchBranches = async (pageNum = 1, searchTxt = "") => {
+    try {
+      const res = await getMasterData("College Department", { page: pageNum, search: searchTxt, page_size: 20, fields: ["name"] });
+      const raw = res?.data ?? res?.message?.data ?? res?.message ?? res;
+      const arr = Array.isArray(raw) ? raw : (Array.isArray(raw?.data) ? raw.data : []);
+      if (arr.length > 0 || pageNum === 1) {
+        const names: string[] = arr.map((item: any) => String(item.name || item)).filter(Boolean);
+        const uniqueNames: string[] = Array.from(new Set(names));
+        setAvailableBranches(uniqueNames.length > 0 ? uniqueNames : ["CS", "CSE", "ECE", "IT", "ME", "MBA", "Civil", "EE"]);
       }
-    };
-    fetchBranches();
-  }, []);
+      const paginationData = res?.pagination || res?.message?.pagination;
+      if (paginationData) {
+        setBranchHasNext(paginationData.has_next === true);
+        setBranchHasPrev(paginationData.has_prev === true);
+        const totalCount = paginationData.total_count || 0;
+        const pageSize = paginationData.page_size || 20;
+        setBranchTotalPages(Math.ceil(totalCount / pageSize) || 1);
+      } else {
+        setBranchHasNext(arr.length === 20);
+        setBranchHasPrev(pageNum > 1);
+        setBranchTotalPages(pageNum > 1 || arr.length === 20 ? pageNum + (arr.length === 20 ? 1 : 0) : 1);
+      }
+      setBranchPage(pageNum);
+    } catch (err) {
+      console.error("Failed to load branches master:", err);
+    }
+  };
+
+  const fetchSkills = async (pageNum = 1, searchTxt = "") => {
+    try {
+      const res = await getMasterData("Skill", { page: pageNum, search: searchTxt, page_size: 20, fields: ["name"] });
+      const raw = res?.data ?? res?.message?.data ?? res?.message ?? res;
+      const arr = Array.isArray(raw) ? raw : (Array.isArray(raw?.data) ? raw.data : []);
+      if (arr.length > 0 || pageNum === 1) {
+        const names: string[] = arr.map((item: any) => String(item.name || item)).filter(Boolean);
+        const uniqueNames: string[] = Array.from(new Set(names));
+        setAvailableSkills(uniqueNames.length > 0 ? uniqueNames : ["Python", "React", "NodeJS", "TypeScript", "SQL", "Pandas"]);
+      }
+      const paginationData = res?.pagination || res?.message?.pagination;
+      if (paginationData) {
+        setSkillHasNext(paginationData.has_next === true);
+        setSkillHasPrev(paginationData.has_prev === true);
+        const totalCount = paginationData.total_count || 0;
+        const pageSize = paginationData.page_size || 20;
+        setSkillTotalPages(Math.ceil(totalCount / pageSize) || 1);
+      } else {
+        setSkillHasNext(arr.length === 20);
+        setSkillHasPrev(pageNum > 1);
+        setSkillTotalPages(pageNum > 1 || arr.length === 20 ? pageNum + (arr.length === 20 ? 1 : 0) : 1);
+      }
+      setSkillPage(pageNum);
+    } catch (err) {
+      console.error("Failed to load skills master:", err);
+    }
+  };
 
   useEffect(() => {
-    const fetchSkills = async () => {
-      try {
-        const res = await getMasterData("Skill");
-        const raw = res?.data ?? res?.message?.data ?? res?.message ?? res;
-        const arr = Array.isArray(raw) ? raw : (Array.isArray(raw?.data) ? raw.data : []);
-        if (arr.length > 0) {
-          const names = arr.map((item: any) => item.skill_name || item.skill || item.name || String(item)).filter(Boolean);
-          setAvailableSkills(Array.from(new Set([...names, "Python", "React", "NodeJS", "TypeScript", "SQL", "Pandas"])));
-        }
-      } catch (err) {
-        console.error("Failed to load skills master:", err);
+    if (selectorType !== 'branch') return;
+    const delayDebounce = setTimeout(() => {
+      if (branchSearch !== lastBranchSearchRef.current) {
+        lastBranchSearchRef.current = branchSearch;
+        fetchBranches(1, branchSearch);
       }
-    };
-    fetchSkills();
+    }, 400);
+    return () => clearTimeout(delayDebounce);
+  }, [branchSearch, selectorType]);
+
+  useEffect(() => {
+    if (selectorType !== 'skill') return;
+    const delayDebounce = setTimeout(() => {
+      if (skillSearch !== lastSkillSearchRef.current) {
+        lastSkillSearchRef.current = skillSearch;
+        fetchSkills(1, skillSearch);
+      }
+    }, 400);
+    return () => clearTimeout(delayDebounce);
+  }, [skillSearch, selectorType]);
+
+  useEffect(() => {
+    fetchBranches(1, "");
+    fetchSkills(1, "");
   }, []);
 
   // Fetch College info
@@ -214,6 +276,15 @@ export const CollegeStudentsScreen = () => {
 
   const openSelector = (type: 'branch' | 'skill' | 'year' | 'risk') => {
     setSelectorType(type);
+    if (type === 'branch') {
+      setBranchSearch("");
+      lastBranchSearchRef.current = "";
+      fetchBranches(1, "");
+    } else if (type === 'skill') {
+      setSkillSearch("");
+      lastSkillSearchRef.current = "";
+      fetchSkills(1, "");
+    }
   };
 
   const getSelectorConfig = () => {
@@ -508,13 +579,29 @@ export const CollegeStudentsScreen = () => {
           onRequestClose={() => setSelectorType(null)}
         >
           <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setSelectorType(null)}>
-            <View style={styles.modalContent}>
+            <View style={[styles.modalContent, { minHeight: (selectorType === 'branch' || selectorType === 'skill') ? 500 : 350 }]}>
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>{getSelectorConfig().title}</Text>
                 <TouchableOpacity onPress={() => setSelectorType(null)}>
                   <X size={20} color="#64748B" />
                 </TouchableOpacity>
               </View>
+
+              {/* Search input for branch or skill */}
+              {(selectorType === 'branch' || selectorType === 'skill') && (
+                <View style={styles.modalSearchContainer}>
+                  <Search size={16} color="#94A3B8" style={styles.modalSearchIcon} />
+                  <TextInput
+                    style={styles.modalSearchInput}
+                    placeholder={`Search ${selectorType}...`}
+                    placeholderTextColor="#94A3B8"
+                    value={selectorType === 'branch' ? branchSearch : skillSearch}
+                    onChangeText={selectorType === 'branch' ? setBranchSearch : setSkillSearch}
+                    autoFocus
+                  />
+                </View>
+              )}
+
               <FlatList
                 data={getSelectorConfig().options}
                 keyExtractor={(item) => item}
@@ -532,7 +619,7 @@ export const CollegeStudentsScreen = () => {
                     >
                       <Text style={[styles.optionText, isSelected && styles.selectedOptionText]}>{item}</Text>
                       {isSelected && (
-                        <Text style={{ color: '#F97316', fontWeight: 'bold', fontSize: 14 }}>✓</Text>
+                        <Text style={{ color: colors.primary.DEFAULT, fontWeight: 'bold', fontSize: 14 }}>✓</Text>
                       )}
                     </TouchableOpacity>
                   );
@@ -540,6 +627,69 @@ export const CollegeStudentsScreen = () => {
                 contentContainerStyle={{ paddingBottom: 10 }}
                 style={{ maxHeight: 300 }}
               />
+
+              {/* Pagination Controls for Branch */}
+              {selectorType === 'branch' && (branchHasNext || branchHasPrev || branchTotalPages > 1) && (
+                <View style={styles.modalPaginationContainer}>
+                  <TouchableOpacity
+                    disabled={!branchHasPrev}
+                    onPress={() => fetchBranches(branchPage - 1, branchSearch)}
+                    style={[
+                      styles.modalPageButton, 
+                      { backgroundColor: branchHasPrev ? colors.primary.DEFAULT : '#cbd5e1' }
+                    ]}
+                  >
+                    <Text style={[styles.modalPageButtonText, { color: branchHasPrev ? '#ffffff' : '#64748b' }]}>Previous</Text>
+                  </TouchableOpacity>
+                  
+                  <Text style={styles.modalPageInfoText}>
+                    Page {branchPage} of {branchTotalPages}
+                  </Text>
+
+                  <TouchableOpacity
+                    disabled={!branchHasNext}
+                    onPress={() => fetchBranches(branchPage + 1, branchSearch)}
+                    style={[
+                      styles.modalPageButton, 
+                      { backgroundColor: branchHasNext ? colors.primary.DEFAULT : '#cbd5e1' }
+                    ]}
+                  >
+                    <Text style={[styles.modalPageButtonText, { color: branchHasNext ? '#ffffff' : '#64748b' }]}>Next</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              {/* Pagination Controls for Skill */}
+              {selectorType === 'skill' && (skillHasNext || skillHasPrev || skillTotalPages > 1) && (
+                <View style={styles.modalPaginationContainer}>
+                  <TouchableOpacity
+                    disabled={!skillHasPrev}
+                    onPress={() => fetchSkills(skillPage - 1, skillSearch)}
+                    style={[
+                      styles.modalPageButton, 
+                      { backgroundColor: skillHasPrev ? colors.primary.DEFAULT : '#cbd5e1' }
+                    ]}
+                  >
+                    <Text style={[styles.modalPageButtonText, { color: skillHasPrev ? '#ffffff' : '#64748b' }]}>Previous</Text>
+                  </TouchableOpacity>
+                  
+                  <Text style={styles.modalPageInfoText}>
+                    Page {skillPage} of {skillTotalPages}
+                  </Text>
+
+                  <TouchableOpacity
+                    disabled={!skillHasNext}
+                    onPress={() => fetchSkills(skillPage + 1, skillSearch)}
+                    style={[
+                      styles.modalPageButton, 
+                      { backgroundColor: skillHasNext ? colors.primary.DEFAULT : '#cbd5e1' }
+                    ]}
+                  >
+                    <Text style={[styles.modalPageButtonText, { color: skillHasNext ? '#ffffff' : '#64748b' }]}>Next</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+
               {getSelectorConfig().isMultiSelect && (
                 <TouchableOpacity 
                   style={styles.doneBtn} 
@@ -618,15 +768,15 @@ const styles = StyleSheet.create({
   pageIndicator: { fontSize: 13, fontWeight: '700', color: '#64748B' },
 
   modalOverlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.4)', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 20 },
-  modalContent: { width: '100%', maxHeight: '60%', backgroundColor: '#FFF', borderRadius: 16, padding: 16 },
+  modalContent: { width: '100%', maxHeight: '80%', backgroundColor: '#FFF', borderRadius: 16, padding: 16 },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
   modalTitle: { fontSize: 15, fontWeight: '800', color: '#0F172A', fontFamily: typography.fontFamily.display },
   optionItem: { paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
   selectedOption: { backgroundColor: '#F8FAFC' },
   optionText: { fontSize: 13, fontWeight: '600', color: '#334155' },
-  selectedOptionText: { color: '#0F172A', fontWeight: '800' },
+  selectedOptionText: { color: colors.primary.DEFAULT, fontWeight: '800' },
   doneBtn: {
-    backgroundColor: '#0F172A',
+    backgroundColor: colors.primary.DEFAULT,
     paddingVertical: 12,
     borderRadius: 8,
     alignItems: 'center',
@@ -637,5 +787,50 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 13,
     fontWeight: '700',
+  },
+  modalSearchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    marginHorizontal: 4,
+    marginBottom: 12,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  modalSearchIcon: {
+    marginRight: 8,
+  },
+  modalSearchInput: {
+    flex: 1,
+    height: 44,
+    fontSize: 14,
+    color: '#0F172A',
+    fontWeight: '500',
+  },
+  modalPaginationContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 8,
+    paddingVertical: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+    marginTop: 8,
+  },
+  modalPageButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  modalPageButtonText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  modalPageInfoText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#475569',
   }
 });

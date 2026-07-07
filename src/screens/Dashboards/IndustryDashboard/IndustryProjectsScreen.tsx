@@ -533,6 +533,7 @@ export const IndustryProjectsScreen = () => {
                 onCreateCustomValue={handleCreateCustomValue}
                 loading={modalLoading}
                 buttonLabel={editingProject ? "Update Project" : "Create Project"}
+                accentColor={colors.purple[600]}
               />
             </ScrollView>
           </View>

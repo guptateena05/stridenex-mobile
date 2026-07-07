@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, RefreshControl, ActivityIndicator, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '@/theme/colors';
@@ -37,23 +37,59 @@ export const IndustryFindTalentScreen = () => {
   const [loadingColleges, setLoadingColleges] = useState(false);
   const [collegeSearchQuery, setCollegeSearchQuery] = useState("");
   const [showCollegeDropdown, setShowCollegeDropdown] = useState(false);
+  const [collegePage, setCollegePage] = useState(1);
+  const [collegeTotalPages, setCollegeTotalPages] = useState(1);
+  const [collegeHasNext, setCollegeHasNext] = useState(false);
+  const [collegeHasPrev, setCollegeHasPrev] = useState(false);
+  const lastCollegeSearchRef = useRef("");
 
-  const loadColleges = async () => {
-    if (colleges.length > 0) return;
+  const loadColleges = async (pageNum = 1, searchTxt = "") => {
     try {
       setLoadingColleges(true);
-      const res = await getMasterData("College");
-      const apiData = res?.data || res?.message || res || [];
-      const options = Array.isArray(apiData)
-        ? apiData.map((item: any) => item.name || item.value || (typeof item === 'string' ? item : '')).filter(Boolean)
-        : [];
+      const res = await getMasterData("College", { page: pageNum, search: searchTxt, page_size: 20 });
+      const raw = res?.data ?? res?.message?.data ?? res?.message ?? res;
+      const arr = Array.isArray(raw) ? raw : (Array.isArray(raw?.data) ? raw.data : []);
+      
+      const options = arr.map((item: any) => item.name || item.value || (typeof item === 'string' ? item : '')).filter(Boolean);
       setColleges(options);
+
+      const paginationData = res?.pagination || res?.message?.pagination;
+      if (paginationData) {
+        setCollegeHasNext(paginationData.has_next === true);
+        setCollegeHasPrev(paginationData.has_prev === true);
+        const totalCount = paginationData.total_count || 0;
+        const pageSize = paginationData.page_size || 20;
+        setCollegeTotalPages(Math.ceil(totalCount / pageSize) || 1);
+      } else {
+        setCollegeHasNext(arr.length === 20);
+        setCollegeHasPrev(pageNum > 1);
+        setCollegeTotalPages(pageNum > 1 || arr.length === 20 ? pageNum + (arr.length === 20 ? 1 : 0) : 1);
+      }
+      setCollegePage(pageNum);
     } catch (err) {
       console.error("Error loading colleges:", err);
     } finally {
       setLoadingColleges(false);
     }
   };
+
+  const handleOpenCollegeDropdown = () => {
+    setCollegeSearchQuery("");
+    lastCollegeSearchRef.current = "";
+    setShowCollegeDropdown(true);
+    loadColleges(1, "");
+  };
+
+  useEffect(() => {
+    if (!showCollegeDropdown) return;
+    const delayDebounce = setTimeout(() => {
+      if (collegeSearchQuery !== lastCollegeSearchRef.current) {
+        lastCollegeSearchRef.current = collegeSearchQuery;
+        loadColleges(1, collegeSearchQuery);
+      }
+    }, 400);
+    return () => clearTimeout(delayDebounce);
+  }, [collegeSearchQuery, showCollegeDropdown]);
 
   const fetchStudents = useCallback(async (pageNum = 1, isRefresh = false) => {
     const companyName = industryData?.company_name || industryData?.name;
@@ -187,10 +223,7 @@ export const IndustryFindTalentScreen = () => {
             <Text style={styles.inputLabel}>Filter by College</Text>
             <TouchableOpacity 
               style={styles.dropdownTrigger}
-              onPress={() => {
-                setShowCollegeDropdown(true);
-                loadColleges();
-              }}
+              onPress={handleOpenCollegeDropdown}
             >
               <Text style={[styles.dropdownTriggerText, !activeCollegeFilter ? styles.dropdownPlaceholder : {}]} numberOfLines={1}>
                 {activeCollegeFilter || "All Colleges"}
@@ -382,12 +415,7 @@ export const IndustryFindTalentScreen = () => {
               />
             </View>
 
-            {loadingColleges ? (
-              <View style={styles.modalLoading}>
-                <ActivityIndicator size="small" color={colors.purple[600]} />
-                <Text style={styles.modalLoadingText}>Loading colleges...</Text>
-              </View>
-            ) : (
+            <View style={{ flex: 1, minHeight: 200, position: 'relative' }}>
               <ScrollView style={styles.optionsList} keyboardShouldPersistTaps="handled">
                 <TouchableOpacity
                   style={[styles.optionItem, !activeCollegeFilter ? styles.optionItemActive : {}]}
@@ -403,30 +431,64 @@ export const IndustryFindTalentScreen = () => {
                   </Text>
                 </TouchableOpacity>
 
-                {colleges
-                  .filter((college) =>
-                    college.toLowerCase().includes(collegeSearchQuery.toLowerCase())
-                  )
-                  .map((college) => {
-                    const isActive = activeCollegeFilter === college;
-                    return (
-                      <TouchableOpacity
-                        key={college}
-                        style={[styles.optionItem, isActive ? styles.optionItemActive : {}]}
-                        onPress={() => {
-                          setCollegeFilter(college);
-                          setActiveCollegeFilter(college);
-                          setShowCollegeDropdown(false);
-                          setCollegeSearchQuery("");
-                        }}
-                      >
-                        <Text style={[styles.optionText, isActive ? styles.optionTextActive : {}]}>
-                          {college}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
+                {colleges.map((college) => {
+                  const isActive = activeCollegeFilter === college;
+                  return (
+                    <TouchableOpacity
+                      key={college}
+                      style={[styles.optionItem, isActive ? styles.optionItemActive : {}]}
+                      onPress={() => {
+                        setCollegeFilter(college);
+                        setActiveCollegeFilter(college);
+                        setShowCollegeDropdown(false);
+                        setCollegeSearchQuery("");
+                      }}
+                    >
+                      <Text style={[styles.optionText, isActive ? styles.optionTextActive : {}]}>
+                        {college}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
               </ScrollView>
+
+              {loadingColleges && (
+                <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(255, 255, 255, 0.7)', justifyContent: 'center', alignItems: 'center', zIndex: 10 }]}>
+                  <ActivityIndicator size="small" color={colors.purple[600]} />
+                  <Text style={[styles.modalLoadingText, { marginTop: 10 }]}>Loading colleges...</Text>
+                </View>
+              )}
+            </View>
+
+            {/* College Modal Pagination Controls */}
+            {(collegeHasNext || collegeHasPrev || collegeTotalPages > 1) && (
+              <View style={styles.modalPaginationContainer}>
+                <TouchableOpacity
+                  disabled={!collegeHasPrev || loadingColleges}
+                  onPress={() => loadColleges(collegePage - 1, collegeSearchQuery)}
+                  style={[
+                    styles.modalPageButton, 
+                    { backgroundColor: collegeHasPrev ? colors.purple[600] : '#cbd5e1', opacity: loadingColleges ? 0.5 : 1 }
+                  ]}
+                >
+                  <Text style={[styles.modalPageButtonText, { color: collegeHasPrev ? '#ffffff' : '#64748b' }]}>Previous</Text>
+                </TouchableOpacity>
+                
+                <Text style={styles.modalPageInfoText}>
+                  Page {collegePage} of {collegeTotalPages}
+                </Text>
+
+                <TouchableOpacity
+                  disabled={!collegeHasNext || loadingColleges}
+                  onPress={() => loadColleges(collegePage + 1, collegeSearchQuery)}
+                  style={[
+                    styles.modalPageButton, 
+                    { backgroundColor: collegeHasNext ? colors.purple[600] : '#cbd5e1', opacity: loadingColleges ? 0.5 : 1 }
+                  ]}
+                >
+                  <Text style={[styles.modalPageButtonText, { color: collegeHasNext ? '#ffffff' : '#64748b' }]}>Next</Text>
+                </TouchableOpacity>
+              </View>
             )}
           </View>
         </View>
@@ -529,7 +591,8 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 24, 
     borderTopRightRadius: 24, 
     maxHeight: '80%', 
-    minHeight: '50%' 
+    minHeight: 550,
+    height: 550
   },
   modalHeader: { 
     flexDirection: 'row', 
@@ -608,5 +671,28 @@ const styles = StyleSheet.create({
     fontSize: 13, 
     color: '#64748B', 
     fontWeight: '500' 
+  },
+  modalPaginationContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+  },
+  modalPageButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  modalPageButtonText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  modalPageInfoText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#475569',
   }
 });

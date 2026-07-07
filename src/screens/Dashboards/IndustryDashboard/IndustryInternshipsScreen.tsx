@@ -579,6 +579,7 @@ export const IndustryInternshipsScreen = () => {
                 loading={modalLoading}
                 initialValues={formValues}
                 buttonLabel={editingInternship ? "Save Changes" : "Post Internship"}
+                accentColor={colors.purple[600]}
               />
               <View style={{ height: 60 }} />
             </ScrollView>

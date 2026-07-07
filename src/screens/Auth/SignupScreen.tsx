@@ -120,8 +120,35 @@ export const SignupScreen = () => {
         if (selectedRole === 'student') {
           navigation.navigate('StudentOnboarding');
         } else {
-          const webOnboardingUrl = `https://testwebstridenex.quantcloud.in/onboarding/${selectedRole}?source=mobile`;
+          try {
+            const loginRes = await api.post(
+              'method/stridenex_app.api_stridenex_app.app.login',
+              { usr: email, pwd: password }
+            );
+            const loginData = loginRes.data;
+            if (loginData?.message === "Logged In") {
+              const { api_key, api_secret } = loginData.key_details || {};
+              const webOnboardingUrl = `https://testwebstridenex.quantcloud.in/onboarding/${selectedRole}?source=mobile&apiKey=${encodeURIComponent(api_key || '')}&apiSecret=${encodeURIComponent(api_secret || '')}`;
 
+              navigation.navigate('WebOnboarding', {
+                url: webOnboardingUrl,
+                email: email,
+                sessionData: {
+                  apiKey: api_key || '',
+                  apiSecret: api_secret || '',
+                  email: email,
+                  isOnboarded: String(loginData.is_onboarded ?? '0'),
+                  fullName: loginData.full_name || `${firstName} ${lastName}`.trim(),
+                  role: selectedRole,
+                }
+              });
+              return;
+            }
+          } catch (loginErr) {
+            console.error("Auto-login failed after signup:", loginErr);
+          }
+
+          const webOnboardingUrl = `https://testwebstridenex.quantcloud.in/onboarding/${selectedRole}?source=mobile`;
           navigation.navigate('WebOnboarding', {
             url: webOnboardingUrl,
             email: email

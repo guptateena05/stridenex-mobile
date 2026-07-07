@@ -1489,6 +1489,7 @@ export const CollegePlacementScreen = ({ route }: any) => {
                 onCreateCustomValue={handleCreateCustomValue}
                 loading={isSubmittingDrive}
                 buttonLabel={editingDrive ? 'Save Changes' : 'Create Drive'}
+                accentColor={colors.primary.DEFAULT}
               />
             </ScrollView>
           </View>

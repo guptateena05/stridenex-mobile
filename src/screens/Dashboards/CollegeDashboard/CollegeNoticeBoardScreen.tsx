@@ -737,6 +737,7 @@ export const CollegeNoticeBoardScreen = () => {
                 initialValues={eventFormValues}
                 loading={eventModalLoading}
                 buttonLabel={editingEvent ? 'Save Changes' : 'Create Event'}
+                accentColor={colors.primary.DEFAULT}
               />
             </ScrollView>
           </View>
@@ -771,6 +772,7 @@ export const CollegeNoticeBoardScreen = () => {
                 initialValues={noticeFormValues}
                 loading={noticeModalLoading}
                 buttonLabel={editingNotice ? 'Save Changes' : 'Post Notice'}
+                accentColor={colors.primary.DEFAULT}
               />
             </ScrollView>
           </View>

@@ -23,6 +23,7 @@ export interface DynamicFormProps {
   onChange?: (data: any) => void;
   initialValues?: Record<string, any>;
   errors?: Record<string, string>;
+  accentColor?: string;
 }
 
 const DynamicForm: React.FC<DynamicFormProps> = ({
@@ -34,6 +35,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
   onChange,
   initialValues = {},
   errors = {},
+  accentColor,
 }) => {
   const [formData, setFormData] = useState<Record<string, any>>(initialValues || {});
   const [localErrors, setLocalErrors] = useState<Record<string, string>>({});
@@ -148,6 +150,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
                     onChange={handleChange}
                     onCreateCustomValue={onCreateCustomValue ? (val) => onCreateCustomValue(f.fieldname, val) : undefined}
                     error={localErrors[f.fieldname] || errors?.[f.fieldname]}
+                    accentColor={accentColor}
                   />
                 </View>
               ))}
@@ -180,6 +183,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
                 onChange={handleChange}
                 onCreateCustomValue={onCreateCustomValue ? (val) => onCreateCustomValue(f.fieldname, val) : undefined}
                 error={localErrors[f.fieldname] || errors?.[f.fieldname]}
+                accentColor={accentColor}
               />
             </View>
           ))}
@@ -194,7 +198,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
 
       {buttonLabel && buttonLabel !== '' && (
         <TouchableOpacity
-          style={[styles.button, loading && styles.buttonDisabled]}
+          style={[styles.button, accentColor ? { backgroundColor: accentColor } : null, loading && styles.buttonDisabled]}
           onPress={handleSubmit}
           disabled={loading}
         >

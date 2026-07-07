@@ -286,13 +286,28 @@ export const assignStudentMentor = async (payload: { student: string; mentor: st
   }
 };
 
-export const getMasterData = async (doctype: string) => {
+export const getMasterData = async (doctype: string, additionalPayload: any = {}) => {
   try {
-    const response = await api.post(
-      `method/stridenex_app.api_stridenex_app.college.master.get_master_data`,
-      { doctype }
-    );
-    return response.data;
+    const payload = {
+      doctype,
+      page: additionalPayload.page !== undefined ? additionalPayload.page : 1,
+      search: additionalPayload.search !== undefined ? additionalPayload.search : "",
+      ...additionalPayload
+    };
+    const url = `method/stridenex_app.api_stridenex_app.college.master.get_master_data?page=${payload.page}&search=${encodeURIComponent(payload.search)}&doctype=${doctype}`;
+    const response = await api.post(url, payload);
+    const responseData = response.data;
+    let arr = [];
+    if (responseData && responseData.data && Array.isArray(responseData.data.data)) {
+      arr = responseData.data.data;
+    } else if (responseData && responseData.data && Array.isArray(responseData.data)) {
+      arr = responseData.data;
+    } else if (responseData && responseData.message && Array.isArray(responseData.message)) {
+      arr = responseData.message;
+    } else if (responseData && responseData.message && responseData.message.data && Array.isArray(responseData.message.data)) {
+      arr = responseData.message.data;
+    }
+    return { data: arr, message: arr, pagination: responseData?.data?.pagination || responseData?.message?.pagination };
   } catch (error) {
     console.error(`Error fetching master data for ${doctype}:`, error);
     throw error;
