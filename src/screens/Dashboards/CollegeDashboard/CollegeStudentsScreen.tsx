@@ -339,21 +339,6 @@ export const CollegeStudentsScreen = () => {
     };
   };
 
-  const handleViewStudent = (student: any) => {
-    const fullName = `${student.first_name || ""} ${student.last_name || ""}`.trim() || student.student_name || student.name || "—";
-    Alert.alert(
-      "Student Details",
-      `Name: ${fullName}\n` +
-      `Branch: ${student.branch || student.department || "—"}\n` +
-      `Year: ${student.current_year || student.year || student.academic_year || "—"}\n` +
-      `Employability Score: ${student.employability_score !== undefined ? student.employability_score : (student.employability !== undefined ? student.employability : "—")}\n` +
-      `Internships: ${student.internship_count !== undefined ? student.internship_count : (student.internship || "0")}\n` +
-      `Status: ${student.placement_status || student.status || "—"}\n` +
-      `Risk Level: ${student.risk_level || student.risk || "—"}`,
-      [{ text: "Close", style: "cancel" }]
-    );
-  };
-
   return (
     <View style={{ flex: 1, backgroundColor: colors.background.light }}>
       <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -439,107 +424,82 @@ export const CollegeStudentsScreen = () => {
             <Text style={styles.emptyText}>No students match the selected filters.</Text>
           </Card>
         ) : (
-          <Card style={styles.tableCard}>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              <View>
-                {/* Table Header */}
-                <View style={styles.tableHeader}>
-                  <Text style={[styles.columnLabel, { width: 180 }]}>STUDENT</Text>
-                  <Text style={[styles.columnLabel, { width: 90 }]}>BRANCH</Text>
-                  <Text style={[styles.columnLabel, { width: 110 }]}>CURRENT YEAR</Text>
-                  <Text style={[styles.columnLabel, { width: 120 }]}>EMPLOYABILITY</Text>
-                  <Text style={[styles.columnLabel, { width: 100 }]}>INTERNSHIP</Text>
-                  <Text style={[styles.columnLabel, { width: 100 }]}>STATUS</Text>
-                  <Text style={[styles.columnLabel, { width: 60, textAlign: 'center' }]}>RISK</Text>
-                  <Text style={[styles.columnLabel, { width: 80, textAlign: 'center' }]}>ACTION</Text>
-                </View>
+          <View style={styles.studentsListContainer}>
+            {filteredStudentsList.map((student: any, idx: number) => {
+              const fullName = `${student.first_name || ""} ${student.last_name || ""}`.trim() || student.student_name || student.name || "—";
+              const branch = student.branch || student.department || "—";
+              const year = student.current_year || student.year || student.academic_year || "—";
+              const score = student.employability_score !== undefined ? student.employability_score : (student.employability !== undefined ? student.employability : 75);
+              const riskObj = getRiskDetails(student.risk_level || student.risk || "low");
+              const avatarColor = getAvatarColor(fullName);
+              const initial = fullName.charAt(0).toUpperCase() || "S";
 
-                {/* Table Rows */}
-                <View style={styles.rowsContainer}>
-                  {filteredStudentsList.map((student: any, idx: number) => {
-                    const fullName = `${student.first_name || ""} ${student.last_name || ""}`.trim() || student.student_name || student.name || "—";
-                    const branch = student.branch || student.department || "—";
-                    const year = student.current_year || student.year || student.academic_year || "—";
-                    const score = student.employability_score !== undefined ? student.employability_score : (student.employability !== undefined ? student.employability : 75);
-                    const riskObj = getRiskDetails(student.risk_level || student.risk || "low");
-                    const avatarColor = getAvatarColor(fullName);
-                    const initial = fullName.charAt(0).toUpperCase() || "S";
+              const statusTextVal = student.placement_status || student.status || "—";
+              const isStatusEmpty = statusTextVal === "—" || statusTextVal === "";
 
-                    // Handle status badges properly if status is - or empty
-                    const statusTextVal = student.placement_status || student.status || "—";
-                    const isStatusEmpty = statusTextVal === "—" || statusTextVal === "";
-
-                    return (
-                      <View key={student.name || idx} style={[styles.row, idx === filteredStudentsList.length - 1 && styles.noBorder]}>
-                        <View style={[styles.column, { width: 180, flexDirection: 'row', alignItems: 'center' }]}>
-                          <View style={[styles.avatar, { backgroundColor: avatarColor + '20' }]}>
-                            <Text style={[styles.avatarText, { color: avatarColor }]}>{initial}</Text>
-                          </View>
-                          <Text style={styles.studentName} numberOfLines={1}>{fullName}</Text>
-                        </View>
-                        
-                        <View style={[styles.column, { width: 90 }]}>
-                          <Text style={styles.cellText} numberOfLines={1}>{branch}</Text>
-                        </View>
-
-                        <View style={[styles.column, { width: 110 }]}>
-                          <Text style={styles.cellText} numberOfLines={1}>{year}</Text>
-                        </View>
-
-                        <View style={[styles.column, { width: 120, gap: 6 }]}>
-                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                            <View style={styles.miniBarBg}>
-                              <View style={[styles.miniBarFill, { width: `${score}%`, backgroundColor: riskObj.color }]} />
-                            </View>
-                            <Text style={[styles.empScore, { color: riskObj.color }]}>{score}</Text>
-                          </View>
-                        </View>
-
-                        <View style={[styles.column, { width: 100 }]}>
-                          <Text style={styles.cellText}>{student.internship_count !== undefined ? student.internship_count : (student.internship || "0")}</Text>
-                        </View>
-
-                        <View style={[styles.column, { width: 100 }]}>
-                          <View style={[styles.statusBadge, {
-                            backgroundColor: isStatusEmpty ? '#F8FAFC' :
-                                            (statusTextVal === 'Interning' ? 'rgba(16,185,129,0.1)' :
-                                            statusTextVal === 'Searching' ? 'rgba(234,88,12,0.1)' : 'rgba(124,58,237,0.1)'),
-                            borderWidth: isStatusEmpty ? 1 : 0,
-                            borderColor: isStatusEmpty ? '#E2E8F0' : 'transparent'
-                          }]}>
-                            <Text style={[styles.statusText, {
-                              color: isStatusEmpty ? '#64748B' :
-                                     (statusTextVal === 'Interning' ? colors.success :
-                                     statusTextVal === 'Searching' ? colors.warning : '#7C3AED')
-                            }]}>
-                              {statusTextVal}
-                            </Text>
-                          </View>
-                        </View>
-
-                        <View style={[styles.column, { width: 60, alignItems: 'center', justifyContent: 'center' }]}>
-                          {riskObj.label === 'High' || riskObj.label === 'Med' ? (
-                            <AlertTriangle size={16} color={riskObj.color} />
-                          ) : (
-                            <Text style={styles.cellText}>—</Text>
-                          )}
-                        </View>
-
-                        <View style={[styles.column, { width: 80, alignItems: 'center', justifyContent: 'center' }]}>
-                          <TouchableOpacity 
-                            style={styles.actionViewBtn}
-                            onPress={() => handleViewStudent(student)}
-                          >
-                            <Text style={styles.actionViewText}>View</Text>
-                          </TouchableOpacity>
-                        </View>
+              return (
+                <Card key={student.name || idx} style={styles.studentCard}>
+                  {/* Row 1: Header - Avatar & Name, and Status Badge */}
+                  <View style={styles.cardHeader}>
+                    <View style={styles.studentInfoGroup}>
+                      <View style={[styles.avatar, { backgroundColor: avatarColor + '20' }]}>
+                        <Text style={[styles.avatarText, { color: avatarColor }]}>{initial}</Text>
                       </View>
-                    );
-                  })}
-                </View>
-              </View>
-            </ScrollView>
-          </Card>
+                      <Text style={styles.studentNameText} numberOfLines={1}>{fullName}</Text>
+                    </View>
+                    
+                    {!isStatusEmpty && (
+                      <View style={[styles.statusBadge, {
+                        backgroundColor: statusTextVal === 'Interning' ? 'rgba(16,185,129,0.1)' :
+                                        statusTextVal === 'Searching' ? 'rgba(234,88,12,0.1)' : 'rgba(124,58,237,0.1)',
+                      }]}>
+                        <Text style={[styles.statusText, {
+                          color: statusTextVal === 'Interning' ? colors.success :
+                                 statusTextVal === 'Searching' ? colors.warning : '#7C3AED'
+                        }]}>
+                          {statusTextVal}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+
+                  {/* Row 2: Grid of Branch/Year, Internships, Risk */}
+                  <View style={styles.gridRow}>
+                    <View style={styles.gridItem}>
+                      <Text style={styles.gridLabel}>BRANCH / YEAR</Text>
+                      <Text style={styles.gridValue} numberOfLines={1}>{branch} • Yr {year}</Text>
+                    </View>
+
+                    <View style={styles.gridItem}>
+                      <Text style={styles.gridLabel}>INTERNSHIPS</Text>
+                      <Text style={styles.gridValue}>
+                        {student.internship_count !== undefined ? student.internship_count : (student.internship || "0")}
+                      </Text>
+                    </View>
+
+                    <View style={styles.gridItem}>
+                      <Text style={styles.gridLabel}>RISK LEVEL</Text>
+                      <View style={styles.riskContainer}>
+                        <View style={[styles.riskDot, { backgroundColor: riskObj.color }]} />
+                        <Text style={[styles.riskLabelText, { color: riskObj.color }]}>{riskObj.label}</Text>
+                      </View>
+                    </View>
+                  </View>
+
+                  {/* Row 3: Employability score */}
+                  <View style={styles.employabilityRow}>
+                    <View style={styles.employabilityHeader}>
+                      <Text style={styles.employabilityLabel}>EMPLOYABILITY</Text>
+                      <Text style={[styles.empScore, { color: riskObj.color }]}>{score}%</Text>
+                    </View>
+                    <View style={styles.progressBarBg}>
+                      <View style={[styles.progressBarFill, { width: `${score}%`, backgroundColor: riskObj.color }]} />
+                    </View>
+                  </View>
+                </Card>
+              );
+            })}
+          </View>
         )}
 
         {/* Pagination controls */}
@@ -726,35 +686,111 @@ const styles = StyleSheet.create({
   filterText: { fontSize: 10, fontWeight: '600', color: colors.text.secondary, marginRight: 2 },
   clearBtn: { backgroundColor: '#E2E8F0', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   clearText: { fontSize: 10, fontWeight: '700', color: '#475569' },
-  exportBtn: { backgroundColor: '#F97316', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  exportBtn: { backgroundColor: colors.emerald.DEFAULT, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   exportText: { fontSize: 10, fontWeight: '700', color: '#fff' },
 
-  tableCard: { padding: 0, borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: colors.border, borderLeftWidth: 4, borderLeftColor: '#059669' },
-  tableHeader: { flexDirection: 'row', backgroundColor: '#F8FAFC', paddingVertical: 14, paddingHorizontal: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border },
-  columnLabel: { fontSize: 10, fontWeight: '700', color: colors.text.secondary, letterSpacing: 0.5 },
-  
-  rowsContainer: { paddingHorizontal: spacing.md },
-  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: colors.border },
-  noBorder: { borderBottomWidth: 0 },
-  column: { paddingRight: 10 },
-  
-  avatar: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginRight: 10 },
-  avatarText: { fontSize: 11, fontWeight: '800' },
-  studentName: { fontSize: 12, fontWeight: '800', color: colors.navy },
-  cellText: { fontSize: 12, fontWeight: '600', color: colors.text.secondary },
-  
-  miniBarBg: { width: 60, height: 4, backgroundColor: '#EDF2F7', borderRadius: 2, overflow: 'hidden' },
-  miniBarFill: { height: '100%', borderRadius: 2 },
-  empScore: { fontSize: 12, fontWeight: '800' },
-  
-  statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6, alignSelf: 'flex-start' },
-  statusText: { fontSize: 10, fontWeight: '800' },
+  studentsListContainer: { gap: 16 },
+  studentCard: { 
+    backgroundColor: '#FFF', 
+    borderRadius: 14, 
+    padding: 12, 
+    borderWidth: 1, 
+    borderColor: colors.border,
+    borderLeftWidth: 4,
+    borderLeftColor: '#059669',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 1,
+  },
+  cardHeader: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  studentInfoGroup: { 
+    flexDirection: 'row', 
+    alignItems: 'center',
+    flex: 1,
+    marginRight: 8,
+  },
+  studentNameText: { 
+    fontSize: 13, 
+    fontWeight: '800', 
+    color: '#0F172A',
+    flex: 1,
+  },
+  gridRow: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  gridItem: {
+    flex: 1,
+    alignItems: 'flex-start',
+  },
+  gridLabel: {
+    fontSize: 8,
+    fontWeight: '800',
+    color: '#94A3B8',
+    letterSpacing: 0.5,
+    marginBottom: 2,
+  },
+  gridValue: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#1E293B',
+  },
+  riskContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  riskLabelText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  employabilityRow: {
+    marginTop: 8,
+  },
+  employabilityHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  employabilityLabel: {
+    fontSize: 8,
+    fontWeight: '800',
+    color: '#94A3B8',
+    letterSpacing: 0.5,
+  },
+  progressBarBg: { 
+    height: 5, 
+    backgroundColor: '#F1F5F9', 
+    borderRadius: 3, 
+    overflow: 'hidden',
+  },
+  progressBarFill: { 
+    height: '100%', 
+    borderRadius: 3,
+  },
+
+  avatar: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', marginRight: 8 },
+  avatarText: { fontSize: 10, fontWeight: '800' },
+  statusBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10, alignSelf: 'center' },
+  statusText: { fontSize: 9, fontWeight: '800' },
+  empScore: { fontSize: 11, fontWeight: '800' },
   
   riskDot: { width: 10, height: 10, borderRadius: 5 },
   modalLoading: { paddingVertical: 40, alignItems: 'center', justifyContent: 'center' },
   modalLoadingText: { marginTop: 10, fontSize: 13, color: '#64748B', fontWeight: '500' },
-  actionViewBtn: { borderWidth: 1, borderColor: '#CBD5E1', borderRadius: 16, paddingHorizontal: 16, paddingVertical: 6, backgroundColor: '#FFF', alignItems: 'center', justifyContent: 'center' },
-  actionViewText: { fontSize: 11, fontWeight: '600', color: '#334155' },
 
   loaderContainer: { alignItems: 'center', justifyContent: 'center', paddingVertical: 40 },
   loaderText: { marginTop: 8, fontSize: 13, color: '#64748B', fontWeight: '500' },

@@ -1400,10 +1400,10 @@ export const CollegePlacementScreen = ({ route }: any) => {
                         paddingVertical: 4, 
                         borderRadius: 8,
                         borderWidth: 1,
-                        borderColor: 'rgba(255, 107, 0, 0.15)'
+                        borderColor: 'rgba(16, 185, 129, 0.15)'
                       }}
                     >
-                      <Text style={{ fontSize: 11, fontWeight: '600', color: '#FF6B00' }}>{branch}</Text>
+                      <Text style={{ fontSize: 11, fontWeight: '600', color: '#10B981' }}>{branch}</Text>
                     </View>
                   ))
                 ) : (
@@ -1433,7 +1433,7 @@ export const CollegePlacementScreen = ({ route }: any) => {
           </View>
           <View style={{ gap: 8 }}>
             <TouchableOpacity 
-              style={{ backgroundColor: '#FF6B00', paddingVertical: 10, borderRadius: 10, alignItems: 'center' }}
+              style={{ backgroundColor: '#10B981', paddingVertical: 10, borderRadius: 10, alignItems: 'center' }}
               onPress={() => triggerNotification('eligible')}
             >
               <Text style={{ color: '#FFF', fontSize: 11, fontWeight: '800' }}>NOTIFY ALL ELIGIBLE ({drivePlacementLoading ? '...' : eligibleCount})</Text>
@@ -1611,7 +1611,7 @@ export const CollegePlacementScreen = ({ route }: any) => {
         contentContainerStyle={styles.content} 
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#FF6B00"]} />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#10B981"]} />
         }
       >
         
@@ -1639,7 +1639,7 @@ export const CollegePlacementScreen = ({ route }: any) => {
                   </TouchableOpacity>
 
                   <TouchableOpacity 
-                    style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#FF6B00', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12 }}
+                    style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#10B981', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12 }}
                     onPress={openAddDrive}
                   >
                     <Plus size={14} color="#FFF" />
@@ -2022,7 +2022,7 @@ export const CollegePlacementScreen = ({ route }: any) => {
                     <View style={{ gap: 16 }}>
                       {eligibilityLoading ? (
                         <View style={styles.loaderContainer}>
-                          <ActivityIndicator size="small" color="#FF6B00" />
+                          <ActivityIndicator size="small" color="#10B981" />
                           <Text style={styles.loaderText}>Filtering students list...</Text>
                         </View>
                       ) : (
@@ -2414,7 +2414,7 @@ const styles = StyleSheet.create({
   detailText: { fontSize: 11, fontWeight: '600', color: '#475569' },
   driveFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   deadlineText: { fontSize: 11, color: '#EF4444', fontWeight: '700' },
-  manageBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#FF6B00', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12 },
+  manageBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#10B981', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12 },
   manageBtnText: { color: '#FFF', fontSize: 11, fontWeight: '800' },
 
   // Tracker / list styles
@@ -2483,7 +2483,7 @@ const styles = StyleSheet.create({
   
   subTabRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#F1F5F9', marginBottom: 12 },
   subTabBtn: { flex: 1, paddingVertical: 12, alignItems: 'center', borderBottomWidth: 2, borderBottomColor: 'transparent' },
-  activeSubTabBtn: { borderBottomColor: '#FF6B00' },
+  activeSubTabBtn: { borderBottomColor: '#10B981' },
   subTabBtnText: { fontSize: 12, fontWeight: '700', color: '#64748B' },
   activeSubTabBtnText: { color: '#0F172A' },
 
@@ -2515,7 +2515,7 @@ const styles = StyleSheet.create({
   selectedOption: { backgroundColor: '#F8FAFC' },
   optionText: { fontSize: 14, fontWeight: '600', color: '#334155' },
   selectedOptionText: { color: '#0F172A', fontWeight: '800' },
-  checkMark: { color: '#FF6B00', fontWeight: 'bold', fontSize: 14 },
+  checkMark: { color: '#10B981', fontWeight: 'bold', fontSize: 14 },
   modalDoneBtn: { backgroundColor: '#10B981', paddingVertical: 12, margin: 16, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   modalDoneText: { color: '#FFF', fontSize: 14, fontWeight: '800' }
 });
