@@ -496,7 +496,7 @@ const styles = StyleSheet.create({
   metaBadge: { backgroundColor: '#FFF', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, borderWidth: 1, borderColor: '#E2E8F0' },
   metaBadgeText: { fontSize: 9, fontWeight: '800', color: '#64748B' },
   impactText: { fontSize: 10, fontWeight: '700', color: '#64748B' },
-  execBtn: { backgroundColor: '#0F172A', paddingVertical: 10, borderRadius: 10, alignItems: 'center' },
+  execBtn: { backgroundColor: '#10B981', paddingVertical: 10, borderRadius: 10, alignItems: 'center' },
   execBtnText: { fontSize: 12, fontWeight: '800', color: '#FFF' },
 
   // Modal styles

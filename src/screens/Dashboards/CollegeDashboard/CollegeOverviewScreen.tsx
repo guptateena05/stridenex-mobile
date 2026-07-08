@@ -903,7 +903,7 @@ export const CollegeOverviewScreen = () => {
                    onChange={handleFormChange}
                    loading={updateLoading}
                    buttonLabel="Save Changes"
-                   accentColor={colors.primary.DEFAULT}
+                   accentColor={colors.emerald.DEFAULT}
                  />
                </View>
             </ScrollView>

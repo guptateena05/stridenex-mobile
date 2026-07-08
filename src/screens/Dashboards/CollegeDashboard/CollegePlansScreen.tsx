@@ -155,7 +155,7 @@ const styles = StyleSheet.create({
   checkIcon: { width: 20, height: 20, borderRadius: 6, backgroundColor: '#DCFCE7', alignItems: 'center', justifyContent: 'center' },
   featureText: { fontSize: 14, fontWeight: '600', color: '#475569' },
 
-  manageBtn: { backgroundColor: '#0F172A', paddingVertical: 14, borderRadius: 12, alignItems: 'center' },
+  manageBtn: { backgroundColor: '#10B981', paddingVertical: 14, borderRadius: 12, alignItems: 'center' },
   manageBtnText: { fontSize: 14, fontWeight: '800', color: '#FFF' },
 
   sectionTitleRow: { marginBottom: 12, paddingHorizontal: 4 },

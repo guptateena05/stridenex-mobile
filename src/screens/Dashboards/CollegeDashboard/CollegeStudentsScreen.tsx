@@ -619,7 +619,7 @@ export const CollegeStudentsScreen = () => {
                     >
                       <Text style={[styles.optionText, isSelected && styles.selectedOptionText]}>{item}</Text>
                       {isSelected && (
-                        <Text style={{ color: colors.primary.DEFAULT, fontWeight: 'bold', fontSize: 14 }}>✓</Text>
+                        <Text style={{ color: colors.emerald.DEFAULT, fontWeight: 'bold', fontSize: 14 }}>✓</Text>
                       )}
                     </TouchableOpacity>
                   );
@@ -636,7 +636,7 @@ export const CollegeStudentsScreen = () => {
                     onPress={() => fetchBranches(branchPage - 1, branchSearch)}
                     style={[
                       styles.modalPageButton, 
-                      { backgroundColor: branchHasPrev ? colors.primary.DEFAULT : '#cbd5e1' }
+                      { backgroundColor: branchHasPrev ? colors.emerald.DEFAULT : '#cbd5e1' }
                     ]}
                   >
                     <Text style={[styles.modalPageButtonText, { color: branchHasPrev ? '#ffffff' : '#64748b' }]}>Previous</Text>
@@ -651,7 +651,7 @@ export const CollegeStudentsScreen = () => {
                     onPress={() => fetchBranches(branchPage + 1, branchSearch)}
                     style={[
                       styles.modalPageButton, 
-                      { backgroundColor: branchHasNext ? colors.primary.DEFAULT : '#cbd5e1' }
+                      { backgroundColor: branchHasNext ? colors.emerald.DEFAULT : '#cbd5e1' }
                     ]}
                   >
                     <Text style={[styles.modalPageButtonText, { color: branchHasNext ? '#ffffff' : '#64748b' }]}>Next</Text>
@@ -667,7 +667,7 @@ export const CollegeStudentsScreen = () => {
                     onPress={() => fetchSkills(skillPage - 1, skillSearch)}
                     style={[
                       styles.modalPageButton, 
-                      { backgroundColor: skillHasPrev ? colors.primary.DEFAULT : '#cbd5e1' }
+                      { backgroundColor: skillHasPrev ? colors.emerald.DEFAULT : '#cbd5e1' }
                     ]}
                   >
                     <Text style={[styles.modalPageButtonText, { color: skillHasPrev ? '#ffffff' : '#64748b' }]}>Previous</Text>
@@ -682,7 +682,7 @@ export const CollegeStudentsScreen = () => {
                     onPress={() => fetchSkills(skillPage + 1, skillSearch)}
                     style={[
                       styles.modalPageButton, 
-                      { backgroundColor: skillHasNext ? colors.primary.DEFAULT : '#cbd5e1' }
+                      { backgroundColor: skillHasNext ? colors.emerald.DEFAULT : '#cbd5e1' }
                     ]}
                   >
                     <Text style={[styles.modalPageButtonText, { color: skillHasNext ? '#ffffff' : '#64748b' }]}>Next</Text>
@@ -774,9 +774,9 @@ const styles = StyleSheet.create({
   optionItem: { paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
   selectedOption: { backgroundColor: '#F8FAFC' },
   optionText: { fontSize: 13, fontWeight: '600', color: '#334155' },
-  selectedOptionText: { color: colors.primary.DEFAULT, fontWeight: '800' },
+  selectedOptionText: { color: colors.emerald.DEFAULT, fontWeight: '800' },
   doneBtn: {
-    backgroundColor: colors.primary.DEFAULT,
+    backgroundColor: colors.emerald.DEFAULT,
     paddingVertical: 12,
     borderRadius: 8,
     alignItems: 'center',

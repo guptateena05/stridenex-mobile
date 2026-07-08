@@ -217,7 +217,7 @@ const styles = StyleSheet.create({
   footerRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 16, paddingTop: 16, borderTopWidth: 1, borderTopColor: '#F1F5F9' },
   footerText: { fontSize: 10, fontWeight: '700', color: '#94A3B8' },
 
-  primaryActionBtnWide: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, backgroundColor: '#0F172A', paddingVertical: 18, borderRadius: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 4 },
+  primaryActionBtnWide: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, backgroundColor: '#10B981', paddingVertical: 18, borderRadius: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 4 },
   primaryActionTextLarge: { color: '#FFF', fontWeight: '800', fontSize: 15 },
   secondaryActionBtnWide: { alignItems: 'center', paddingVertical: 18, borderRadius: 16, borderWidth: 1, borderColor: '#E2E8F0', backgroundColor: '#FFF', marginTop: 4 },
   secondaryActionTextLarge: { color: '#64748B', fontWeight: '800', fontSize: 15 },
@@ -341,7 +341,7 @@ const styles = StyleSheet.create({
   impactVal: { fontSize: 14, fontWeight: '800' },
   progressBarLarge: { height: 4, backgroundColor: '#F1F5F9', borderRadius: 4, overflow: 'hidden' },
   actionRowGroup: { gap: 12, marginTop: 16 },
-  primaryActionBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#0F172A', paddingVertical: 16, borderRadius: 16 },
+  primaryActionBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#10B981', paddingVertical: 16, borderRadius: 16 },
   primaryActionText: { color: '#FFF', fontWeight: '800', fontSize: 14 },
   secondaryActionBtn: { alignItems: 'center', paddingVertical: 16, borderRadius: 16, borderWidth: 1, borderColor: '#E2E8F0', backgroundColor: '#FFF' },
   secondaryActionText: { color: '#64748B', fontWeight: '700', fontSize: 14 },
@@ -618,7 +618,7 @@ const Ugc2026View = () => {
                           {item.bullets.map((bullet, i) => (
                              <Text key={i} style={[styles.ledgerDate, { marginBottom: 4 }]}>• {bullet}</Text>
                           ))}
-                          <TouchableOpacity style={[styles.configBtn, { alignSelf: 'flex-start', marginTop: 12, backgroundColor: '#0F172A' }]}>
+                          <TouchableOpacity style={[styles.configBtn, { alignSelf: 'flex-start', marginTop: 12, backgroundColor: '#10B981' }]}>
                              <Text style={[styles.configBtnText, { color: '#FFF' }]}>Setup Now</Text>
                           </TouchableOpacity>
                        </View>

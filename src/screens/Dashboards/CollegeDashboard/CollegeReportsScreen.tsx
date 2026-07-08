@@ -153,7 +153,7 @@ const styles = StyleSheet.create({
   actionIconBox: { width: 32, height: 32, borderRadius: 8, borderWidth: 1, borderColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center' },
 
   actionRowGroup: { gap: 12, marginTop: 8 },
-  primaryActionBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#0F172A', paddingVertical: 16, borderRadius: 16 },
+  primaryActionBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#10B981', paddingVertical: 16, borderRadius: 16 },
   primaryActionText: { color: '#FFF', fontWeight: '800', fontSize: 14 },
   secondaryActionBtn: { alignItems: 'center', paddingVertical: 16, borderRadius: 16, borderWidth: 1, borderColor: '#E2E8F0', backgroundColor: '#FFF' },
   secondaryActionText: { color: '#64748B', fontWeight: '700', fontSize: 14 },

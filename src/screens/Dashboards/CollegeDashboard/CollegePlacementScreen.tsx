@@ -1493,7 +1493,7 @@ export const CollegePlacementScreen = ({ route }: any) => {
                 onCreateCustomValue={handleCreateCustomValue}
                 loading={isSubmittingDrive}
                 buttonLabel={editingDrive ? 'Save Changes' : 'Create Drive'}
-                accentColor={colors.primary.DEFAULT}
+                accentColor={colors.emerald.DEFAULT}
               />
             </ScrollView>
           </View>
@@ -2516,6 +2516,6 @@ const styles = StyleSheet.create({
   optionText: { fontSize: 14, fontWeight: '600', color: '#334155' },
   selectedOptionText: { color: '#0F172A', fontWeight: '800' },
   checkMark: { color: '#FF6B00', fontWeight: 'bold', fontSize: 14 },
-  modalDoneBtn: { backgroundColor: '#0F172A', paddingVertical: 12, margin: 16, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  modalDoneBtn: { backgroundColor: '#10B981', paddingVertical: 12, margin: 16, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   modalDoneText: { color: '#FFF', fontSize: 14, fontWeight: '800' }
 });

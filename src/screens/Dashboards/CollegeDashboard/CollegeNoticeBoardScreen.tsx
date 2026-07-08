@@ -757,7 +757,7 @@ export const CollegeNoticeBoardScreen = () => {
                 initialValues={eventFormValues}
                 loading={eventModalLoading}
                 buttonLabel={editingEvent ? 'Save Changes' : 'Create Event'}
-                accentColor={colors.primary.DEFAULT}
+                accentColor={colors.emerald.DEFAULT}
               />
             </ScrollView>
           </View>
@@ -792,7 +792,7 @@ export const CollegeNoticeBoardScreen = () => {
                 initialValues={noticeFormValues}
                 loading={noticeModalLoading}
                 buttonLabel={editingNotice ? 'Save Changes' : 'Post Notice'}
-                accentColor={colors.primary.DEFAULT}
+                accentColor={colors.emerald.DEFAULT}
               />
             </ScrollView>
           </View>
@@ -814,7 +814,7 @@ const styles = StyleSheet.create({
   title: { fontSize: 22, fontWeight: '800', color: '#0F172A', fontFamily: typography.fontFamily.display, letterSpacing: -0.5 },
   subtitle: { fontSize: 12, color: '#64748B', fontWeight: '500' },
   
-  createBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#0F172A', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10 },
+  createBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#10B981', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10 },
   createBtnText: { fontSize: 11, fontWeight: '800', color: '#FFF' },
 
   sectionTitleRow: { marginBottom: 12, paddingHorizontal: 4 },
@@ -841,7 +841,7 @@ const styles = StyleSheet.create({
   prizeAmount: { fontSize: 14, fontWeight: '800', color: '#1E293B' },
 
   eventActions: { flexDirection: 'row', gap: 12 },
-  applyBtn: { flex: 1, backgroundColor: '#0F172A', paddingVertical: 12, borderRadius: 12, alignItems: 'center', flexDirection: 'row', justifyContent: 'center' },
+  applyBtn: { flex: 1, backgroundColor: '#10B981', paddingVertical: 12, borderRadius: 12, alignItems: 'center', flexDirection: 'row', justifyContent: 'center' },
   applyBtnText: { fontSize: 13, fontWeight: '800', color: '#FFF' },
 
   sectionCard: { backgroundColor: '#FFF', borderRadius: 20, padding: 20, marginBottom: 16, borderWidth: 1, borderColor: '#E2E8F0' },
@@ -892,7 +892,7 @@ const styles = StyleSheet.create({
 
   emptyCard: { backgroundColor: '#FFF', borderRadius: 20, borderStyle: 'dashed', borderWidth: 2, borderColor: '#CBD5E1', padding: 24, alignItems: 'center', justifyContent: 'center', marginVertical: 12 },
   emptyText: { fontSize: 13, fontWeight: '600', color: '#64748B', marginBottom: 12 },
-  emptyBtn: { backgroundColor: '#0F172A', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 10 },
+  emptyBtn: { backgroundColor: '#10B981', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 10 },
   emptyBtnText: { color: '#FFF', fontSize: 12, fontWeight: '800' },
 
   paginationRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 12, marginVertical: 12 },
@@ -904,8 +904,7 @@ const styles = StyleSheet.create({
 
   tabContainer: { flexDirection: 'row', backgroundColor: '#F1F5F9', borderRadius: 12, padding: 4, marginBottom: 16 },
   tabButton: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 10, borderRadius: 8 },
-  activeTabButton: { backgroundColor: '#0F172A', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 },
+  activeTabButton: { backgroundColor: '#10B981', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 },
   tabButtonText: { fontSize: 13, fontWeight: '700', color: '#64748B' },
   activeTabButtonText: { color: '#FFF' }
 });
-
