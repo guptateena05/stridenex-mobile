@@ -483,13 +483,13 @@ export const CollegeNoticeBoardScreen = () => {
       >
         {/* Header */}
         <Animated.View entering={FadeInUp.delay(50)} style={styles.header}>
-          <View style={styles.headerRow}>
-            <View style={styles.headerTitleGroup}>
-              <Text style={styles.title}>Announcements</Text>
-              <View style={styles.headerBadge}>
+          <View style={[styles.headerRow, { flexWrap: 'wrap', gap: 8 }]}>
+            <View style={{ flex: 1, minWidth: 180 }}>
+              <View style={[styles.headerBadge, { alignSelf: 'flex-start', marginBottom: 4 }]}>
                 <Bell size={10} color="#059669" />
                 <Text style={styles.headerBadgeText}>NOTICE BOARD</Text>
               </View>
+              <Text style={styles.title}>Announcements</Text>
             </View>
             {activeTab === 'events' ? (
               <TouchableOpacity style={styles.createBtn} onPress={() => handleOpenEventModal()}>
