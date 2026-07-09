@@ -67,13 +67,20 @@ export const IndustryInternshipsScreen = () => {
 
       // Parse response based on user provided structure
       // response: { status: 200, message: "...", data: [...] }
+      const dataObj = response?.data || (response?.message && typeof response.message === 'object' ? response.message : null) || response || {};
       let list = [];
-      if (response && Array.isArray(response.data)) {
-        list = response.data;
-      } else if (response?.message && Array.isArray(response.message.data)) {
-        list = response.message.data;
-      } else if (Array.isArray(response)) {
-        list = response;
+      if (Array.isArray(dataObj)) {
+        list = dataObj;
+      } else if (dataObj && typeof dataObj === 'object') {
+        const rawData = dataObj.internships || dataObj.data;
+        if (Array.isArray(rawData)) {
+          list = rawData;
+        } else if (dataObj.message && typeof dataObj.message === 'object') {
+          const nestedData = dataObj.message.internships || dataObj.message.data;
+          if (Array.isArray(nestedData)) {
+            list = nestedData;
+          }
+        }
       }
 
       setInternships(list);
