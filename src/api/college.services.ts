@@ -234,6 +234,7 @@ export const getStudentAnalyticsList = async (params: {
   department?: string;
   skill?: string;
   current_year?: string;
+  risk_level?: string;
   page?: number;
   page_size?: number;
 }) => {
@@ -244,6 +245,7 @@ export const getStudentAnalyticsList = async (params: {
     if (params.department !== undefined) queryParts.push(`department=${encodeURIComponent(params.department)}`);
     if (params.skill !== undefined) queryParts.push(`skill=${encodeURIComponent(params.skill)}`);
     if (params.current_year !== undefined) queryParts.push(`current_year=${encodeURIComponent(params.current_year)}`);
+    if (params.risk_level !== undefined) queryParts.push(`risk_level=${encodeURIComponent(params.risk_level)}`);
     if (params.page !== undefined) queryParts.push(`page=${encodeURIComponent(params.page)}`);
     if (params.page_size !== undefined) queryParts.push(`page_size=${encodeURIComponent(params.page_size)}`);
 

@@ -194,6 +194,7 @@ export const CollegeStudentsScreen = () => {
         department: branchesStr,
         skill: skillsStr,
         current_year: selectedYears.length === 1 ? selectedYears[0] : undefined,
+        risk_level: selectedRisk !== "All" ? selectedRisk.toLowerCase() : undefined,
         page: page,
         page_size: pageSize
       });
@@ -222,7 +223,7 @@ export const CollegeStudentsScreen = () => {
     } finally {
       setLoading(false);
     }
-  }, [searchQuery, branchesStr, skillsStr, yearsStr, pageSize]);
+  }, [searchQuery, branchesStr, skillsStr, yearsStr, pageSize, selectedRisk]);
 
   // Load Initial
   const loadData = useCallback(async () => {
@@ -245,7 +246,7 @@ export const CollegeStudentsScreen = () => {
     if (name) {
       fetchStudents(name, 1, false);
     }
-  }, [branchesStr, skillsStr, yearsStr, searchQuery, collegeDetails]);
+  }, [branchesStr, skillsStr, yearsStr, searchQuery, collegeDetails, selectedRisk]);
 
   // Local risk level and year filter matching web client-side behavior
   const filteredStudentsList = useMemo(() => {
