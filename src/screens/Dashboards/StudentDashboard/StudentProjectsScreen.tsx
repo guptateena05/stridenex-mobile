@@ -30,6 +30,7 @@ import {
 import Animated, { FadeInUp, FadeInRight } from 'react-native-reanimated';
 import { StatsCard } from '@/components/dashboard/StatsCard';
 import { useAuth } from '@/context/AuthContext';
+import { SwipeableRow, SwipeAction } from '@/components/Shared/SwipeableRow';
 import { 
   getStudentProjectList, 
   createStudentProjectEnrollment, 
@@ -82,10 +83,10 @@ export const StudentProjectsScreen = () => {
         profile.current_year || profile.academic_year || null,
         searchVal !== undefined ? searchVal : search
       );
-      const rawResp = response?.message ?? response;
-      const data = rawResp?.data?.projects || rawResp?.projects || [];
-      const stats = rawResp?.data?.statistics || rawResp?.statistics || {};
-      const pag = rawResp?.data?.pagination || rawResp?.pagination || null;
+      const dataContainer = (response?.data && typeof response.data === 'object' && !Array.isArray(response.data)) ? response : (response?.message && typeof response.message === 'object' ? response.message : response);
+      const data = dataContainer?.data?.projects || dataContainer?.projects || [];
+      const stats = dataContainer?.data?.statistics || dataContainer?.statistics || {};
+      const pag = dataContainer?.data?.pagination || dataContainer?.pagination || null;
       setProjects(Array.isArray(data) ? data : []);
       setStatistics({
         total_projects: stats.total_projects ?? data.length,
@@ -255,120 +256,123 @@ export const StudentProjectsScreen = () => {
               const hasApplied = project.applied_status && project.applied_status !== "Not Applied";
               const isCurrentApplying = applying === project.name;
 
+              const actions: SwipeAction[] = [
+                {
+                  label: 'Details',
+                  icon: Info,
+                  color: '#2563EB',
+                  bgColor: '#EFF6FF',
+                  onPress: () => {
+                    setSelectedProject(project);
+                    setShowDetailsModal(true);
+                  }
+                }
+              ];
+
+              if (!isClosed && !hasApplied) {
+                actions.push({
+                  label: 'Apply',
+                  icon: Briefcase,
+                  color: '#10B981',
+                  bgColor: '#ECFDF5',
+                  onPress: () => handleEnrollProject(project)
+                });
+              } else if (hasApplied) {
+                actions.push({
+                  label: String(project.applied_status || 'Applied'),
+                  icon: CheckCircle2,
+                  color: project.applied_status === 'Shortlisted' ? '#7C3AED' : '#2563EB',
+                  bgColor: project.applied_status === 'Shortlisted' ? '#F5F3FF' : '#EFF6FF',
+                  onPress: () => {}
+                });
+              }
+
               return (
                 <Animated.View 
                   key={project.name || index} 
                   entering={FadeInUp.delay(300 + index * 100)}
-                  style={styles.projectCard}
                 >
-                  <View style={styles.cardTop}>
-                    <View style={styles.companyInfo}>
-                      <View style={[styles.companyLogo, { backgroundColor: '#EFF6FF', borderColor: '#DBEAFE' }]}>
-                        <Briefcase size={20} color="#2563EB" />
-                      </View>
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.jobTitle} numberOfLines={1}>
-                          {project.project_name ? project.project_name.trim() : "Project Name"}
-                        </Text>
-                        <Text style={styles.companyName} numberOfLines={1}>
-                          {project.industry || "Industry Partner"}
-                        </Text>
-                      </View>
-                    </View>
-                  </View>
-
-                  {/* Status Badges */}
-                  <View style={styles.statusBadgesRow}>
-                    {isClosed ? (
-                      <View style={[styles.statusTag, styles.statusClosed]}>
-                        <Text style={styles.statusTagTextClosed}>Disabled</Text>
-                      </View>
-                    ) : (
-                      <View style={[styles.statusTag, styles.statusActive]}>
-                        <Text style={styles.statusTagTextActive}>Active</Text>
-                      </View>
-                    )}
-                    
-                    {hasApplied && (
-                      <View style={[styles.statusTag, 
-                        project.applied_status === 'Shortlisted'
-                          ? { backgroundColor: '#F5F3FF', borderColor: '#DDD6FE' }
-                          : { backgroundColor: '#EFF6FF', borderColor: '#DBEAFE' }
-                      ]}>
-                        <Text style={[styles.statusTagTextActive, 
-                          project.applied_status === 'Shortlisted' 
-                            ? { color: '#7C3AED' } 
-                            : { color: '#2563EB' }
-                        ]}>
-                          {project.applied_status}
-                        </Text>
-                      </View>
-                    )}
-                  </View>
-
-                  <Text style={styles.projectDesc} numberOfLines={2}>
-                    {project.description || "Contribute to real-world industrial projects and build your portfolio."}
-                  </Text>
-
-                  {/* Skills Tags */}
-                  {project.skills && project.skills.length > 0 && (
-                    <View style={styles.skillsRow}>
-                      {project.skills.slice(0, 4).map((s: any, si: number) => (
-                        <View key={si} style={styles.skillChip}>
-                          <Text style={styles.skillChipText}>{s.skill}</Text>
+                  <SwipeableRow actions={actions}>
+                    <View style={[styles.projectCard, isClosed && { borderLeftColor: '#94A3B8' }]}>
+                      <View style={styles.cardTop}>
+                        <View style={styles.companyInfo}>
+                          <View style={[styles.companyLogo, { backgroundColor: '#EFF6FF', borderColor: '#DBEAFE' }]}>
+                            <Briefcase size={20} color="#2563EB" />
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <Text style={styles.jobTitle} numberOfLines={1}>
+                              {project.project_name ? project.project_name.trim() : "Project Name"}
+                            </Text>
+                            <Text style={styles.companyName} numberOfLines={1}>
+                              {project.industry || "Industry Partner"}
+                            </Text>
+                          </View>
                         </View>
-                      ))}
-                      {project.skills.length > 4 && (
-                        <View style={styles.skillChipMore}>
-                          <Text style={styles.skillChipMoreText}>+{project.skills.length - 4}</Text>
-                        </View>
-                      )}
-                    </View>
-                  )}
+                      </View>
 
-                  <View style={styles.badgeRow}>
-                    <View style={styles.infoBadge}>
-                      <Clock size={10} color="#64748B" />
-                      <Text style={styles.badgeText}>{project.duration} Days</Text>
-                    </View>
-                    <View style={styles.infoBadge}>
-                      <Calendar size={10} color="#64748B" />
-                      <Text style={styles.badgeText}>
-                        Deadline: {project.application_deadline ? project.application_deadline.split("-").reverse().join("/") : "Open"}
+                      {/* Status Badges */}
+                      <View style={styles.statusBadgesRow}>
+                        {isClosed ? (
+                          <View style={[styles.statusTag, styles.statusClosed]}>
+                            <Text style={styles.statusTagTextClosed}>Disabled</Text>
+                          </View>
+                        ) : (
+                          <View style={[styles.statusTag, styles.statusActive]}>
+                            <Text style={styles.statusTagTextActive}>Active</Text>
+                          </View>
+                        )}
+                        
+                        {hasApplied && (
+                          <View style={[styles.statusTag, 
+                            project.applied_status === 'Shortlisted'
+                              ? { backgroundColor: '#F5F3FF', borderColor: '#DDD6FE' }
+                              : { backgroundColor: '#EFF6FF', borderColor: '#DBEAFE' }
+                          ]}>
+                            <Text style={[styles.statusTagTextActive, 
+                              project.applied_status === 'Shortlisted' 
+                                ? { color: '#7C3AED' } 
+                                : { color: '#2563EB' }
+                            ]}>
+                              {project.applied_status}
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+
+                      <Text style={styles.projectDesc} numberOfLines={2}>
+                        {project.description || "Contribute to real-world industrial projects and build your portfolio."}
                       </Text>
-                    </View>
-                  </View>
 
-                  <View style={styles.cardActions}>
-                    <TouchableOpacity 
-                      style={[
-                        styles.applyButton,
-                        (isClosed || hasApplied) && styles.disabledButton,
-                        isCurrentApplying && styles.disabledButton
-                      ]}
-                      disabled={isClosed || hasApplied || isCurrentApplying}
-                      activeOpacity={0.7}
-                      onPress={() => handleEnrollProject(project)}
-                    >
-                      {isCurrentApplying ? (
-                        <ActivityIndicator size="small" color="#fff" />
-                      ) : (
-                        <Text style={styles.applyButtonText}>
-                          {hasApplied ? 'Applied' : isClosed ? 'Disabled' : 'Apply Now'}
-                        </Text>
+                      {/* Skills Tags */}
+                      {project.skills && project.skills.length > 0 && (
+                        <View style={styles.skillsRow}>
+                          {project.skills.slice(0, 4).map((s: any, si: number) => (
+                            <View key={si} style={styles.skillChip}>
+                              <Text style={styles.skillChipText}>{s.skill}</Text>
+                            </View>
+                          ))}
+                          {project.skills.length > 4 && (
+                            <View style={styles.skillChipMore}>
+                              <Text style={styles.skillChipMoreText}>+{project.skills.length - 4}</Text>
+                            </View>
+                          )}
+                        </View>
                       )}
-                    </TouchableOpacity>
-                    <TouchableOpacity 
-                      style={styles.detailsButton}
-                      activeOpacity={0.7}
-                      onPress={() => {
-                        setSelectedProject(project);
-                        setShowDetailsModal(true);
-                      }}
-                    >
-                      <Text style={styles.detailsButtonText}>Details</Text>
-                    </TouchableOpacity>
-                  </View>
+
+                      <View style={[styles.badgeRow, { marginBottom: 0 }]}>
+                        <View style={styles.infoBadge}>
+                          <Clock size={10} color="#64748B" />
+                          <Text style={styles.badgeText}>{project.duration} Days</Text>
+                        </View>
+                        <View style={styles.infoBadge}>
+                          <Calendar size={10} color="#64748B" />
+                          <Text style={styles.badgeText}>
+                            Deadline: {project.application_deadline ? project.application_deadline.split("-").reverse().join("/") : "Open"}
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+                  </SwipeableRow>
                 </Animated.View>
               );
             })
@@ -513,11 +517,16 @@ export const StudentProjectsScreen = () => {
                 }}
                 style={[
                   styles.modalApplyBtn,
-                  (selectedProject?.status?.toLowerCase() === 'disabled' || selectedProject?.status?.toLowerCase() === 'disable' || (selectedProject?.applied_status && selectedProject.applied_status !== "Not Applied")) && styles.disabledButton
+                  (selectedProject?.status?.toLowerCase() === 'disabled' || selectedProject?.status?.toLowerCase() === 'disable') && { backgroundColor: '#F1F5F9' },
+                  (selectedProject?.applied_status && selectedProject.applied_status !== "Not Applied") && { backgroundColor: '#EFF6FF' }
                 ]}
               >
-                <Text style={styles.modalApplyBtnText}>
-                  {selectedProject?.applied_status && selectedProject.applied_status !== "Not Applied" ? 'Applied' : 'Apply Now'}
+                <Text style={[
+                  styles.modalApplyBtnText,
+                  (selectedProject?.status?.toLowerCase() === 'disabled' || selectedProject?.status?.toLowerCase() === 'disable') && { color: '#94A3B8' },
+                  (selectedProject?.applied_status && selectedProject.applied_status !== "Not Applied") && { color: '#2563EB' }
+                ]}>
+                  {selectedProject?.applied_status && selectedProject.applied_status !== "Not Applied" ? 'Applied' : (selectedProject?.status?.toLowerCase() === 'disabled' || selectedProject?.status?.toLowerCase() === 'disable' ? 'Disabled' : 'Apply Now')}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -966,18 +975,18 @@ const styles = StyleSheet.create({
     flex: 2,
     height: 50,
     borderRadius: 16,
-    backgroundColor: colors.accent.DEFAULT,
+    backgroundColor: '#FFEADB',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: colors.accent.DEFAULT,
+    shadowColor: '#FF6B00',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.1,
     shadowRadius: 8,
   },
   modalApplyBtnText: {
     fontSize: 14,
     fontWeight: '800',
-    color: '#FFFFFF',
+    color: '#FF6B00',
   },
   searchContainer: {
     flexDirection: 'row',

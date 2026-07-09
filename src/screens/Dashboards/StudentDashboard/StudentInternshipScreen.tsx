@@ -35,6 +35,7 @@ import {
 import Animated, { FadeInUp, FadeInRight } from 'react-native-reanimated';
 import { StatsCard } from '@/components/dashboard/StatsCard';
 import { useAuth } from '@/context/AuthContext';
+import { SwipeableRow, SwipeAction } from '@/components/Shared/SwipeableRow';
 import { 
   getStudentInternshipList, 
   createStudentApplication, 
@@ -51,6 +52,7 @@ export const StudentInternshipScreen = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [applying, setApplying] = useState<string | null>(null);
+  const [successfullyApplied, setSuccessfullyApplied] = useState<string[]>([]);
   
   // Details Modal
   const [selectedInternship, setSelectedInternship] = useState<any>(null);
@@ -86,9 +88,9 @@ export const StudentInternshipScreen = () => {
         profile.current_year || profile.academic_year || null,
         searchVal !== undefined ? searchVal : search
       );
-      const rawResp = response?.message ?? response;
-      const data = rawResp?.data?.internships || rawResp?.internships || [];
-      const stats = rawResp?.data?.statistics || rawResp?.statistics || {};
+      const dataContainer = (response?.data && typeof response.data === 'object' && !Array.isArray(response.data)) ? response : (response?.message && typeof response.message === 'object' ? response.message : response);
+      const data = dataContainer?.data?.internships || dataContainer?.internships || [];
+      const stats = dataContainer?.data?.statistics || dataContainer?.statistics || {};
       setInternships(Array.isArray(data) ? data : []);
       setStatistics({
         total_internships: stats.total_internships ?? data.length,
@@ -276,129 +278,132 @@ export const StudentInternshipScreen = () => {
               const hasApplied = internship.applied_status && internship.applied_status !== "Not Applied";
               const isCurrentApplying = applying === internship.name;
 
+              const actions: SwipeAction[] = [
+                {
+                  label: 'Details',
+                  icon: Info,
+                  color: '#2563EB',
+                  bgColor: '#EFF6FF',
+                  onPress: () => {
+                    setSelectedInternship(internship);
+                    setShowDetailsModal(true);
+                  }
+                }
+              ];
+
+              if (!isClosed && !hasApplied) {
+                actions.push({
+                  label: 'Apply',
+                  icon: Briefcase,
+                  color: '#10B981',
+                  bgColor: '#ECFDF5',
+                  onPress: () => handleApplyInternship(internship)
+                });
+              } else if (hasApplied) {
+                actions.push({
+                  label: String(statusConf.label || 'Applied'),
+                  icon: CheckCircle2,
+                  color: statusConf.text || '#2563EB',
+                  bgColor: statusConf.bg || '#EFF6FF',
+                  onPress: () => {}
+                });
+              }
+
               return (
                 <Animated.View 
                   key={internship.name || index} 
                   entering={FadeInUp.delay(300 + index * 100)}
-                  style={styles.internshipCard}
                 >
-                  <View style={styles.cardTop}>
-                    <View style={styles.companyInfo}>
-                      <View style={[styles.companyLogo, { backgroundColor: '#FFF7ED', borderColor: '#FFEDD5' }]}>
-                        <Text style={[styles.logoText, { color: colors.accent.DEFAULT }]}>
-                          {(internship.role_name || internship.title || "I")[0]}
-                        </Text>
-                      </View>
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.jobTitle} numberOfLines={1}>
-                          {internship.role_name || internship.title || "Internship Role"}
-                        </Text>
-                        <Text style={styles.companyName} numberOfLines={1}>
-                          {internship.industry || "Industry Partner"}
-                        </Text>
-                      </View>
-                    </View>
-                    
-                    <View style={styles.matchBadge}>
-                      <Text style={[styles.matchValue, { color: '#059669' }]}>
-                        {internship.match_score || 100}%
-                      </Text>
-                      <Text style={styles.matchLabel}>MATCH</Text>
-                    </View>
-                  </View>
-
-                  {/* Status Badges */}
-                  <View style={styles.statusBadgesRow}>
-                    {isClosed ? (
-                      <View style={[styles.statusTag, styles.statusClosed]}>
-                        <Text style={styles.statusTagTextClosed}>Closed</Text>
-                      </View>
-                    ) : (
-                      <View style={[styles.statusTag, styles.statusActive]}>
-                        <Text style={styles.statusTagTextActive}>Active</Text>
-                      </View>
-                    )}
-                    
-                    {hasApplied && (
-                      <View style={[styles.statusTag, { backgroundColor: statusConf.bg, borderColor: statusConf.border }]}>
-                        <Text style={[styles.statusTagTextActive, { color: statusConf.text }]}>
-                          {statusConf.label}
-                        </Text>
-                      </View>
-                    )}
-                  </View>
-
-                  {/* Info Badges */}
-                  <View style={styles.badgeRow}>
-                    <View style={styles.infoBadge}>
-                      <MapPin size={10} color="#64748B" />
-                      <Text style={styles.badgeText}>{internship.work_mode || internship.location || "Remote"}</Text>
-                    </View>
-                    <View style={styles.infoBadge}>
-                      <Clock size={10} color="#64748B" />
-                      <Text style={styles.badgeText}>{internship.duration ? `${internship.duration} Days` : "3 Months"}</Text>
-                    </View>
-                    <View style={[styles.infoBadge, { backgroundColor: '#ECFDF5', borderColor: '#D1FAE5' }]}>
-                      <IndianRupee size={10} color="#059669" />
-                      <Text style={[styles.badgeText, { color: '#059669', fontWeight: '700' }]}>
-                        {internship.stipend ? `₹${Number(internship.stipend).toLocaleString('en-IN')}` : "Best in Industry"}
-                      </Text>
-                    </View>
-                    {internship.openings ? (
-                      <View style={[styles.infoBadge, { backgroundColor: '#EFF6FF', borderColor: '#DBEAFE' }]}>
-                        <Text style={[styles.badgeText, { color: '#2563EB', fontWeight: '700' }]}>
-                          {internship.openings} Opening{internship.openings !== 1 ? 's' : ''}
-                        </Text>
-                      </View>
-                    ) : null}
-                  </View>
-
-                  {/* Skills Tags */}
-                  {internship.skills && internship.skills.length > 0 && (
-                    <View style={styles.skillsRow}>
-                      {internship.skills.slice(0, 4).map((s: any, si: number) => (
-                        <View key={si} style={styles.skillChip}>
-                          <Text style={styles.skillChipText}>{s.skill}</Text>
+                  <SwipeableRow actions={actions}>
+                    <View style={[styles.internshipCard, isClosed && { borderLeftColor: '#94A3B8' }]}>
+                      <View style={styles.cardTop}>
+                        <View style={styles.companyInfo}>
+                          <View style={[styles.companyLogo, { backgroundColor: '#FFF7ED', borderColor: '#FFEDD5' }]}>
+                            <Text style={[styles.logoText, { color: colors.accent.DEFAULT }]}>
+                              {(internship.role_name || internship.title || "I")[0]}
+                            </Text>
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <Text style={styles.jobTitle} numberOfLines={1}>
+                              {internship.role_name || internship.title || "Internship Role"}
+                            </Text>
+                            <Text style={styles.companyName} numberOfLines={1}>
+                              {internship.industry || "Industry Partner"}
+                            </Text>
+                          </View>
                         </View>
-                      ))}
-                      {internship.skills.length > 4 && (
-                        <View style={styles.skillChipMore}>
-                          <Text style={styles.skillChipMoreText}>+{internship.skills.length - 4}</Text>
+                        
+                        <View style={styles.matchBadge}>
+                          <Text style={[styles.matchValue, { color: '#059669' }]}>
+                            {internship.match_score || 100}%
+                          </Text>
+                          <Text style={styles.matchLabel}>MATCH</Text>
+                        </View>
+                      </View>
+
+                      {/* Status Badges */}
+                      <View style={styles.statusBadgesRow}>
+                        {isClosed ? (
+                          <View style={[styles.statusTag, styles.statusClosed]}>
+                            <Text style={styles.statusTagTextClosed}>Closed</Text>
+                          </View>
+                        ) : (
+                          <View style={[styles.statusTag, styles.statusActive]}>
+                            <Text style={styles.statusTagTextActive}>Active</Text>
+                          </View>
+                        )}
+                        
+                        {hasApplied && (
+                          <View style={[styles.statusTag, { backgroundColor: statusConf.bg, borderColor: statusConf.border }]}>
+                            <Text style={[styles.statusTagTextActive, { color: statusConf.text }]}>
+                              {statusConf.label}
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+
+                      {/* Info Badges */}
+                      <View style={styles.badgeRow}>
+                        <View style={styles.infoBadge}>
+                          <MapPin size={10} color="#64748B" />
+                          <Text style={styles.badgeText}>{internship.work_mode || internship.location || "Remote"}</Text>
+                        </View>
+                        <View style={styles.infoBadge}>
+                          <Clock size={10} color="#64748B" />
+                          <Text style={styles.badgeText}>{internship.duration ? `${internship.duration} Days` : "3 Months"}</Text>
+                        </View>
+                        <View style={[styles.infoBadge, { backgroundColor: '#ECFDF5', borderColor: '#D1FAE5' }]}>
+                          <IndianRupee size={10} color="#059669" />
+                          <Text style={[styles.badgeText, { color: '#059669', fontWeight: '700' }]}>
+                            {internship.stipend ? `₹${Number(internship.stipend).toLocaleString('en-IN')}` : "Best in Industry"}
+                          </Text>
+                        </View>
+                        {internship.openings ? (
+                          <View style={[styles.infoBadge, { backgroundColor: '#EFF6FF', borderColor: '#DBEAFE' }]}>
+                            <Text style={[styles.badgeText, { color: '#2563EB', fontWeight: '700' }]}>
+                              {internship.openings} Opening{internship.openings !== 1 ? 's' : ''}
+                            </Text>
+                          </View>
+                        ) : null}
+                      </View>
+
+                      {/* Skills Tags */}
+                      {internship.skills && internship.skills.length > 0 && (
+                        <View style={[styles.skillsRow, { marginBottom: 0 }]}>
+                          {internship.skills.slice(0, 4).map((s: any, si: number) => (
+                            <View key={si} style={styles.skillChip}>
+                              <Text style={styles.skillChipText}>{s.skill}</Text>
+                            </View>
+                          ))}
+                          {internship.skills.length > 4 && (
+                            <View style={styles.skillChipMore}>
+                              <Text style={styles.skillChipMoreText}>+{internship.skills.length - 4}</Text>
+                            </View>
+                          )}
                         </View>
                       )}
                     </View>
-                  )}
-
-                  <View style={styles.cardActions}>
-                    <TouchableOpacity 
-                      style={[
-                        styles.applyButton,
-                        (isClosed || hasApplied) && styles.disabledButton,
-                        isCurrentApplying && styles.disabledButton
-                      ]}
-                      disabled={isClosed || hasApplied || isCurrentApplying}
-                      activeOpacity={0.7}
-                      onPress={() => handleApplyInternship(internship)}
-                    >
-                      {isCurrentApplying ? (
-                        <ActivityIndicator size="small" color="#fff" />
-                      ) : (
-                        <Text style={styles.applyButtonText}>
-                          {hasApplied ? statusConf.label : isClosed ? 'Closed' : 'Apply Now'}
-                        </Text>
-                      )}
-                    </TouchableOpacity>
-                    <TouchableOpacity 
-                      style={styles.detailsButton}
-                      activeOpacity={0.7}
-                      onPress={() => {
-                        setSelectedInternship(internship);
-                        setShowDetailsModal(true);
-                      }}
-                    >
-                      <Text style={styles.detailsButtonText}>Details</Text>
-                    </TouchableOpacity>
-                  </View>
+                  </SwipeableRow>
                 </Animated.View>
               );
             })
@@ -541,11 +546,16 @@ export const StudentInternshipScreen = () => {
                 }}
                 style={[
                   styles.modalApplyBtn,
-                  (selectedInternship?.status?.toLowerCase() === 'closed' || (selectedInternship?.applied_status && selectedInternship.applied_status !== "Not Applied")) && styles.disabledButton
+                  selectedInternship?.status?.toLowerCase() === 'closed' && { backgroundColor: '#F1F5F9' },
+                  (selectedInternship?.applied_status && selectedInternship.applied_status !== "Not Applied") && { backgroundColor: '#EFF6FF' }
                 ]}
               >
-                <Text style={styles.modalApplyBtnText}>
-                  {selectedInternship?.applied_status && selectedInternship.applied_status !== "Not Applied" ? selectedInternship.applied_status : 'Apply Now'}
+                <Text style={[
+                  styles.modalApplyBtnText,
+                  selectedInternship?.status?.toLowerCase() === 'closed' && { color: '#94A3B8' },
+                  (selectedInternship?.applied_status && selectedInternship.applied_status !== "Not Applied") && { color: '#2563EB' }
+                ]}>
+                  {selectedInternship?.applied_status && selectedInternship.applied_status !== "Not Applied" ? selectedInternship.applied_status : (selectedInternship?.status?.toLowerCase() === 'closed' ? 'Closed' : 'Apply Now')}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -1003,18 +1013,18 @@ const styles = StyleSheet.create({
     flex: 2,
     height: 50,
     borderRadius: 16,
-    backgroundColor: colors.accent.DEFAULT,
+    backgroundColor: '#FFEADB',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: colors.accent.DEFAULT,
+    shadowColor: '#FF6B00',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.1,
     shadowRadius: 8,
   },
   modalApplyBtnText: {
     fontSize: 14,
     fontWeight: '800',
-    color: '#FFFFFF',
+    color: '#FF6B00',
   },
   searchContainer: {
     flexDirection: 'row',
