@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, FlatList } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, FlatList, TextInput, ActivityIndicator, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '@/theme/colors';
 import { typography } from '@/theme/typography';
@@ -15,8 +15,54 @@ import {
   Zap
 } from 'lucide-react-native';
 import Animated, { FadeInUp, FadeInRight } from 'react-native-reanimated';
+import { listChannels } from '@/api/student.services';
 
-const communities = [
+const categoryColors: Record<string, string> = {
+  Open: "#10B981",
+  Public: "#3B82F6",
+  Private: "#8B5CF6",
+  Technical: "#3B82F6",
+  Startup: "#F59E0B",
+  Research: "#8B5CF6",
+  Business: "#10B981",
+  Design: "#EC4899",
+  Placements: "#F97316"
+};
+
+const formatChannelNameStr = (name: string): string => {
+  if (!name) return "";
+  if (name.includes(" _ ")) {
+    return name
+      .split(" _ ")
+      .map((part) => {
+        const username = part.split("@")[0];
+        return username
+          .split(/[._-]/)
+          .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+          .join(" ");
+      })
+      .join(" & ");
+  }
+  return name
+    .split(/[._-]/)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+};
+
+const getFallbackIcon = (name: string, type: string) => {
+  const lower = name.toLowerCase();
+  if (lower.includes("code") || lower.includes("python") || lower.includes("dsa") || lower.includes("dev")) return "💻";
+  if (lower.includes("design") || lower.includes("ux") || lower.includes("ui") || lower.includes("art")) return "🎨";
+  if (lower.includes("startup") || lower.includes("founder") || lower.includes("entrepreneur")) return "🚀";
+  if (lower.includes("research") || lower.includes("ml") || lower.includes("ai")) return "🧠";
+  if (lower.includes("placement") || lower.includes("job") || lower.includes("career")) return "💼";
+  if (lower.includes("general")) return "💬";
+  
+  if (type === "Private") return "🔒";
+  return "🌐";
+};
+
+const fallbackCommunities = [
   { id: "1", name: "DSA & Competitive Coding", members: "4.8k", online: 312, category: "Technical", icon: "💻", color: "#3B82F6" },
   { id: "2", name: "Startup Founders India", members: "2.1k", online: 178, category: "Startup", icon: "🚀", color: "#F59E0B" },
   { id: "3", name: "ML/AI Research Hub", members: "3.6k", online: 247, category: "Research", icon: "🧠", color: "#8B5CF6" },
@@ -59,12 +105,75 @@ const feedPosts = [
 ];
 
 export const StudentCommunityScreen = () => {
+  const [channels, setChannels] = useState<any[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [refreshing, setRefreshing] = useState<boolean>(false);
+  const [joinedChannels, setJoinedChannels] = useState<string[]>([]);
+  const [search, setSearch] = useState<string>('');
+
+  const fetchCommunityChannels = async () => {
+    try {
+      const data = await listChannels();
+      if (data && data.message) {
+        const mapped = data.message.map((channel: any) => {
+          const prettyName = formatChannelNameStr(channel.channel_name);
+          const cat = channel.type || "Public";
+          return {
+            id: channel.name,
+            name: prettyName,
+            members: channel.member_count !== undefined ? String(channel.member_count) : "0",
+            category: cat,
+            icon: getFallbackIcon(channel.channel_name, cat),
+            color: categoryColors[cat] || "#3B82F6",
+            messageCount: channel.message_count !== undefined ? channel.message_count : 0,
+          };
+        });
+        setChannels(mapped);
+      }
+    } catch (error) {
+      console.error("Error loading channels:", error);
+    }
+  };
+
+  const loadData = async (showIndicator = true) => {
+    if (showIndicator) setLoading(true);
+    await fetchCommunityChannels();
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchCommunityChannels();
+    setRefreshing(false);
+  };
+
+  const handleJoinChannel = (channelId: string) => {
+    if (joinedChannels.includes(channelId)) {
+      setJoinedChannels((prev) => prev.filter((id) => id !== channelId));
+    } else {
+      setJoinedChannels((prev) => [...prev, channelId]);
+    }
+  };
+
+  const activeList = channels.length > 0 ? channels : fallbackCommunities;
+  const filteredList = activeList.filter(community => 
+    community.name.toLowerCase().includes(search.toLowerCase()) ||
+    (community.category && community.category.toLowerCase().includes(search.toLowerCase()))
+  );
+
   return (
     <SafeAreaView style={styles.safeArea} edges={['bottom']}>
       <ScrollView 
         style={styles.container} 
         contentContainerStyle={styles.content} 
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.accent.DEFAULT]} />
+        }
       >
         {/* Header */}
         <Animated.View entering={FadeInUp.delay(100)} style={styles.header}>
@@ -79,7 +188,13 @@ export const StudentCommunityScreen = () => {
         {/* Search Bar */}
         <Animated.View entering={FadeInUp.delay(150)} style={styles.searchContainer}>
           <Search size={18} color="#94A3B8" style={styles.searchIcon} />
-          <Text style={styles.searchText}>Search communities, threads...</Text>
+          <TextInput 
+            placeholder="Search communities, threads..."
+            placeholderTextColor="#94A3B8"
+            style={styles.searchInput}
+            value={search}
+            onChangeText={setSearch}
+          />
           <TouchableOpacity style={styles.filterButton}>
              <TrendingUp size={14} color="#64748B" />
           </TouchableOpacity>
@@ -93,35 +208,68 @@ export const StudentCommunityScreen = () => {
            </TouchableOpacity>
         </View>
 
-        <ScrollView 
-          horizontal 
-          showsHorizontalScrollIndicator={false} 
-          style={styles.horizontalScroll}
-          contentContainerStyle={styles.horizontalContent}
-        >
-          {communities.map((community, index) => (
-            <Animated.View 
-              key={community.id} 
-              entering={FadeInRight.delay(200 + index * 100)}
-              style={styles.communityCard}
-            >
-               <View style={[styles.communityIconContainer, { backgroundColor: `${community.color}10` }]}>
-                  <Text style={styles.communityEmoji}>{community.icon}</Text>
-               </View>
-               <Text style={styles.communityName} numberOfLines={1}>{community.name}</Text>
-               <View style={styles.communityStats}>
-                  <Text style={styles.communityMembers}>{community.members} Members</Text>
-                  <View style={styles.onlineContainer}>
-                     <View style={styles.onlineDot} />
-                     <Text style={styles.onlineText}>{community.online}</Text>
-                  </View>
-               </View>
-               <TouchableOpacity style={[styles.joinButton, { borderColor: community.color }]}>
-                  <Text style={[styles.joinButtonText, { color: community.color }]}>Join</Text>
-               </TouchableOpacity>
-            </Animated.View>
-          ))}
-        </ScrollView>
+        {loading ? (
+          <View style={{ height: 160, justifyContent: 'center', alignItems: 'center' }}>
+            <ActivityIndicator size="large" color={colors.accent.DEFAULT} />
+          </View>
+        ) : filteredList.length === 0 ? (
+          <View style={{ height: 160, justifyContent: 'center', alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 20, marginHorizontal: 4, borderWidth: 1.5, borderColor: '#F1F5F9' }}>
+            <Text style={{ fontSize: 13, color: '#64748B', fontWeight: '600' }}>No communities found</Text>
+          </View>
+        ) : (
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false} 
+            style={styles.horizontalScroll}
+            contentContainerStyle={styles.horizontalContent}
+          >
+            {filteredList.map((community, index) => (
+              <Animated.View 
+                key={community.id} 
+                entering={FadeInRight.delay(200 + index * 100)}
+                style={styles.communityCard}
+              >
+                 <View style={[styles.communityIconContainer, { backgroundColor: `${community.color}10` }]}>
+                    <Text style={styles.communityEmoji}>{community.icon}</Text>
+                 </View>
+                 <Text style={styles.communityName} numberOfLines={1}>{community.name}</Text>
+                 <View style={styles.communityStats}>
+                    <Text style={styles.communityMembers}>{community.members} Members</Text>
+                    {community.messageCount !== undefined ? (
+                       <View style={styles.onlineContainer}>
+                          <MessageSquare size={10} color="#94A3B8" />
+                          <Text style={[styles.onlineText, { color: '#64748B' }]}>{community.messageCount} msgs</Text>
+                       </View>
+                    ) : (
+                       <View style={styles.onlineContainer}>
+                          <View style={styles.onlineDot} />
+                          <Text style={styles.onlineText}>{community.online}</Text>
+                       </View>
+                    )}
+                 </View>
+                 <TouchableOpacity 
+                   onPress={() => handleJoinChannel(community.id)}
+                   style={[
+                     styles.joinButton, 
+                     { 
+                       borderColor: community.color,
+                       backgroundColor: joinedChannels.includes(community.id) ? community.color : 'transparent'
+                     }
+                   ]}
+                 >
+                    <Text 
+                      style={[
+                        styles.joinButtonText, 
+                        { color: joinedChannels.includes(community.id) ? '#FFFFFF' : community.color }
+                      ]}
+                    >
+                      {joinedChannels.includes(community.id) ? 'Joined' : 'Join'}
+                    </Text>
+                 </TouchableOpacity>
+              </Animated.View>
+            ))}
+          </ScrollView>
+        )}
 
         {/* Community Feed Section */}
         <View style={[styles.sectionHeader, { marginTop: 32 }]}>
@@ -243,11 +391,12 @@ const styles = StyleSheet.create({
   searchIcon: {
     marginRight: 10,
   },
-  searchText: {
+  searchInput: {
     flex: 1,
     fontSize: 14,
-    color: '#94A3B8',
+    color: '#0F172A',
     fontWeight: '500',
+    paddingVertical: 0,
   },
   filterButton: {
     padding: 6,

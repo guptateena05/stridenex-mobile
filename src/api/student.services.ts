@@ -685,6 +685,21 @@ export const enrollStudentPath = async (studentEmail: string, careerPath: string
   }
 };
 
+/**
+ * List community channels.
+ */
+export const listChannels = async () => {
+  try {
+    const response = await api.get(
+      "method/stridenex_app.api_stridenex_app.raven.list_channels"
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching channels:", error);
+    throw error;
+  }
+};
+
 
 
 
