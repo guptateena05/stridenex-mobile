@@ -1,4 +1,5 @@
 import { api } from "./api.services";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 /**
  * Fetch student details by email.
@@ -696,6 +697,157 @@ export const listChannels = async () => {
     return response.data;
   } catch (error) {
     console.error("Error fetching channels:", error);
+    throw error;
+  }
+};
+
+/**
+ * Join a community channel.
+ */
+export const joinChannel = async (channelId: string) => {
+  try {
+    const storedToken = await AsyncStorage.getItem("token");
+    const token = storedToken ? storedToken.trim() : null;
+
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    if (token) {
+      headers["Authorization"] = `token ${token}`;
+    }
+
+    const response = await api.post(
+      "method/stridenex_app.api_stridenex_app.raven.join_channel",
+      { channel_id: channelId },
+      { headers }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error joining channel:", error);
+    throw error;
+  }
+};
+
+/**
+ * Fetch category list by parent category.
+ * Endpoint: method/stridenex_app.api_stridenex_app.raven.get_category_list
+ */
+export const getCategoryList = async (parentCategory: string) => {
+  try {
+    const response = await api.get(
+      "method/stridenex_app.api_stridenex_app.raven.get_category_list",
+      { params: { parent_category: parentCategory } }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching category list:", error);
+    throw error;
+  }
+};
+
+/**
+ * Fetch messages for a given channel.
+ * Endpoint: method/stridenex_app.api_stridenex_app.raven.list_messages
+ */
+export const listMessages = async (channelId: string, channelCategory?: string) => {
+  try {
+    const response = await api.post(
+      "method/stridenex_app.api_stridenex_app.raven.list_messages",
+      { 
+        channel_id: channelId,
+        ...(channelCategory ? { channel_category: channelCategory } : {})
+      },
+      channelCategory ? {
+        params: {
+          channel_id: channelId,
+          channel_category: channelCategory
+        }
+      } : undefined
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching message list:", error);
+    throw error;
+  }
+};
+
+/**
+ * Leave a given channel.
+ * Endpoint: method/stridenex_app.api_stridenex_app.raven.leave_channel
+ */
+export const leaveChannel = async (channelId: string) => {
+  try {
+    const storedToken = await AsyncStorage.getItem("userToken");
+    const token = storedToken ? storedToken.trim() : null;
+
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    if (token) {
+      headers["Authorization"] = `token ${token}`;
+    }
+
+    const response = await api.post(
+      "method/stridenex_app.api_stridenex_app.raven.leave_channel",
+      { channel_id: channelId },
+      { headers }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error leaving channel:", error);
+    throw error;
+  }
+};
+
+/**
+ * Send a message or post a reply.
+ * Endpoint: method/stridenex_app.api_stridenex_app.raven.send_message
+ */
+export const sendMessage = async (payload: {
+  channel_id: string;
+  reply_to_message?: string;
+  channel_category?: string;
+  text: string;
+}) => {
+  try {
+    const response = await api.post(
+      "method/stridenex_app.api_stridenex_app.raven.send_message",
+      payload
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error sending message:", error);
+    throw error;
+  }
+};
+
+/**
+ * Fetch all success stories.
+ */
+export const getSuccessStories = async () => {
+  try {
+    const response = await api.get(
+      "method/stridenex_app.stridenex_app.doctype.success_story.success_story.get_success_stories"
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching success stories:", error);
+    throw error;
+  }
+};
+
+/**
+ * Create a new success story.
+ */
+export const createSuccessStory = async (data: any) => {
+  try {
+    const response = await api.post(
+      "method/stridenex_app.stridenex_app.doctype.success_story.success_story.create_success_story",
+      data
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error creating success story:", error);
     throw error;
   }
 };
