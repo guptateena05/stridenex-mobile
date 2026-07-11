@@ -381,14 +381,31 @@ export const getStudentApplicationList = async (industry: string) => {
   }
 };
 
-export const getFindTalentList = async (industry: string, college?: string, page: number = 1, page_size: number = 20, search?: string) => {
+export const getFindTalentList = async (params: {
+  search?: string;
+  College?: string;
+  current_year?: string;
+  skill?: string;
+  sort_by?: string;
+  page?: number;
+  page_size?: number;
+}) => {
   try {
-    let url = `method/stridenex_app.stridenex_app.doctype.student.student.get_student_list?industry=${encodeURIComponent(industry)}&page=${page}&page_size=${page_size}`;
-    if (college) {
-      url += `&college=${encodeURIComponent(college)}`;
+    let url = `method/stridenex_app.stridenex_app.doctype.student.student.get_student_list?page=${params.page || 1}&page_size=${params.page_size || 20}`;
+    if (params.search) {
+      url += `&search=${encodeURIComponent(params.search)}`;
     }
-    if (search) {
-      url += `&search=${encodeURIComponent(search)}`;
+    if (params.College) {
+      url += `&College=${encodeURIComponent(params.College)}`;
+    }
+    if (params.current_year) {
+      url += `&current_year=${encodeURIComponent(params.current_year)}`;
+    }
+    if (params.skill) {
+      url += `&skill=${encodeURIComponent(params.skill)}`;
+    }
+    if (params.sort_by) {
+      url += `&sort_by=${encodeURIComponent(params.sort_by)}`;
     }
     const response = await api.get(url);
     return response.data;

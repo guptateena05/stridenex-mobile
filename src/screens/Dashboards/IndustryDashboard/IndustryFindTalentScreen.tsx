@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Refres
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '@/theme/colors';
 import { typography } from '@/theme/typography';
-import { Search, ChevronDown, Sparkles, Bookmark, UserX, TrendingUp, CheckCircle2, GraduationCap, Award } from 'lucide-react-native';
+import { Search, ChevronDown, Sparkles, Bookmark, UserX, TrendingUp, CheckCircle2, GraduationCap, Award, RotateCcw, X } from 'lucide-react-native';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import { SkeletonLoader } from '@/components/Shared/SkeletonLoader';
 import { useIndustry } from '@/context/IndustryContext';
@@ -22,6 +22,9 @@ export const IndustryFindTalentScreen = () => {
   const [activeCollegeFilter, setActiveCollegeFilter] = useState("");
   const [searchVal, setSearchVal] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedSkill, setSelectedSkill] = useState("");
+  const [currentYear, setCurrentYear] = useState("");
+  const [sortBy, setSortBy] = useState("");
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState<any>({
     total: 0,
@@ -37,11 +40,24 @@ export const IndustryFindTalentScreen = () => {
   const [loadingColleges, setLoadingColleges] = useState(false);
   const [collegeSearchQuery, setCollegeSearchQuery] = useState("");
   const [showCollegeDropdown, setShowCollegeDropdown] = useState(false);
+  const [showYearDropdown, setShowYearDropdown] = useState(false);
+  const [showSortDropdown, setShowSortDropdown] = useState(false);
   const [collegePage, setCollegePage] = useState(1);
   const [collegeTotalPages, setCollegeTotalPages] = useState(1);
   const [collegeHasNext, setCollegeHasNext] = useState(false);
   const [collegeHasPrev, setCollegeHasPrev] = useState(false);
   const lastCollegeSearchRef = useRef("");
+
+  // Skill Dropdown States
+  const [skills, setSkills] = useState<string[]>([]);
+  const [loadingSkills, setLoadingSkills] = useState(false);
+  const [skillSearchQuery, setSkillSearchQuery] = useState("");
+  const [showSkillDropdown, setShowSkillDropdown] = useState(false);
+  const [skillPage, setSkillPage] = useState(1);
+  const [skillTotalPages, setSkillTotalPages] = useState(1);
+  const [skillHasNext, setSkillHasNext] = useState(false);
+  const [skillHasPrev, setSkillHasPrev] = useState(false);
+  const lastSkillSearchRef = useRef("");
 
   const loadColleges = async (pageNum = 1, searchTxt = "") => {
     try {
@@ -91,18 +107,67 @@ export const IndustryFindTalentScreen = () => {
     return () => clearTimeout(delayDebounce);
   }, [collegeSearchQuery, showCollegeDropdown]);
 
-  const fetchStudents = useCallback(async (pageNum = 1, isRefresh = false) => {
-    const companyName = industryData?.company_name || industryData?.name;
-    if (!companyName) {
-      setLoading(false);
-      setRefreshing(false);
-      return;
-    }
+  const loadSkills = async (pageNum = 1, searchTxt = "") => {
+    try {
+      setLoadingSkills(true);
+      const res = await getMasterData("Skill", { page: pageNum, search: searchTxt, page_size: 20 });
+      const raw = res?.data ?? res?.message?.data ?? res?.message ?? res;
+      const arr = Array.isArray(raw) ? raw : (Array.isArray(raw?.data) ? raw.data : []);
+      
+      const options = arr.map((item: any) => item.name || item.value || (typeof item === 'string' ? item : '')).filter(Boolean);
+      setSkills(options);
 
+      const paginationData = res?.pagination || res?.message?.pagination;
+      if (paginationData) {
+        setSkillHasNext(paginationData.has_next === true);
+        setSkillHasPrev(paginationData.has_prev === true);
+        const totalCount = paginationData.total_count || 0;
+        const pageSize = paginationData.page_size || 20;
+        setSkillTotalPages(Math.ceil(totalCount / pageSize) || 1);
+      } else {
+        setSkillHasNext(arr.length === 20);
+        setSkillHasPrev(pageNum > 1);
+        setSkillTotalPages(pageNum > 1 || arr.length === 20 ? pageNum + (arr.length === 20 ? 1 : 0) : 1);
+      }
+      setSkillPage(pageNum);
+    } catch (err) {
+      console.error("Error loading skills:", err);
+    } finally {
+      setLoadingSkills(false);
+    }
+  };
+
+  const handleOpenSkillDropdown = () => {
+    setSkillSearchQuery("");
+    lastSkillSearchRef.current = "";
+    setShowSkillDropdown(true);
+    loadSkills(1, "");
+  };
+
+  useEffect(() => {
+    if (!showSkillDropdown) return;
+    const delayDebounce = setTimeout(() => {
+      if (skillSearchQuery !== lastSkillSearchRef.current) {
+        lastSkillSearchRef.current = skillSearchQuery;
+        loadSkills(1, skillSearchQuery);
+      }
+    }, 400);
+    return () => clearTimeout(delayDebounce);
+  }, [skillSearchQuery, showSkillDropdown]);
+
+  const fetchStudents = useCallback(async (pageNum = 1, isRefresh = false) => {
     if (!isRefresh) setLoading(true);
     setError(null);
     try {
-      const response = await getFindTalentList(companyName, activeCollegeFilter || undefined, pageNum, 20, searchQuery);
+      const response = await getFindTalentList({
+        search: searchQuery || undefined,
+        College: activeCollegeFilter || undefined,
+        current_year: currentYear || undefined,
+        skill: selectedSkill || undefined,
+        sort_by: sortBy || undefined,
+        page: pageNum,
+        page_size: 20
+      });
       const dataObj = response?.message?.data || response?.data?.data || response?.data || response?.message || response || {};
       const studentsList = dataObj?.students || (Array.isArray(dataObj) ? dataObj : []);
       setStudents(studentsList);
@@ -127,15 +192,27 @@ export const IndustryFindTalentScreen = () => {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [industryData, activeCollegeFilter, searchQuery]);
+  }, [activeCollegeFilter, searchQuery, currentYear, selectedSkill, sortBy]);
 
   useEffect(() => {
     fetchStudents(1);
   }, [fetchStudents]);
 
-  const handleSearch = () => {
-    setSearchQuery(searchVal);
-    setActiveCollegeFilter(collegeFilter);
+  useEffect(() => {
+    const delayDebounce = setTimeout(() => {
+      setSearchQuery(searchVal);
+    }, 450);
+    return () => clearTimeout(delayDebounce);
+  }, [searchVal]);
+
+  const handleClearFilters = () => {
+    setSearchVal("");
+    setSearchQuery("");
+    setCollegeFilter("");
+    setActiveCollegeFilter("");
+    setCurrentYear("");
+    setSelectedSkill("");
+    setSortBy("");
   };
 
   const onRefresh = useCallback(() => {
@@ -144,7 +221,7 @@ export const IndustryFindTalentScreen = () => {
   }, [fetchStudents]);
 
   const transformStudent = (student: any) => {
-    const rawName = `${student.first_name || ""} ${student.last_name || ""}`.trim() || student.name || "Anonymous Student";
+    const rawName = student.student_name || `${student.first_name || ""} ${student.last_name || ""}`.trim() || student.name || "Anonymous Student";
     const fullName = rawName
       .toLowerCase()
       .split(" ")
@@ -165,15 +242,21 @@ export const IndustryFindTalentScreen = () => {
     }
     const bgColor = colorsPalette[Math.abs(hash) % colorsPalette.length];
 
-    const collegeInfo = `${student.college || "N/A"} • Year ${student.academic_year || "N/A"}`;
-    const rawSkills = student.skills && Array.isArray(student.skills) && student.skills.length > 0
-      ? student.skills
-      : [student.course, student.department].filter(Boolean);
-    const skills = rawSkills.map((s: any) => (s && typeof s === 'object' ? s.skill || s.name || '' : s)).filter(Boolean);
-    const match = student.match_score || Math.floor(Math.random() * 17) + 80;
+    const yearVal = student.current_year || (student.academic_year && student.academic_year !== "0" ? `Year ${student.academic_year}` : "");
+    const collegeInfo = [student.college, yearVal].filter(Boolean).join(" • ") || "N/A";
+    const rawSkills = Array.isArray(student.skills) ? student.skills : [];
+    const skills = rawSkills.map((s: any) => {
+      if (!s) return "";
+      if (typeof s === 'string') return s;
+      return s.skill || s.skill_name || s.name || "";
+    }).filter(Boolean);
+    
+    const match = student.match_percentage !== null && student.match_percentage !== undefined 
+      ? student.match_percentage 
+      : (student.match_score || Math.floor(Math.random() * 17) + 80);
 
     return {
-      id: student.name,
+      id: student.name || student.student_name || student.email_id || rawName,
       initials,
       bgColor,
       name: fullName,
@@ -202,16 +285,11 @@ export const IndustryFindTalentScreen = () => {
            <Text style={styles.subtitle}>Discover and invite top matched candidates</Text>
         </Animated.View>
 
-        <Animated.View entering={FadeInUp.delay(100)} style={styles.searchCard}>
-          <View style={styles.searchTitleRow}>
-            <Search size={20} color="#64748B" />
-            <Text style={styles.searchTitle}>Skill-Based Candidate Search</Text>
-          </View>
-          
-          <View style={styles.inputContainer}>
-            <Text style={styles.inputLabel}>Search</Text>
+        <Animated.View entering={FadeInUp.delay(100)} style={styles.searchCardCompact}>
+          <View style={styles.searchRow}>
+            <Search size={18} color="#64748B" style={styles.searchIcon} />
             <TextInput 
-              style={styles.input}
+              style={styles.searchInputCompact}
               placeholder="Search by name, email, skills..."
               placeholderTextColor="#94A3B8"
               value={searchVal}
@@ -219,44 +297,57 @@ export const IndustryFindTalentScreen = () => {
             />
           </View>
 
-          <View style={styles.inputContainer}>
-            <Text style={styles.inputLabel}>Filter by College</Text>
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false} 
+            style={styles.horizontalFilterRow}
+            contentContainerStyle={styles.horizontalFilterRowContent}
+          >
+            {/* College Filter Button */}
             <TouchableOpacity 
-              style={styles.dropdownTrigger}
+              style={[styles.filterBadgeBtn, activeCollegeFilter ? styles.filterBadgeBtnActive : {}]}
               onPress={handleOpenCollegeDropdown}
             >
-              <Text style={[styles.dropdownTriggerText, !activeCollegeFilter ? styles.dropdownPlaceholder : {}]} numberOfLines={1}>
-                {activeCollegeFilter || "All Colleges"}
+              <Text style={[styles.filterBadgeText, activeCollegeFilter ? styles.filterBadgeTextActive : {}]} numberOfLines={1}>
+                College: {activeCollegeFilter || "All"}
               </Text>
-              <ChevronDown size={18} color="#64748B" />
+              <ChevronDown size={11} color={activeCollegeFilter ? colors.purple[600] : "#64748B"} />
             </TouchableOpacity>
-          </View>
 
-          <TouchableOpacity style={styles.searchBtn} onPress={handleSearch}>
-            <Text style={styles.searchBtnText}>Search</Text>
-          </TouchableOpacity>
+            {/* Current Year Filter Button */}
+            <TouchableOpacity 
+              style={[styles.filterBadgeBtn, currentYear ? styles.filterBadgeBtnActive : {}]}
+              onPress={() => setShowYearDropdown(true)}
+            >
+              <Text style={[styles.filterBadgeText, currentYear ? styles.filterBadgeTextActive : {}]} numberOfLines={1}>
+                Year: {currentYear || "All"}
+              </Text>
+              <ChevronDown size={11} color={currentYear ? colors.purple[600] : "#64748B"} />
+            </TouchableOpacity>
 
-          <View style={styles.skillsChipsRow}>
-            {suggestedSkills.map((skill) => {
-              const isSelected = searchVal.toLowerCase().includes(skill.toLowerCase());
-              return (
-                <TouchableOpacity 
-                  key={skill} 
-                  style={[styles.skillChip, isSelected ? styles.skillChipActive : {}]}
-                  activeOpacity={0.7}
-                  onPress={() => {
-                    if (isSelected) {
-                      setSearchVal(prev => prev.replace(new RegExp(skill + '\\s*,?\\s*', 'gi'), '').trim());
-                    } else {
-                      setSearchVal(prev => (prev ? `${prev}, ${skill}` : skill));
-                    }
-                  }}
-                >
-                  <Text style={[styles.skillChipText, isSelected ? styles.skillChipTextActive : {}]}>{skill}</Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
+            {/* Skill Filter Button */}
+            <TouchableOpacity 
+              style={[styles.filterBadgeBtn, selectedSkill ? styles.filterBadgeBtnActive : {}]}
+              onPress={handleOpenSkillDropdown}
+            >
+              <Text style={[styles.filterBadgeText, selectedSkill ? styles.filterBadgeTextActive : {}]} numberOfLines={1}>
+                Skill: {selectedSkill || "All"}
+              </Text>
+              <ChevronDown size={11} color={selectedSkill ? colors.purple[600] : "#64748B"} />
+            </TouchableOpacity>
+
+            {/* Clear Filters Button */}
+            {(activeCollegeFilter || currentYear || selectedSkill || searchQuery || searchVal) ? (
+              <TouchableOpacity 
+                style={styles.clearBadgeBtnCompact}
+                onPress={handleClearFilters}
+                activeOpacity={0.7}
+              >
+                <RotateCcw size={14} color="#E11D48" />
+              </TouchableOpacity>
+            ) : null}
+            <View style={{ width: 20 }} />
+          </ScrollView>
         </Animated.View>
 
         <Animated.View entering={FadeInUp.delay(200)}>
@@ -265,10 +356,15 @@ export const IndustryFindTalentScreen = () => {
               {loading ? "Searching candidates..." : `${pagination.total || students.length} candidates match`}
             </Text>
             <View style={styles.resultsActions}>
-              <View style={styles.dropdownSmall}>
-                <Text style={styles.dropdownSmallText}>Sort: Best Match</Text>
+              <TouchableOpacity 
+                style={styles.dropdownSmall}
+                onPress={() => setShowSortDropdown(true)}
+              >
+                <Text style={styles.dropdownSmallText}>
+                  {sortBy === "first_name" ? "Sort: Name" : sortBy === "college" ? "Sort: College" : sortBy === "creation" ? "Sort: Recent" : "Sort: Best Match"}
+                </Text>
                 <ChevronDown size={14} color="#64748B" />
-              </View>
+              </TouchableOpacity>
             </View>
           </View>
 
@@ -309,7 +405,7 @@ export const IndustryFindTalentScreen = () => {
                 {students.map((rawStudent, idx) => {
                   const candidate = transformStudent(rawStudent);
                   return (
-                    <Animated.View key={candidate.id} entering={FadeInUp.delay(50 + idx * 50)} style={styles.candidateCard}>
+                    <Animated.View key={`${candidate.id}-${idx}`} entering={FadeInUp.delay(50 + idx * 50)} style={styles.candidateCard}>
                       <View style={styles.matchBadgeCapsule}>
                         <TrendingUp size={10} color="#10B981" />
                         <Text style={styles.matchBadgeCapsuleText}>{candidate.match}% Match</Text>
@@ -493,11 +589,230 @@ export const IndustryFindTalentScreen = () => {
           </View>
         </View>
       </Modal>
+
+      {/* Year Selector Modal */}
+      <Modal
+        visible={showYearDropdown}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowYearDropdown(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContentSmall}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Select Current Year</Text>
+              <TouchableOpacity onPress={() => setShowYearDropdown(false)} style={styles.closeBtn}>
+                <Text style={styles.closeBtnText}>Close</Text>
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.optionsList} keyboardShouldPersistTaps="handled">
+              <TouchableOpacity
+                style={[styles.optionItem, !currentYear ? styles.optionItemActive : {}]}
+                onPress={() => {
+                  setCurrentYear("");
+                  setShowYearDropdown(false);
+                }}
+              >
+                <Text style={[styles.optionText, !currentYear ? styles.optionTextActive : {}]}>
+                  All Years
+                </Text>
+              </TouchableOpacity>
+
+              {["First Year", "Second Year", "Third Year", "Fourth Year"].map((year) => {
+                const isActive = currentYear === year;
+                return (
+                  <TouchableOpacity
+                    key={year}
+                    style={[styles.optionItem, isActive ? styles.optionItemActive : {}]}
+                    onPress={() => {
+                      setCurrentYear(year);
+                      setShowYearDropdown(false);
+                    }}
+                  >
+                    <Text style={[styles.optionText, isActive ? styles.optionTextActive : {}]}>
+                      {year}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Skill Selector Modal */}
+      <Modal
+        visible={showSkillDropdown}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowSkillDropdown(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Select Skill</Text>
+              <TouchableOpacity onPress={() => setShowSkillDropdown(false)} style={styles.closeBtn}>
+                <Text style={styles.closeBtnText}>Close</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.modalSearchContainer}>
+              <Search size={16} color="#94A3B8" style={styles.modalSearchIcon} />
+              <TextInput
+                style={styles.modalSearchInput}
+                placeholder="Search skills..."
+                placeholderTextColor="#94A3B8"
+                value={skillSearchQuery}
+                onChangeText={setSkillSearchQuery}
+                autoFocus
+              />
+            </View>
+
+            <View style={{ flex: 1, minHeight: 200, position: 'relative' }}>
+              <ScrollView style={styles.optionsList} keyboardShouldPersistTaps="handled">
+                <TouchableOpacity
+                  style={[styles.optionItem, !selectedSkill ? styles.optionItemActive : {}]}
+                  onPress={() => {
+                    setSelectedSkill("");
+                    setShowSkillDropdown(false);
+                    setSkillSearchQuery("");
+                  }}
+                >
+                  <Text style={[styles.optionText, !selectedSkill ? styles.optionTextActive : {}]}>
+                    All Skills
+                  </Text>
+                </TouchableOpacity>
+
+                {skills.map((skill) => {
+                  const isActive = selectedSkill === skill;
+                  return (
+                    <TouchableOpacity
+                      key={skill}
+                      style={[styles.optionItem, isActive ? styles.optionItemActive : {}]}
+                      onPress={() => {
+                        setSelectedSkill(skill);
+                        setShowSkillDropdown(false);
+                        setSkillSearchQuery("");
+                      }}
+                    >
+                      <Text style={[styles.optionText, isActive ? styles.optionTextActive : {}]}>
+                        {skill}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+
+              {loadingSkills && (
+                <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(255, 255, 255, 0.7)', justifyContent: 'center', alignItems: 'center', zIndex: 10 }]}>
+                  <ActivityIndicator size="small" color={colors.purple[600]} />
+                  <Text style={[styles.modalLoadingText, { marginTop: 10 }]}>Loading skills...</Text>
+                </View>
+              )}
+            </View>
+
+            {/* Skill Modal Pagination Controls */}
+            {(skillHasNext || skillHasPrev || skillTotalPages > 1) && (
+              <View style={styles.modalPaginationContainer}>
+                <TouchableOpacity
+                  disabled={!skillHasPrev || loadingSkills}
+                  onPress={() => loadSkills(skillPage - 1, skillSearchQuery)}
+                  style={[
+                    styles.modalPageButton, 
+                    { backgroundColor: skillHasPrev ? colors.purple[600] : '#cbd5e1', opacity: loadingSkills ? 0.5 : 1 }
+                  ]}
+                >
+                  <Text style={[styles.modalPageButtonText, { color: skillHasPrev ? '#ffffff' : '#64748b' }]}>Previous</Text>
+                </TouchableOpacity>
+                
+                <Text style={styles.modalPageInfoText}>
+                  Page {skillPage} of {skillTotalPages}
+                </Text>
+
+                <TouchableOpacity
+                  disabled={!skillHasNext || loadingSkills}
+                  onPress={() => loadSkills(skillPage + 1, skillSearchQuery)}
+                  style={[
+                    styles.modalPageButton, 
+                    { backgroundColor: skillHasNext ? colors.purple[600] : '#cbd5e1', opacity: loadingSkills ? 0.5 : 1 }
+                  ]}
+                >
+                  <Text style={[styles.modalPageButtonText, { color: skillHasNext ? '#ffffff' : '#64748b' }]}>Next</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        </View>
+      </Modal>
+
+      {/* Sort Selector Modal */}
+      <Modal
+        visible={showSortDropdown}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowSortDropdown(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContentSmall}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Sort Candidates</Text>
+              <TouchableOpacity onPress={() => setShowSortDropdown(false)} style={styles.closeBtn}>
+                <Text style={styles.closeBtnText}>Close</Text>
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.optionsList} keyboardShouldPersistTaps="handled">
+              <TouchableOpacity
+                style={[styles.optionItem, !sortBy ? styles.optionItemActive : {}]}
+                onPress={() => {
+                  setSortBy("");
+                  setShowSortDropdown(false);
+                }}
+              >
+                <Text style={[styles.optionText, !sortBy ? styles.optionTextActive : {}]}>
+                  Best Match
+                </Text>
+              </TouchableOpacity>
+
+              {[
+                { label: "First Name", value: "first_name" },
+                { label: "College", value: "college" },
+                { label: "Recently Added", value: "creation" }
+              ].map((opt) => {
+                const isActive = sortBy === opt.value;
+                return (
+                  <TouchableOpacity
+                    key={opt.value}
+                    style={[styles.optionItem, isActive ? styles.optionItemActive : {}]}
+                    onPress={() => {
+                      setSortBy(opt.value);
+                      setShowSortDropdown(false);
+                    }}
+                  >
+                    <Text style={[styles.optionText, isActive ? styles.optionTextActive : {}]}>
+                      {opt.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
+  modalContentSmall: { 
+    backgroundColor: '#FFF', 
+    borderTopLeftRadius: 24, 
+    borderTopRightRadius: 24, 
+    maxHeight: '60%', 
+    minHeight: 320,
+    height: 320
+  },
   safeArea: { flex: 1, backgroundColor: '#F8FAFC' },
   container: { flex: 1 },
   content: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 40 },
@@ -694,5 +1009,85 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: '#475569',
+  },
+  searchCardCompact: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    shadowColor: '#64748B',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 2,
+    marginBottom: 16
+  },
+  searchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    height: 44,
+    marginBottom: 10
+  },
+  searchIcon: {
+    marginRight: 8
+  },
+  searchInputCompact: {
+    flex: 1,
+    fontSize: 14,
+    color: '#0F172A',
+    fontWeight: '500',
+    padding: 0
+  },
+  horizontalFilterRow: {
+    marginTop: 4
+  },
+  horizontalFilterRowContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingRight: 24
+  },
+  filterBadgeBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    height: 32,
+    marginRight: 8
+  },
+  filterBadgeBtnActive: {
+    backgroundColor: 'rgba(10, 128, 153, 0.08)',
+    borderColor: '#0A8099'
+  },
+  filterBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#64748B',
+    maxWidth: 120
+  },
+  filterBadgeTextActive: {
+    color: colors.purple[600],
+    fontWeight: '700'
+  },
+  clearBadgeBtnCompact: {
+    backgroundColor: '#FFF1F2',
+    borderWidth: 1,
+    borderColor: '#FECDD3',
+    borderRadius: 16,
+    width: 32,
+    height: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16
   }
 });
