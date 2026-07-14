@@ -903,6 +903,54 @@ export const saveShort = async (payload: { user: string; short_name: string }) =
 };
 
 /**
+ * Unsave an educational short.
+ */
+export const unsaveShort = async (payload: { user: string; short_name: string }) => {
+  try {
+    const token = await AsyncStorage.getItem("token");
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json"
+    };
+    if (token) {
+      headers["Authorization"] = `token ${token}`;
+    }
+    const response = await api.post(
+      "method/stridenex_app.stridenex_app.doctype.educational_short.educational_short.unsave_short",
+      payload,
+      { headers }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error unsaving short:", error);
+    throw error;
+  }
+};
+
+/**
+ * Toggle like status of an educational short.
+ */
+export const toggleLikeShort = async (payload: { short: string }) => {
+  try {
+    const token = await AsyncStorage.getItem("token");
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json"
+    };
+    if (token) {
+      headers["Authorization"] = `token ${token}`;
+    }
+    const response = await api.post(
+      "method/stridenex_app.stridenex_app.doctype.educational_short.educational_short.toggle_like",
+      payload,
+      { headers }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error toggling like:", error);
+    throw error;
+  }
+};
+
+/**
  * Fetch saved educational shorts.
  */
 export const getSavedShorts = async (userEmail: string) => {

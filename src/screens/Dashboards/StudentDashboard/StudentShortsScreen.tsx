@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, ImageBackground } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getShortsFeed, saveShort, getSavedShorts } from '@/api/student.services';
+import { getShortsFeed, saveShort, unsaveShort, getSavedShorts, toggleLikeShort } from '@/api/student.services';
 import { useAuth } from '@/context/AuthContext';
 import { WebView } from 'react-native-webview';
 import { colors } from '@/theme/colors';
@@ -19,7 +19,8 @@ import {
   Video,
   ListVideo,
   LayoutGrid,
-  PlaySquare
+  PlaySquare,
+  Heart
 } from 'lucide-react-native';
 import Animated, { FadeIn, FadeInUp } from 'react-native-reanimated';
 
@@ -159,7 +160,7 @@ const VideoPlayerWebView = ({ video, isPlaying }: { video: any, isPlaying: boole
 };
 
 // 1. Horizontal Scroll Standard Video Card (for Home Tab)
-const VideoPlayerCard = ({ video, isSaved, onToggleSave }: any) => {
+const VideoPlayerCard = ({ video, isSaved, isLiked, onToggleSave, onToggleLike }: any) => {
   const [isPlaying, setIsPlaying] = useState(false);
 
   return (
@@ -203,13 +204,18 @@ const VideoPlayerCard = ({ video, isSaved, onToggleSave }: any) => {
                  <Text style={styles.viewsText}>{video.views}</Text>
               </View>
            </View>
-           <TouchableOpacity onPress={() => onToggleSave(video.id)} style={styles.bookmarkBtn}>
-              {isSaved ? (
-                <BookmarkCheck size={18} color={colors.accent.DEFAULT} fill={colors.accent.DEFAULT} />
-              ) : (
-                <Bookmark size={18} color="#94A3B8" />
-              )}
-           </TouchableOpacity>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+               <TouchableOpacity onPress={() => onToggleLike(video.id)} style={styles.bookmarkBtn}>
+                  <Heart size={18} color={isLiked ? "#EF4444" : "#94A3B8"} fill={isLiked ? "#EF4444" : "transparent"} />
+               </TouchableOpacity>
+               <TouchableOpacity onPress={() => onToggleSave(video.id)} style={styles.bookmarkBtn}>
+                  {isSaved ? (
+                    <BookmarkCheck size={18} color={colors.accent.DEFAULT} fill={colors.accent.DEFAULT} />
+                  ) : (
+                    <Bookmark size={18} color="#94A3B8" />
+                  )}
+               </TouchableOpacity>
+            </View>
         </View>
       </View>
     </View>
@@ -258,7 +264,7 @@ const StandardVideoCard = ({ video }: any) => {
 };
 
 // 3. Vertical Video Card (for Shorts Tab - 9:16 aspect ratio full width)
-const VerticalShortCard = ({ video }: any) => {
+const VerticalShortCard = ({ video, isSaved, isLiked, onToggleSave, onToggleLike }: any) => {
    const [isPlaying, setIsPlaying] = useState(false);
 
    return (
@@ -284,10 +290,24 @@ const VerticalShortCard = ({ video }: any) => {
                     <Eye size={24} color="#FFFFFF" />
                     <Text style={styles.verticalActionText}>{video.views}</Text>
                  </View>
-                 <View style={styles.verticalActionItem}>
-                    <Bookmark size={24} color="#FFFFFF" />
-                    <Text style={styles.verticalActionText}>Save</Text>
-                 </View>
+                 <TouchableOpacity 
+                   onPress={() => onToggleLike?.(video.id)}
+                   style={styles.verticalActionItem}
+                 >
+                    <Heart size={24} color={isLiked ? "#EF4444" : "#FFFFFF"} fill={isLiked ? "#EF4444" : "transparent"} />
+                    <Text style={styles.verticalActionText}>{isLiked ? 'Liked' : 'Like'}</Text>
+                 </TouchableOpacity>
+                 <TouchableOpacity 
+                   onPress={() => onToggleSave?.(video.id)}
+                   style={styles.verticalActionItem}
+                 >
+                    {isSaved ? (
+                      <BookmarkCheck size={24} color={colors.accent.DEFAULT} fill={colors.accent.DEFAULT} />
+                    ) : (
+                      <Bookmark size={24} color="#FFFFFF" />
+                    )}
+                    <Text style={styles.verticalActionText}>{isSaved ? 'Saved' : 'Save'}</Text>
+                 </TouchableOpacity>
               </View>
            </View>
            <View style={styles.centerPlayWrapper}>
@@ -316,6 +336,7 @@ export const StudentShortsScreen = () => {
   const [loading, setLoading] = useState(true);
   const [loadingSaved, setLoadingSaved] = useState(false);
   const [savedItems, setSavedItems] = useState<any[]>([]);
+  const [likedItems, setLikedItems] = useState<any[]>([]);
 
   const fetchSaved = async () => {
     if (!userName) return;
@@ -373,6 +394,7 @@ export const StudentShortsScreen = () => {
 
         const BASE_DOMAIN = "https://devstridenex.quantcloud.in";
         const savedIdsFromFeed: string[] = [];
+        const likedIdsFromFeed: string[] = [];
         const mapped = rawShorts.map((item: any) => {
           const videoUrl = item.video ? (item.video.startsWith('http') ? item.video : `${BASE_DOMAIN}${item.video}`) : '';
           const posterUrl = item.thumbnail ? (item.thumbnail.startsWith('http') ? item.thumbnail : `${BASE_DOMAIN}${item.thumbnail}`) : 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=500'; // fallback poster image
@@ -382,6 +404,9 @@ export const StudentShortsScreen = () => {
 
           if (item.is_saved) {
             savedIdsFromFeed.push(String(item.name));
+          }
+          if (item.is_liked) {
+            likedIdsFromFeed.push(String(item.name));
           }
 
           return {
@@ -405,6 +430,12 @@ export const StudentShortsScreen = () => {
         if (savedIdsFromFeed.length > 0) {
           setSavedItems(prev => {
             const combined = new Set([...prev, ...savedIdsFromFeed]);
+            return Array.from(combined);
+          });
+        }
+        if (likedIdsFromFeed.length > 0) {
+          setLikedItems(prev => {
+            const combined = new Set([...prev, ...likedIdsFromFeed]);
             return Array.from(combined);
           });
         }
@@ -447,11 +478,19 @@ export const StudentShortsScreen = () => {
       setSavedItems(prev => prev.includes(String(id)) ? prev.filter(item => item !== String(id)) : [...prev, String(id)]);
 
       // Call API
-      const res = await saveShort({
-        user: userName,
-        short_name: String(id)
-      });
-      console.log("Save short mobile response:", res);
+      if (isAlreadySaved) {
+        const res = await unsaveShort({
+          user: userName,
+          short_name: String(id)
+        });
+        console.log("Unsave short mobile response:", res);
+      } else {
+        const res = await saveShort({
+          user: userName,
+          short_name: String(id)
+        });
+        console.log("Save short mobile response:", res);
+      }
 
       // Refresh saved shorts list
       fetchSaved();
@@ -459,6 +498,30 @@ export const StudentShortsScreen = () => {
       console.error("Error saving short on mobile:", error);
       // Rollback UI update
       setSavedItems(prev => isAlreadySaved ? [...prev, String(id)] : prev.filter(item => item !== String(id)));
+    }
+  };
+
+  const toggleLike = async (id: any) => {
+    if (!userName) {
+      console.log("User not logged in");
+      return;
+    }
+
+    const isAlreadyLiked = likedItems.includes(String(id));
+
+    try {
+      // Opt-in UI update
+      setLikedItems(prev => prev.includes(String(id)) ? prev.filter(item => item !== String(id)) : [...prev, String(id)]);
+
+      // Call API
+      const res = await toggleLikeShort({
+        short: String(id)
+      });
+      console.log("Toggle like short mobile response:", res);
+    } catch (error) {
+      console.error("Error toggling like on mobile:", error);
+      // Rollback UI update
+      setLikedItems(prev => isAlreadyLiked ? [...prev, String(id)] : prev.filter(item => item !== String(id)));
     }
   };
 
@@ -497,8 +560,10 @@ export const StudentShortsScreen = () => {
                   <VideoPlayerCard 
                     key={short.id} 
                     video={short} 
-                    isSaved={savedItems.includes(short.id)}
+                    isSaved={savedItems.includes(String(short.id))}
+                    isLiked={likedItems.includes(String(short.id))}
                     onToggleSave={toggleSave}
+                    onToggleLike={toggleLike}
                   />
                 ))}
              </ScrollView>
@@ -582,7 +647,14 @@ export const StudentShortsScreen = () => {
             </View>
           ) : (
             shortsList.map(short => (
-              <VerticalShortCard key={short.id} video={short} />
+               <VerticalShortCard 
+                 key={short.id} 
+                 video={short} 
+                 isSaved={savedItems.includes(String(short.id))}
+                 isLiked={likedItems.includes(String(short.id))}
+                 onToggleSave={toggleSave}
+                 onToggleLike={toggleLike}
+               />
             ))
           )}
         </View>
@@ -612,7 +684,14 @@ export const StudentShortsScreen = () => {
             </View>
           ) : (
             savedVideos.map(short => (
-              <VerticalShortCard key={short.id} video={short} />
+               <VerticalShortCard 
+                 key={short.id} 
+                 video={short} 
+                 isSaved={savedItems.includes(String(short.id))}
+                 isLiked={likedItems.includes(String(short.id))}
+                 onToggleSave={toggleSave}
+                 onToggleLike={toggleLike}
+               />
             ))
           )}
         </View>
