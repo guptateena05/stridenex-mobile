@@ -15,7 +15,7 @@ import { AlertsAgendaCard } from '@/components/dashboard/AlertsAgendaCard';
 import { TrendingUp, Award, Briefcase, Bot, X } from 'lucide-react-native';
 
 import Animated, { FadeInUp, FadeInRight } from 'react-native-reanimated';
-import { getStudentByEmail, updateStudent, mapYearToWord } from '@/api/student.services';
+import { getStudentByEmail, updateStudent, mapYearToWord, getStudentSkills, getDashboardStats } from '@/api/student.services';
 import DynamicForm from '@/components/forms/DynamicForm';
 import { FormField } from '@/components/forms/DynamicField';
 
@@ -65,23 +65,93 @@ export const StudentDashboardScreen = () => {
     }
   };
 
+  const [skillsData, setSkillsData] = useState<any[]>([]);
+
   useEffect(() => {
     fetchStudentData();
   }, [userName]);
 
-  const stats = [
-    { title: 'Score', value: '73/100', icon: TrendingUp, color: colors.accent.DEFAULT },
-    { title: 'Goal', value: '58%', icon: Award, color: colors.primary.DEFAULT },
-    { title: 'Active', value: '3', icon: Briefcase, color: colors.info || '#3b82f6' },
-    { title: 'Sessions', value: '12', icon: Bot, color: colors.success || '#10b981' },
-  ];
+  useEffect(() => {
+    if (!userName) return;
+    const fetchSkills = async () => {
+      try {
+        const res = await getStudentSkills(userName);
+        console.log("Mobile student skills response:", res);
+        let rawSkills = [];
+        const data = res?.data || res?.message?.skills || res?.message || res;
+        if (data && Array.isArray(data)) {
+          rawSkills = data;
+        } else if (data && typeof data === 'object' && Array.isArray(data.skills)) {
+          rawSkills = data.skills;
+        } else if (res && res.skills && Array.isArray(res.skills)) {
+          rawSkills = res.skills;
+        }
 
-  const skills = [
-    { name: 'Python', percentage: 78 },
-    { name: 'SQL', percentage: 85 },
-    { name: 'ML', percentage: 61 },
-    { name: 'Viz', percentage: 55 },
+        const mapLevelToPercentage = (level?: string): number => {
+          if (!level) return 0;
+          switch (level.toLowerCase()) {
+            case "beginner": return 35;
+            case "intermediate": return 65;
+            case "advanced": return 85;
+            case "expert": return 100;
+            default: return 50;
+          }
+        };
+
+        const mapped = rawSkills.map((item: any) => ({
+          name: item.skill,
+          level: item.level || "Beginner",
+          percentage: mapLevelToPercentage(item.level)
+        }));
+        setSkillsData(mapped);
+      } catch (err) {
+        console.error("Error loading mobile skills:", err);
+      }
+    };
+    fetchSkills();
+  }, [userName]);
+
+  const [statsData, setStatsData] = useState<any>(null);
+
+  useEffect(() => {
+    if (!userName) return;
+    const fetchStats = async () => {
+      try {
+        const res = await getDashboardStats(userName);
+        console.log("Mobile student stats response:", res);
+        const data = res?.data || res?.message || res;
+        if (data) {
+          setStatsData(data);
+        }
+      } catch (err) {
+        console.error("Error loading mobile dashboard stats:", err);
+      }
+    };
+    fetchStats();
+  }, [userName]);
+
+  const stats = useMemo(() => {
+    const score = statsData?.employability_score !== undefined ? `${statsData.employability_score}/100` : '73/100';
+    const completeness = statsData?.profile_completeness !== undefined ? `${statsData.profile_completeness}%` : '78%';
+    const skillsCount = statsData?.total_skills !== undefined ? String(statsData.total_skills) : '3';
+    const cgpaVal = statsData?.cgpa !== undefined ? String(statsData.cgpa) : '0';
+
+    return [
+      { title: 'Score', value: score, icon: TrendingUp, color: colors.accent.DEFAULT },
+      { title: 'Goal', value: completeness, icon: Award, color: colors.primary.DEFAULT },
+      { title: 'Skills', value: skillsCount, icon: Briefcase, color: colors.info || '#3b82f6' },
+      { title: 'CGPA', value: cgpaVal, icon: Bot, color: colors.success || '#10b981' },
+    ];
+  }, [statsData]);
+
+  const fallbackSkills = [
+    { name: 'Python', level: 'Advanced', percentage: 78 },
+    { name: 'SQL', level: 'Advanced', percentage: 85 },
+    { name: 'ML', level: 'Intermediate', percentage: 61 },
+    { name: 'Viz', level: 'Beginner', percentage: 55 },
   ];
+  
+  const displayedSkills = skillsData.length > 0 ? skillsData : fallbackSkills;
 
   const alerts = [
     { type: 'warning' as const, message: 'Upcoming Deadline', detail: 'Razorpay • 3 days left' },
@@ -347,7 +417,7 @@ export const StudentDashboardScreen = () => {
         </Animated.View>
 
         <Animated.View entering={FadeInUp.delay(600)}>
-          <SkillsCard skills={skills} />
+          <SkillsCard skills={displayedSkills} />
         </Animated.View>
 
         <View style={styles.sectionHeader}>

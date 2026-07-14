@@ -7,6 +7,7 @@ import { Svg, Circle, Defs, LinearGradient as SvgGradient, Stop } from 'react-na
 interface Skill {
   name: string;
   percentage: number;
+  level?: string;
 }
 
 interface SkillsCardProps {
@@ -120,7 +121,7 @@ export const SkillsCard = ({ skills }: SkillsCardProps) => {
               <View style={styles.tileBody}>
                 <Text style={styles.skillName}>{skill.name}</Text>
                 <View style={styles.levelBadge}>
-                  <Text style={styles.levelText}>{getProficiency(skill.percentage)}</Text>
+                  <Text style={styles.levelText}>{skill.level || getProficiency(skill.percentage)}</Text>
                 </View>
               </View>
             </View>

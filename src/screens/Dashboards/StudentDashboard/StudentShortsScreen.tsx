@@ -1,6 +1,9 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, ImageBackground } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getShortsFeed, saveShort, getSavedShorts } from '@/api/student.services';
+import { useAuth } from '@/context/AuthContext';
 import { WebView } from 'react-native-webview';
 import { colors } from '@/theme/colors';
 import { typography } from '@/theme/typography';
@@ -63,6 +66,19 @@ const GRID_ITEM_HEIGHT = GRID_ITEM_WIDTH * (16 / 9);
 // Reusable Video Player Logic inside a common wrapper
 const VideoPlayerWebView = ({ video, isPlaying }: { video: any, isPlaying: boolean }) => {
   const webViewRef = useRef<WebView>(null);
+  const [token, setToken] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    const getToken = async () => {
+      try {
+        const storedToken = await AsyncStorage.getItem("token");
+        setToken(storedToken);
+      } catch (err) {
+        console.log("Error loading token in WebView wrapper", err);
+      }
+    };
+    getToken();
+  }, []);
 
   // When isPlaying changes, we manually inject JS via effect
   React.useEffect(() => {
@@ -78,10 +94,53 @@ const VideoPlayerWebView = ({ video, isPlaying }: { video: any, isPlaying: boole
   const htmlContent = `
     <!DOCTYPE html>
     <html>
-      <body style="margin: 0; padding: 0; background-color: #000; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden;">
-        <video id="short_video" width="100%" height="100%" preload="none" poster="${video.posterUrl}" loop playsinline style="object-fit: contain; background: #000 url('${video.posterUrl}') center center / cover no-repeat; opacity: 1;">
-          <source src="${video.videoUrl}" type="video/mp4">
-        </video>
+      <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+        <style>
+          body { margin: 0; padding: 0; background-color: #000; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
+          video { object-fit: contain; width: 100%; height: 100%; background: #000; }
+          #loader { position: absolute; color: white; font-family: sans-serif; font-size: 14px; }
+        </style>
+      </head>
+      <body>
+        <div id="loader">Loading video...</div>
+        <video id="short_video" preload="auto" loop playsinline style="display: none;"></video>
+        
+        <script>
+          const videoUrl = "${video.videoUrl}";
+          const token = ${token ? JSON.stringify(token) : 'null'};
+          const videoElement = document.getElementById("short_video");
+          const loaderElement = document.getElementById("loader");
+
+          async function loadVideo() {
+            try {
+              const headers = {};
+              if (token) {
+                headers["Authorization"] = "token " + token;
+              }
+              const response = await fetch(videoUrl, { headers });
+              if (!response.ok) throw new Error("Fetch failed");
+              const blob = await response.blob();
+              const objectUrl = URL.createObjectURL(blob);
+              videoElement.src = objectUrl;
+              loaderElement.style.display = "none";
+              videoElement.style.display = "block";
+              
+              if (${isPlaying}) {
+                videoElement.play().catch(err => console.log("Play failed", err));
+              }
+            } catch (error) {
+              console.error("Blob load failed, falling back to direct src", error);
+              videoElement.src = videoUrl;
+              loaderElement.style.display = "none";
+              videoElement.style.display = "block";
+              if (${isPlaying}) {
+                videoElement.play().catch(err => console.log("Play failed", err));
+              }
+            }
+          }
+          loadVideo();
+        </script>
       </body>
     </html>
   `;
@@ -89,7 +148,7 @@ const VideoPlayerWebView = ({ video, isPlaying }: { video: any, isPlaying: boole
   return (
     <WebView 
       ref={webViewRef}
-      source={{ html: htmlContent }} 
+      source={{ html: htmlContent, baseUrl: 'https://devstridenex.quantcloud.in' }} 
       style={StyleSheet.absoluteFillObject}
       scrollEnabled={false}
       bounces={false}
@@ -250,92 +309,317 @@ const VerticalShortCard = ({ video }: any) => {
 
 // Main Screen Component
 export const StudentShortsScreen = () => {
-  const [savedItems, setSavedItems] = useState<number[]>(
-    trendingShorts.filter(s => s.isSaved).map(s => s.id)
-  );
-  
+  const { userName } = useAuth();
   const [activeTab, setActiveTab] = useState('Home');
+  const [shortsList, setShortsList] = useState<any[]>([]);
+  const [savedShortsList, setSavedShortsList] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadingSaved, setLoadingSaved] = useState(false);
+  const [savedItems, setSavedItems] = useState<any[]>([]);
 
-  const toggleSave = (id: number) => {
-    setSavedItems(prev => prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]);
+  const fetchSaved = async () => {
+    if (!userName) return;
+    try {
+      setLoadingSaved(true);
+      const res = await getSavedShorts(userName);
+      console.log("Mobile Saved shorts response:", res);
+      let rawSaved = [];
+      if (res && Array.isArray(res.message)) {
+        rawSaved = res.message;
+      } else if (res && Array.isArray(res.data)) {
+        rawSaved = res.data;
+      }
+      
+      // Match the correct "short" field from the Frappe saved record response
+      const savedIds = rawSaved.map((item: any) => String(item.short));
+      setSavedItems(savedIds);
+
+      // Filter shortsList to find details
+      const filtered = shortsList.filter(short => savedIds.includes(String(short.id)));
+
+      const mappedSaved = filtered.map((short: any) => {
+        const skill = short.category || "General";
+        const icon = skill.toLowerCase().includes("python") ? "🐍" : skill.toLowerCase().includes("pandas") ? "🐼" : "🗄️";
+        return {
+          id: short.id,
+          title: short.title,
+          category: skill,
+          savedDate: "Saved",
+          icon: icon,
+          color: "blue"
+        };
+      });
+      setSavedShortsList(mappedSaved);
+    } catch (err) {
+      console.error("Error loading saved shorts on mobile:", err);
+    } finally {
+      setLoadingSaved(false);
+    }
   };
 
-  const TABS = ['Home', 'Videos', 'Shorts', 'Playlists'];
+  useEffect(() => {
+    const fetchShorts = async () => {
+      try {
+        setLoading(true);
+        const res = await getShortsFeed(userName || undefined);
+        console.log("Mobile Shorts API response:", res);
+        
+        let rawShorts = [];
+        if (res && Array.isArray(res.message)) {
+          rawShorts = res.message;
+        } else if (res && Array.isArray(res.data)) {
+          rawShorts = res.data;
+        }
 
-  const renderHomeContent = () => (
-    <Animated.View entering={FadeIn.duration(400)}>
-      <View style={styles.trendingSection}>
-         <View style={styles.sectionHeader}>
-            <View style={styles.sectionTitleRow}>
-               <TrendingUp size={18} color={colors.accent.DEFAULT} />
-               <Text style={styles.sectionTitleText}>Trending Shorts</Text>
+        const BASE_DOMAIN = "https://devstridenex.quantcloud.in";
+        const savedIdsFromFeed: string[] = [];
+        const mapped = rawShorts.map((item: any) => {
+          const videoUrl = item.video ? (item.video.startsWith('http') ? item.video : `${BASE_DOMAIN}${item.video}`) : '';
+          const posterUrl = item.thumbnail ? (item.thumbnail.startsWith('http') ? item.thumbnail : `${BASE_DOMAIN}${item.thumbnail}`) : 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=500'; // fallback poster image
+          
+          const skill = item.skill || "Skill";
+          const authorAvatar = skill.substring(0, 2).toUpperCase();
+
+          if (item.is_saved) {
+            savedIdsFromFeed.push(String(item.name));
+          }
+
+          return {
+            id: item.name,
+            title: item.title || "Untitled Short",
+            category: skill,
+            duration: item.duration_display || `${item.duration_seconds || 30} sec`,
+            views: item.views_display || `${item.view_count || 0}`,
+            author: "StrideNex",
+            authorHandle: "@stridenex",
+            authorAvatar: authorAvatar,
+            tags: [skill],
+            isSaved: Boolean(item.is_saved),
+            videoUrl: videoUrl,
+            posterUrl: posterUrl,
+            color: "blue"
+          };
+        });
+
+        setShortsList(mapped);
+        if (savedIdsFromFeed.length > 0) {
+          setSavedItems(prev => {
+            const combined = new Set([...prev, ...savedIdsFromFeed]);
+            return Array.from(combined);
+          });
+        }
+      } catch (error) {
+        console.error("Error loading shorts in mobile screen:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchShorts();
+    // Do not auto-fetch saved shorts metadata details on mount (only query short ids for bookmark sync)
+    const fetchSavedIds = async () => {
+      if (!userName) return;
+      try {
+        const res = await getSavedShorts(userName);
+        let rawSaved = [];
+        if (res && Array.isArray(res.message)) {
+          rawSaved = res.message;
+        } else if (res && Array.isArray(res.data)) {
+          rawSaved = res.data;
+        }
+        const savedIds = rawSaved.map((item: any) => String(item.short));
+        setSavedItems(savedIds);
+      } catch (e) {}
+    };
+    fetchSavedIds();
+  }, [userName]);
+
+  const toggleSave = async (id: any) => {
+    if (!userName) {
+      console.log("User not logged in");
+      return;
+    }
+
+    const isAlreadySaved = savedItems.includes(String(id));
+
+    try {
+      // Opt-in UI update
+      setSavedItems(prev => prev.includes(String(id)) ? prev.filter(item => item !== String(id)) : [...prev, String(id)]);
+
+      // Call API
+      const res = await saveShort({
+        user: userName,
+        short_name: String(id)
+      });
+      console.log("Save short mobile response:", res);
+
+      // Refresh saved shorts list
+      fetchSaved();
+    } catch (error) {
+      console.error("Error saving short on mobile:", error);
+      // Rollback UI update
+      setSavedItems(prev => isAlreadySaved ? [...prev, String(id)] : prev.filter(item => item !== String(id)));
+    }
+  };
+
+  const TABS = ['Home', 'Videos', 'Shorts', 'Saved', 'Playlists'];
+
+  const renderHomeContent = () => {
+    if (loading) {
+      return (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 40 }}>
+          <Text style={{ fontSize: 14, color: '#64748B' }}>Loading study shorts...</Text>
+        </View>
+      );
+    }
+
+    return (
+      <Animated.View entering={FadeIn.duration(400)}>
+        <View style={styles.trendingSection}>
+           <View style={styles.sectionHeader}>
+              <View style={styles.sectionTitleRow}>
+                 <TrendingUp size={18} color={colors.accent.DEFAULT} />
+                 <Text style={styles.sectionTitleText}>Trending Shorts</Text>
+              </View>
+           </View>
+           
+           {shortsList.length === 0 ? (
+             <View style={{ paddingVertical: 20, alignItems: 'center' }}>
+               <Text style={{ color: '#94A3B8', fontSize: 14 }}>No study shorts available.</Text>
+             </View>
+           ) : (
+             <ScrollView 
+               horizontal 
+               showsHorizontalScrollIndicator={false}
+               contentContainerStyle={styles.horizontalScrollContent}
+             >
+                {shortsList.slice(0, 4).map((short) => (
+                  <VideoPlayerCard 
+                    key={short.id} 
+                    video={short} 
+                    isSaved={savedItems.includes(short.id)}
+                    onToggleSave={toggleSave}
+                  />
+                ))}
+             </ScrollView>
+           )}
+        </View>
+
+        <View style={styles.savedSection}>
+           <View style={styles.savedCard}>
+              <View style={styles.savedHeader}>
+                 <Bookmark size={16} color={colors.accent.DEFAULT} />
+                 <Text style={styles.savedTitleText}>Saved Topics</Text>
+              </View>
+              <View style={styles.savedList}>
+                 {savedShortsList.length === 0 ? (
+                   <Text style={{ fontSize: 13, color: '#94A3B8', textAlign: 'center', paddingVertical: 10 }}>No saved topics yet</Text>
+                 ) : (
+                   savedShortsList.map((saved) => (
+                     <TouchableOpacity key={saved.id} style={styles.savedItem}>
+                        <View style={styles.savedIconBox}>
+                           <Text style={styles.savedIconText}>{saved.icon}</Text>
+                        </View>
+                        <View style={styles.savedItemContent}>
+                           <Text style={styles.savedItemTitle}>{saved.title}</Text>
+                           <Text style={styles.savedItemDate}>{saved.savedDate}</Text>
+                        </View>
+                     </TouchableOpacity>
+                   ))
+                 )}
+              </View>
+              <TouchableOpacity style={styles.viewSavedBtn}>
+                 <Text style={styles.viewSavedBtnText}>View All Saved</Text>
+              </TouchableOpacity>
+           </View>
+        </View>
+        
+        <View style={styles.footerSpacer} />
+      </Animated.View>
+    );
+  };
+
+  const renderVideosContent = () => {
+    if (loading) {
+      return (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 40 }}>
+          <Text style={{ fontSize: 14, color: '#64748B' }}>Loading videos...</Text>
+        </View>
+      );
+    }
+
+    return (
+      <Animated.View entering={FadeIn.duration(400)} style={styles.videosFeed}>
+         {shortsList.length === 0 ? (
+           <View style={{ paddingVertical: 40, alignItems: 'center' }}>
+             <Text style={{ color: '#94A3B8', fontSize: 14 }}>No study videos available.</Text>
+           </View>
+         ) : (
+           shortsList.map((video) => (
+             <StandardVideoCard key={video.id} video={video} />
+           ))
+         )}
+         <View style={styles.footerSpacer} />
+      </Animated.View>
+    );
+  };
+
+  const renderShortsContent = () => {
+    if (loading) {
+      return (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 40 }}>
+          <Text style={{ fontSize: 14, color: '#64748B' }}>Loading study shorts...</Text>
+        </View>
+      );
+    }
+
+    return (
+      <Animated.View entering={FadeIn.duration(400)} style={styles.shortsFeedWrap}>
+        <View style={styles.shortsFeed}>
+          {shortsList.length === 0 ? (
+            <View style={{ paddingVertical: 40, alignItems: 'center' }}>
+              <Text style={{ color: '#94A3B8', fontSize: 14 }}>No study shorts available.</Text>
             </View>
-         </View>
-         
-         <ScrollView 
-           horizontal 
-           showsHorizontalScrollIndicator={false}
-           contentContainerStyle={styles.horizontalScrollContent}
-         >
-            {trendingShorts.slice(0, 4).map((short) => (
-              <VideoPlayerCard 
-                key={short.id} 
-                video={short} 
-                isSaved={savedItems.includes(short.id)}
-                onToggleSave={toggleSave}
-              />
-            ))}
-         </ScrollView>
-      </View>
+          ) : (
+            shortsList.map(short => (
+              <VerticalShortCard key={short.id} video={short} />
+            ))
+          )}
+        </View>
+        <View style={styles.footerSpacer} />
+      </Animated.View>
+    );
+  };
 
-      <View style={styles.savedSection}>
-         <View style={styles.savedCard}>
-            <View style={styles.savedHeader}>
-               <Bookmark size={16} color={colors.accent.DEFAULT} />
-               <Text style={styles.savedTitleText}>Saved Topics</Text>
+  const renderSavedContent = () => {
+    if (loadingSaved) {
+      return (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 40 }}>
+          <Text style={{ fontSize: 14, color: '#64748B' }}>Loading saved shorts...</Text>
+        </View>
+      );
+    }
+
+    // Filter shortsList to display only saved shorts in 9:16 layout
+    const savedVideos = shortsList.filter(short => savedItems.includes(String(short.id)));
+
+    return (
+      <Animated.View entering={FadeIn.duration(400)} style={styles.shortsFeedWrap}>
+        <View style={styles.shortsFeed}>
+          {savedVideos.length === 0 ? (
+            <View style={{ paddingVertical: 40, alignItems: 'center', width: '100%' }}>
+              <Text style={{ color: '#94A3B8', fontSize: 14 }}>No saved shorts yet.</Text>
             </View>
-            <View style={styles.savedList}>
-               {savedShorts.map((saved) => (
-                 <TouchableOpacity key={saved.id} style={styles.savedItem}>
-                    <View style={styles.savedIconBox}>
-                       <Text style={styles.savedIconText}>{saved.icon}</Text>
-                    </View>
-                    <View style={styles.savedItemContent}>
-                       <Text style={styles.savedItemTitle}>{saved.title}</Text>
-                       <Text style={styles.savedItemDate}>{saved.savedDate}</Text>
-                    </View>
-                 </TouchableOpacity>
-               ))}
-            </View>
-            <TouchableOpacity style={styles.viewSavedBtn}>
-               <Text style={styles.viewSavedBtnText}>View All Saved</Text>
-            </TouchableOpacity>
-         </View>
-      </View>
-      
-      <View style={styles.footerSpacer} />
-    </Animated.View>
-  );
-
-  const renderVideosContent = () => (
-    <Animated.View entering={FadeIn.duration(400)} style={styles.videosFeed}>
-       {trendingShorts.map((video) => (
-         <StandardVideoCard key={video.id} video={video} />
-       ))}
-       <View style={styles.footerSpacer} />
-    </Animated.View>
-  );
-
-  const renderShortsContent = () => (
-    <Animated.View entering={FadeIn.duration(400)} style={styles.shortsFeedWrap}>
-      <View style={styles.shortsFeed}>
-        {trendingShorts.map(short => (
-          <VerticalShortCard key={short.id} video={short} />
-        ))}
-      </View>
-      <View style={styles.footerSpacer} />
-    </Animated.View>
-  );
+          ) : (
+            savedVideos.map(short => (
+              <VerticalShortCard key={short.id} video={short} />
+            ))
+          )}
+        </View>
+        <View style={styles.footerSpacer} />
+      </Animated.View>
+    );
+  };
 
   const renderPlaylistsContent = () => (
     <Animated.View entering={FadeIn.duration(400)} style={styles.playlistsFeed}>
@@ -365,7 +649,12 @@ export const StudentShortsScreen = () => {
               <TouchableOpacity
                 key={tab}
                 style={[styles.tabButton, activeTab === tab && styles.tabButtonActive]}
-                onPress={() => setActiveTab(tab)}
+                onPress={() => {
+                  setActiveTab(tab);
+                  if (tab === 'Saved') {
+                    fetchSaved(); // Call API ONLY when user navigates to the Saved tab
+                  }
+                }}
               >
                 <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>{tab}</Text>
               </TouchableOpacity>
@@ -378,6 +667,7 @@ export const StudentShortsScreen = () => {
           {activeTab === 'Home' && renderHomeContent()}
           {activeTab === 'Videos' && renderVideosContent()}
           {activeTab === 'Shorts' && renderShortsContent()}
+          {activeTab === 'Saved' && renderSavedContent()}
           {activeTab === 'Playlists' && renderPlaylistsContent()}
         </View>
 
