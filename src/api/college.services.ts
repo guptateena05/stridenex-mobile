@@ -531,6 +531,15 @@ export const exportNotEligibleStudents = async (params: {
   }
 };
 
-
-
-
+export const getCollegeEmployabilitySummary = async (college: string) => {
+  try {
+    const response = await api.get(
+      `method/stridenex_app.api_stridenex_app.college.college.get_college_employability_summary`,
+      { params: { college } }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching college employability summary:", error);
+    throw error;
+  }
+};

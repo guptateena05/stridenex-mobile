@@ -8,7 +8,7 @@ import { StatsCard } from '@/components/dashboard/StatsCard';
 import Animated, { FadeInUp, FadeInRight } from 'react-native-reanimated';
 import { AlertTriangle, TrendingDown, Target, Zap, Brain, ChevronDown, Search, X, ChevronRight } from 'lucide-react-native';
 import { useAuth } from '@/context/AuthContext';
-import { getCollegeDetails, getLowEmployabilityStudents, assignStudentMentor, getMasterData } from '@/api/college.services';
+import { getCollegeDetails, getLowEmployabilityStudents, assignStudentMentor, getMasterData, getCollegeEmployabilitySummary } from '@/api/college.services';
 
 const recommendations = [
   { icon: "📚", text: "Bulk-enroll CSE 3rd Year in Data bootcamp", subject: "84 students", impact: "+15 avg score" },
@@ -22,6 +22,7 @@ export const CollegeInterventionsScreen = () => {
   const [collegeDetails, setCollegeDetails] = useState<any>(null);
   const [studentsList, setStudentsList] = useState<any[]>([]);
   const [mentorsList, setMentorsList] = useState<any[]>([]);
+  const [summaryData, setSummaryData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   
@@ -29,7 +30,7 @@ export const CollegeInterventionsScreen = () => {
   const [selectedMentors, setSelectedMentors] = useState<Record<string, any>>({});
   // Assigning status per student email/name
   const [assigningMap, setAssigningMap] = useState<Record<string, boolean>>({});
-
+  
   // Mentor search & selection modal
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeStudent, setActiveStudent] = useState<any>(null);
@@ -47,11 +48,16 @@ export const CollegeInterventionsScreen = () => {
       const data = collegeRes?.data || collegeRes?.message?.data || collegeRes?.message;
       if (data) {
         setCollegeDetails(data);
-        const collegeName = data.name || data.college_name || userName;
+        const collegeName = data.college_name || data.name;
+        if (!collegeName) {
+          console.warn("College name not found in college details");
+          return;
+        }
 
-        const [studentsRes, mentorsRes] = await Promise.allSettled([
+        const [studentsRes, mentorsRes, summaryRes] = await Promise.allSettled([
           getLowEmployabilityStudents(collegeName),
-          getMasterData("Mentor")
+          getMasterData("Mentor"),
+          getCollegeEmployabilitySummary(collegeName)
         ]);
 
         if (studentsRes.status === "fulfilled") {
@@ -68,6 +74,13 @@ export const CollegeInterventionsScreen = () => {
           setMentorsList(arr);
         } else {
           console.error("Failed to load mentors:", mentorsRes.reason);
+        }
+
+        if (summaryRes.status === "fulfilled") {
+          const raw = summaryRes.value?.data ?? summaryRes.value?.message?.data ?? summaryRes.value?.message ?? summaryRes.value;
+          setSummaryData(raw);
+        } else {
+          console.error("Failed to load employability summary:", summaryRes.reason);
         }
       }
     } catch (err) {
@@ -130,12 +143,12 @@ export const CollegeInterventionsScreen = () => {
   // Top metric card metrics
   const displayMetrics = useMemo(() => {
     return [
-      { id: 1, title: 'Critical Risk <40', value: loading ? '...' : String(studentsList.length), icon: AlertTriangle, color: colors.error },
-      { id: 2, title: 'High Risk 40-55', value: '96', icon: AlertTriangle, color: colors.warning },
-      { id: 3, title: 'Declining Progress', value: '128', icon: TrendingDown, color: colors.success },
-      { id: 4, title: 'Placement-Ready', value: '312', icon: Target, color: colors.success },
+      { id: 1, title: 'Critical Risk <40', value: loading ? '...' : String(summaryData?.critical !== undefined ? summaryData.critical : 0), icon: AlertTriangle, color: colors.error },
+      { id: 2, title: 'High Risk 40-55', value: loading ? '...' : String(summaryData?.high_risk !== undefined ? summaryData.high_risk : 0), icon: AlertTriangle, color: colors.warning },
+      { id: 3, title: 'Declining Progress', value: loading ? '...' : String(summaryData?.declining_progress !== undefined ? summaryData.declining_progress : 0), icon: TrendingDown, color: colors.success },
+      { id: 4, title: 'Placement-Ready', value: loading ? '...' : String(summaryData?.placement_ready !== undefined ? summaryData.placement_ready : 0), icon: Target, color: colors.success },
     ];
-  }, [loading, studentsList.length]);
+  }, [loading, summaryData, studentsList.length]);
 
   // Modal view for selecting a mentor
   const renderMentorSelectModal = () => {

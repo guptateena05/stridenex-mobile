@@ -478,3 +478,30 @@ export const updateProjectApplicationStatus = async (payload: { name: string, in
     throw error;
   }
 };
+
+export const generateEmailTemplate = async (industry: string) => {
+  try {
+    const response = await api.post(
+      `method/stridenex_app.stridenex_app.doctype.recruitment_outreach_template.recruitment_outreach_template.generate_email_template`,
+      { industry }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error generating email template:", error);
+    throw error;
+  }
+};
+
+export const getInvitationTemplate = async (industry: string) => {
+  try {
+    const response = await api.post(
+      `method/stridenex_app.stridenex_app.doctype.recruitment_outreach_template.recruitment_outreach_template.get_invitation_template`,
+      { industry }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error getting invitation template:", error);
+    throw error;
+  }
+};
+

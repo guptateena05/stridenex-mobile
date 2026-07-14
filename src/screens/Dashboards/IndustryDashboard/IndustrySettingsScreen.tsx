@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Clipboard, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Clipboard, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '@/theme/colors';
 import { typography } from '@/theme/typography';
@@ -15,38 +15,63 @@ import {
 } from 'lucide-react-native';
 import Animated, { FadeInUp, FadeInDown, Layout } from 'react-native-reanimated';
 import { useIndustry } from '@/context/IndustryContext';
+import { generateEmailTemplate, getInvitationTemplate } from '@/api/industry.services';
 
 export const IndustrySettingsScreen = () => {
   const { industryData } = useIndustry();
   const [activeTemplate, setActiveTemplate] = useState<'email' | 'invite' | null>(null);
   const [copied, setCopied] = useState(false);
+  const [loadingType, setLoadingType] = useState<'email' | 'invite' | null>(null);
 
-  const companyName = industryData?.company_name || "your company";
+  const [generatedEmail, setGeneratedEmail] = useState<{subject: string, body: string} | null>(null);
+  const [generatedInvite, setGeneratedInvite] = useState<string | null>(null);
 
-  const emailTemplate = {
-    subject: `Opportunity: Internship with ${companyName}`,
-    body: `Dear Student,
-
-We've been impressed by your profile on Stridenex. Your skills and achievements align perfectly with our current initiatives.
-
-We would love to discuss a potential partnership or internship opportunity with you.
-
-Best regards,
-Recruitment Team
-${companyName}`
+  const handleGenerateEmail = async () => {
+    const compName = industryData?.company_name;
+    if (!compName) {
+      Alert.alert("Error", "Company name not found. Please complete your profile first.");
+      return;
+    }
+    try {
+      setLoadingType('email');
+      const res = await generateEmailTemplate(compName);
+      const data = res?.message || res?.data || res;
+      if (data) {
+        setGeneratedEmail({
+          subject: data.subject || '',
+          body: data.body || ''
+        });
+        setActiveTemplate('email');
+      }
+    } catch (err: any) {
+      console.error(err);
+      Alert.alert("Error", err?.message || "Failed to generate email template");
+    } finally {
+      setLoadingType(null);
+    }
   };
 
-  const inviteTemplate = `Hi there! 👋
-
-${companyName} are currently looking for talented students to join our upcoming projects.
-
-Check out our latest internship postings on Stridenex and apply today:
-[Link to Stridenex Dashboard]
-
-We look forward to seeing your application!
-
-Best,
-The ${companyName}`;
+  const handleGenerateInvitation = async () => {
+    const compName = industryData?.company_name;
+    if (!compName) {
+      Alert.alert("Error", "Company name not found. Please complete your profile first.");
+      return;
+    }
+    try {
+      setLoadingType('invite');
+      const res = await getInvitationTemplate(compName);
+      const data = res?.message || res?.data || res;
+      if (data) {
+        setGeneratedInvite(data.body || '');
+        setActiveTemplate('invite');
+      }
+    } catch (err: any) {
+      console.error(err);
+      Alert.alert("Error", err?.message || "Failed to generate invitation template");
+    } finally {
+      setLoadingType(null);
+    }
+  };
 
   const handleCopy = (text: string) => {
     Clipboard.setString(text);
@@ -75,10 +100,17 @@ The ${companyName}`;
             <Text style={styles.cardDesc}>Generate a high-conversion follow-up email template personalized for your company outreach.</Text>
             <TouchableOpacity 
               style={styles.actionBtn} 
-              onPress={() => setActiveTemplate('email')}
+              onPress={handleGenerateEmail}
+              disabled={loadingType !== null}
             >
-              <Sparkles size={14} color="#FFF" style={{ marginRight: 6 }} />
-              <Text style={styles.actionBtnText}>Generate Email Template</Text>
+              {loadingType === 'email' ? (
+                <ActivityIndicator size="small" color="#FFF" style={{ marginRight: 6 }} />
+              ) : (
+                <Sparkles size={14} color="#FFF" style={{ marginRight: 6 }} />
+              )}
+              <Text style={styles.actionBtnText}>
+                {loadingType === 'email' ? 'Generating...' : 'Generate Email Template'}
+              </Text>
             </TouchableOpacity>
           </Animated.View>
 
@@ -90,10 +122,17 @@ The ${companyName}`;
             <Text style={styles.cardDesc}>Get a concise, friendly invitation template perfect for quick platform-based student invites.</Text>
             <TouchableOpacity 
               style={[styles.actionBtn, { backgroundColor: '#3B82F6' }]} 
-              onPress={() => setActiveTemplate('invite')}
+              onPress={handleGenerateInvitation}
+              disabled={loadingType !== null}
             >
-              <Sparkles size={14} color="#FFF" style={{ marginRight: 6 }} />
-              <Text style={styles.actionBtnText}>Get Invitation Template</Text>
+              {loadingType === 'invite' ? (
+                <ActivityIndicator size="small" color="#FFF" style={{ marginRight: 6 }} />
+              ) : (
+                <Sparkles size={14} color="#FFF" style={{ marginRight: 6 }} />
+              )}
+              <Text style={styles.actionBtnText}>
+                {loadingType === 'invite' ? 'Generating...' : 'Get Invitation Template'}
+              </Text>
             </TouchableOpacity>
           </Animated.View>
         </View>
@@ -115,7 +154,7 @@ The ${companyName}`;
               <View style={styles.templateHeaderRight}>
                 <TouchableOpacity 
                   style={styles.copyPill} 
-                  onPress={() => handleCopy(activeTemplate === 'email' ? `${emailTemplate.subject}\n\n${emailTemplate.body}` : inviteTemplate)}
+                  onPress={() => handleCopy(activeTemplate === 'email' ? `${generatedEmail?.subject || ''}\n\n${generatedEmail?.body || ''}` : (generatedInvite || ''))}
                 >
                   <Copy size={14} color="#64748B" style={{ marginRight: 6 }} />
                   <Text style={styles.copyPillText}>{copied ? 'Copied!' : 'Copy to Clipboard'}</Text>
@@ -127,13 +166,13 @@ The ${companyName}`;
             </View>
 
             <View style={styles.templateBody}>
-              {activeTemplate === 'email' ? (
+              {activeTemplate === 'email' && generatedEmail ? (
                 <>
-                  <Text style={styles.subjectLine}><Text style={styles.boldText}>Subject:</Text> {emailTemplate.subject}</Text>
-                  <Text style={styles.bodyText}>{emailTemplate.body}</Text>
+                  <Text style={styles.subjectLine}><Text style={styles.boldText}>Subject:</Text> {generatedEmail.subject}</Text>
+                  <Text style={styles.bodyText}>{generatedEmail.body}</Text>
                 </>
               ) : (
-                <Text style={styles.bodyText}>{inviteTemplate}</Text>
+                <Text style={styles.bodyText}>{generatedInvite}</Text>
               )}
             </View>
           </Animated.View>
