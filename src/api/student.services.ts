@@ -825,11 +825,26 @@ export const sendMessage = async (payload: {
   reply_to_message?: string;
   channel_category?: string;
   text: string;
+  file?: any;
 }) => {
   try {
+    const formData = new FormData();
+    formData.append("channel_id", payload.channel_id);
+    if (payload.reply_to_message) formData.append("reply_to_message", payload.reply_to_message);
+    if (payload.channel_category) formData.append("channel_category", payload.channel_category);
+    formData.append("text", payload.text);
+    if (payload.file) {
+      formData.append("file", payload.file);
+    }
+
     const response = await api.post(
       "method/stridenex_app.api_stridenex_app.raven.send_message",
-      payload
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      }
     );
     return response.data;
   } catch (error) {
