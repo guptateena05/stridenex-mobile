@@ -260,6 +260,35 @@ export const StudentSkillsScreen = () => {
     }
   };
 
+  const handleVerifySkillDirect = async (skillRow: SkillRow) => {
+    if (!userName || submittingSkill) return;
+    setSubmittingSkill(true);
+    try {
+      const response = await getSkillTestQuestions(userName, skillRow.name, skillRow.level);
+      const data = response?.message || response?.data || response;
+
+      if (data && data.questions && data.questions.length > 0) {
+        setTestQuestions(data.questions);
+        setTestSessionId(data.session_id);
+        setTestSkill(skillRow.name);
+        setTestLevel(skillRow.level);
+        setUserAnswers({});
+        setCurrentQuestionIndex(0);
+        setTestResult(null);
+
+        setIsSkillModalVisible(false);
+        setIsTestModalOpen(true);
+      } else {
+        Alert.alert("Notice", "No verification questions available for this skill/level.");
+      }
+    } catch (e: any) {
+      console.error(e);
+      Alert.alert("Error", e?.message || "Failed to load skill test questions");
+    } finally {
+      setSubmittingSkill(false);
+    }
+  };
+
   const handleSubmitTest = async () => {
     if (isSubmittingTest) return;
     const unansweredCount = testQuestions.length - Object.keys(userAnswers).length;
@@ -449,6 +478,7 @@ export const StudentSkillsScreen = () => {
               setIsDetailModalVisible(true);
             }}
             onAddSkillPress={() => setIsSkillModalVisible(true)}
+            onVerifySkillPress={handleVerifySkillDirect}
           />
         </Animated.View>
 

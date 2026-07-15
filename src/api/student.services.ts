@@ -772,6 +772,23 @@ export const listMessages = async (channelId: string, channelCategory?: string) 
 };
 
 /**
+ * Fetch replies for a given message.
+ * Endpoint: method/stridenex_app.api_stridenex_app.raven.get_replies
+ */
+export const getReplies = async (messageId: string) => {
+  try {
+    const response = await api.post(
+      "method/stridenex_app.api_stridenex_app.raven.get_replies",
+      { message_id: messageId }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching replies:", error);
+    throw error;
+  }
+};
+
+/**
  * Leave a given channel.
  * Endpoint: method/stridenex_app.api_stridenex_app.raven.leave_channel
  */

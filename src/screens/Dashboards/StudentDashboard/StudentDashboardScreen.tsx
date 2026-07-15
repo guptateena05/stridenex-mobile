@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, Modal, KeyboardAvoidingView, Platform, Alert, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Modal, KeyboardAvoidingView, Platform, Alert, TouchableOpacity, ActivityIndicator } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '@/theme/colors';
@@ -12,10 +12,10 @@ import { LearningActivityGraph } from '@/components/dashboard/LearningActivityGr
 import { AICoachCard } from '@/components/dashboard/AICoachCard';
 import { SkillsCard } from '@/components/dashboard/SkillsCard';
 import { AlertsAgendaCard } from '@/components/dashboard/AlertsAgendaCard';
-import { TrendingUp, Award, Briefcase, Bot, X } from 'lucide-react-native';
+import { TrendingUp, Award, Briefcase, Bot, X, MapPin, Clock, IndianRupee } from 'lucide-react-native';
 
 import Animated, { FadeInUp, FadeInRight } from 'react-native-reanimated';
-import { getStudentByEmail, updateStudent, mapYearToWord, getStudentSkills, getDashboardStats } from '@/api/student.services';
+import { getStudentByEmail, updateStudent, mapYearToWord, getStudentSkills, getDashboardStats, getStudentInternshipList } from '@/api/student.services';
 import DynamicForm from '@/components/forms/DynamicForm';
 import { FormField } from '@/components/forms/DynamicField';
 
@@ -129,6 +129,85 @@ export const StudentDashboardScreen = () => {
     };
     fetchStats();
   }, [userName]);
+
+  const [internshipsData, setInternshipsData] = useState<any[]>([]);
+  const [internshipsLoading, setInternshipsLoading] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (!userName || !studentData) return;
+    const fetchInternships = async () => {
+      try {
+        setInternshipsLoading(true);
+        const res = await getStudentInternshipList(
+          userName,
+          studentData.course || null,
+          studentData.department || null,
+          studentData.current_year || studentData.academic_year || null
+        );
+        const dataContainer = (res?.data && typeof res.data === 'object' && !Array.isArray(res.data)) ? res : (res?.message && typeof res.message === 'object' ? res.message : res);
+        const internshipData = dataContainer?.data?.internships || dataContainer?.internships || [];
+        
+        // Match mapping function
+        const mapped = internshipData.slice(0, 3).map((item: any, index: number) => {
+          const matches = [91, 84, 76];
+          const match = matches[index % matches.length];
+          
+          let ringColor = "border-emerald-500";
+          let matchColor = "#10B981";
+          let bgColor = "#ECFDF5";
+          
+          if (match < 80) {
+            ringColor = "border-orange-500";
+            matchColor = "#F97316";
+            bgColor = "#FFF7ED";
+          } else if (match < 90) {
+            ringColor = "border-sky-500";
+            matchColor = "#0EA5E9";
+            bgColor = "#F0F9FF";
+          }
+
+          let stipendStr = "Unpaid";
+          if (item.stipend) {
+            const amount = Number(item.stipend);
+            if (amount >= 1000) {
+              stipendStr = `₹${(amount / 1000).toFixed(0)}k/mo`;
+            } else {
+              stipendStr = `₹${amount}/mo`;
+            }
+          }
+
+          let durationStr = "N/A";
+          if (item.duration) {
+            const days = Number(item.duration);
+            if (days >= 30) {
+              durationStr = `${Math.round(days / 30)} mo`;
+            } else {
+              durationStr = `${days} days`;
+            }
+          }
+
+          return {
+            role: item.title || "Internship Role",
+            company: item.industry || "Company Name",
+            match,
+            location: item.location || "Remote",
+            duration: durationStr,
+            stipend: stipendStr,
+            matchColor,
+            ringColor,
+            bgColor
+          };
+        });
+
+        setInternshipsData(mapped);
+      } catch (error) {
+        console.error("Error fetching matching internships on mobile dashboard:", error);
+      } finally {
+        setInternshipsLoading(false);
+      }
+    };
+    fetchInternships();
+  }, [userName, studentData]);
 
   const stats = useMemo(() => {
     const score = statsData?.employability_score !== undefined ? `${statsData.employability_score}/100` : '73/100';
@@ -427,6 +506,54 @@ export const StudentDashboardScreen = () => {
         <Animated.View entering={FadeInUp.delay(700)}>
           <AlertsAgendaCard alerts={alerts} agenda={agenda} />
         </Animated.View>
+
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Top Matched Internships</Text>
+        </View>
+
+        <Animated.View entering={FadeInUp.delay(800)}>
+          {internshipsLoading ? (
+            <ActivityIndicator size="small" color="#FF6B00" style={{ marginVertical: 20 }} />
+          ) : internshipsData.length === 0 ? (
+            <View style={styles.emptyCard}>
+              <Text style={styles.emptyText}>No matched internships found.</Text>
+            </View>
+          ) : (
+            <View style={{ gap: 12 }}>
+              {internshipsData.map((internship: any, index: number) => (
+                <View key={index} style={styles.internshipCard}>
+                  <View style={styles.internshipHeader}>
+                    <View style={styles.companyLogo}>
+                      <Briefcase size={20} color="#64748B" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.internshipRole} numberOfLines={1}>{internship.role}</Text>
+                      <Text style={styles.internshipCompany} numberOfLines={1}>{internship.company}</Text>
+                    </View>
+                    <View style={[styles.matchBadge, { borderColor: internship.matchColor }]}>
+                      <Text style={[styles.matchText, { color: internship.matchColor }]}>{internship.match}%</Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.metaRow}>
+                    <View style={styles.metaBadge}>
+                      <MapPin size={12} color="#EF4444" />
+                      <Text style={styles.metaText}>{internship.location}</Text>
+                    </View>
+                    <View style={styles.metaBadge}>
+                      <Clock size={12} color="#64748B" />
+                      <Text style={styles.metaText}>{internship.duration}</Text>
+                    </View>
+                    <View style={[styles.metaBadge, styles.stipendBadge]}>
+                      <IndianRupee size={10} color="#15803D" />
+                      <Text style={[styles.metaText, styles.stipendText]}>{internship.stipend}</Text>
+                    </View>
+                  </View>
+                </View>
+              ))}
+            </View>
+          )}
+        </Animated.View>
         
         <View style={styles.footerSpacer} />
       </ScrollView>
@@ -519,4 +646,99 @@ const styles = StyleSheet.create({
   modalTitle: { fontSize: 18, fontWeight: '800', color: '#0F172A' },
   closeBtn: { padding: 6, backgroundColor: '#F8FAFC', borderRadius: 20 },
   modalScroll: { paddingBottom: 60 },
+  emptyCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderStyle: 'dashed',
+  },
+  emptyText: {
+    color: '#64748B',
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  internshipCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  internshipHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 12,
+  },
+  companyLogo: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  internshipRole: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#0F172A',
+    marginBottom: 2,
+  },
+  internshipCompany: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#64748B',
+  },
+  matchBadge: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  matchText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  metaBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 6,
+  },
+  metaText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#475569',
+  },
+  stipendBadge: {
+    backgroundColor: '#F0FDF4',
+    borderWidth: 1,
+    borderColor: '#DCFCE7',
+  },
+  stipendText: {
+    color: '#15803D',
+    fontWeight: '700',
+  },
 });

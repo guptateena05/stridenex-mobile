@@ -36,9 +36,10 @@ interface SkillLedgerListProps {
   skills: SkillRow[];
   onSkillPress?: (skill: SkillRow) => void;
   onAddSkillPress?: () => void;
+  onVerifySkillPress?: (skill: SkillRow) => void;
 }
 
-export const SkillLedgerList: React.FC<SkillLedgerListProps> = ({ skills, onSkillPress, onAddSkillPress }) => {
+export const SkillLedgerList: React.FC<SkillLedgerListProps> = ({ skills, onSkillPress, onAddSkillPress, onVerifySkillPress }) => {
   const renderItem = (item: SkillRow) => {
     const catStyle = getCategoryStyle(item.categoryType);
     const levelStyle = getLevelStyle(item.level, item.levelType);
@@ -60,9 +61,13 @@ export const SkillLedgerList: React.FC<SkillLedgerListProps> = ({ skills, onSkil
                 <Text style={styles.verifiedText}>Verified</Text>
               </View>
             ) : (
-              <View style={styles.pendingBadge}>
-                <Text style={styles.pendingText}>Pending</Text>
-              </View>
+              <TouchableOpacity 
+                style={styles.verifyBtn}
+                onPress={() => onVerifySkillPress?.(item)}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.verifyBtnText}>Verify Skill</Text>
+              </TouchableOpacity>
             )}
             <ChevronRight size={16} color="#94A3B8" style={{ marginLeft: 6 }} />
           </View>
@@ -298,5 +303,16 @@ const styles = StyleSheet.create({
     fontSize: 13,
     textAlign: 'center',
     lineHeight: 18,
-  }
+  },
+  verifyBtn: {
+    backgroundColor: colors.accent.DEFAULT,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  verifyBtnText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#FFF',
+  },
 });
