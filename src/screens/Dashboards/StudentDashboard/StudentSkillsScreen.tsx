@@ -400,11 +400,7 @@ export const StudentSkillsScreen = () => {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-      <ScrollView 
-        style={styles.container} 
-        contentContainerStyle={styles.content} 
-        showsVerticalScrollIndicator={false}
-      >
+      <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <Animated.View entering={FadeInUp.delay(100)} style={styles.header}>
           <View style={styles.headerBadge}>
             <Zap size={10} color={colors.accent.DEFAULT} fill={colors.accent.DEFAULT} />

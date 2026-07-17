@@ -221,11 +221,7 @@ export const StudentPathScreen = () => {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-      <ScrollView 
-        style={styles.container} 
-        contentContainerStyle={styles.content} 
-        showsVerticalScrollIndicator={false}
-      >
+      <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <Animated.View entering={FadeInUp.delay(100)} style={styles.header}>
           <View style={styles.headerBadge}>
             <Target size={10} color={colors.accent.DEFAULT} />

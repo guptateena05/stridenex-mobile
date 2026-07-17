@@ -9,7 +9,7 @@ import {
   ActivityIndicator, 
   Alert, 
   Modal, 
-  RefreshControl 
+  RefreshControl
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '@/theme/colors';
@@ -50,7 +50,7 @@ const getNoticeStyles = (type: string) => {
     case "Events":
       return { icon: Megaphone, color: colors.accent.DEFAULT };
     case "Academic":
-      return { icon: '#9333EA', color: "#9333EA" };
+      return { icon: Trophy, color: "#16A34A" };
     case "Compliance":
       return { icon: Bell, color: "#10B981" };
     default:

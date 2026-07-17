@@ -72,21 +72,21 @@ export const StudentDrawerNavigator = () => {
         name="Overview"
         component={StudentDashboardScreen}
         options={{
-          drawerIcon: ({ color, size }) => <LayoutDashboard color={color} size={size} />
+          drawerIcon: ({ color, size }) => <LayoutDashboard color={color} size={size} />,
         }}
       />
       <Drawer.Screen
         name="Skills"
         component={StudentSkillsScreen}
         options={{
-          drawerIcon: ({ color, size }) => <Zap color={color} size={size} />
+          drawerIcon: ({ color, size }) => <Zap color={color} size={size} />,
         }}
       />
       <Drawer.Screen
         name="Path"
         component={StudentPathScreen}
         options={{
-          drawerIcon: ({ color, size }) => <Navigation color={color} size={size} />
+          drawerIcon: ({ color, size }) => <Navigation color={color} size={size} />,
         }}
       />
       <Drawer.Screen
@@ -121,14 +121,14 @@ export const StudentDrawerNavigator = () => {
         name="Mentors"
         component={StudentMentorsScreen}
         options={{
-          drawerIcon: ({ color, size }) => <UserSquare2 color={color} size={size} />
+          drawerIcon: ({ color, size }) => <UserSquare2 color={color} size={size} />,
         }}
       />
       <Drawer.Screen
         name="Events"
         component={StudentEventsScreen}
         options={{
-          drawerIcon: ({ color, size }) => <Calendar color={color} size={size} />
+          drawerIcon: ({ color, size }) => <Calendar color={color} size={size} />,
         }}
       />
       <Drawer.Screen
@@ -149,7 +149,8 @@ export const StudentDrawerNavigator = () => {
         name="Shorts"
         component={StudentShortsScreen}
         options={{
-          drawerIcon: ({ color, size }) => <Video color={color} size={size} />
+          drawerIcon: ({ color, size }) => <Video color={color} size={size} />,
+          headerShown: false,
         }}
       />
     </Drawer.Navigator>
