@@ -22,7 +22,7 @@ import {
   MessageCircle
 } from 'lucide-react-native';
 import Animated, { FadeInUp, FadeInRight } from 'react-native-reanimated';
-import { listChannels, joinChannel, getCategoryList, listMessages, leaveChannel, sendMessage, getReplies } from '@/api/student.services';
+import { listChannels, joinChannel, getCategoryList, listMessages, leaveChannel, sendMessage, getReplies, getTags, createTag } from '@/api/student.services';
 
 const categoryColors: Record<string, string> = {
   Open: "#10B981",
@@ -111,7 +111,7 @@ const feedPosts = [
   }
 ];
 
-export const StudentCommunityScreen = () => {
+export const StudentCommunityScreen = ({ navigation }: any) => {
   const [channels, setChannels] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
@@ -119,9 +119,57 @@ export const StudentCommunityScreen = () => {
   const [search, setSearch] = useState<string>('');
 
   const [selectedChannel, setSelectedChannel] = useState<any | null>(null);
+
+  useEffect(() => {
+    navigation?.setOptions({ headerShown: !selectedChannel });
+  }, [selectedChannel, navigation]);
+
   const [categoriesList, setCategoriesList] = useState<any[]>([]);
   const [categoriesLoading, setCategoriesLoading] = useState<boolean>(false);
   const [isCategoriesExpanded, setIsCategoriesExpanded] = useState<boolean>(true);
+
+  const [tagsList, setTagsList] = useState<any[]>([]);
+  const [tagsLoading, setTagsLoading] = useState<boolean>(false);
+  const [showCreateTagModal, setShowCreateTagModal] = useState<boolean>(false);
+  const [newTagTitle, setNewTagTitle] = useState<string>("");
+  const [isCreatingTag, setIsCreatingTag] = useState<boolean>(false);
+
+  const fetchTags = async () => {
+    try {
+      setTagsLoading(true);
+      const res = await getTags();
+      const list = res?.message || res?.data || [];
+      setTagsList(Array.isArray(list) ? list : []);
+    } catch (err) {
+      console.error("Error loading tags list:", err);
+    } finally {
+      setTagsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (selectedChannel?.id) {
+      fetchTags();
+    } else {
+      setTagsList([]);
+    }
+  }, [selectedChannel?.id]);
+
+  const handleMobileCreateTag = async () => {
+    if (!newTagTitle.trim()) return;
+    try {
+      setIsCreatingTag(true);
+      await createTag(newTagTitle.trim());
+      setShowCreateTagModal(false);
+      setNewTagTitle("");
+      fetchTags();
+    } catch (err) {
+      console.error("Error creating tag on mobile:", err);
+    } finally {
+      setIsCreatingTag(false);
+    }
+  };
+
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -732,10 +780,15 @@ export const StudentCommunityScreen = () => {
                 <Text style={styles.noCategoriesText}>No questions found in this category.</Text>
               ) : (
                 (categoryQuestions[selectedCategory] || [])
-                  .filter((p: any) => 
-                    p.title.toLowerCase().includes(forumSearch.toLowerCase()) || 
-                    p.content.toLowerCase().includes(forumSearch.toLowerCase())
-                  )
+                  .filter((p: any) => {
+                    const matchesSearch = p.title.toLowerCase().includes(forumSearch.toLowerCase()) || 
+                                         p.content.toLowerCase().includes(forumSearch.toLowerCase());
+                    const matchesTag = !selectedTag || 
+                                       (p.tags && p.tags.some((t: string) => t.toLowerCase() === selectedTag.toLowerCase())) ||
+                                       p.content.toLowerCase().includes(selectedTag.toLowerCase()) ||
+                                       p.title.toLowerCase().includes(selectedTag.toLowerCase());
+                    return matchesSearch && matchesTag;
+                  })
                   .map((post: any) => (
                     <TouchableOpacity 
                       key={post.id}
@@ -824,35 +877,55 @@ export const StudentCommunityScreen = () => {
 
             {/* Collapsible Tags Accordion */}
             <View style={styles.accordionContainer}>
-              <TouchableOpacity 
-                activeOpacity={0.7}
-                onPress={() => setIsTagsExpanded(!isTagsExpanded)}
-                style={styles.accordionHeader}
-              >
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <View style={[styles.accordionHeader, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]}>
+                <TouchableOpacity 
+                  activeOpacity={0.7}
+                  onPress={() => setIsTagsExpanded(!isTagsExpanded)}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}
+                >
                   <Tag size={16} color="#FF6B00" />
                   <Text style={styles.accordionTitle}>Tags</Text>
+                </TouchableOpacity>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                  <TouchableOpacity 
+                    onPress={() => setShowCreateTagModal(true)}
+                    style={{ padding: 4 }}
+                  >
+                    <Plus size={16} color="#94A3B8" />
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => setIsTagsExpanded(!isTagsExpanded)}>
+                    <Text style={styles.accordionArrow}>{isTagsExpanded ? "▼" : "▶"}</Text>
+                  </TouchableOpacity>
                 </View>
-                <Text style={styles.accordionArrow}>{isTagsExpanded ? "▼" : "▶"}</Text>
-              </TouchableOpacity>
+              </View>
               
               {isTagsExpanded && (
                 <View style={[styles.accordionContent, { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingTop: 8 }]}>
-                  {["frappe", "erpnext", "erp", "learning", "discussion"].map((tag) => (
-                    <TouchableOpacity 
-                      key={tag} 
-                      onPress={() => setSelectedTag(selectedTag === tag ? null : tag)}
-                      style={[
-                        styles.tagBadge, 
-                        selectedTag === tag && styles.tagBadgeActive
-                      ]}
-                    >
-                      <Text style={[
-                        styles.tagBadgeText,
-                        selectedTag === tag && styles.tagBadgeTextActive
-                      ]}>#{tag}</Text>
-                    </TouchableOpacity>
-                  ))}
+                  {tagsLoading ? (
+                    <ActivityIndicator size="small" color="#FF6B00" />
+                  ) : tagsList.length === 0 ? (
+                    <Text style={{ color: '#64748B', fontSize: 12 }}>No tags found</Text>
+                  ) : (
+                    tagsList.map((tag) => {
+                      const tagVal = tag.title || tag.name;
+                      const isSelected = selectedTag === tagVal;
+                      return (
+                        <TouchableOpacity 
+                          key={tag.name} 
+                          onPress={() => setSelectedTag(isSelected ? null : tagVal)}
+                          style={[
+                            styles.tagBadge, 
+                            isSelected && styles.tagBadgeActive
+                          ]}
+                        >
+                          <Text style={[
+                            styles.tagBadgeText,
+                            isSelected && styles.tagBadgeTextActive
+                          ]}>#{tagVal}</Text>
+                        </TouchableOpacity>
+                      );
+                    })
+                  )}
                 </View>
               )}
             </View>
@@ -1003,6 +1076,54 @@ export const StudentCommunityScreen = () => {
                 </TouchableOpacity>
                 <TouchableOpacity onPress={handleCreateTopic} style={styles.modalSubmitBtn}>
                   <Text style={styles.modalSubmitBtnText}>Publish</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Create Tag Modal */}
+        <Modal 
+          visible={showCreateTagModal} 
+          transparent 
+          animationType="fade" 
+          onRequestClose={() => {
+            setShowCreateTagModal(false);
+            setNewTagTitle("");
+          }}
+        >
+          <View style={styles.modalBg}>
+            <View style={[styles.modalContent, { maxWidth: 300 }]}>
+              <Text style={styles.modalTitle}>Create New Tag</Text>
+              
+              <Text style={styles.inputLabel}>Tag Title</Text>
+              <TextInput 
+                placeholder="e.g. react, help, bug"
+                placeholderTextColor="#64748B"
+                value={newTagTitle}
+                onChangeText={setNewTagTitle}
+                style={styles.modalInput}
+              />
+
+              <View style={styles.modalActions}>
+                <TouchableOpacity 
+                  onPress={() => {
+                    setShowCreateTagModal(false);
+                    setNewTagTitle("");
+                  }} 
+                  style={styles.modalCancelBtn}
+                  disabled={isCreatingTag}
+                >
+                  <Text style={styles.modalCancelBtnText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  onPress={handleMobileCreateTag} 
+                  style={[styles.modalSubmitBtn, isCreatingTag && { opacity: 0.5 }]}
+                  disabled={isCreatingTag}
+                >
+                  <Text style={styles.modalSubmitBtnText}>
+                    {isCreatingTag ? "Creating..." : "Create"}
+                  </Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -1818,6 +1939,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.75)',
     justifyContent: 'center',
+    alignItems: 'center',
     padding: 16,
   },
   modalContent: {
@@ -1826,6 +1948,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#28292E',
     padding: 20,
+    width: '100%',
+    maxWidth: 400,
   },
   modalTitle: {
     fontSize: 16,

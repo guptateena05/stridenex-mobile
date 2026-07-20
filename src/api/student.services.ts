@@ -1060,6 +1060,54 @@ export const getDashboardStats = async (studentEmail: string) => {
   }
 };
 
+/**
+ * Fetch all educational tags.
+ */
+export const getTags = async () => {
+  try {
+    const token = await AsyncStorage.getItem("token");
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json"
+    };
+    if (token) {
+      headers["Authorization"] = `token ${token}`;
+    }
+    const response = await api.get(
+      "method/stridenex_app.stridenex_app.doctype.educational_short.educational_short.get_tags",
+      { headers }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching tags on mobile:", error);
+    throw error;
+  }
+};
+
+/**
+ * Create an educational tag.
+ */
+export const createTag = async (title: string) => {
+  try {
+    const token = await AsyncStorage.getItem("token");
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json"
+    };
+    if (token) {
+      headers["Authorization"] = `token ${token}`;
+    }
+    const response = await api.post(
+      "method/stridenex_app.stridenex_app.doctype.educational_short.educational_short.create_tag",
+      { title },
+      { headers }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error creating tag on mobile:", error);
+    throw error;
+  }
+};
+
+
 
 
 

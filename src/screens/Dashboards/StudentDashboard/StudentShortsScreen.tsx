@@ -282,6 +282,16 @@ const VerticalShortCard = ({
                 <Text style={styles.verticalShortTitle} numberOfLines={1} ellipsizeMode="tail">
                    {video.title}
                 </Text>
+                {video.description ? (
+                  <Text style={styles.verticalShortDesc} numberOfLines={2} ellipsizeMode="tail">
+                    {video.description}
+                  </Text>
+                ) : null}
+                {video.tags && video.tags.length > 0 ? (
+                  <Text style={styles.verticalShortTags}>
+                    {video.tags.map((t: string) => t.startsWith('#') ? t : `#${t}`).join(' ')}
+                  </Text>
+                ) : null}
              </TouchableOpacity>
           </View>
 
@@ -443,6 +453,14 @@ export const StudentShortsScreen = () => {
             { id: '3', author: '@learner101', avatar: 'LE', text: 'Can you show how this integrates with the server next time?', likes: 2, time: '1d' }
           ];
 
+          let tagsArray: string[] = [];
+          if (Array.isArray(item.tags)) {
+            tagsArray = item.tags;
+          } else if (typeof item.tags === "string" && item.tags.trim() !== "") {
+            tagsArray = item.tags.split(",").map((t: string) => t.trim()).filter(Boolean);
+          }
+          tagsArray = tagsArray.map((t: string) => t.startsWith('#') ? t : `#${t}`);
+
           return {
             id: item.name,
             title: item.title || "Untitled Short",
@@ -452,7 +470,8 @@ export const StudentShortsScreen = () => {
             author: "StrideNex",
             authorHandle: "@stridenex",
             authorAvatar: authorAvatar,
-            tags: [skill],
+            tags: tagsArray,
+            description: item.description || "",
             isSaved: Boolean(item.is_saved),
             videoUrl: videoUrl,
             posterUrl: posterUrl,
@@ -851,8 +870,13 @@ export const StudentShortsScreen = () => {
 
                 <View style={styles.descTextContainer}>
                   <Text style={styles.descText}>
-                     This educational short covers {selectedShort.title}. In this video, we explore core programming skills and practical insights in {selectedShort.category} to boost your career. Use StrideNex to practice and level up your skills.
+                     {selectedShort.description || `This educational short covers ${selectedShort.title}. In this video, we explore core programming skills and practical insights in ${selectedShort.category} to boost your career. Use StrideNex to practice and level up your skills.`}
                   </Text>
+                  {selectedShort.tags && selectedShort.tags.length > 0 && (
+                    <Text style={styles.descTags}>
+                      {selectedShort.tags.map((t: string) => t.startsWith('#') ? t : `#${t}`).join(' ')}
+                    </Text>
+                  )}
                 </View>
               </ScrollView>
             )}
@@ -1262,6 +1286,24 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3
   },
+  verticalShortDesc: {
+    color: '#E2E8F0',
+    fontSize: 13,
+    fontWeight: '400',
+    marginTop: 4,
+    textShadowColor: 'rgba(0, 0, 0, 0.7)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3
+  },
+  verticalShortTags: {
+    color: '#3B82F6',
+    fontSize: 13,
+    fontWeight: '700',
+    marginTop: 4,
+    textShadowColor: 'rgba(0, 0, 0, 0.7)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3
+  },
   
   // Creator Row
   verticalShortAuthorRow: { 
@@ -1563,6 +1605,12 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#334155',
     lineHeight: 18,
+  },
+  descTags: {
+    fontSize: 14,
+    color: '#3B82F6',
+    fontWeight: '700',
+    marginTop: 8,
   },
 
   // Options Sheet styling
