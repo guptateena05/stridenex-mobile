@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, FlatList, TextInput, ActivityIndicator, RefreshControl, Modal, BackHandler } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, FlatList, TextInput, ActivityIndicator, RefreshControl, Modal, BackHandler, Image, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '@/theme/colors';
 import { typography } from '@/theme/typography';
@@ -19,10 +19,14 @@ import {
   Plus,
   Send,
   Sparkles,
-  MessageCircle
+  MessageCircle,
+  Paperclip,
+  X,
+  FileText
 } from 'lucide-react-native';
 import Animated, { FadeInUp, FadeInRight } from 'react-native-reanimated';
 import { listChannels, joinChannel, getCategoryList, listMessages, leaveChannel, sendMessage, getReplies, getTags, createTag } from '@/api/student.services';
+import * as DocumentPicker from '@react-native-documents/picker';
 
 const categoryColors: Record<string, string> = {
   Open: "#10B981",
@@ -199,6 +203,52 @@ export const StudentCommunityScreen = ({ navigation }: any) => {
   const [messagesLoading, setMessagesLoading] = useState<boolean>(false);
   const [forumSearch, setForumSearch] = useState<string>("");
   const [replyText, setReplyText] = useState<string>("");
+  const [replyFile, setReplyFile] = useState<any | null>(null);
+  const [replyImagePreview, setReplyImagePreview] = useState<string | null>(null);
+
+  const handlePickReplyFile = async () => {
+    try {
+      const result = await DocumentPicker.pick({
+        type: [DocumentPicker.types.images, DocumentPicker.types.allFiles],
+        allowMultiSelection: false,
+      });
+
+      if (result) {
+        const file = Array.isArray(result) ? result[0] : result;
+
+        if (file.size && file.size > 10 * 1024 * 1024) {
+          Alert.alert('File Size Error', 'File size should be less than 10MB');
+          return;
+        }
+
+        const fileObject = {
+          uri: file.uri,
+          type: file.type || 'image/jpeg',
+          name: file.name || 'image.jpg',
+          size: file.size,
+        };
+
+        setReplyFile(fileObject);
+        if (file.type?.startsWith('image/') || file.name?.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
+          setReplyImagePreview(file.uri);
+        } else {
+          setReplyImagePreview(null);
+        }
+      }
+    } catch (err: any) {
+      if (err.code === 'DOCUMENT_PICKER_CANCELED' || err.code === 'CANCELED') {
+        console.log('User cancelled file picker');
+      } else {
+        console.error('Error picking file:', err);
+        Alert.alert('Error', 'Failed to pick file. Please try again.');
+      }
+    }
+  };
+
+  const handleRemoveReplyFile = () => {
+    setReplyFile(null);
+    setReplyImagePreview(null);
+  };
   const [forumCategories, setForumCategories] = useState<any>({
     Community: {
       name: "Community",
@@ -298,11 +348,17 @@ export const StudentCommunityScreen = ({ navigation }: any) => {
       
       const qReplies = replies
         .filter(r => r.linked_message === q.name)
-        .map(r => ({
-          author: r.owner ? r.owner.split("@")[0].split(/[._-]/).map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ") : "Anonymous",
-          content: stripHtml(r.text || ""),
-          time: r.creation ? r.creation.substring(0, 16) : "Just now"
-        }));
+        .map(r => {
+          const fileUrl = r.file_url || r.attached_file || r.file || r.attachment;
+          return {
+            author: r.owner ? r.owner.split("@")[0].split(/[._-]/).map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ") : "Anonymous",
+            content: stripHtml(r.text || ""),
+            time: r.creation ? r.creation.substring(0, 16) : "Just now",
+            fileUrl: fileUrl,
+            fileName: r.file_name || (fileUrl ? fileUrl.split("/").pop() : undefined),
+            isImage: fileUrl ? !!fileUrl.match(/\.(jpg|jpeg|png|gif|webp)/i) : false
+          };
+        });
 
       return {
         id: q.name,
@@ -372,11 +428,17 @@ export const StudentCommunityScreen = ({ navigation }: any) => {
         const res = await getReplies(post.id);
         const list = res?.message?.replies || res?.data?.message?.replies || (Array.isArray(res?.message) ? res.message : (Array.isArray(res?.data) ? res.data : []));
         if (Array.isArray(list)) {
-          const apiReplies = list.map((r: any) => ({
-            author: r.owner ? r.owner.split("@")[0].split(/[._-]/).map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ") : "Anonymous",
-            content: stripHtml(r.text || ""),
-            time: r.creation ? r.creation.substring(0, 16) : "Just now"
-          }));
+          const apiReplies = list.map((r: any) => {
+            const fileUrl = r.file_url || r.attached_file || r.file || r.attachment;
+            return {
+              author: r.owner ? r.owner.split("@")[0].split(/[._-]/).map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ") : "Anonymous",
+              content: stripHtml(r.text || ""),
+              time: r.creation ? r.creation.substring(0, 16) : "Just now",
+              fileUrl: fileUrl,
+              fileName: r.file_name || (fileUrl ? fileUrl.split("/").pop() : undefined),
+              isImage: fileUrl ? !!fileUrl.match(/\.(jpg|jpeg|png|gif|webp)/i) : false
+            };
+          });
           setSelectedPost((prev: any) => prev && prev.id === post.id ? {
             ...prev,
             replies: apiReplies,
@@ -555,32 +617,46 @@ export const StudentCommunityScreen = ({ navigation }: any) => {
     };
 
     const handleReplyToPost = async () => {
-      if (!replyText.trim() || !selectedPost) return;
+      if ((!replyText.trim() && !replyFile) || !selectedPost) return;
       
       const postId = selectedPost.id;
       const categoryName = selectedCategory || selectedPost.category || "Community";
       
-      let newReply = {
+      let newReply: any = {
         author: "You (Student)",
         content: replyText,
-        time: "Just now"
+        time: "Just now",
+        ...(replyFile ? {
+          fileUrl: replyFile.uri,
+          fileName: replyFile.name,
+          isImage: replyFile.type?.startsWith('image/') || replyFile.name?.match(/\.(jpg|jpeg|png|gif|webp)$/i)
+        } : {})
       };
 
       try {
-        const payload = {
+        const payload: any = {
           channel_id: selectedChannel.id,
           reply_to_message: selectedPost.content || selectedPost.title || postId,
           channel_category: categoryName,
           text: replyText
         };
+        if (replyFile) {
+          payload.file = replyFile;
+        }
 
         const res = await sendMessage(payload);
         const msg = res?.message || res?.data?.message || res?.data;
         if (msg) {
+          const fileUrl = msg.file_url || msg.attached_file || msg.file || replyFile?.uri;
           newReply = {
             author: msg.owner ? msg.owner.split("@")[0].split(/[._-]/).map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ") : "You (Student)",
             content: stripHtml(msg.text || ""),
-            time: msg.creation ? msg.creation.substring(0, 16) : "Just now"
+            time: msg.creation ? msg.creation.substring(0, 16) : "Just now",
+            ...(fileUrl ? {
+              fileUrl,
+              fileName: msg.file_name || replyFile?.name || "Attached File",
+              isImage: !!(fileUrl.match(/\.(jpg|jpeg|png|gif|webp)/i) || replyFile?.type?.startsWith('image/'))
+            } : {})
           };
         }
       } catch (err) {
@@ -638,6 +714,8 @@ export const StudentCommunityScreen = ({ navigation }: any) => {
       } : null);
 
       setReplyText("");
+      setReplyFile(null);
+      setReplyImagePreview(null);
     };
 
     return (
@@ -732,13 +810,58 @@ export const StudentCommunityScreen = ({ navigation }: any) => {
                     <Text style={styles.replyAuthor}>{reply.author}</Text>
                     <Text style={styles.replyTime}>{reply.time}</Text>
                   </View>
-                  <Text style={styles.replyContent}>{reply.content}</Text>
+                  {reply.content ? <Text style={styles.replyContent}>{reply.content}</Text> : null}
+                  {(reply.fileUrl || reply.file || reply.image) && (
+                    <View style={styles.replyAttachmentContainer}>
+                      {reply.isImage || (typeof (reply.fileUrl || reply.image) === 'string' && (reply.fileUrl || reply.image).match(/\.(jpg|jpeg|png|gif|webp)/i)) ? (
+                        <Image 
+                          source={{ uri: reply.fileUrl || reply.image || reply.file?.uri }} 
+                          style={styles.replyAttachedImage} 
+                          resizeMode="cover"
+                        />
+                      ) : (
+                        <View style={styles.replyAttachedFileBadge}>
+                          <FileText size={14} color="#3B82F6" />
+                          <Text style={styles.replyAttachedFileName} numberOfLines={1}>
+                            {reply.fileName || reply.file?.name || 'Attached File'}
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+                  )}
                 </View>
               ))
             )}
 
+            {/* Selected File / Image Preview */}
+            {replyFile && (
+              <View style={styles.replyPreviewContainer}>
+                {replyImagePreview ? (
+                  <View style={styles.replyImagePreviewWrapper}>
+                    <Image source={{ uri: replyImagePreview }} style={styles.replyImagePreviewThumbnail} />
+                    <TouchableOpacity onPress={handleRemoveReplyFile} style={styles.removePreviewBtn}>
+                      <X size={12} color="#FFFFFF" />
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <View style={styles.replyFilePreviewWrapper}>
+                    <FileText size={16} color="#3B82F6" />
+                    <Text style={styles.replyFilePreviewName} numberOfLines={1}>
+                      {replyFile.name}
+                    </Text>
+                    <TouchableOpacity onPress={handleRemoveReplyFile} style={styles.removePreviewBtn}>
+                      <X size={12} color="#FFFFFF" />
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </View>
+            )}
+
             {/* Add Reply Input Block */}
             <View style={styles.replyInputBox}>
+              <TouchableOpacity onPress={handlePickReplyFile} style={styles.attachBtn}>
+                <Paperclip size={18} color={replyFile ? "#FF6B00" : "#94A3B8"} />
+              </TouchableOpacity>
               <TextInput 
                 placeholder="Write a reply..."
                 placeholderTextColor="#64748B"
@@ -746,7 +869,14 @@ export const StudentCommunityScreen = ({ navigation }: any) => {
                 onChangeText={setReplyText}
                 style={styles.replyInputField}
               />
-              <TouchableOpacity onPress={handleReplyToPost} style={styles.replySendBtn}>
+              <TouchableOpacity 
+                onPress={handleReplyToPost} 
+                style={[
+                  styles.replySendBtn,
+                  (!replyText.trim() && !replyFile) && { opacity: 0.5 }
+                ]}
+                disabled={!replyText.trim() && !replyFile}
+              >
                 <Send size={16} color="#FFFFFF" />
               </TouchableOpacity>
             </View>
@@ -1723,11 +1853,83 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     fontWeight: '500',
   },
+  replyAttachmentContainer: {
+    marginTop: 8,
+  },
+  replyAttachedImage: {
+    width: '100%',
+    height: 160,
+    borderRadius: 8,
+    backgroundColor: '#1E293B',
+  },
+  replyAttachedFileBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#1E293B',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 6,
+    alignSelf: 'flex-start',
+  },
+  replyAttachedFileName: {
+    fontSize: 12,
+    color: '#3B82F6',
+    fontWeight: '500',
+  },
+  replyPreviewContainer: {
+    marginTop: 12,
+    marginBottom: 4,
+  },
+  replyImagePreviewWrapper: {
+    position: 'relative',
+    width: 80,
+    height: 80,
+  },
+  replyImagePreviewThumbnail: {
+    width: 80,
+    height: 80,
+    borderRadius: 10,
+    backgroundColor: '#1E293B',
+  },
+  removePreviewBtn: {
+    position: 'absolute',
+    top: -6,
+    right: -6,
+    backgroundColor: '#EF4444',
+    borderRadius: 10,
+    padding: 3,
+  },
+  replyFilePreviewWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#1E293B',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+  },
+  replyFilePreviewName: {
+    fontSize: 12,
+    color: '#E2E8F0',
+    maxWidth: 200,
+  },
+  attachBtn: {
+    width: 44,
+    height: 44,
+    backgroundColor: '#121315',
+    borderColor: '#1F2023',
+    borderWidth: 1,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   replyInputBox: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    marginTop: 20,
+    marginTop: 12,
     marginBottom: 10,
   },
   replyInputField: {
