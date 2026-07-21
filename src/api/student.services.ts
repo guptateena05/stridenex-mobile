@@ -1009,6 +1009,61 @@ export const getSavedShorts = async (userEmail: string) => {
 };
 
 /**
+ * Add a comment or reply on an educational short video.
+ * Endpoint: method/stridenex_app.stridenex_app.doctype.short_comment.short_comment.add_comment
+ */
+export const addShortComment = async (payload: { short: string; content: string; parent_comment?: string }) => {
+  try {
+    const token = await AsyncStorage.getItem("token");
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json"
+    };
+    if (token) {
+      headers["Authorization"] = `token ${token}`;
+    }
+    const response = await api.post(
+      "method/stridenex_app.stridenex_app.doctype.short_comment.short_comment.add_comment",
+      {
+        short: payload.short,
+        content: payload.content,
+        parent_comment: payload.parent_comment || ""
+      },
+      { headers }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error adding short comment:", error);
+    throw error;
+  }
+};
+
+/**
+ * Fetch comments for an educational short video.
+ * Endpoint: method/stridenex_app.stridenex_app.doctype.short_comment.short_comment.get_comments
+ */
+export const getShortComments = async (shortId: string) => {
+  try {
+    const token = await AsyncStorage.getItem("token");
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json"
+    };
+    if (token) {
+      headers["Authorization"] = `token ${token}`;
+    }
+    const response = await api.post(
+      "method/stridenex_app.stridenex_app.doctype.short_comment.short_comment.get_comments",
+      { short: shortId },
+      { headers }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching short comments:", error);
+    throw error;
+  }
+};
+
+
+/**
  * Fetch student skills snapshot.
  */
 export const getStudentSkills = async (studentEmail: string) => {

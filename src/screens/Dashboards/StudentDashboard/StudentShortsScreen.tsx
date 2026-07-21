@@ -22,7 +22,7 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getShortsFeed, saveShort, unsaveShort, getSavedShorts, toggleLikeShort } from '@/api/student.services';
+import { getShortsFeed, saveShort, unsaveShort, getSavedShorts, toggleLikeShort, addShortComment, getShortComments } from '@/api/student.services';
 import { useAuth } from '@/context/AuthContext';
 import { WebView } from 'react-native-webview';
 import { colors } from '@/theme/colors';
@@ -386,6 +386,95 @@ export const StudentShortsScreen = () => {
   // Comments List state mapped by short name/id
   const [commentsMap, setCommentsMap] = useState<Record<string, any[]>>({});
   const [newCommentText, setNewCommentText] = useState('');
+  const [replyingTo, setReplyingTo] = useState<{ id: string; author: string } | null>(null);
+  const [commentsLoading, setCommentsLoading] = useState<boolean>(false);
+
+  const formatComments = (rawList: any[]): any[] => {
+    if (!Array.isArray(rawList)) return [];
+
+    const mapComment = (item: any): any => {
+      const commentId = String(item.name || item.id || Math.random());
+      const authorEmail = item.comment_by || item.owner || item.user || item.author || "Anonymous";
+      const authorName = authorEmail.includes("@") 
+        ? authorEmail.split("@")[0].split(/[._-]/).map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ")
+        : authorEmail;
+      const initials = authorName.substring(0, 2).toUpperCase() || "AN";
+      const timeStr = item.creation ? item.creation.substring(0, 16) : (item.time || "Just now");
+      
+      const nestedReplies = Array.isArray(item.replies) ? item.replies.map(mapComment) : [];
+
+      return {
+        id: commentId,
+        short: item.short,
+        content: item.content || item.comment || item.text || "",
+        text: item.content || item.comment || item.text || "",
+        author: authorName,
+        authorEmail: authorEmail,
+        avatar: initials,
+        time: timeStr,
+        parent_comment: item.parent_comment || "",
+        likes: item.like_count ?? item.likes ?? 0,
+        isPinned: Boolean(item.is_pinned),
+        replies: nestedReplies
+      };
+    };
+
+    const isAlreadyNested = rawList.some(item => Array.isArray(item.replies));
+    if (isAlreadyNested) {
+      return rawList.map(mapComment);
+    }
+
+    const map: Record<string, any> = {};
+    const rootComments: any[] = [];
+
+    rawList.forEach((item: any) => {
+      const formatted = mapComment(item);
+      map[formatted.id] = formatted;
+    });
+
+    rawList.forEach((item: any) => {
+      const commentId = String(item.name || item.id);
+      const parentId = item.parent_comment ? String(item.parent_comment) : "";
+      const commentObj = map[commentId];
+
+      if (parentId && map[parentId]) {
+        if (!map[parentId].replies.some((r: any) => r.id === commentId)) {
+          map[parentId].replies.push(commentObj);
+        }
+      } else if (!parentId || !map[parentId]) {
+        if (!rootComments.some((c: any) => c.id === commentId)) {
+          rootComments.push(commentObj);
+        }
+      }
+    });
+
+    return rootComments;
+  };
+
+  const fetchCommentsForShort = async (shortId: string) => {
+    if (!shortId) return;
+    try {
+      setCommentsLoading(true);
+      const res = await getShortComments(String(shortId));
+      let rawList = [];
+      if (res && Array.isArray(res.message)) {
+        rawList = res.message;
+      } else if (res && Array.isArray(res.data)) {
+        rawList = res.data;
+      } else if (res && res.message && Array.isArray(res.message.data)) {
+        rawList = res.message.data;
+      }
+      const formatted = formatComments(rawList);
+      setCommentsMap(prev => ({
+        ...prev,
+        [shortId]: formatted
+      }));
+    } catch (err) {
+      console.error("Error fetching comments for short:", err);
+    } finally {
+      setCommentsLoading(false);
+    }
+  };
 
   // Infinite Scroll / Window Calculations
   const { height } = useWindowDimensions();
@@ -606,7 +695,11 @@ export const StudentShortsScreen = () => {
 
   const openComments = (video: any) => {
     setSelectedShort(video);
+    setReplyingTo(null);
     setIsCommentsVisible(true);
+    if (video && video.id) {
+      fetchCommentsForShort(String(video.id));
+    }
   };
 
   const openMoreOptions = (video: any) => {
@@ -698,38 +791,29 @@ export const StudentShortsScreen = () => {
     }
   };
 
-  const handlePostComment = () => {
+  const handlePostComment = async () => {
     if (!newCommentText.trim() || !selectedShort) return;
-    const authorInitials = userName ? userName.substring(0, 2).toUpperCase() : 'ME';
-    const commentItem = {
-      id: Date.now().toString(),
-      author: userName ? `@${userName.split('@')[0]}` : '@me',
-      avatar: authorInitials,
-      text: newCommentText,
-      likes: 0,
-      time: 'Just now'
-    };
-
-    setCommentsMap(prev => {
-      const list = prev[selectedShort.id] || [];
-      return { ...prev, [selectedShort.id]: [commentItem, ...list] };
-    });
-
-    setShortsList(prev => prev.map(s => {
-      if (s.id === selectedShort.id) {
-        return { ...s, commentCount: (s.commentCount || 0) + 1 };
-      }
-      return s;
-    }));
-
-    setDisplayedShorts(prev => prev.map(s => {
-      if (s.id === selectedShort.id) {
-        return { ...s, commentCount: (s.commentCount || 0) + 1 };
-      }
-      return s;
-    }));
+    const shortId = String(selectedShort.id);
+    const contentText = newCommentText.trim();
+    const parentCommentId = replyingTo ? replyingTo.id : "";
 
     setNewCommentText('');
+    setReplyingTo(null);
+
+    try {
+      await addShortComment({
+        short: shortId,
+        content: contentText,
+        parent_comment: parentCommentId
+      });
+      await fetchCommentsForShort(shortId);
+
+      setShortsList(prev => prev.map(s => s.id === selectedShort.id ? { ...s, commentCount: (s.commentCount || 0) + 1 } : s));
+      setDisplayedShorts(prev => prev.map(s => s.id === selectedShort.id ? { ...s, commentCount: (s.commentCount || 0) + 1 } : s));
+    } catch (err) {
+      console.error("Error posting short comment:", err);
+      Alert.alert("Error", "Failed to post comment. Please try again.");
+    }
   };
 
   const flatListRef = useRef<FlatList>(null);
@@ -748,6 +832,35 @@ export const StudentShortsScreen = () => {
   };
 
   const currentComments = selectedShort ? (commentsMap[selectedShort.id] || []) : [];
+
+  const renderCommentItem = (comment: any, isReply = false) => (
+    <View key={comment.id} style={[styles.commentItem, isReply && styles.replyItem]}>
+      <View style={[styles.commentAvatar, isReply && styles.replyAvatar]}>
+        <Text style={styles.commentAvatarText}>{comment.avatar}</Text>
+      </View>
+      <View style={styles.commentBody}>
+        <View style={styles.commentMeta}>
+          <Text style={styles.commentAuthor}>{comment.author}</Text>
+          <Text style={styles.commentTime}>{comment.time}</Text>
+        </View>
+        <Text style={styles.commentText}>{comment.text || comment.content}</Text>
+        <View style={styles.commentActions}>
+          <TouchableOpacity 
+            style={styles.commentActionBtn}
+            onPress={() => setReplyingTo({ id: comment.id, author: comment.author })}
+          >
+            <MessageSquare size={14} color="#64748B" />
+            <Text style={styles.commentActionText}>Reply</Text>
+          </TouchableOpacity>
+        </View>
+        {comment.replies && comment.replies.length > 0 && (
+          <View style={styles.repliesList}>
+            {comment.replies.map((reply: any) => renderCommentItem(reply, true))}
+          </View>
+        )}
+      </View>
+    </View>
+  );
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['bottom']}>
@@ -907,43 +1020,34 @@ export const StudentShortsScreen = () => {
 
             {/* Comments List */}
             <ScrollView contentContainerStyle={styles.commentsScroll} showsVerticalScrollIndicator={false}>
-              {currentComments.length === 0 ? (
+              {commentsLoading ? (
+                <ActivityIndicator size="small" color="#FF6B00" style={{ marginVertical: 20 }} />
+              ) : currentComments.length === 0 ? (
                 <View style={styles.noCommentsWrapper}>
                   <Text style={styles.noCommentsText}>No comments yet. Start the conversation!</Text>
                 </View>
               ) : (
-                currentComments.map((comment: any) => (
-                  <View key={comment.id} style={styles.commentItem}>
-                    <View style={styles.commentAvatar}>
-                      <Text style={styles.commentAvatarText}>{comment.avatar}</Text>
-                    </View>
-                    <View style={styles.commentBody}>
-                      <View style={styles.commentMeta}>
-                        <Text style={styles.commentAuthor}>{comment.author}</Text>
-                        <Text style={styles.commentTime}>{comment.time}</Text>
-                      </View>
-                      <Text style={styles.commentText}>{comment.text}</Text>
-                      <View style={styles.commentActions}>
-                        <TouchableOpacity style={styles.commentActionBtn}>
-                          <Heart size={14} color="#64748B" />
-                          <Text style={styles.commentActionText}>{comment.likes}</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity style={styles.commentActionBtn}>
-                          <MessageSquare size={14} color="#64748B" />
-                          <Text style={styles.commentActionText}>Reply</Text>
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-                  </View>
-                ))
+                currentComments.map((comment: any) => renderCommentItem(comment))
               )}
             </ScrollView>
+
+            {/* Replying Banner */}
+            {replyingTo && (
+              <View style={styles.replyingToBanner}>
+                <Text style={styles.replyingToText}>
+                  Replying to <Text style={{ fontWeight: '700', color: '#0F172A' }}>@{replyingTo.author}</Text>
+                </Text>
+                <TouchableOpacity onPress={() => setReplyingTo(null)}>
+                  <X size={16} color="#64748B" />
+                </TouchableOpacity>
+              </View>
+            )}
 
             {/* Comment Input Box */}
             <View style={styles.commentInputBox}>
               <TextInput
                 style={styles.commentInput}
-                placeholder="Add a comment..."
+                placeholder={replyingTo ? `Reply to @${replyingTo.author}...` : "Add a comment..."}
                 placeholderTextColor="#94A3B8"
                 value={newCommentText}
                 onChangeText={setNewCommentText}
@@ -1825,5 +1929,35 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
     color: '#475569',
+  },
+  replyItem: {
+    marginTop: 8,
+    paddingLeft: 0,
+  },
+  replyAvatar: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#E2E8F0',
+  },
+  repliesList: {
+    marginTop: 8,
+    paddingLeft: 12,
+    borderLeftWidth: 2,
+    borderLeftColor: '#E2E8F0',
+  },
+  replyingToBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#F1F5F9',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#E2E8F0',
+  },
+  replyingToText: {
+    fontSize: 12,
+    color: '#64748B',
   },
 });
