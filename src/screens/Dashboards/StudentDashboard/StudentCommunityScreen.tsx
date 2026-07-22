@@ -142,7 +142,7 @@ export const StudentCommunityScreen = ({ navigation }: any) => {
     try {
       setTagsLoading(true);
       const res = await getTags();
-      const list = res?.message || res?.data || [];
+      const list = res?.message?.data || res?.data?.message?.data || (Array.isArray(res?.message) ? res.message : []);
       setTagsList(Array.isArray(list) ? list : []);
     } catch (err) {
       console.error("Error loading tags list:", err);
