@@ -213,7 +213,8 @@ const VerticalShortCard = ({
   onOpenMoreOptions,
   onOpenDrawer,
   onOpenShare,
-  cardHeight 
+  cardHeight,
+  likeCount
 }: any) => {
    const [isPlaying, setIsPlaying] = useState(autoPlay);
    const insets = useSafeAreaInsets();
@@ -305,7 +306,7 @@ const VerticalShortCard = ({
                 <View style={styles.actionIconCircle}>
                    <Heart size={26} color={isLiked ? "#FF0000" : "#FFFFFF"} fill={isLiked ? "#FF0000" : "transparent"} />
                 </View>
-                <Text style={styles.verticalActionText}>Like</Text>
+                <Text style={styles.verticalActionText}>{likeCount}</Text>
              </TouchableOpacity>
 
              {/* Comment item */}
@@ -374,6 +375,7 @@ export const StudentShortsScreen = () => {
   const [savedItems, setSavedItems] = useState<any[]>([]);
   const [likedItems, setLikedItems] = useState<any[]>([]);
   const [isMuted, setIsMuted] = useState(false);
+  const [likeCounts, setLikeCounts] = useState<Record<string, number>>({});
 
   // Bottom Sheet/Modal States
   const [selectedShort, setSelectedShort] = useState<any>(null);
@@ -386,7 +388,7 @@ export const StudentShortsScreen = () => {
   // Comments List state mapped by short name/id
   const [commentsMap, setCommentsMap] = useState<Record<string, any[]>>({});
   const [newCommentText, setNewCommentText] = useState('');
-  const [replyingTo, setReplyingTo] = useState<{ id: string; author: string } | null>(null);
+  const [replyingTo, setReplyingTo] = useState<{ id: string; name?: string; author: string } | null>(null);
   const [commentsLoading, setCommentsLoading] = useState<boolean>(false);
 
   const formatComments = (rawList: any[]): any[] => {
@@ -405,6 +407,7 @@ export const StudentShortsScreen = () => {
 
       return {
         id: commentId,
+        name: item.name || item.id || commentId,
         short: item.short,
         content: item.content || item.comment || item.text || "",
         text: item.content || item.comment || item.text || "",
@@ -565,7 +568,8 @@ export const StudentShortsScreen = () => {
             videoUrl: videoUrl,
             posterUrl: posterUrl,
             commentCount: mockComments.length,
-            comments: mockComments
+            comments: mockComments,
+            likes: item.likes_count !== undefined ? String(item.likes_count) : (item.likes !== undefined ? String(item.likes) : "0")
           };
         });
 
@@ -575,6 +579,15 @@ export const StudentShortsScreen = () => {
           cMap[v.id] = v.comments;
         });
         setCommentsMap(cMap);
+
+        // Initialize like counts mapping
+        const likesMap: Record<string, number> = {};
+        rawShorts.forEach((item: any) => {
+          likesMap[String(item.name)] = item.likes_count !== undefined 
+            ? Number(item.likes_count) 
+            : (item.likes !== undefined ? Number(item.likes) : 0);
+        });
+        setLikeCounts(likesMap);
 
         setShortsList(mapped);
         if (savedIdsFromFeed.length > 0) {
@@ -668,10 +681,33 @@ export const StudentShortsScreen = () => {
 
     try {
       setLikedItems(prev => prev.includes(String(id)) ? prev.filter(item => item !== String(id)) : [...prev, String(id)]);
-      await toggleLikeShort({ short: String(id) });
+      
+      setLikeCounts(prev => {
+        const currentCount = prev[String(id)] || 0;
+        const newCount = isAlreadyLiked ? Math.max(0, currentCount - 1) : currentCount + 1;
+        return { ...prev, [String(id)]: newCount };
+      });
+
+      const res = await toggleLikeShort({ short: String(id) });
+      const serverLikeCount = res?.message?.like_count !== undefined 
+        ? Number(res.message.like_count) 
+        : (res?.data?.message?.like_count !== undefined 
+            ? Number(res.data.message.like_count) 
+            : null);
+      if (serverLikeCount !== null) {
+        setLikeCounts(prev => ({
+          ...prev,
+          [String(id)]: serverLikeCount
+        }));
+      }
     } catch (error) {
       console.error("Error toggling like on mobile:", error);
       setLikedItems(prev => isAlreadyLiked ? [...prev, String(id)] : prev.filter(item => item !== String(id)));
+      setLikeCounts(prev => {
+        const currentCount = prev[String(id)] || 0;
+        const newCount = isAlreadyLiked ? currentCount + 1 : Math.max(0, currentCount - 1);
+        return { ...prev, [String(id)]: newCount };
+      });
     } finally {
       activeTogglesRef.current.delete(key);
     }
@@ -795,7 +831,7 @@ export const StudentShortsScreen = () => {
     if (!newCommentText.trim() || !selectedShort) return;
     const shortId = String(selectedShort.id);
     const contentText = newCommentText.trim();
-    const parentCommentId = replyingTo ? replyingTo.id : "";
+    const parentCommentId = replyingTo ? (replyingTo.name || replyingTo.id) : "";
 
     setNewCommentText('');
     setReplyingTo(null);
@@ -847,7 +883,7 @@ export const StudentShortsScreen = () => {
         <View style={styles.commentActions}>
           <TouchableOpacity 
             style={styles.commentActionBtn}
-            onPress={() => setReplyingTo({ id: comment.id, author: comment.author })}
+            onPress={() => setReplyingTo({ id: comment.id, name: comment.name || comment.id, author: comment.author })}
           >
             <MessageSquare size={14} color="#64748B" />
             <Text style={styles.commentActionText}>Reply</Text>
@@ -903,6 +939,7 @@ export const StudentShortsScreen = () => {
                 onOpenShare={openShare}
                 onOpenDrawer={() => navigation.dispatch(DrawerActions.openDrawer())}
                 cardHeight={containerHeight}
+                likeCount={likeCounts[String(item.id)] !== undefined ? likeCounts[String(item.id)] : 0}
               />
             )}
             keyExtractor={item => String(item.id)}
