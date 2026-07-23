@@ -1188,6 +1188,58 @@ export const createTag = async (title: string) => {
   }
 };
 
+/**
+ * Fetch billing packages by type (e.g. Student).
+ * Endpoint: method/quantbit_billing_platform.quantbit_billing_platform.api.get_billing_packages_by_type
+ */
+export const getBillingPackagesByType = async (accountType: string) => {
+  try {
+    const response = await api.get(
+      `method/quantbit_billing_platform.quantbit_billing_platform.api.get_billing_packages_by_type?account_type=${encodeURIComponent(accountType)}`
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching plans by account type on mobile:", error);
+    throw error;
+  }
+};
+
+/**
+ * Fetch the billing platform URL from the backend.
+ * Endpoint: method/quantbit_billing_platform.quantbit_billing_platform.api.get_billing_url
+ */
+export const getBillingUrl = async (fromSite: string): Promise<string> => {
+  try {
+    const response = await api.get(
+      `method/quantbit_billing_platform.quantbit_billing_platform.api.get_billing_url?from_site=${encodeURIComponent(fromSite)}`
+    );
+    const billingUrl = response.data?.message;
+    if (!billingUrl) {
+      throw new Error("Billing URL not returned from server");
+    }
+    return billingUrl;
+  } catch (error) {
+    console.error("Error fetching billing URL on mobile:", error);
+    throw error;
+  }
+};
+
+/**
+ * Fetch the subscription dashboard data.
+ * Endpoint: method/quantbit_billing_platform.quantbit_billing_platform.api.get_user_subscription_dashboard
+ */
+export const getUserSubscriptionDashboard = async () => {
+  try {
+    const response = await api.get(
+      `method/quantbit_billing_platform.quantbit_billing_platform.api.get_user_subscription_dashboard`
+    );
+    return response.data?.message ?? response.data;
+  } catch (error) {
+    console.error("Error fetching subscription dashboard on mobile:", error);
+    throw error;
+  }
+};
+
 
 
 

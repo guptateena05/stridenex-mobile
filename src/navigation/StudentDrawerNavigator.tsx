@@ -139,18 +139,18 @@ export const StudentDrawerNavigator = () => {
         }}
       />
       <Drawer.Screen
-        name="Plans"
-        component={StudentPlansScreen}
-        options={{
-          drawerIcon: ({ color, size }) => <BookOpen color={color} size={size} />
-        }}
-      />
-      <Drawer.Screen
         name="Shorts"
         component={StudentShortsScreen}
         options={{
           drawerIcon: ({ color, size }) => <Video color={color} size={size} />,
           headerShown: false,
+        }}
+      />
+      <Drawer.Screen
+        name="Plans"
+        component={StudentPlansScreen}
+        options={{
+          drawerIcon: ({ color, size }) => <BookOpen color={color} size={size} />
         }}
       />
     </Drawer.Navigator>
