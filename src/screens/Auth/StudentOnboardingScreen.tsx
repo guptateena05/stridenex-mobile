@@ -7,6 +7,7 @@ import { Input } from '@/components/Shared/Input';
 import { Button } from '@/components/Shared/Button';
 import { useNavigation } from '@react-navigation/native';
 import { sendEmailOTP, verifyEmailOTP, sendMobileOTP, verifyMobileOTP, createStudent } from '@/api/onboarding.services';
+import { api } from '@/api/api.services';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors } from '@/theme/colors';
 import { typography } from '@/theme/typography';
@@ -622,6 +623,48 @@ const StudentOnboardingScreen = () => {
 
       // Check if registration was successful
       if (responseData?.status === 200 || responseData?.message === "Student registered successfully") {
+        // ─── BILLING INTEGRATION STARTS HERE ─────────────────────────────────
+        try {
+          const userEmail = (await AsyncStorage.getItem("userEmail")) || email || "";
+          const userPassword = (await AsyncStorage.getItem("userPassword")) || "";
+          const userFirstName = (await AsyncStorage.getItem("userFirstName")) || firstName || "Test";
+          const userLastName = (await AsyncStorage.getItem("userLastName")) || lastName || "User";
+
+          const billingPayload = {
+            data: {
+              account_type: "Individual",
+              role_type: "Student Base",
+              email: userEmail,
+              user_password: userPassword,
+              first_name: userFirstName,
+              last_name: userLastName,
+              default_currency: "INR",
+              country: "India",
+              billing_details: [{ title: "Stridenex App" }]
+            }
+          };
+          console.log("Submitting Student Billing registration payload on mobile:", billingPayload);
+
+          const billingResponse = await api.post(
+            `method/quantbit_billing_platform.quantbit_billing_platform.doctype.billing_account_master.billing_account_master.create_billing_registration`,
+            billingPayload
+          );
+
+          console.log("Billing API full response on mobile:", billingResponse.data);
+
+          const billingResult = billingResponse.data?.message || billingResponse.data;
+          if (billingResult?.status === "error") {
+            throw new Error(billingResult.message || "Failed to create billing account.");
+          }
+        } catch (billingErr: any) {
+          console.error("Billing API Integration Error on mobile:", billingErr);
+          const errorMsg = billingErr?.message || "Profile saved, but failed to assign the default billing package.";
+          setError(errorMsg);
+          setLoading(false);
+          return; // Stop flow and show error
+        }
+        // ─── BILLING INTEGRATION ENDS HERE ──────────────────────────────────
+
         setSuccess(responseData?.message || "Student registered successfully!");
 
         // Mark as created in AsyncStorage so a restart won't try to create again
@@ -629,7 +672,7 @@ const StudentOnboardingScreen = () => {
         setHasCreatedRecord(true);
 
         // Clear onboarding-specific AsyncStorage items (including step tracker)
-        await AsyncStorage.multiRemove(["userEmail", "userFirstName", "userLastName", "studentOnboardingStep", "userMobileNo"]);
+        await AsyncStorage.multiRemove(["userEmail", "userFirstName", "userLastName", "userPassword", "studentOnboardingStep", "userMobileNo"]);
 
         // Clear any errors
         setError("");
@@ -908,7 +951,20 @@ const StudentOnboardingScreen = () => {
             <View style={styles.backButtonContainer}>
               <Button
                 title="Back to Verification"
-                onPress={() => setStep(1)}
+                onPress={async () => {
+                  try {
+                    await AsyncStorage.removeItem('studentOnboardingStep');
+                  } catch (e) {
+                    console.warn(e);
+                  }
+                  setEmailVerified(false);
+                  setEmailOtpSent(false);
+                  setEmailOtp("");
+                  setMobileVerified(false);
+                  setMobileOtpSent(false);
+                  setMobileOtp("");
+                  setStep(1);
+                }}
                 variant="outline"
                 size="sm"
                 fullWidth={false}

@@ -113,9 +113,12 @@ export const SignupScreen = () => {
 
       const data = response.data;
       if (data?.message === "User created successfully") {
+        await AsyncStorage.removeItem('studentOnboardingStep');
+        await AsyncStorage.removeItem('userMobileNo');
         await AsyncStorage.setItem("userEmail", email);
         await AsyncStorage.setItem("userFirstName", firstName);
         await AsyncStorage.setItem("userLastName", lastName);
+        await AsyncStorage.setItem("userPassword", password);
 
         if (selectedRole === 'student') {
           navigation.navigate('StudentOnboarding');
