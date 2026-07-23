@@ -1062,6 +1062,32 @@ export const getShortComments = async (shortId: string) => {
   }
 };
 
+/**
+ * Toggle like status of a short comment.
+ * Endpoint: method/stridenex_app.stridenex_app.doctype.short_comment.short_comment.toggle_like
+ */
+export const toggleLikeComment = async (payload: { comment: string }) => {
+  try {
+    const token = await AsyncStorage.getItem("token");
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json"
+    };
+    if (token) {
+      headers["Authorization"] = `token ${token}`;
+    }
+    const response = await api.post(
+      "method/stridenex_app.stridenex_app.doctype.short_comment.short_comment.toggle_like",
+      payload,
+      { headers }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error toggling short comment like on mobile:", error);
+    throw error;
+  }
+};
+
+
 
 /**
  * Fetch student skills snapshot.

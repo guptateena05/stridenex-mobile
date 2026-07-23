@@ -22,7 +22,7 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getShortsFeed, saveShort, unsaveShort, getSavedShorts, toggleLikeShort, addShortComment, getShortComments } from '@/api/student.services';
+import { getShortsFeed, saveShort, unsaveShort, getSavedShorts, toggleLikeShort, addShortComment, getShortComments, toggleLikeComment } from '@/api/student.services';
 import { useAuth } from '@/context/AuthContext';
 import { WebView } from 'react-native-webview';
 import { colors } from '@/theme/colors';
@@ -417,6 +417,7 @@ export const StudentShortsScreen = () => {
         time: timeStr,
         parent_comment: item.parent_comment || "",
         likes: item.like_count ?? item.likes ?? 0,
+        isLiked: Boolean(item.is_liked),
         isPinned: Boolean(item.is_pinned),
         replies: nestedReplies
       };
@@ -852,6 +853,95 @@ export const StudentShortsScreen = () => {
     }
   };
 
+  const handleToggleLikeComment = async (commentId: string) => {
+    if (!userName || !selectedShort) return;
+
+    const shortId = String(selectedShort.id);
+    const commentsList = commentsMap[shortId] || [];
+
+    let currentComment: any = null;
+    const findComment = (list: any[]): boolean => {
+      for (const c of list) {
+        if (c.id === commentId) {
+          currentComment = c;
+          return true;
+        }
+        if (c.replies && c.replies.length > 0) {
+          if (findComment(c.replies)) return true;
+        }
+      }
+      return false;
+    };
+    findComment(commentsList);
+
+    if (!currentComment) return;
+
+    const isAlreadyLiked = currentComment.isLiked;
+
+    const updateCommentInList = (list: any[], id: string, updater: (c: any) => any): any[] => {
+      return list.map(c => {
+        if (c.id === id) {
+          return updater(c);
+        }
+        if (c.replies && c.replies.length > 0) {
+          return {
+            ...c,
+            replies: updateCommentInList(c.replies, id, updater)
+          };
+        }
+        return c;
+      });
+    };
+
+    // Optimistic UI Update
+    setCommentsMap(prev => ({
+      ...prev,
+      [shortId]: updateCommentInList(prev[shortId] || [], commentId, (c) => ({
+        ...c,
+        isLiked: !isAlreadyLiked,
+        likes: isAlreadyLiked ? Math.max(0, c.likes - 1) : c.likes + 1
+      }))
+    }));
+
+    try {
+      const res = await toggleLikeComment({ comment: commentId });
+      const serverLikeCount = res?.message?.like_count !== undefined 
+        ? Number(res.message.like_count) 
+        : (res?.data?.message?.like_count !== undefined 
+            ? Number(res.data.message.like_count) 
+            : null);
+
+      const serverIsLiked = res?.message?.is_liked !== undefined
+        ? Boolean(res.message.is_liked)
+        : (res?.data?.message?.is_liked !== undefined
+            ? Boolean(res.data.message.is_liked)
+            : !isAlreadyLiked);
+
+      if (serverLikeCount !== null) {
+        setCommentsMap(prev => ({
+          ...prev,
+          [shortId]: updateCommentInList(prev[shortId] || [], commentId, (c) => ({
+            ...c,
+            likes: serverLikeCount,
+            isLiked: serverIsLiked
+          }))
+        }));
+      }
+    } catch (error) {
+      console.error("Error toggling comment like on mobile:", error);
+
+      // Revert Optimistic UI Update on failure
+      setCommentsMap(prev => ({
+        ...prev,
+        [shortId]: updateCommentInList(prev[shortId] || [], commentId, (c) => ({
+          ...c,
+          isLiked: isAlreadyLiked,
+          likes: isAlreadyLiked ? c.likes + 1 : Math.max(0, c.likes - 1)
+        }))
+      }));
+    }
+  };
+
   const flatListRef = useRef<FlatList>(null);
 
   const handlePlaySavedShort = (savedId: string) => {
@@ -881,6 +971,14 @@ export const StudentShortsScreen = () => {
         </View>
         <Text style={styles.commentText}>{comment.text || comment.content}</Text>
         <View style={styles.commentActions}>
+          <TouchableOpacity 
+            style={styles.commentActionBtn}
+            onPress={() => handleToggleLikeComment(comment.id)}
+          >
+            <Heart size={14} color={comment.isLiked ? "#FF6B00" : "#64748B"} fill={comment.isLiked ? "#FF6B00" : "transparent"} />
+            <Text style={[styles.commentActionText, comment.isLiked && { color: '#FF6B00', fontWeight: '700' }]}>{comment.likes}</Text>
+          </TouchableOpacity>
+
           <TouchableOpacity 
             style={styles.commentActionBtn}
             onPress={() => setReplyingTo({ id: comment.id, name: comment.name || comment.id, author: comment.author })}
