@@ -13,7 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '@/theme/colors';
 import { typography } from '@/theme/typography';
 import { 
-  Briefcase,
+  Award,
   Sparkles,
   CheckCircle,
   Crown,
@@ -92,7 +92,7 @@ async function handleSelectPlan(
       pkg_users: plan.no_of_users !== undefined && plan.no_of_users !== null ? String(plan.no_of_users) : "",
       pkg_days: plan.no_of_days !== undefined && plan.no_of_days !== null ? String(plan.no_of_days) : "",
       pkg_amount: plan.amount !== undefined && plan.amount !== null ? String(plan.amount) : "",
-      account_type: "Industry",
+      account_type: "Mentor",
       customer_email: customerEmail || "",
     });
 
@@ -100,7 +100,7 @@ async function handleSelectPlan(
     const proceedPaymentUrlObj = new URL("proceedpayment.html", billingUrl);
     const proceedPaymentUrl = `${proceedPaymentUrlObj.origin}${proceedPaymentUrlObj.pathname}?${paymentParams.toString()}`;
 
-    console.log("Proceeding to payment URL on mobile for industry:", proceedPaymentUrl);
+    console.log("Proceeding to payment URL on mobile for mentor:", proceedPaymentUrl);
 
     const supported = await Linking.canOpenURL(proceedPaymentUrl);
     if (supported) {
@@ -222,23 +222,23 @@ const SummaryCards = ({ dashboard }: { dashboard: any }) => {
     {
       label: "Current Plan",
       value: summary.current_package ?? "No Active Plan",
-      icon: <Crown size={16} color="#F97316" />,
-      borderColor: '#FED7AA',
-      bgColor: '#FFF7ED',
+      icon: <Crown size={16} color="#4c1d95" />,
+      borderColor: '#C4B5FD',
+      bgColor: '#F5F3FF',
     },
     {
       label: "Total Spent",
       value: `₹${(summary.total_spent ?? 0).toLocaleString("en-IN")}`,
-      icon: <IndianRupee size={16} color="#10B981" />,
-      borderColor: '#A7F3D0',
-      bgColor: '#ECFDF5',
+      icon: <IndianRupee size={16} color="#4c1d95" />,
+      borderColor: '#C4B5FD',
+      bgColor: '#F5F3FF',
     },
     {
       label: "Purchases",
       value: String(summary.total_purchases ?? 0),
-      icon: <ShoppingBag size={16} color="#6366F1" />,
-      borderColor: '#C7D2FE',
-      bgColor: '#EEF2FF',
+      icon: <ShoppingBag size={16} color="#4c1d95" />,
+      borderColor: '#C4B5FD',
+      bgColor: '#F5F3FF',
     },
   ];
 
@@ -348,12 +348,12 @@ const BillingHistoryList = ({ dashboard }: { dashboard: any }) => {
         >
           {showAllSubs ? (
             <View style={styles.btnRow}>
-              <ChevronUp size={14} color={colors.purple[600]} />
+              <ChevronUp size={14} color="#4c1d95" />
               <Text style={styles.showMoreBtnText}>Show less</Text>
             </View>
           ) : (
             <View style={styles.btnRow}>
-              <ChevronDown size={14} color={colors.purple[600]} />
+              <ChevronDown size={14} color="#4c1d95" />
               <Text style={styles.showMoreBtnText}>Show all {sorted.length} records</Text>
             </View>
           )}
@@ -363,7 +363,7 @@ const BillingHistoryList = ({ dashboard }: { dashboard: any }) => {
   );
 };
 
-export const IndustryPlansScreen = () => {
+export const MentorPlansScreen = () => {
   const { userName } = useAuth();
   const [packages, setPackages] = useState<BillingPackage[]>([]);
   const [dashboard, setDashboard] = useState<any>(null);
@@ -376,7 +376,7 @@ export const IndustryPlansScreen = () => {
     setError(null);
     try {
       const [packagesRes, dashboardRes] = await Promise.allSettled([
-        getBillingPackagesByType("Industry"),
+        getBillingPackagesByType("Mentor"),
         getUserSubscriptionDashboard(),
       ]);
 
@@ -410,7 +410,7 @@ export const IndustryPlansScreen = () => {
     return (
       <SafeAreaView style={styles.safeArea} edges={['bottom']}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.purple[600]} />
+          <ActivityIndicator size="large" color="#4c1d95" />
           <Text style={styles.loadingText}>Loading plans...</Text>
         </View>
       </SafeAreaView>
@@ -461,11 +461,11 @@ export const IndustryPlansScreen = () => {
         {/* Header */}
         <Animated.View entering={FadeInUp.delay(100)} style={styles.header}>
           <View style={styles.headerBadge}>
-            <Briefcase size={10} color={colors.purple[600]} />
+            <Award size={10} color="#4c1d95" />
             <Text style={styles.headerBadgeText}>SUBSCRIPTION</Text>
           </View>
           <Text style={styles.title}>Plans & Billing</Text>
-          <Text style={styles.subtitle}>Manage your StrideNex membership</Text>
+          <Text style={styles.subtitle}>Manage your mentorship subscription</Text>
         </Animated.View>
 
         {/* 1. Active / Expired Plan Banner */}
@@ -481,7 +481,7 @@ export const IndustryPlansScreen = () => {
             <Animated.View entering={FadeInUp.delay(200)}>
               <Text style={styles.chooseTitle}>Choose Your Plan</Text>
               <Text style={styles.chooseSubtitle}>
-                Select a plan that best suits you. All plans include access to the Industry dashboard.
+                Select a plan that best suits you. All plans include access to the Mentor dashboard.
               </Text>
             </Animated.View>
 
@@ -523,8 +523,8 @@ export const IndustryPlansScreen = () => {
                         </View>
                       ) : null}
                       {plan.app_name ? (
-                        <View style={[styles.pillBadge, { backgroundColor: '#EEF2FF', borderColor: '#C7D2FE' }]}>
-                          <Text style={[styles.pillBadgeText, { color: '#4F46E5' }]}>{plan.app_name}</Text>
+                        <View style={[styles.pillBadge, { backgroundColor: '#F5F3FF', borderColor: '#C4B5FD' }]}>
+                          <Text style={[styles.pillBadgeText, { color: '#6d28d9' }]}>{plan.app_name}</Text>
                         </View>
                       ) : null}
                     </View>
@@ -534,7 +534,7 @@ export const IndustryPlansScreen = () => {
                       <View style={styles.featuresContainer}>
                         {plan.features.map((feature, idx) => (
                           <View key={idx} style={styles.featureItem}>
-                            <CheckCircle size={14} color={isPopular ? colors.purple[600] : "#10B981"} />
+                            <CheckCircle size={14} color="#4c1d95" />
                             <Text style={styles.featureText}>{feature}</Text>
                           </View>
                         ))}
@@ -557,7 +557,7 @@ export const IndustryPlansScreen = () => {
                     >
                       {redirectingPlan === plan.package_name ? (
                         <View style={styles.btnRow}>
-                          <ActivityIndicator size="small" color={isPopular ? "#FFFFFF" : colors.purple[600]} />
+                          <ActivityIndicator size="small" color={isPopular ? "#FFFFFF" : "#4c1d95"} />
                           <Text style={[
                             styles.ctaButtonText, 
                             isPopular ? styles.ctaButtonTextPopular : styles.ctaButtonTextOutline,
@@ -566,7 +566,7 @@ export const IndustryPlansScreen = () => {
                         </View>
                       ) : (
                         <View style={styles.btnRow}>
-                          <Zap size={14} color={isPopular ? "#FFFFFF" : colors.purple[600]} />
+                          <Zap size={14} color={isPopular ? "#FFFFFF" : "#4c1d95"} />
                           <Text style={[
                             styles.ctaButtonText, 
                             isPopular ? styles.ctaButtonTextPopular : styles.ctaButtonTextOutline,
@@ -582,7 +582,7 @@ export const IndustryPlansScreen = () => {
           </View>
         )}
 
-        {/* 3. Summary Cards */}
+        {/* 3. Summary Cards (Total Spent, Purchases, etc. Below Plan Cards) */}
         {dashboard && (
           <Animated.View entering={FadeInUp.delay(300)} style={{ marginBottom: 24 }}>
             <Text style={styles.sectionHeaderTitle}>Summary</Text>
@@ -590,7 +590,7 @@ export const IndustryPlansScreen = () => {
           </Animated.View>
         )}
 
-        {/* 4. Billing History List */}
+        {/* 4. Billing History (Below Summary Cards) */}
         {dashboard && (
           <View>
             <Text style={styles.sectionHeaderTitle}>Billing History</Text>
@@ -618,7 +618,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: 'rgba(10, 128, 153, 0.08)',
+    backgroundColor: 'rgba(76, 29, 149, 0.08)',
     alignSelf: 'flex-start',
     paddingHorizontal: 8,
     paddingVertical: 4,
@@ -628,7 +628,7 @@ const styles = StyleSheet.create({
   headerBadgeText: {
     fontSize: 8,
     fontWeight: '800',
-    color: colors.purple[600],
+    color: '#4c1d95',
     letterSpacing: 0.5,
   },
   title: {
@@ -649,11 +649,11 @@ const styles = StyleSheet.create({
   emptyText: { fontSize: 13, color: '#64748B', fontWeight: '600', marginTop: 10, textAlign: 'center' },
   
   listContainer: { gap: 16, marginBottom: 16, marginTop: 12 },
-  planCard: { backgroundColor: '#FFFFFF', borderRadius: 24, padding: 24, borderWidth: 1.5, borderColor: '#F1F5F9', borderLeftWidth: 4, borderLeftColor: colors.purple[600], shadowColor: '#64748B', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.04, shadowRadius: 12, elevation: 3 },
-  planCardPopular: { borderColor: 'rgba(10, 128, 153, 0.3)', backgroundColor: '#E6F5F8', borderLeftColor: colors.purple[600] },
+  planCard: { backgroundColor: '#FFFFFF', borderRadius: 24, padding: 24, borderWidth: 1.5, borderColor: '#F1F5F9', borderLeftWidth: 4, borderLeftColor: '#4c1d95', shadowColor: '#64748B', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.04, shadowRadius: 12, elevation: 3 },
+  planCardPopular: { borderColor: '#C4B5FD', backgroundColor: '#F5F3FF', borderLeftColor: '#4c1d95' },
   
   popularBadgeWrapper: { position: 'absolute', top: -10, left: 24, zIndex: 10 },
-  popularBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: colors.purple[600], paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, shadowColor: colors.purple[600], shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 4 },
+  popularBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#4c1d95', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, shadowColor: '#4c1d95', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 4 },
   popularBadgeText: { color: '#FFFFFF', fontSize: 10, fontWeight: '800' },
   
   planName: { fontSize: 18, fontWeight: '800', color: '#1E293B', marginBottom: 8 },
@@ -674,11 +674,11 @@ const styles = StyleSheet.create({
   noFeaturesText: { fontSize: 11, color: '#94A3B8', fontStyle: 'italic' },
 
   ctaButton: { width: '100%', paddingVertical: 14, borderRadius: 12, alignItems: 'center' },
-  ctaButtonPopular: { backgroundColor: colors.purple[600], shadowColor: colors.purple[600], shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8 },
+  ctaButtonPopular: { backgroundColor: '#4c1d95', shadowColor: '#4c1d95', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8 },
   ctaButtonOutline: { backgroundColor: '#FFFFFF', borderWidth: 1.5, borderColor: '#E2E8F0' },
   ctaButtonText: { fontSize: 13, fontWeight: '800' },
   ctaButtonTextPopular: { color: '#FFFFFF' },
-  ctaButtonTextOutline: { color: colors.purple[600] },
+  ctaButtonTextOutline: { color: '#4c1d95' },
   
   btnRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
 
@@ -690,7 +690,6 @@ const styles = StyleSheet.create({
   activeIconBg: { backgroundColor: '#D1FAE5' },
   planBannerTextContainer: { flex: 1, gap: 4 },
   badgeRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 },
-  
   expiredBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#FEE2E2', borderWidth: 1, borderColor: '#FCA5A5', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12 },
   pulseDotRed: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#EF4444' },
   expiredBadgeText: { fontSize: 9, fontWeight: '700', color: '#B91C1C', textTransform: 'uppercase' },
@@ -723,24 +722,21 @@ const styles = StyleSheet.create({
   loadingText: { fontSize: 14, color: '#64748B', marginTop: 12, fontWeight: '600' },
   errorContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 24 },
   errorText: { fontSize: 14, color: '#EF4444', textAlign: 'center', marginTop: 12, marginBottom: 16, fontWeight: '600' },
-  tryAgainButton: { backgroundColor: colors.purple[600], paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8 },
+  tryAgainButton: { backgroundColor: '#4c1d95', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8 },
   tryAgainText: { color: '#FFFFFF', fontSize: 13, fontWeight: '800' },
   emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 24 },
 
   historySection: {},
   historyList: { gap: 10 },
   subscriptionHistoryCard: { backgroundColor: '#FFFFFF', borderRadius: 12, borderWidth: 1, borderColor: '#E2E8F0', overflow: 'hidden', flexDirection: 'row' },
-  sessionHistoryCard: { backgroundColor: '#FFFFFF', borderRadius: 12, borderWidth: 1, borderColor: '#E2E8F0', overflow: 'hidden', flexDirection: 'row' },
   cardSideStrip: { width: 3 },
-  stripActive: { backgroundColor: colors.purple[600] },
+  stripActive: { backgroundColor: '#4c1d95' },
   stripInactive: { backgroundColor: '#CBD5E1' },
-  stripActiveOrange: { backgroundColor: colors.accent.DEFAULT },
-  stripInactiveOrange: { backgroundColor: '#CBD5E1' },
   historyCardBody: { flex: 1, padding: 12, flexDirection: 'row', justifyContent: 'space-between', gap: 8 },
   historyCardLeft: { flex: 1, gap: 4 },
   historyCardTitleRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 },
   historyCardTitle: { fontSize: 13, fontWeight: '800', color: '#1E293B', maxWidth: '60%' },
-  activeStatusBadge: { backgroundColor: '#6366F1', paddingHorizontal: 6, paddingVertical: 1, borderRadius: 4 },
+  activeStatusBadge: { backgroundColor: '#4c1d95', paddingHorizontal: 6, paddingVertical: 1, borderRadius: 4 },
   activeStatusText: { fontSize: 8, fontWeight: '800', color: '#FFFFFF', textTransform: 'uppercase' },
   paymentStatusBadge: { paddingHorizontal: 6, paddingVertical: 1, borderRadius: 4 },
   paidBadge: { backgroundColor: '#E0F2FE' },
@@ -757,8 +753,8 @@ const styles = StyleSheet.create({
   historyCardRight: { alignItems: 'flex-end', justifyContent: 'center', minWidth: 60 },
   amountText: { fontSize: 14, fontWeight: '900', color: '#1E293B' },
   discountText: { fontSize: 9, color: '#94A3B8', marginTop: 1 },
-  showMoreBtn: { marginTop: 12, width: '100%', backgroundColor: 'rgba(10, 128, 153, 0.08)', borderWidth: 1, borderColor: 'rgba(10, 128, 153, 0.2)', borderRadius: 12, paddingVertical: 10, justifyContent: 'center', alignItems: 'center' },
-  showMoreBtnText: { fontSize: 11, fontWeight: '700', color: colors.purple[600] },
+  showMoreBtn: { marginTop: 12, width: '100%', backgroundColor: '#F5F3FF', borderWidth: 1, borderColor: '#C4B5FD', borderRadius: 12, paddingVertical: 10, justifyContent: 'center', alignItems: 'center' },
+  showMoreBtnText: { fontSize: 11, fontWeight: '700', color: '#4c1d95' },
 
   footerSpacer: { height: 40 }
 });

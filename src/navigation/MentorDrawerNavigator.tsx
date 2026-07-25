@@ -7,6 +7,7 @@ import { MentorRequestsScreen } from '@/screens/Dashboards/MentorDashboard/Mento
 import { MentorSessionHistoryScreen } from '@/screens/Dashboards/MentorDashboard/MentorSessionHistoryScreen';
 import { MentorPayoutsScreen } from '@/screens/Dashboards/MentorDashboard/MentorPayoutsScreen';
 import { MentorProfileScreen } from '@/screens/Dashboards/MentorDashboard/MentorProfileScreen';
+import { MentorPlansScreen } from '@/screens/Dashboards/MentorDashboard/MentorPlansScreen';
 import { CustomDrawerContent } from '@/components/dashboard/CustomDrawerContent';
 import { colors } from '@/theme/colors';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
@@ -17,6 +18,7 @@ import {
   BookOpen,
   MessageSquare,
   TrendingUp,
+  Award,
 } from 'lucide-react-native';
 
 const Drawer = createDrawerNavigator();
@@ -88,6 +90,13 @@ export const MentorDrawerNavigator = () => {
         component={MentorProfileScreen}
         options={{
           drawerIcon: ({ color, size }) => <TrendingUp color={color} size={size} />
+        }}
+      />
+      <Drawer.Screen
+        name="Plans"
+        component={MentorPlansScreen}
+        options={{
+          drawerIcon: ({ color, size }) => <Award color={color} size={size} />
         }}
       />
     </Drawer.Navigator>
