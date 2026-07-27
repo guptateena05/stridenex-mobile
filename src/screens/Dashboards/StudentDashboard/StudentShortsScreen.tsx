@@ -317,7 +317,7 @@ const VerticalShortCard = ({
                 <View style={styles.actionIconCircle}>
                    <MessageSquare size={26} color="#FFFFFF" />
                 </View>
-                <Text style={styles.verticalActionText}>{video.commentCount || 28}</Text>
+                 <Text style={styles.verticalActionText}>{video.commentCount ?? 0}</Text>
              </TouchableOpacity>
 
              {/* Save/Unsave item in the actions column */}
@@ -461,18 +461,31 @@ export const StudentShortsScreen = () => {
       setCommentsLoading(true);
       const res = await getShortComments(String(shortId));
       let rawList = [];
-      if (res && Array.isArray(res.message)) {
+      let commentCountVal = 0;
+
+      if (res && res.message && typeof res.message === 'object' && !Array.isArray(res.message)) {
+        rawList = res.message.comments || [];
+        commentCountVal = res.message.comment_count || 0;
+      } else if (res && Array.isArray(res.message)) {
         rawList = res.message;
+        commentCountVal = res.message.length;
       } else if (res && Array.isArray(res.data)) {
         rawList = res.data;
+        commentCountVal = res.data.length;
       } else if (res && res.message && Array.isArray(res.message.data)) {
         rawList = res.message.data;
+        commentCountVal = res.message.data.length;
       }
+
       const formatted = formatComments(rawList);
       setCommentsMap(prev => ({
         ...prev,
         [shortId]: formatted
       }));
+
+      // Update comment count in lists
+      setShortsList(prev => prev.map(s => String(s.id) === String(shortId) ? { ...s, commentCount: commentCountVal } : s));
+      setDisplayedShorts(prev => prev.map(s => String(s.id) === String(shortId) ? { ...s, commentCount: commentCountVal } : s));
     } catch (err) {
       console.error("Error fetching comments for short:", err);
     } finally {
@@ -489,6 +502,7 @@ export const StudentShortsScreen = () => {
   
   const isBatchLoadingRef = useRef(false);
   const activeTogglesRef = useRef<Set<string>>(new Set());
+  const lastFetchedShortIdRef = useRef<string | null>(null);
   const BATCH_SIZE = 5;
 
   const fetchSaved = async () => {
@@ -568,25 +582,31 @@ export const StudentShortsScreen = () => {
             isSaved: Boolean(item.is_saved),
             videoUrl: videoUrl,
             posterUrl: posterUrl,
-            commentCount: mockComments.length,
-            comments: mockComments,
-            likes: item.likes_count !== undefined ? String(item.likes_count) : (item.likes !== undefined ? String(item.likes) : "0")
+            commentCount: item.comment_count !== undefined ? Number(item.comment_count) : (item.comments_count !== undefined ? Number(item.comments_count) : 0),
+            comments: [],
+            likes: item.like_count !== undefined 
+              ? String(item.like_count) 
+              : (item.likes_count !== undefined 
+                  ? String(item.likes_count) 
+                  : (item.likes !== undefined ? String(item.likes) : "0"))
           };
         });
 
         // Initialize comments mapping
         const cMap: Record<string, any[]> = {};
         mapped.forEach((v: any) => {
-          cMap[v.id] = v.comments;
+          cMap[v.id] = [];
         });
         setCommentsMap(cMap);
 
         // Initialize like counts mapping
         const likesMap: Record<string, number> = {};
         rawShorts.forEach((item: any) => {
-          likesMap[String(item.name)] = item.likes_count !== undefined 
-            ? Number(item.likes_count) 
-            : (item.likes !== undefined ? Number(item.likes) : 0);
+          likesMap[String(item.name)] = item.like_count !== undefined 
+            ? Number(item.like_count) 
+            : (item.likes_count !== undefined 
+                ? Number(item.likes_count) 
+                : (item.likes !== undefined ? Number(item.likes) : 0));
         });
         setLikeCounts(likesMap);
 
@@ -620,6 +640,18 @@ export const StudentShortsScreen = () => {
       setDisplayedShorts(shortsList.slice(0, BATCH_SIZE));
     }
   }, [shortsList]);
+
+  // Fetch comments and sync selectedShort when active short index changes
+  useEffect(() => {
+    if (displayedShorts.length > 0 && activeIndex < displayedShorts.length) {
+      const activeShort = displayedShorts[activeIndex];
+      if (activeShort && lastFetchedShortIdRef.current !== String(activeShort.id)) {
+        lastFetchedShortIdRef.current = String(activeShort.id);
+        setSelectedShort(activeShort);
+        fetchCommentsForShort(String(activeShort.id));
+      }
+    }
+  }, [activeIndex, displayedShorts]);
 
   // Load next batch throttled
   const loadNextBatch = () => {
@@ -1147,7 +1179,9 @@ export const StudentShortsScreen = () => {
           <View style={styles.bottomSheetContainer} onStartShouldSetResponder={() => true}>
             <View style={styles.dragHandle} />
             <View style={styles.sheetHeader}>
-              <Text style={styles.sheetTitle}>Comments ({currentComments.length})</Text>
+              <Text style={styles.sheetTitle}>
+                Comments ({selectedShort ? (displayedShorts.find((s: any) => String(s.id) === String(selectedShort.id))?.commentCount ?? 0) : 0})
+              </Text>
               <TouchableOpacity onPress={() => setIsCommentsVisible(false)} style={styles.closeBtn}>
                 <X size={20} color="#0F172A" />
               </TouchableOpacity>

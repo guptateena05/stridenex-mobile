@@ -87,9 +87,13 @@ export const StudentProjectsScreen = () => {
       const data = dataContainer?.data?.projects || dataContainer?.projects || [];
       const stats = dataContainer?.data?.statistics || dataContainer?.statistics || {};
       const pag = dataContainer?.data?.pagination || dataContainer?.pagination || null;
+      const activeProjectsCount = (Array.isArray(data) ? data : []).filter(
+        (p: any) => p.status === "Active" || p.status === "active" || !p.status
+      ).length;
+
       setProjects(Array.isArray(data) ? data : []);
       setStatistics({
-        total_projects: stats.total_projects ?? data.length,
+        total_projects: activeProjectsCount,
         total_applied: stats.total_applied ?? 0,
         total_completed: stats.total_completed ?? 0,
         total_awarded: stats.total_awarded ?? 0,
@@ -172,7 +176,7 @@ export const StudentProjectsScreen = () => {
   };
 
   const projectStats = useMemo(() => [
-    { id: 1, title: "AVAILABLE", value: statistics.total_projects || projects.length, icon: Briefcase, color: colors.accent.DEFAULT },
+    { id: 1, title: "AVAILABLE", value: statistics.total_projects, icon: Briefcase, color: colors.accent.DEFAULT },
     { id: 2, title: "APPLIED", value: statistics.total_applied, icon: Target, color: "#3B82F6" },
     { id: 3, title: "COMPLETED", value: statistics.total_completed, icon: CheckCircle2, color: "#10B981" },
     { id: 4, title: "AWARDED", value: statistics.total_awarded, icon: Trophy, color: "#8B5CF6" },

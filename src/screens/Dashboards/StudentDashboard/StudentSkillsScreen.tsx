@@ -122,22 +122,11 @@ export const StudentSkillsScreen = () => {
 
   // Map skills to Radar data
   const radarData = useMemo(() => {
-    if (!skills || skills.length === 0) {
-      return [
-        { subject: 'Python', value: 30, fullMark: 100 },
-        { subject: 'ML', value: 30, fullMark: 100 },
-        { subject: 'SQL', value: 30, fullMark: 100 },
-        { subject: 'Comm', value: 30, fullMark: 100 },
-        { subject: 'Problem', value: 30, fullMark: 100 },
-        { subject: 'Data Viz', value: 30, fullMark: 100 },
-      ];
-    }
-
-    const mapped = skills.slice(0, 6).map(s => {
+    const mapped = (skills || []).slice(0, 6).map(s => {
       let val = 40;
       if (s.level === 'Advanced') val = 90;
       else if (s.level === 'Intermediate') val = 65;
-      else if (s.level === 'Beginner') val = 40;
+      else val = 40;
       return {
         subject: s.name.length > 8 ? s.name.slice(0, 8) + '..' : s.name,
         value: val,
@@ -149,7 +138,7 @@ export const StudentSkillsScreen = () => {
     while (mapped.length < 3) {
       mapped.push({
         subject: `Skill ${mapped.length + 1}`,
-        value: 30,
+        value: 0,
         fullMark: 100
       });
     }
@@ -420,7 +409,7 @@ export const StudentSkillsScreen = () => {
           </View>
           
           <View style={styles.radarContainer}>
-            <SkillsRadarChart data={radarData} size={220} />
+            <SkillsRadarChart data={radarData} size={200} />
           </View>
 
           <View style={styles.insightBox}>
