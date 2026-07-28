@@ -69,7 +69,13 @@ api.interceptors.response.use(
       let serverMessage = null;
 
       // Extract server message from Frappe response structure
-      if (data._server_messages) {
+      if (data.exception && (data.exc_type === "ValidationError" || String(data.exception).includes("ValidationError"))) {
+        const excStr = String(data.exception);
+        const index = excStr.indexOf(":");
+        serverMessage = index !== -1 ? excStr.slice(index + 1).trim() : excStr;
+      }
+
+      if (!serverMessage && data._server_messages) {
         try {
           const messages = typeof data._server_messages === 'string' ? JSON.parse(data._server_messages) : data._server_messages;
           if (Array.isArray(messages)) {
@@ -91,6 +97,11 @@ api.interceptors.response.use(
 
       if (!serverMessage) {
         serverMessage = data.message || (data.exc && typeof data.exc === 'string' && !data.exc.includes("Traceback") ? data.exc : null);
+      }
+
+      // Strip HTML tags from message
+      if (serverMessage && typeof serverMessage === 'string') {
+        serverMessage = serverMessage.replace(/<[^>]*>/g, '').trim();
       }
 
       // Cleanup common raw database errors

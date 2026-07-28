@@ -167,8 +167,9 @@ export const StudentCommunityScreen = ({ navigation }: any) => {
       setShowCreateTagModal(false);
       setNewTagTitle("");
       fetchTags();
-    } catch (err) {
-      console.error("Error creating tag on mobile:", err);
+    } catch (err: any) {
+      console.warn("Error creating tag on mobile:", err);
+      Alert.alert("Error", err?.message || "Failed to create tag");
     } finally {
       setIsCreatingTag(false);
     }
