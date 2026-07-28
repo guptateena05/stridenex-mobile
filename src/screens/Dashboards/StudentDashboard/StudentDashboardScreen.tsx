@@ -428,8 +428,11 @@ export const StudentDashboardScreen = () => {
 
   const bannerMetrics = useMemo(() => {
     if (!studentData) return undefined;
+    const score = studentData.employability_score !== undefined && studentData.employability_score !== null
+      ? String(studentData.employability_score)
+      : '73';
     return [
-      { label: 'Employability', value: '73', iconName: 'Target' as const },
+      { label: 'Employability', value: score, iconName: 'Target' as const },
       { label: 'Current CGPA', value: studentData.cgpa || '0', iconName: 'Award' as const },
       { label: 'Semester', value: studentData.semester || 'N/A', iconName: 'Calendar' as const },
     ];
@@ -457,7 +460,7 @@ export const StudentDashboardScreen = () => {
             fullName={bannerTitle} 
             date={new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })}
             role={role || 'Student'}
-            progress={78}
+            progress={statsData?.profile_completeness !== undefined && statsData?.profile_completeness !== null ? Number(statsData.profile_completeness) : 78}
             title={bannerTitle}
             subtitle={bannerSubtitle}
             metrics={bannerMetrics}
