@@ -260,8 +260,9 @@ export const CollegePlacementScreen = ({ route }: any) => {
         );
         return response.data;
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(`Error creating custom value for ${fieldName}:`, err);
+      Alert.alert("Error", err?.message || `Failed to create custom value for ${fieldName}`);
       throw err;
     }
   };

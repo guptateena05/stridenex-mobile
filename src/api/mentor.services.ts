@@ -1,4 +1,48 @@
-import { api } from "./api.services";
+import { api as baseApi } from "./api.services";
+import { Alert } from "react-native";
+
+const api = {
+  get: async (url: string, config?: any) => {
+    try {
+      return await baseApi.get(url, config);
+    } catch (error: any) {
+      Alert.alert("Error", error?.message || "An unexpected error occurred");
+      throw error;
+    }
+  },
+  post: async (url: string, data?: any, config?: any) => {
+    try {
+      return await baseApi.post(url, data, config);
+    } catch (error: any) {
+      Alert.alert("Error", error?.message || "An unexpected error occurred");
+      throw error;
+    }
+  },
+  put: async (url: string, data?: any, config?: any) => {
+    try {
+      return await baseApi.put(url, data, config);
+    } catch (error: any) {
+      Alert.alert("Error", error?.message || "An unexpected error occurred");
+      throw error;
+    }
+  },
+  patch: async (url: string, data?: any, config?: any) => {
+    try {
+      return await baseApi.patch(url, data, config);
+    } catch (error: any) {
+      Alert.alert("Error", error?.message || "An unexpected error occurred");
+      throw error;
+    }
+  },
+  delete: async (url: string, config?: any) => {
+    try {
+      return await baseApi.delete(url, config);
+    } catch (error: any) {
+      Alert.alert("Error", error?.message || "An unexpected error occurred");
+      throw error;
+    }
+  },
+};
 
 export const getMentorByEmail = async (email: string) => {
   try {
