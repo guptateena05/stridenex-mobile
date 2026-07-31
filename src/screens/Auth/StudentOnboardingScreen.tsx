@@ -43,6 +43,8 @@ interface DynamicFormDataType {
   resume: any;
   linkedinUrl: string;
   githubUrl: string;
+  hasReferral?: string;
+  referal_code?: string;
 }
 
 const StudentOnboardingScreen = () => {
@@ -76,7 +78,8 @@ const StudentOnboardingScreen = () => {
   const [dynamicFormData, setDynamicFormData] = useState<DynamicFormDataType>({
     state: "", district: "", college: "", stream: "", courses: [], course: "", department: "",
     academicYear: "1", semester: "", current_year: "", dateOfBirth: "", gender: "Male", skills: [], careerInterest: [],
-    resume: null, linkedinUrl: "", githubUrl: ""
+    resume: null, linkedinUrl: "", githubUrl: "",
+    hasReferral: "0", referal_code: ""
   });
 
   // Timer effects
@@ -534,7 +537,23 @@ const StudentOnboardingScreen = () => {
       placeholder: "https://github.com/username",
       layout: "full",
       inputClassName: "font-mono text-sm"
-    }
+    },
+    {
+      fieldname: "hasReferral",
+      label: "Are you using any referral code?",
+      placeholder: "Are you using any referral code?",
+      fieldtype: "Check",
+      required: false,
+      layout: "full"
+    },
+    ...(dynamicFormData.hasReferral === "1" ? [{
+      fieldname: "referal_code",
+      label: "Referral Code",
+      placeholder: "Enter referral code",
+      fieldtype: "Data",
+      required: true,
+      layout: "full" as const
+    }] : [])
   ];
 
   const validateStep3 = (data: DynamicFormDataType) => {
@@ -545,6 +564,10 @@ const StudentOnboardingScreen = () => {
     });
     if (!data.courses || data.courses.length === 0) errs.courses = 'Please select at least one course type';
     if (!data.skills || data.skills.length === 0) errs.skills = 'Please select at least one skill';
+
+    if (data.hasReferral === "1" && (!data.referal_code || data.referal_code.trim() === '')) {
+      errs.referal_code = 'Referral code is required';
+    }
 
     setFormErrors(errs);
     return Object.keys(errs).length === 0;
@@ -611,7 +634,8 @@ const StudentOnboardingScreen = () => {
         career_interest: careerInterestArray.length > 0 ? careerInterestArray : [{ career_interest: "Biotechnology / Genetics" }],
         github: data.githubUrl || "",
         linkedin: data.linkedinUrl || "",
-        resume: data.resume || null // File object from document picker
+        resume: data.resume || null, // File object from document picker
+        referal_code: data.hasReferral === "1" ? (data.referal_code || "") : ""
       };
 
       console.log("Submitting payload:", payload);
@@ -729,7 +753,9 @@ const StudentOnboardingScreen = () => {
         gender: newData.gender ?? prev.gender,
         resume: newData.resume ?? prev.resume,
         linkedinUrl: newData.linkedinUrl ?? prev.linkedinUrl,
-        githubUrl: newData.githubUrl ?? prev.githubUrl
+        githubUrl: newData.githubUrl ?? prev.githubUrl,
+        hasReferral: newData.hasReferral ?? prev.hasReferral,
+        referal_code: newData.hasReferral === '0' ? '' : (newData.referal_code ?? prev.referal_code)
       };
 
       const resetValues = resetFields.reduce((acc, field) => {
