@@ -11,18 +11,28 @@ interface HeatmapData {
 }
 
 interface LearningActivityHeatmapProps {
-  data: HeatmapData;
+  data: any;
 }
 
 export const LearningActivityHeatmap = ({ data }: LearningActivityHeatmapProps) => {
   // GitHub-style discrete levels
   const levels = ['#ebedf0', '#9be9a8', '#40c463', '#30a14e', '#216e39'];
   
-  // Generate mock heatmap data (15 weeks x 7 days = 105 points for a denser look)
-  const days = Array.from({ length: 98 }, (_, i) => ({
-    level: Math.floor(Math.random() * 5),
-    id: i
-  }));
+  const weeksData = data?.weeks || data?.message?.weeks;
+  const days = Array.isArray(weeksData)
+    ? weeksData.flatMap((w: any) => w.days || []).map((day: any, idx: number) => ({
+        level: day.level ?? 0,
+        id: idx
+      }))
+    : Array.from({ length: 98 }, (_, i) => ({
+        level: Math.floor(Math.random() * 5),
+        id: i
+      }));
+
+  const totals = data?.totals || data?.message?.totals;
+  const lessons = totals?.lessons ?? data?.lessons ?? 142;
+  const problems = totals?.problems ?? data?.problems ?? 287;
+  const studyHours = totals?.study_hours ?? data?.studyTime ?? data?.study_time ?? 168;
 
   return (
     <View style={styles.card}>
@@ -52,15 +62,15 @@ export const LearningActivityHeatmap = ({ data }: LearningActivityHeatmapProps) 
       <View style={styles.statsRow}>
         <View style={styles.statItem}>
           <Text style={styles.statLabel}>LESSONS</Text>
-          <Text style={styles.statValue}>{data.lessons}</Text>
+          <Text style={styles.statValue}>{lessons}</Text>
         </View>
         <View style={styles.statItem}>
           <Text style={styles.statLabel}>PROBLEMS</Text>
-          <Text style={styles.statValue}>{data.problems}</Text>
+          <Text style={styles.statValue}>{problems}</Text>
         </View>
         <View style={styles.statItem}>
           <Text style={styles.statLabel}>TIME</Text>
-          <Text style={styles.statValue}>{data.studyTime}h</Text>
+          <Text style={styles.statValue}>{studyHours}h</Text>
         </View>
       </View>
     </View>

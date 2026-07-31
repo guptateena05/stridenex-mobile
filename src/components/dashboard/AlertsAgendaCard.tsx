@@ -36,17 +36,23 @@ export const AlertsAgendaCard = ({ alerts, agenda }: AlertsAgendaCardProps) => {
         <Text style={styles.sectionTitle}>Priority Inbox</Text>
       </View>
       <View style={styles.alertsList}>
-        {alerts.map((alert, i) => (
-          <View key={i} style={styles.alertCard}>
-            <View style={styles.alertIconBox}>
-               <Bell color={alert.type === 'warning' ? '#F97316' : '#10B981'} size={20} />
+        {alerts && alerts.length > 0 ? (
+          alerts.map((alert, i) => (
+            <View key={i} style={styles.alertCard}>
+              <View style={styles.alertIconBox}>
+                 <Bell color={alert.type === 'warning' ? '#F97316' : (alert.type === 'danger' ? '#EF4444' : '#10B981')} size={20} />
+              </View>
+              <View style={styles.alertContent}>
+                <Text style={styles.alertMsg}>{alert.message}</Text>
+                <Text style={styles.alertDetail}>{alert.detail}</Text>
+              </View>
             </View>
-            <View style={styles.alertContent}>
-              <Text style={styles.alertMsg}>{alert.message}</Text>
-              <Text style={styles.alertDetail}>{alert.detail}</Text>
-            </View>
+          ))
+        ) : (
+          <View style={styles.emptyAlertsCard}>
+            <Text style={styles.emptyAlertsText}>No new opportunity alerts today.</Text>
           </View>
-        ))}
+        )}
       </View>
 
       <View style={[styles.sectionHeader, { marginTop: 32 }]}>
@@ -176,5 +182,20 @@ const styles = StyleSheet.create({
     color: '#94A3B8',
     fontWeight: '600',
     marginTop: 2,
+  },
+  emptyAlertsCard: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 20,
+    padding: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderStyle: 'dashed',
+  },
+  emptyAlertsText: {
+    fontSize: 13,
+    color: '#94A3B8',
+    fontWeight: '600',
   },
 });

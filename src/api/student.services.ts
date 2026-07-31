@@ -1240,6 +1240,58 @@ export const getUserSubscriptionDashboard = async () => {
   }
 };
 
+/**
+ * Fetch learning activity.
+ */
+export const getLearningActivity = async (studentEmail: string) => {
+  try {
+    const token = await AsyncStorage.getItem("token");
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json"
+    };
+    if (token) {
+      headers["Authorization"] = `token ${token}`;
+    }
+    const response = await api.get(
+      "method/stridenex_app.stridenex_app.doctype.student.student.get_learning_activity",
+      {
+        params: { student: studentEmail },
+        headers
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching learning activity on mobile:", error);
+    throw error;
+  }
+};
+
+/**
+ * Fetch today's opportunity alerts.
+ */
+export const getTodaysOpportunityAlerts = async (studentEmail: string) => {
+  try {
+    const token = await AsyncStorage.getItem("token");
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json"
+    };
+    if (token) {
+      headers["Authorization"] = `token ${token}`;
+    }
+    const response = await api.get(
+      "method/stridenex_app.stridenex_app.doctype.student.student.get_todays_opportunity_alerts",
+      {
+        params: { student: studentEmail },
+        headers
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching today's opportunity alerts on mobile:", error);
+    throw error;
+  }
+};
+
 
 
 

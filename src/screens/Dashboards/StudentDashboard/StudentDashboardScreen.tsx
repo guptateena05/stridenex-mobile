@@ -15,7 +15,7 @@ import { AlertsAgendaCard } from '@/components/dashboard/AlertsAgendaCard';
 import { TrendingUp, Award, Briefcase, Bot, X, MapPin, Clock, IndianRupee } from 'lucide-react-native';
 
 import Animated, { FadeInUp, FadeInRight } from 'react-native-reanimated';
-import { getStudentByEmail, updateStudent, mapYearToWord, getStudentSkills, getDashboardStats, getStudentInternshipList } from '@/api/student.services';
+import { getStudentByEmail, updateStudent, mapYearToWord, getStudentSkills, getDashboardStats, getStudentInternshipList, getLearningActivity, getTodaysOpportunityAlerts } from '@/api/student.services';
 import DynamicForm from '@/components/forms/DynamicForm';
 import { FormField } from '@/components/forms/DynamicField';
 
@@ -130,6 +130,59 @@ export const StudentDashboardScreen = () => {
     fetchStats();
   }, [userName]);
 
+  const [learningActivityData, setLearningActivityData] = useState<any>(null);
+
+  useEffect(() => {
+    if (!userName) return;
+    const fetchLearningActivity = async () => {
+      try {
+        const res = await getLearningActivity(userName);
+        console.log("Mobile student learning activity response:", res);
+        const data = res?.data || res?.message || res;
+        if (data) {
+          setLearningActivityData(data);
+        }
+      } catch (err) {
+        console.error("Error loading mobile learning activity:", err);
+      }
+    };
+    fetchLearningActivity();
+  }, [userName]);
+
+  const [opportunityAlerts, setOpportunityAlerts] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (!userName) return;
+    const fetchAlerts = async () => {
+      try {
+        const res = await getTodaysOpportunityAlerts(userName);
+        console.log("Mobile opportunity alerts response:", res);
+        const data = res?.data || res?.message;
+        
+        let alertsArray: any[] = [];
+        if (Array.isArray(data)) {
+          alertsArray = data;
+        } else if (data && Array.isArray(data.alerts)) {
+          alertsArray = data.alerts;
+        }
+        
+        if (alertsArray.length > 0) {
+          const mapped = alertsArray.map((item: any) => ({
+            type: (item.type || 'warning') as 'warning' | 'success' | 'danger',
+            message: item.message || item.title || item.opportunity_title || item.heading || "Opportunity Alert",
+            detail: item.detail || item.description || item.detail_text || item.text || ""
+          }));
+          setOpportunityAlerts(mapped);
+        } else {
+          setOpportunityAlerts([]);
+        }
+      } catch (err) {
+        console.error("Error loading mobile opportunity alerts:", err);
+      }
+    };
+    fetchAlerts();
+  }, [userName]);
+
   const [internshipsData, setInternshipsData] = useState<any[]>([]);
   const [internshipsLoading, setInternshipsLoading] = useState<boolean>(false);
 
@@ -232,10 +285,7 @@ export const StudentDashboardScreen = () => {
   
   const displayedSkills = skillsData.length > 0 ? skillsData : fallbackSkills;
 
-  const alerts = [
-    { type: 'warning' as const, message: 'Upcoming Deadline', detail: 'Razorpay • 3 days left' },
-    { type: 'success' as const, message: 'Project Approved', detail: 'TCS • Interview: Feb 28' },
-  ];
+  const alerts = opportunityAlerts;
 
   const agenda = [
     { icon: 'education', text: 'ML Module Ch.2 — Today' },
@@ -488,7 +538,7 @@ export const StudentDashboardScreen = () => {
         </View>
 
         <Animated.View entering={FadeInUp.delay(400)}>
-          <LearningActivityGraph data={{ lessons: 142, problems: 287, studyTime: 168 }} />
+          <LearningActivityGraph data={learningActivityData} />
         </Animated.View>
 
         <Animated.View entering={FadeInUp.delay(500)}>

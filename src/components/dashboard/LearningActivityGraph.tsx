@@ -11,12 +11,46 @@ interface HeatmapData {
 }
 
 interface LearningActivityGraphProps {
-  data: HeatmapData;
+  data: any;
 }
 
 export const LearningActivityGraph = ({ data }: LearningActivityGraphProps) => {
-  const chartData = [20, 35, 28, 50, 42, 68, 58, 85, 72, 95];
+  // Parse dynamic data with fallbacks
+  const totals = data?.totals || data?.message?.totals;
+  const lessons = totals?.lessons ?? 0;
+  const problems = totals?.problems ?? 0;
+  const studyTime = totals?.study_hours ?? 0;
+  const streak = data?.streak ?? data?.streak_count ?? 0;
+
+  const weeksData = data?.weeks || data?.message?.weeks;
+  let parsedChartData = Array.isArray(weeksData) && weeksData.length > 0
+    ? weeksData.map((weekObj: any) => {
+        let hours = 0;
+        if (weekObj.days && Array.isArray(weekObj.days)) {
+          weekObj.days.forEach((day: any) => {
+            hours += (day.study_minutes || 0) / 60;
+          });
+        }
+        return Number(hours.toFixed(1));
+      })
+    : [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+
+  // If the parsed array is too short to draw a graph (needs at least 2 points), pad it with zeros
+  if (parsedChartData.length === 0) {
+    parsedChartData = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+  } else if (parsedChartData.length === 1) {
+    parsedChartData = [parsedChartData[0], 0];
+  }
+
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct'];
+  const labels = Array.isArray(weeksData) && weeksData.length > 0
+    ? weeksData.map((weekObj: any, idx: number) => {
+        if (weekObj.week_start) {
+          return weekObj.week_start.slice(5); // e.g. "06-13"
+        }
+        return `W${idx + 1}`;
+      })
+    : months;
   
   const width = 340;
   const height = 120;
@@ -28,9 +62,11 @@ export const LearningActivityGraph = ({ data }: LearningActivityGraphProps) => {
   const chartWidth = width - paddingLeft - paddingRight;
   const chartHeight = height - paddingTop - paddingBottom;
   
-  const points = chartData.map((val, i) => {
-    const x = paddingLeft + (i * chartWidth) / (chartData.length - 1);
-    const y = paddingTop + chartHeight - (val / 100) * chartHeight;
+  const maxVal = Math.max(...parsedChartData, 100);
+
+  const points = parsedChartData.map((val, i) => {
+    const x = paddingLeft + (i * chartWidth) / (parsedChartData.length - 1);
+    const y = paddingTop + chartHeight - (val / maxVal) * chartHeight;
     return { x, y, val };
   });
 
@@ -45,7 +81,7 @@ export const LearningActivityGraph = ({ data }: LearningActivityGraphProps) => {
       <View style={styles.header}>
         <Text style={styles.title}>Learning Activity Graph</Text>
         <View style={styles.badge}>
-          <Text style={styles.badgeText}>🔥 12 Day Streak!</Text>
+          <Text style={styles.badgeText}>🔥 {streak} Day Streak!</Text>
         </View>
       </View>
 
@@ -93,7 +129,7 @@ export const LearningActivityGraph = ({ data }: LearningActivityGraphProps) => {
                 fontWeight="600"
                 textAnchor="middle"
               >
-                {months[i]}
+                {labels[i] || `W${i + 1}`}
               </SvgText>
             );
           })}
@@ -103,15 +139,15 @@ export const LearningActivityGraph = ({ data }: LearningActivityGraphProps) => {
       <View style={styles.statsRow}>
         <View style={styles.statItem}>
           <Text style={styles.statLabel}>LESSONS</Text>
-          <Text style={styles.statValue}>{data.lessons}</Text>
+          <Text style={styles.statValue}>{lessons}</Text>
         </View>
         <View style={styles.statItem}>
           <Text style={styles.statLabel}>PROBLEMS</Text>
-          <Text style={styles.statValue}>{data.problems}</Text>
+          <Text style={styles.statValue}>{problems}</Text>
         </View>
         <View style={styles.statItem}>
           <Text style={styles.statLabel}>TIME</Text>
-          <Text style={styles.statValue}>{data.studyTime}h</Text>
+          <Text style={styles.statValue}>{studyTime}h</Text>
         </View>
       </View>
     </View>
