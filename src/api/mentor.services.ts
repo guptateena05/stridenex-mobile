@@ -1,5 +1,5 @@
 import { api as baseApi } from "./api.services";
-import { Alert } from "react-native";
+import { Alert } from "@/utils/alert";
 
 const api = {
   get: async (url: string, config?: any) => {

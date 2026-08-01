@@ -36,8 +36,58 @@ export const CollegeInterventionsScreen = () => {
   const [activeStudent, setActiveStudent] = useState<any>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Toggle active tab (Critical Students vs AI Recommendations)
   const [activeTab, setActiveTab] = useState<'students' | 'recommendations'>('students');
+
+  const dynamicRecommendations = useMemo(() => {
+    const list = [];
+    const criticalCount = summaryData?.critical || 0;
+    const highRiskCount = summaryData?.high_risk || 0;
+    const decliningCount = summaryData?.declining_progress || 0;
+    const placementReadyCount = summaryData?.placement_ready || 0;
+
+    if (criticalCount > 0) {
+      list.push({
+        icon: "🤝",
+        text: "Peer mentors for critical at-risk students",
+        subject: `${criticalCount} students`,
+        impact: "Improve retention"
+      });
+    }
+    if (highRiskCount > 0) {
+      list.push({
+        icon: "📚",
+        text: "Bulk-enroll high-risk students in employability bootcamps",
+        subject: `${highRiskCount} students`,
+        impact: "+15 avg score"
+      });
+    }
+    if (decliningCount > 0) {
+      list.push({
+        icon: "🎤",
+        text: "AI mock-interview sessions to boost progress",
+        subject: `${decliningCount} students`,
+        impact: "+20% offer rate"
+      });
+    }
+    if (placementReadyCount > 0) {
+      list.push({
+        icon: "🏢",
+        text: "Connect placement-ready students with industry partners",
+        subject: `${placementReadyCount} students`,
+        impact: "NEP compliance"
+      });
+    }
+
+    if (list.length === 0) {
+      return [
+        { icon: "📚", text: "Bulk-enroll CSE 3rd Year in Data bootcamp", subject: "84 students", impact: "+15 avg score" },
+        { icon: "🤝", text: "Peer mentors for at-risk 4th year", subject: "47 students", impact: "Improve retention" },
+        { icon: "🎤", text: "AI mock-interview sessions", subject: "52 students", impact: "+20% offer rate" },
+      ];
+    }
+
+    return list;
+  }, [summaryData]);
 
   // Fetch college details, students list, and mentors list
   const fetchDetailsAndData = useCallback(async (isRefresh = false) => {
@@ -280,7 +330,7 @@ export const CollegeInterventionsScreen = () => {
             onPress={() => setActiveTab('recommendations')}
           >
             <Text style={[styles.tabBtnText, activeTab === 'recommendations' && styles.activeTabBtnText]}>
-              AI Recommendations ({recommendations.length})
+              AI Recommendations ({dynamicRecommendations.length})
             </Text>
           </TouchableOpacity>
         </Animated.View>
@@ -413,7 +463,7 @@ export const CollegeInterventionsScreen = () => {
                 <Text style={styles.sectionTitle}>AI Recommendations</Text>
               </View>
               <View style={styles.listContainer}>
-                {recommendations.map((rec, idx) => (
+                {dynamicRecommendations.map((rec, idx) => (
                   <View key={idx} style={styles.insightCard}>
                      <View style={styles.insightTop}>
                         <View style={styles.insightIconBox}>
