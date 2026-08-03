@@ -262,7 +262,13 @@ export const IndustryInternshipsScreen = () => {
       label: 'Domain',
       fieldtype: 'Link',
       apiEndpoint: 'method/stridenex_app.api_stridenex_app.college.master.get_master_data',
-      apiParams: { doctype: 'Domain' },
+      apiParams: { 
+        doctype: 'Industry Skill Domain',
+        fields: ['domain'],
+        filters: {
+          industry: companyName || ''
+        }
+      },
       required: false,
     },
     {
@@ -383,7 +389,7 @@ export const IndustryInternshipsScreen = () => {
       fieldtype: 'Long Text',
       required: true,
     }
-  ], [formValues.payment_type, editingInternship, formValues.course]);
+  ], [formValues.payment_type, editingInternship, formValues.course, companyName]);
 
   const formatDate = (dateStr: string) => {
     if (!dateStr) return 'N/A';

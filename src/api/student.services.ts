@@ -495,11 +495,11 @@ export const getMentorList = async (page: number = 1, page_size: number = 20, se
 /**
  * Fetch mentor slot calendar.
  */
-export const getMentorSlotCalendar = async (mentorEmail: string) => {
+export const getMentorSlotCalendar = async (mentorEmail: string, offeringName?: string) => {
   try {
-    const response = await api.get(
+    const response = await api.post(
       "method/stridenex_app.stridenex_app.doctype.mentor_session_booking.mentor_session_booking.get_slot_calendar",
-      { params: { mentor: mentorEmail } }
+      { mentor: mentorEmail, offering: offeringName }
     );
     return response.data;
   } catch (error) {
@@ -1292,7 +1292,50 @@ export const getTodaysOpportunityAlerts = async (studentEmail: string) => {
   }
 };
 
+export const initiateSessionBooking = async (payload: any) => {
+  try {
+    const response = await api.post(
+      "method/quantbit_billing_platform.quantbit_billing_platform.api.initiate_session_booking",
+      { payload: JSON.stringify(payload) }
+    );
+    return response.data;
+  } catch (error: any) {
+    console.error("Error initiating session booking:", error);
+    let errMsg = "Failed to initiate session booking.";
+    if (error?.response?.data) {
+      const data = error.response.data;
+      if (data._server_messages) {
+        try {
+          const msgs = typeof data._server_messages === "string" ? JSON.parse(data._server_messages) : data._server_messages;
+          if (Array.isArray(msgs) && msgs.length > 0) {
+            const msgObj = typeof msgs[0] === "string" ? JSON.parse(msgs[0]) : msgs[0];
+            errMsg = msgObj?.message ?? errMsg;
+          }
+        } catch (_) {}
+      } else if (data.message) {
+        errMsg = data.message;
+      }
+    } else if (error.message) {
+      errMsg = error.message;
+    }
+    throw new Error(errMsg);
+  }
+};
 
-
-
-
+export const verifySessionPayment = async (payload: {
+  booking_id: string;
+  razorpay_payment_id: string;
+  razorpay_order_id: string;
+  razorpay_signature: string;
+}) => {
+  try {
+    const response = await api.post(
+      "method/quantbit_billing_platform.quantbit_billing_platform.api.verify_session_payment",
+      payload
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error verifying session payment:", error);
+    throw error;
+  }
+};

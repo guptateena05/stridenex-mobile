@@ -44,8 +44,11 @@ import {
   bookMentorSlot, 
   getMentorNextAvailableSlot, 
   getBookedSessions, 
-  getMentorOfferings 
+  getMentorOfferings,
+  initiateSessionBooking,
+  verifySessionPayment
 } from '@/api/student.services';
+import { WebView } from 'react-native-webview';
 
 const AVATAR_COLORS = [
   "#9333EA", "#2563EB", "#10B981", "#F59E0B", "#EC4899", "#6366F1"
@@ -82,6 +85,23 @@ export const StudentMentorsScreen = () => {
   const [selectedSlot, setSelectedSlot] = useState<any | null>(null);
   const [bookingTopic, setBookingTopic] = useState("");
   const [isBooking, setIsBooking] = useState(false);
+  const [groupSessionData, setGroupSessionData] = useState<any | null>(null);
+  const [showPaymentWebView, setShowPaymentWebView] = useState(false);
+  const [paymentData, setPaymentData] = useState<any | null>(null);
+
+  const getOfferingTypeBadgeStyle = (type: string) => {
+    if (type === 'Group Session') {
+      return {
+        bg: { backgroundColor: 'rgba(99, 102, 241, 0.1)', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
+        text: { color: '#4F46E5', fontSize: 9, fontWeight: '700' as const, textTransform: 'uppercase' as const }
+      };
+    } else {
+      return {
+        bg: { backgroundColor: 'rgba(249, 115, 22, 0.1)', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
+        text: { color: '#EA580C', fontSize: 9, fontWeight: '700' as const, textTransform: 'uppercase' as const }
+      };
+    }
+  };
 
   // Debounced search logic
   const searchInputRef = useRef<TextInput>(null);
@@ -257,6 +277,7 @@ export const StudentMentorsScreen = () => {
     setSelectedDate(null);
     setBookingTopic("");
     setSlotCalendar({});
+    setGroupSessionData(null);
     setBookingModalVisible(true);
     setLoadingOfferings(true);
 
@@ -278,17 +299,25 @@ export const StudentMentorsScreen = () => {
     setSelectedSlot(null);
     setSelectedDate(null);
     setBookingTopic("");
+    setGroupSessionData(null);
 
     try {
-      const response = await getMentorSlotCalendar(selectedMentor.email);
-      if (response && response.message) {
-        setSlotCalendar(response.message);
-        const dates = Object.keys(response.message);
-        if (dates.length > 0) {
-          dates.sort();
-          setSelectedDate(dates[0]);
+      const response = await getMentorSlotCalendar(selectedMentor.email, offering.name);
+      const msg = response?.message;
+      if (msg) {
+        if (msg.offering_type === "Group Session") {
+          setGroupSessionData(msg);
+          setSlotCalendar({});
         } else {
-          setSelectedDate(null);
+          setGroupSessionData(null);
+          setSlotCalendar(msg);
+          const dates = Object.keys(msg);
+          if (dates.length > 0) {
+            dates.sort();
+            setSelectedDate(dates[0]);
+          } else {
+            setSelectedDate(null);
+          }
         }
       } else {
         setSlotCalendar({});
@@ -299,6 +328,117 @@ export const StudentMentorsScreen = () => {
       setSlotCalendar({});
     } finally {
       setLoadingSlots(false);
+    }
+  };
+
+  const startPaymentCheckout = (initData: any, amount: number, description: string) => {
+    setPaymentData({
+      apiKey: initData.api_key,
+      orderId: initData.order_id,
+      bookingId: initData.booking_id,
+      amount: amount,
+      description: description,
+      studentEmail: userName || ""
+    });
+    setShowPaymentWebView(true);
+  };
+
+  const handlePaymentMessage = async (event: any) => {
+    try {
+      const data = JSON.parse(event.nativeEvent.data);
+      setShowPaymentWebView(false);
+      
+      if (data.status === "success") {
+        setIsBooking(true);
+        try {
+          await verifySessionPayment({
+            booking_id: paymentData.bookingId,
+            razorpay_payment_id: data.razorpay_payment_id,
+            razorpay_order_id: data.razorpay_order_id,
+            razorpay_signature: data.razorpay_signature,
+          });
+          
+          setBookingModalVisible(false);
+          setSelectedMentor(null);
+          setSelectedOffering(null);
+          setSelectedDate(null);
+          setSelectedSlot(null);
+          setBookingTopic("");
+          setSlotCalendar({});
+          setGroupSessionData(null);
+          
+          Alert.alert("Success", "Payment successful! Your session has been confirmed.");
+          fetchMentorsList(currentPage, searchQuery);
+          fetchBookedSessions();
+        } catch (verifyErr) {
+          console.error("Payment verification failed:", verifyErr);
+          Alert.alert("Error", "Payment received but verification failed. Please contact support.");
+        } finally {
+          setIsBooking(false);
+        }
+      } else if (data.status === "failed") {
+        Alert.alert("Error", `Payment failed: ${data.description || "Unknown error"}`);
+      } else if (data.status === "cancelled") {
+        Alert.alert("Cancelled", "Payment was cancelled.");
+      }
+    } catch (e) {
+      console.error("Error parsing message from webview:", e);
+    }
+  };
+
+  const handleNavigationStateChange = (navState: any) => {
+    console.log("WebView Navigation URL:", navState.url);
+    if (navState.url && navState.url.includes("verify_session_payment") && showPaymentWebView) {
+      // The callback_url redirect has loaded!
+      setShowPaymentWebView(false);
+      setIsBooking(false);
+      
+      // Close all modals
+      setBookingModalVisible(false);
+      setSelectedMentor(null);
+      setSelectedOffering(null);
+      setSelectedDate(null);
+      setSelectedSlot(null);
+      setBookingTopic("");
+      setSlotCalendar({});
+      setGroupSessionData(null);
+
+      const isGroup = selectedOffering?.offering_type === "Group Session" || groupSessionData;
+      const successMsg = isGroup 
+        ? "Payment successful! You have joined the group session." 
+        : "Payment successful! Your session has been confirmed.";
+
+      Alert.alert("Success", successMsg);
+      fetchMentorsList(currentPage, searchQuery);
+      fetchBookedSessions();
+    }
+  };
+
+  const handleLoadStart = (syntheticEvent: any) => {
+    const { nativeEvent } = syntheticEvent;
+    console.log("WebView Load Start URL:", nativeEvent.url);
+    if (nativeEvent.url && nativeEvent.url.includes("verify_session_payment") && showPaymentWebView) {
+      setShowPaymentWebView(false);
+      setIsBooking(false);
+      
+      // Close all modals
+      setBookingModalVisible(false);
+      setSelectedMentor(null);
+      setSelectedOffering(null);
+      setSelectedDate(null);
+      setSelectedSlot(null);
+      setBookingTopic("");
+      setSlotCalendar({});
+      setGroupSessionData(null);
+
+      const isGroup = selectedOffering?.offering_type === "Group Session" || groupSessionData;
+      const successMsg = isGroup 
+        ? "Payment successful! You have joined the group session." 
+        : "Payment successful! Your session has been confirmed.";
+
+      Alert.alert("Success", successMsg);
+      fetchMentorsList(currentPage, searchQuery);
+      fetchBookedSessions();
     }
   };
 
@@ -314,40 +454,84 @@ export const StudentMentorsScreen = () => {
         session_date: selectedDate,
         from_time: selectedSlot.from_time,
         to_time: selectedSlot.to_time,
-        topic: bookingTopic || selectedOffering.title || "General Mentorship"
+        topic: bookingTopic || selectedOffering.title || "General Mentorship",
+        amount: selectedOffering.price_per_session ?? 0,
       };
 
-      const response = await bookMentorSlot(payload);
+      const initResponse = await initiateSessionBooking(payload);
+      const initData = initResponse?.message ?? initResponse;
 
-      if (response && response.exc_type) {
-        let errMsg = "Failed to book session. Please try again.";
-        if (response._server_messages) {
-          try {
-            const messages = JSON.parse(response._server_messages);
-            const msgObj = JSON.parse(messages[0]);
-            errMsg = msgObj.message || errMsg;
-          } catch (e) {
-            console.error("Error parsing server messages:", e);
-          }
-        }
-        Alert.alert("Error", errMsg);
+      if (initData?.payment_required === false) {
+        setBookingModalVisible(false);
+        setSelectedMentor(null);
+        setSelectedOffering(null);
+        setSelectedDate(null);
+        setSelectedSlot(null);
+        setBookingTopic("");
+        setSlotCalendar({});
+        setGroupSessionData(null);
+
+        Alert.alert("Success", `Session booked successfully! ID: ${initData?.booking_id ?? ""}`);
+        fetchMentorsList(currentPage, searchQuery);
+        fetchBookedSessions();
         return;
       }
 
-      setBookingModalVisible(false);
-      setSelectedMentor(null);
-      setSelectedOffering(null);
-      setSelectedDate(null);
-      setSelectedSlot(null);
-      setBookingTopic("");
-      setSlotCalendar({});
+      if (!initData?.api_key || !initData?.order_id || !initData?.booking_id) {
+        throw new Error("Backend did not return required payment fields.");
+      }
 
-      Alert.alert("Success", `Session booked successfully! ID: ${response?.message?.session_name || ""}`);
-      fetchMentorsList(currentPage, searchQuery);
-      fetchBookedSessions();
-    } catch (err) {
+      startPaymentCheckout(initData, selectedOffering.price_per_session ?? 0, payload.topic);
+    } catch (err: any) {
       console.error("Error confirming booking:", err);
-      Alert.alert("Error", "Failed to book session. Please try again.");
+      Alert.alert("Error", err.message || "Failed to initiate booking. Please try again.");
+    } finally {
+      setIsBooking(false);
+    }
+  };
+
+  const handleConfirmGroupBooking = async () => {
+    if (!selectedMentor || !selectedOffering || !groupSessionData) return;
+    setIsBooking(true);
+    try {
+      const sessionPayload = {
+        mentor: selectedMentor.email,
+        student: userName || "",
+        offering: selectedOffering.name,
+        session_date: groupSessionData.start_date,
+        from_time: groupSessionData.start_time,
+        to_time: groupSessionData.end_time,
+        topic: bookingTopic || groupSessionData.title || "Group Session",
+        amount: groupSessionData.price_per_session ?? 0,
+      };
+
+      const initResponse = await initiateSessionBooking(sessionPayload);
+      const initData = initResponse?.message ?? initResponse;
+
+      if (initData?.payment_required === false) {
+        setBookingModalVisible(false);
+        setSelectedMentor(null);
+        setSelectedOffering(null);
+        setSelectedDate(null);
+        setSelectedSlot(null);
+        setBookingTopic("");
+        setSlotCalendar({});
+        setGroupSessionData(null);
+
+        Alert.alert("Success", `Group session joined! ID: ${initData?.booking_id ?? ""}`);
+        fetchMentorsList(currentPage, searchQuery);
+        fetchBookedSessions();
+        return;
+      }
+
+      if (!initData?.api_key || !initData?.order_id || !initData?.booking_id) {
+        throw new Error("Backend did not return required payment fields.");
+      }
+
+      startPaymentCheckout(initData, groupSessionData.price_per_session ?? 0, sessionPayload.topic);
+    } catch (err: any) {
+      console.error("Error during group booking:", err);
+      Alert.alert("Error", err.message || "Failed to initiate group booking.");
     } finally {
       setIsBooking(false);
     }
@@ -426,7 +610,11 @@ export const StudentMentorsScreen = () => {
                           </View>
                           <Text style={styles.offeringDesc} numberOfLines={2}>{offering.description}</Text>
                           <View style={styles.offeringMetaRow}>
-                            <Text style={styles.offeringMetaText}>{offering.offering_type}</Text>
+                            <View style={getOfferingTypeBadgeStyle(offering.offering_type).bg}>
+                              <Text style={getOfferingTypeBadgeStyle(offering.offering_type).text}>
+                                {offering.offering_type}
+                              </Text>
+                            </View>
                             <Text style={styles.offeringMetaDivider}>•</Text>
                             <Text style={styles.offeringMetaText}>{offering.duration_minutes} mins</Text>
                           </View>
@@ -459,6 +647,7 @@ export const StudentMentorsScreen = () => {
                         setSelectedDate(null);
                         setBookingTopic("");
                         setSlotCalendar({});
+                        setGroupSessionData(null);
                       }}
                     >
                       <Text style={styles.changeBtnText}>Change</Text>
@@ -468,7 +657,76 @@ export const StudentMentorsScreen = () => {
                   {loadingSlots ? (
                     <View style={styles.modalLoaderContainer}>
                       <ActivityIndicator size="large" color={colors.accent.DEFAULT} />
-                      <Text style={styles.modalLoaderText}>Loading available slots...</Text>
+                      <Text style={styles.modalLoaderText}>Loading details...</Text>
+                    </View>
+                  ) : groupSessionData ? (
+                    /* ── Group Session: fixed schedule info card ── */
+                    <View style={{ marginTop: 20 }}>
+                      <View style={styles.groupInfoCard}>
+                        <View style={{ marginBottom: 12 }}>
+                          <Text style={styles.groupTitle}>{groupSessionData.title}</Text>
+                          <Text style={styles.groupDesc}>{groupSessionData.description}</Text>
+                        </View>
+                        
+                        <View style={styles.groupMetaGrid}>
+                          <View style={styles.groupMetaBox}>
+                            <Text style={styles.groupMetaLabel}>Price</Text>
+                            <Text style={styles.groupMetaValHighlight}>
+                              {groupSessionData.price_per_session ? `₹${groupSessionData.price_per_session}` : "Free"}
+                            </Text>
+                          </View>
+                          <View style={styles.groupMetaBox}>
+                            <Text style={styles.groupMetaLabel}>Date</Text>
+                            <Text style={styles.groupMetaVal}>
+                              {new Date(groupSessionData.start_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                            </Text>
+                          </View>
+                          <View style={styles.groupMetaBox}>
+                            <Text style={styles.groupMetaLabel}>Time</Text>
+                            <Text style={styles.groupMetaVal}>
+                              {groupSessionData.start_time?.slice(0, 5)} - {groupSessionData.end_time?.slice(0, 5)}
+                            </Text>
+                          </View>
+                          <View style={styles.groupMetaBox}>
+                            <Text style={styles.groupMetaLabel}>Availability</Text>
+                            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                              <Text style={styles.groupMetaVal}>{groupSessionData.seats_left} / {groupSessionData.max_group_size}</Text>
+                              <Text style={[styles.groupMetaStatus, { color: groupSessionData.seat_status === 'open' ? '#10B981' : '#EF4444' }]}>
+                                {groupSessionData.seat_status === 'open' ? ' ● Open' : ' ● Full'}
+                              </Text>
+                            </View>
+                          </View>
+                        </View>
+                      </View>
+
+                      {/* Topic & Confirmation for Group Session */}
+                      <Animated.View entering={FadeInUp} style={styles.topicConfirmContainer}>
+                        <Text style={styles.fieldLabel}>Session Topic / Description (Optional)</Text>
+                        <TextInput
+                          placeholder="e.g. Mock Interview Prep"
+                          placeholderTextColor="#94A3B8"
+                          style={styles.topicInput}
+                          value={bookingTopic}
+                          onChangeText={setBookingTopic}
+                        />
+
+                        <TouchableOpacity 
+                          style={[
+                            styles.confirmBtn, 
+                            (isBooking || groupSessionData.seat_status !== 'open') && { opacity: 0.7 }
+                          ]}
+                          onPress={handleConfirmGroupBooking}
+                          disabled={isBooking || groupSessionData.seat_status !== 'open'}
+                        >
+                          {isBooking ? (
+                            <ActivityIndicator color="#FFFFFF" size="small" />
+                          ) : (
+                            <Text style={styles.confirmBtnText}>
+                              {groupSessionData.seat_status !== 'open' ? "Session Full" : "Join Group Session"}
+                            </Text>
+                          )}
+                        </TouchableOpacity>
+                      </Animated.View>
                     </View>
                   ) : Object.keys(slotCalendar).length === 0 ? (
                     <View style={styles.emptyBox}>
@@ -835,15 +1093,17 @@ export const StudentMentorsScreen = () => {
                             </View>
                             <View style={[
                               styles.statusBadge,
-                              session.status === 'Scheduled' && styles.statusScheduled,
+                              (session.status === 'Scheduled' || session.status === 'Accepted') && styles.statusScheduled,
                               session.status === 'Completed' && styles.statusCompleted,
-                              session.status === 'Cancelled' && styles.statusCancelled
+                              session.status === 'Cancelled' && styles.statusCancelled,
+                              session.status === 'Pending' && styles.statusPending
                             ]}>
                               <Text style={[
                                 styles.statusText,
-                                session.status === 'Scheduled' && styles.statusScheduledText,
+                                (session.status === 'Scheduled' || session.status === 'Accepted') && styles.statusScheduledText,
                                 session.status === 'Completed' && styles.statusCompletedText,
-                                session.status === 'Cancelled' && styles.statusCancelledText
+                                session.status === 'Cancelled' && styles.statusCancelledText,
+                                session.status === 'Pending' && styles.statusPendingText
                               ]}>
                                 {session.status}
                               </Text>
@@ -871,9 +1131,15 @@ export const StudentMentorsScreen = () => {
                         </View>
 
                         <View style={styles.sessionFooterRow}>
-                          <Text style={styles.sessionFooterVal}>Type: {session.session_type || "1:1"}</Text>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                            <Text style={styles.sessionFooterVal}>Offering: </Text>
+                            <View style={getOfferingTypeBadgeStyle(session.offering_type || "General").bg}>
+                              <Text style={getOfferingTypeBadgeStyle(session.offering_type || "General").text}>
+                                {session.offering_type || "General"}
+                              </Text>
+                            </View>
+                          </View>
                           <Text style={styles.sessionFooterVal}>Duration: {session.duration || "N/A"}</Text>
-                          <Text style={styles.sessionFooterVal}>Offering: {session.offering_type || "General"}</Text>
                         </View>
                       </View>
                     </SwipeableRow>
@@ -885,6 +1151,120 @@ export const StudentMentorsScreen = () => {
         )}
 
         {renderBookingModal()}
+
+        {/* Razorpay Checkout WebView Modal */}
+        <Modal
+          visible={showPaymentWebView}
+          animationType="slide"
+          onRequestClose={() => {
+            setShowPaymentWebView(false);
+            setIsBooking(false);
+          }}
+        >
+          <SafeAreaView style={{ flex: 1, backgroundColor: '#ffffff' }}>
+            <View style={{
+              height: 56,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              paddingHorizontal: 16,
+              borderBottomWidth: 1,
+              borderBottomColor: '#e2e8f0',
+              backgroundColor: '#ffffff'
+            }}>
+              <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#0f172a' }}>Payment Checkout</Text>
+              <TouchableOpacity 
+                onPress={() => {
+                  setShowPaymentWebView(false);
+                  setIsBooking(false);
+                }}
+                style={{ padding: 8 }}
+              >
+                <X size={20} color="#64748b" />
+              </TouchableOpacity>
+            </View>
+            
+            {paymentData && (
+              <WebView
+                originWhitelist={['*']}
+                source={{ html: `
+                  <!DOCTYPE html>
+                  <html>
+                    <head>
+                      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                      <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+                      <style>
+                        body {
+                          display: flex;
+                          justify-content: center;
+                          align-items: center;
+                          height: 100vh;
+                          margin: 0;
+                          background-color: #f8fafc;
+                          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                        }
+                        .loader {
+                          border: 4px solid #f3f3f3;
+                          border-top: 4px solid #6366f1;
+                          border-radius: 50%;
+                          width: 40px;
+                          height: 40px;
+                          animation: spin 1s linear infinite;
+                        }
+                        @keyframes spin {
+                          0% { transform: rotate(0deg); }
+                          100% { transform: rotate(360deg); }
+                        }
+                      </style>
+                    </head>
+                    <body>
+                      <div class="loader"></div>
+                      <script>
+                        const options = {
+                          key: "${paymentData.apiKey}",
+                          amount: "${paymentData.amount * 100}",
+                          currency: "INR",
+                          name: "StrideNex Mentorship",
+                          description: "${paymentData.description || 'Session booking'}",
+                          order_id: "${paymentData.orderId}",
+                          prefill: {
+                            email: "${paymentData.studentEmail}"
+                          },
+                          theme: {
+                            color: "#6366f1"
+                          },
+                          callback_url: "https://devstridenex.quantcloud.in/api/method/quantbit_billing_platform.quantbit_billing_platform.api.verify_session_payment?booking_id=${paymentData.bookingId}",
+                          redirect: true,
+                          modal: {
+                            ondismiss: function () {
+                              const data = { status: "cancelled" };
+                              window.ReactNativeWebView.postMessage(JSON.stringify(data));
+                            }
+                          }
+                        };
+                        const rzp = new Razorpay(options);
+                        window.onload = function() {
+                          rzp.open();
+                        };
+                      </script>
+                    </body>
+                  </html>
+                ` }}
+                onMessage={handlePaymentMessage}
+                onNavigationStateChange={handleNavigationStateChange}
+                onLoadStart={handleLoadStart}
+                javaScriptEnabled={true}
+                domStorageEnabled={true}
+                javaScriptCanOpenWindowsAutomatically={true}
+                setSupportMultipleWindows={false}
+                mixedContentMode="always"
+                userAgent="Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1"
+                style={{ flex: 1 }}
+              />
+            )}
+          </SafeAreaView>
+        </Modal>
+
         <View style={styles.footerSpacer} />
       </ScrollView>
     </SafeAreaView>
@@ -997,6 +1377,8 @@ const styles = StyleSheet.create({
   statusCompletedText: { color: '#16A34A', fontSize: 8, fontWeight: '700' },
   statusCancelled: { backgroundColor: '#FEF2F2', borderColor: '#FEE2E2' },
   statusCancelledText: { color: '#EF4444', fontSize: 8, fontWeight: '700' },
+  statusPending: { backgroundColor: '#FFFBEB', borderColor: '#FEF3C7' },
+  statusPendingText: { color: '#D97706', fontSize: 8, fontWeight: '700' },
   statusText: { textTransform: 'uppercase' },
 
   sessionInfoGrid: { gap: 6, marginBottom: 12 },
@@ -1090,6 +1472,63 @@ const styles = StyleSheet.create({
   },
   activeTabBtnText: {
     color: '#0F172A',
+  },
+
+  groupInfoCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1.5,
+    borderColor: '#F1F5F9',
+    marginBottom: 12
+  },
+  groupTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#0F172A',
+    marginBottom: 4
+  },
+  groupDesc: {
+    fontSize: 11,
+    color: '#64748B',
+    fontWeight: '500',
+    lineHeight: 15
+  },
+  groupMetaGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    marginTop: 8,
+    padding: 12,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#F1F5F9'
+  },
+  groupMetaBox: {
+    width: '45%',
+    marginBottom: 8
+  },
+  groupMetaLabel: {
+    fontSize: 8,
+    color: '#94A3B8',
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    marginBottom: 2
+  },
+  groupMetaVal: {
+    fontSize: 11,
+    color: '#334155',
+    fontWeight: '600'
+  },
+  groupMetaValHighlight: {
+    fontSize: 11,
+    color: '#6366f1',
+    fontWeight: '800'
+  },
+  groupMetaStatus: {
+    fontSize: 10,
+    fontWeight: '800'
   },
 
   footerSpacer: { height: 40 }
