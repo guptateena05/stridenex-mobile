@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Refres
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '@/theme/colors';
 import { typography } from '@/theme/typography';
-import { Search, ChevronDown, Sparkles, Bookmark, UserX, TrendingUp, CheckCircle2, GraduationCap, Award, RotateCcw, X } from 'lucide-react-native';
+import { Search, ChevronDown, Sparkles, Bookmark, UserX, TrendingUp, CheckCircle2, GraduationCap, Award, RotateCcw, X, Check } from 'lucide-react-native';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import { SkeletonLoader } from '@/components/Shared/SkeletonLoader';
 import { useIndustry } from '@/context/IndustryContext';
@@ -22,7 +22,7 @@ export const IndustryFindTalentScreen = () => {
   const [activeCollegeFilter, setActiveCollegeFilter] = useState("");
   const [searchVal, setSearchVal] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedSkill, setSelectedSkill] = useState("");
+  const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
   const [currentYear, setCurrentYear] = useState("");
   const [sortBy, setSortBy] = useState("");
   const [page, setPage] = useState(1);
@@ -163,7 +163,7 @@ export const IndustryFindTalentScreen = () => {
         search: searchQuery || undefined,
         College: activeCollegeFilter || undefined,
         current_year: currentYear || undefined,
-        skill: selectedSkill || undefined,
+        skill: selectedSkills.length > 0 ? selectedSkills.join(",") : undefined,
         sort_by: sortBy || undefined,
         page: pageNum,
         page_size: 20
@@ -192,7 +192,7 @@ export const IndustryFindTalentScreen = () => {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [activeCollegeFilter, searchQuery, currentYear, selectedSkill, sortBy]);
+  }, [activeCollegeFilter, searchQuery, currentYear, selectedSkills, sortBy]);
 
   useEffect(() => {
     fetchStudents(1);
@@ -211,7 +211,7 @@ export const IndustryFindTalentScreen = () => {
     setCollegeFilter("");
     setActiveCollegeFilter("");
     setCurrentYear("");
-    setSelectedSkill("");
+    setSelectedSkills([]);
     setSortBy("");
   };
 
@@ -327,17 +327,17 @@ export const IndustryFindTalentScreen = () => {
 
             {/* Skill Filter Button */}
             <TouchableOpacity 
-              style={[styles.filterBadgeBtn, selectedSkill ? styles.filterBadgeBtnActive : {}]}
+              style={[styles.filterBadgeBtn, selectedSkills.length > 0 ? styles.filterBadgeBtnActive : {}]}
               onPress={handleOpenSkillDropdown}
             >
-              <Text style={[styles.filterBadgeText, selectedSkill ? styles.filterBadgeTextActive : {}]} numberOfLines={1}>
-                Skill: {selectedSkill || "All"}
+              <Text style={[styles.filterBadgeText, selectedSkills.length > 0 ? styles.filterBadgeTextActive : {}]} numberOfLines={1}>
+                Skill: {selectedSkills.length > 0 ? selectedSkills.join(", ") : "All"}
               </Text>
-              <ChevronDown size={11} color={selectedSkill ? colors.purple[600] : "#64748B"} />
+              <ChevronDown size={11} color={selectedSkills.length > 0 ? colors.purple[600] : "#64748B"} />
             </TouchableOpacity>
 
             {/* Clear Filters Button */}
-            {(activeCollegeFilter || currentYear || selectedSkill || searchQuery || searchVal) ? (
+            {(activeCollegeFilter || currentYear || selectedSkills.length > 0 || searchQuery || searchVal) ? (
               <TouchableOpacity 
                 style={styles.clearBadgeBtnCompact}
                 onPress={handleClearFilters}
@@ -672,33 +672,38 @@ export const IndustryFindTalentScreen = () => {
             <View style={{ flex: 1, minHeight: 200, position: 'relative' }}>
               <ScrollView style={styles.optionsList} keyboardShouldPersistTaps="handled">
                 <TouchableOpacity
-                  style={[styles.optionItem, !selectedSkill ? styles.optionItemActive : {}]}
+                  style={[styles.optionItem, selectedSkills.length === 0 ? styles.optionItemActive : {}]}
                   onPress={() => {
-                    setSelectedSkill("");
+                    setSelectedSkills([]);
                     setShowSkillDropdown(false);
                     setSkillSearchQuery("");
                   }}
                 >
-                  <Text style={[styles.optionText, !selectedSkill ? styles.optionTextActive : {}]}>
+                  <Text style={[styles.optionText, selectedSkills.length === 0 ? styles.optionTextActive : {}]}>
                     All Skills
                   </Text>
                 </TouchableOpacity>
 
                 {skills.map((skill) => {
-                  const isActive = selectedSkill === skill;
+                  const isActive = selectedSkills.includes(skill);
                   return (
                     <TouchableOpacity
                       key={skill}
                       style={[styles.optionItem, isActive ? styles.optionItemActive : {}]}
                       onPress={() => {
-                        setSelectedSkill(skill);
-                        setShowSkillDropdown(false);
-                        setSkillSearchQuery("");
+                        if (isActive) {
+                          setSelectedSkills(selectedSkills.filter((s) => s !== skill));
+                        } else {
+                          setSelectedSkills([...selectedSkills, skill]);
+                        }
                       }}
                     >
-                      <Text style={[styles.optionText, isActive ? styles.optionTextActive : {}]}>
-                        {skill}
-                      </Text>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Text style={[styles.optionText, isActive ? styles.optionTextActive : {}]}>
+                          {skill}
+                        </Text>
+                        {isActive && <Check size={16} color={colors.purple[600]} />}
+                      </View>
                     </TouchableOpacity>
                   );
                 })}
@@ -742,6 +747,24 @@ export const IndustryFindTalentScreen = () => {
                 </TouchableOpacity>
               </View>
             )}
+
+            {/* Apply Button */}
+            <View style={{ padding: 16, borderTopWidth: 1, borderTopColor: '#f1f5f9' }}>
+              <TouchableOpacity
+                onPress={() => {
+                  setShowSkillDropdown(false);
+                  setSkillSearchQuery("");
+                }}
+                style={{
+                  backgroundColor: colors.purple[600],
+                  paddingVertical: 12,
+                  borderRadius: 12,
+                  alignItems: 'center',
+                }}
+              >
+                <Text style={{ color: '#ffffff', fontWeight: 'bold', fontSize: 14 }}>Apply Filters</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>

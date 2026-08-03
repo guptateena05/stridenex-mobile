@@ -181,7 +181,7 @@ const StudentOnboardingScreen = () => {
         setError(res?.message || "Invalid OTP");
       }
     } catch (e: any) {
-      setError(e?.response?.data?.message || "Verification failed");
+      setError(e?.message || e?.response?.data?.message || "Verification failed");
     } finally { setLoading(false); }
   };
 
@@ -214,7 +214,7 @@ const StudentOnboardingScreen = () => {
         setError(res?.message || "Invalid OTP");
       }
     } catch (e: any) {
-      setError(e?.response?.data?.message || "Verification failed");
+      setError(e?.message || e?.response?.data?.message || "Verification failed");
     } finally { setLoading(false); }
   };
 
