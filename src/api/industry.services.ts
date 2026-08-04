@@ -549,3 +549,68 @@ export const getInvitationTemplate = async (industry: string) => {
   }
 };
 
+export const createJobProfile = async (data: any) => {
+  try {
+    const response = await api.post(
+      `method/stridenex_app.stridenex_app.doctype.industry_job_profile.industry_job_profile.create_job_profile`,
+      data
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error creating job profile:", error);
+    throw error;
+  }
+};
+
+export const updateJobProfile = async (data: any) => {
+  try {
+    const response = await api.post(
+      `method/stridenex_app.stridenex_app.doctype.industry_job_profile.industry_job_profile.update_job_profile`,
+      data
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error updating job profile:", error);
+    throw error;
+  }
+};
+
+export const getJobProfiles = async (industry?: string) => {
+  try {
+    const response = await api.get(
+      `method/stridenex_app.stridenex_app.doctype.industry_job_profile.industry_job_profile.get_job_profiles`,
+      { params: industry ? { industry } : {} }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching job profiles:", error);
+    throw error;
+  }
+};
+
+export const uploadFile = async (file: { uri: string; type: string; name: string }) => {
+  try {
+    const formData = new FormData();
+    formData.append("file", {
+      uri: file.uri,
+      type: file.type,
+      name: file.name,
+    } as any);
+    formData.append("is_private", "0");
+    
+    const response = await api.post(
+      "method/upload_file",
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error uploading file:", error);
+    throw error;
+  }
+};
+

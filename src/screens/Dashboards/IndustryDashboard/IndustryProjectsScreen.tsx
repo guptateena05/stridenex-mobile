@@ -139,7 +139,9 @@ export const IndustryProjectsScreen = () => {
         ? project.required_skills.map((s: any) => s.skill)
         : Array.isArray(project.skills)
           ? project.skills.map((s: any) => s.skill)
-          : []
+          : [],
+      course: Array.isArray(project.course) ? project.course.map((c: any) => c.course || c) : [],
+      department: Array.isArray(project.department) ? project.department.map((d: any) => d.department || d) : [],
     };
     setEditingProject(project);
     setFormValues(vals);

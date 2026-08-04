@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, Refre
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '@/theme/colors';
 import { typography } from '@/theme/typography';
+import { spacing } from '@/theme/spacing';
 import {
   Plus,
   Calendar,
@@ -10,11 +11,9 @@ import {
   Banknote,
   Briefcase,
   Clock,
-  Trash2,
   Trophy,
   X,
-  MoreVertical,
-  AlertCircle
+  Target
 } from 'lucide-react-native';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import { SkeletonLoader } from '@/components/Shared/SkeletonLoader';
@@ -23,77 +22,66 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { StatsCard } from '@/components/dashboard/StatsCard';
 import { useIndustry } from '@/context/IndustryContext';
 import {
-  getInternshipList,
-  createInternship,
-  updateInternship,
-  deleteInternship,
+  getJobProfiles,
+  createJobProfile,
+  updateJobProfile,
   createSkill,
   createCourse,
-  createDepartment
+  createDepartment,
+  uploadFile
 } from '@/api/industry.services';
 import DynamicForm from '@/components/forms/DynamicForm';
 import { FormField } from '@/components/forms/DynamicField';
 
-export const IndustryInternshipsScreen = () => {
+export const IndustryJobsScreen = () => {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const { industryData } = useIndustry();
-  const [internships, setInternships] = useState<any[]>([]);
+  const [jobs, setJobs] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [stats, setStats] = useState({
     active: 0,
-    applications: 0,
     openings: 0,
-    closingSoon: 0
+    total: 0
   });
 
   // Modal State
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [modalLoading, setModalLoading] = useState(false);
   const [formValues, setFormValues] = useState<any>({});
-  const [editingInternship, setEditingInternship] = useState<any>(null);
-  const [actionSheetVisible, setActionSheetVisible] = useState(false);
-  const [selectedJobForAction, setSelectedJobForAction] = useState<any>(null);
+  const [editingJob, setEditingJob] = useState<any>(null);
 
   const companyName = industryData?.company_name || industryData?.name;
 
-  const fetchInternshipData = useCallback(async () => {
+  const fetchJobsData = useCallback(async () => {
     if (!companyName) return;
 
     try {
       setLoading(true);
-      const response = await getInternshipList(companyName);
+      const response = await getJobProfiles(companyName);
 
-      // Parse response based on user provided structure
-      // response: { status: 200, message: "...", data: [...] }
-      const dataObj = response?.data || (response?.message && typeof response.message === 'object' ? response.message : null) || response || {};
+      const dataObj = response?.data || response?.message?.data || response?.message || response || [];
       let list = [];
       if (Array.isArray(dataObj)) {
         list = dataObj;
-      } else if (dataObj && typeof dataObj === 'object') {
-        const rawData = dataObj.internships || dataObj.data;
-        if (Array.isArray(rawData)) {
-          list = rawData;
-        } else if (dataObj.message && typeof dataObj.message === 'object') {
-          const nestedData = dataObj.message.internships || dataObj.message.data;
-          if (Array.isArray(nestedData)) {
-            list = nestedData;
-          }
-        }
+      } else if (dataObj && typeof dataObj === 'object' && Array.isArray(dataObj.data)) {
+        list = dataObj.data;
       }
 
-      setInternships(list);
+      // Filter by company name
+      const filtered = list.filter((job: any) => job.industry === companyName);
 
-      // Calculate simple stats
+      setJobs(filtered);
+
+      // Calculate stats
       setStats({
-        active: list.filter((i: any) => i.status === 'Active').length,
-        applications: list.reduce((acc: number, curr: any) => acc + (Number(curr.total_applications) || 0), 0),
-        openings: list.reduce((acc: number, curr: any) => acc + (Number(curr.openings) || 0), 0),
-        closingSoon: list.filter((i: any) => i.status === 'Closing').length
+        active: filtered.filter((j: any) => j.status === 'Open').length,
+        openings: filtered.reduce((acc: number, curr: any) => acc + (Number(curr.openings) || 0), 0),
+        total: filtered.length
       });
     } catch (err) {
-      console.error("Error fetching internship data:", err);
+      console.error("Error fetching jobs data:", err);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -101,91 +89,46 @@ export const IndustryInternshipsScreen = () => {
   }, [companyName]);
 
   useEffect(() => {
-    fetchInternshipData();
-  }, [fetchInternshipData]);
-
-  useEffect(() => {
-    if (route.params?.openForm) {
-      handlePostNew();
-      navigation.setParams({ openForm: undefined });
-    }
-  }, [route.params?.openForm]);
+    fetchJobsData();
+  }, [fetchJobsData]);
 
   const onRefresh = () => {
     setRefreshing(true);
-    fetchInternshipData();
+    fetchJobsData();
   };
 
   const handlePostNew = () => {
-    setEditingInternship(null);
-    setFormValues({ status: 'Active', industry: companyName });
+    setEditingJob(null);
+    setFormValues({ status: 'Open', industry: companyName, experience: 'Fresher', employment_type: 'Full Time' });
     setIsModalVisible(true);
   };
 
-  const handleEdit = (internship: any) => {
-    setEditingInternship(internship);
-
-    // Map API fields to Form fields
+  const handleEdit = (job: any) => {
+    setEditingJob(job);
     setFormValues({
-      ...internship,
-      internship_title: internship.title,
-      location_type: internship.work_mode,
-      payment_type: internship.payment_mode,
-      domain: internship.type,
-      required_skills: Array.isArray(internship.skills)
-        ? internship.skills.map((s: any) => s.skill || s)
-        : [],
-      course: Array.isArray(internship.course) ? internship.course.map((c: any) => c.course || c) : [],
-      department: Array.isArray(internship.department) ? internship.department.map((d: any) => d.department || d) : [],
-      academic_year: Array.isArray(internship.academic_year) ? internship.academic_year : []
+      ...job,
+      job_title: job.job_title,
+      experience: job.experience,
+      employment_type: job.employment_type,
+      location: job.location,
+      salary_from: job.salary_from ? String(job.salary_from) : '',
+      salary_to: job.salary_to ? String(job.salary_to) : '',
+      openings: job.openings ? String(job.openings) : '',
+      last_date: job.last_date,
+      contact_person: job.contact_person,
+      contact_email: job.contact_email,
+      contact_phone: job.contact_phone,
+      status: job.status,
+      course: Array.isArray(job.course) ? job.course.map((c: any) => c.course || c) : [],
+      department: Array.isArray(job.department) ? job.department.map((d: any) => d.department || d) : [],
+      skills_required: Array.isArray(job.skills_required)
+        ? job.skills_required.map((s: any) => s.skill || s)
+        : []
     });
     setIsModalVisible(true);
   };
 
-  const handleDelete = async (internshipName: string) => {
-    Alert.alert(
-      "Delete Internship",
-      "Are you sure you want to delete this internship posting?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await deleteInternship(internshipName);
-              fetchInternshipData();
-              Alert.alert("Success", "Internship deleted successfully");
-            } catch (err) {
-              Alert.alert("Error", "Failed to delete internship");
-            }
-          }
-        }
-      ]
-    );
-  };
-
   const handleFormChange = (newData: any) => {
-    // End Date calculation: Start Date + Duration
-    if (newData.start_date && newData.duration) {
-      const start = new Date(newData.start_date);
-      if (!isNaN(start.getTime())) {
-        const durationDays = parseInt(newData.duration, 10);
-        if (!isNaN(durationDays)) {
-          const end = new Date(start);
-          end.setDate(end.getDate() + durationDays);
-          const endStr = end.toISOString().split('T')[0];
-
-          if (newData.end_date !== endStr) {
-            setFormValues({
-              ...newData,
-              end_date: endStr
-            });
-            return;
-          }
-        }
-      }
-    }
     setFormValues(newData);
   };
 
@@ -193,42 +136,42 @@ export const IndustryInternshipsScreen = () => {
     try {
       setModalLoading(true);
 
-      // Map Form fields to API fields as per provided response structure
       const payload = {
-        title: formData.internship_title,
-        type: formData.domain,
-        work_mode: formData.location_type,
-        payment_mode: formData.payment_type,
-        location: formData.location || formData.location_type,
-        stipend: formData.payment_type === 'Paid' ? Number(formData.stipend) : 0,
-        duration: Number(formData.duration),
-        start_date: formData.start_date,
-        end_date: formData.end_date,
-        application_deadline: formData.application_deadline,
-        openings: Number(formData.no_of_openings),
+        name: editingJob?.name || undefined,
+        job_title: formData.job_title,
+        experience: formData.experience,
+        employment_type: formData.employment_type,
+        location: formData.location,
+        salary_from: Number(formData.salary_from),
+        salary_to: Number(formData.salary_to),
+        openings: Number(formData.openings),
+        last_date: formData.last_date,
+        contact_person: formData.contact_person,
+        contact_email: formData.contact_email,
+        contact_phone: formData.contact_phone,
         status: formData.status,
+        is_active: 1,
         course: formData.course || [],
         department: formData.department || [],
-        academic_year: formData.academic_year || [],
-        industry: companyName,
-        description: formData.description,
-        skills: Array.isArray(formData.required_skills)
-          ? formData.required_skills.map((s: string) => ({ skill: s }))
-          : []
+        skills_required: Array.isArray(formData.skills_required)
+          ? formData.skills_required.map((s: string) => ({ skill: s }))
+          : [],
+        job_description: formData.job_description,
+        industry: companyName
       };
 
-      if (editingInternship) {
-        await updateInternship(editingInternship.name, { ...payload, name: editingInternship.name });
-        Alert.alert("Success", "Internship updated successfully");
+      if (editingJob) {
+        await updateJobProfile(payload);
       } else {
-        await createInternship(payload);
-        Alert.alert("Success", "Internship created successfully");
+        await createJobProfile(payload);
       }
+      Alert.alert("Success", `Job Profile ${editingJob ? 'updated' : 'created'} successfully`);
       setIsModalVisible(false);
-      fetchInternshipData();
+      setEditingJob(null);
+      fetchJobsData();
     } catch (err: any) {
-      console.error("Error saving internship:", err);
-      Alert.alert("Error", err?.message || "Failed to save internship");
+      console.error("Error saving job profile:", err);
+      Alert.alert("Error", err?.message || "Failed to save job profile");
     } finally {
       setModalLoading(false);
     }
@@ -236,7 +179,7 @@ export const IndustryInternshipsScreen = () => {
 
   const handleCreateCustomValue = async (fieldName: string, value: string) => {
     try {
-      if (fieldName === 'required_skills') {
+      if (fieldName === 'skills_required') {
         await createSkill(value);
       } else if (fieldName === 'course') {
         await createCourse(value);
@@ -249,27 +192,13 @@ export const IndustryInternshipsScreen = () => {
     }
   };
 
-  const internshipFields: FormField[] = useMemo(() => [
+  const jobFields: FormField[] = useMemo(() => [
     {
-      fieldname: 'internship_title',
-      label: 'Internship Title',
+      fieldname: 'job_title',
+      label: 'Job Title',
       fieldtype: 'Data',
       required: true,
-      placeholder: 'e.g. Backend Developer Intern'
-    },
-    {
-      fieldname: 'domain',
-      label: 'Domain',
-      fieldtype: 'Link',
-      apiEndpoint: 'method/stridenex_app.api_stridenex_app.college.master.get_master_data',
-      apiParams: { 
-        doctype: 'Industry Skill Domain',
-        fields: ['domain'],
-        filters: {
-          industry: companyName || ''
-        }
-      },
-      required: false,
+      placeholder: 'e.g. Python Developer'
     },
     {
       fieldname: 'industry',
@@ -278,64 +207,77 @@ export const IndustryInternshipsScreen = () => {
       disabled: true,
     },
     {
-      fieldname: 'location_type',
-      label: 'Location Type',
+      fieldname: 'experience',
+      label: 'Experience Required',
       fieldtype: 'Select',
-      options: ['Remote', 'Hybrid', 'On-site'],
+      options: ['Fresher', '0-1 Years', '1-2 Years', '2-4 Years', '3-5 Years', '5+ Years'],
       required: true,
     },
     {
-      fieldname: 'payment_type',
-      label: 'Payment',
+      fieldname: 'employment_type',
+      label: 'Employment Type',
       fieldtype: 'Select',
-      options: ['Paid', 'Unpaid'],
+      options: ['Full Time', 'Part Time', 'Contract', 'Internship', 'Freelance'],
       required: true,
     },
     {
-      fieldname: 'stipend',
-      label: 'Stipend (Monthly)',
+      fieldname: 'location',
+      label: 'Location',
+      fieldtype: 'Data',
+      required: true,
+      placeholder: 'e.g. Pune'
+    },
+    {
+      fieldname: 'salary_from',
+      label: 'Salary From (LPA)',
       fieldtype: 'Int',
       required: true,
-      placeholder: 'e.g. 15000',
-      hidden: formValues.payment_type === 'Unpaid'
+      placeholder: 'e.g. 400000'
     },
     {
-      fieldname: 'duration',
-      label: 'Duration (Days)',
+      fieldname: 'salary_to',
+      label: 'Salary To (LPA)',
       fieldtype: 'Int',
       required: true,
-      placeholder: 'e.g. 90',
+      placeholder: 'e.g. 700000'
     },
     {
-      fieldname: 'start_date',
-      label: 'Start Date',
-      fieldtype: 'Date',
-      required: true,
-    },
-    {
-      fieldname: 'end_date',
-      label: 'End Date',
-      fieldtype: 'Date',
-      disabled: true,
-    },
-    {
-      fieldname: 'application_deadline',
-      label: 'Application Deadline',
-      fieldtype: 'Date',
-      required: true,
-    },
-    {
-      fieldname: 'no_of_openings',
+      fieldname: 'openings',
       label: 'Openings',
       fieldtype: 'Int',
       required: true,
-      placeholder: 'e.g. 10',
+      placeholder: 'e.g. 3'
     },
+    {
+      fieldname: 'last_date',
+      label: 'Last Date to Apply',
+      fieldtype: 'Date',
+      required: true,
+    },
+    {
+      fieldname: 'contact_person',
+      label: 'Contact Person',
+      fieldtype: 'Data',
+      placeholder: 'e.g. John Doe'
+    },
+    {
+      fieldname: 'contact_email',
+      label: 'Contact Email',
+      fieldtype: 'Data',
+      placeholder: 'e.g. john@example.com'
+    },
+    {
+      fieldname: 'contact_phone',
+      label: 'Contact Phone',
+      fieldtype: 'Data',
+      placeholder: 'e.g. 9876543210'
+    },
+
     {
       fieldname: 'status',
       label: 'Status',
       fieldtype: 'Select',
-      options: ['Active', 'Draft', 'Closed'],
+      options: ['Open', 'Closed'],
       required: true,
     },
     {
@@ -366,15 +308,7 @@ export const IndustryInternshipsScreen = () => {
       allowCustom: false
     },
     {
-      fieldname: 'academic_year',
-      label: 'Academic Year',
-      fieldtype: 'Select',
-      options: ['2', '3', '4'],
-      multiSelect: true,
-      required: true,
-    },
-    {
-      fieldname: 'required_skills',
+      fieldname: 'skills_required',
       label: 'Required Skills',
       fieldtype: 'Link',
       apiEndpoint: 'method/stridenex_app.api_stridenex_app.college.master.get_master_data',
@@ -384,16 +318,15 @@ export const IndustryInternshipsScreen = () => {
       allowCustom: true
     },
     {
-      fieldname: 'description',
-      label: 'Description',
+      fieldname: 'job_description',
+      label: 'Job Description',
       fieldtype: 'Long Text',
       required: true,
     }
-  ], [formValues.payment_type, editingInternship, formValues.course, companyName]);
+  ], [formValues.course, companyName]);
 
   const formatDate = (dateStr: string) => {
     if (!dateStr) return 'N/A';
-    // Handle YYYY-MM-DD
     if (dateStr.includes('-')) {
       const parts = dateStr.split('-');
       if (parts.length === 3) {
@@ -403,11 +336,21 @@ export const IndustryInternshipsScreen = () => {
     return dateStr;
   };
 
+  const formatSalary = (from: any, to: any) => {
+    if (!from && !to) return 'N/A';
+    const formatVal = (val: any) => {
+      const num = Number(val);
+      if (num >= 100000) {
+        return `${(num / 100000).toFixed(1)}L`;
+      }
+      return `${num}`;
+    };
+    return `₹${formatVal(from)}-${formatVal(to)} LPA`;
+  };
+
   const statsCards = [
-    { label: "ACTIVE ROLES", value: String(stats.active), icon: Briefcase, color: "#0A8099" },
-    { label: "APPLICATIONS", value: String(stats.applications), icon: Users, color: "#64748B" },
-    { label: "OPENINGS", value: String(stats.openings), icon: Trophy, color: "#16A34A" },
-    { label: "CLOSING SOON", value: String(stats.closingSoon), icon: Clock, color: "#F59E0B" },
+    { label: "TOTAL JOB OPENINGS", value: String(stats.total), icon: Briefcase, color: "#0A8099" },
+    { label: "APPLIED JOBS", value: "0", icon: Target, color: "#16A34A" },
   ];
 
   return (
@@ -420,13 +363,13 @@ export const IndustryInternshipsScreen = () => {
       >
         <Animated.View entering={FadeInUp.delay(50)} style={styles.header}>
           <View style={styles.headerRow}>
-            <Text style={styles.title}>Internships</Text>
+            <Text style={styles.title}>Job Profiles</Text>
             <View style={styles.headerBadge}>
               <Briefcase size={10} color={colors.purple[600]} />
               <Text style={styles.headerBadgeText}>OPPORTUNITIES</Text>
             </View>
           </View>
-          <Text style={styles.subtitle}>Manage active and draft internship postings</Text>
+          <Text style={styles.subtitle}>Manage active and draft job postings</Text>
         </Animated.View>
 
         <Animated.View entering={FadeInUp.delay(100)} style={styles.statsRow}>
@@ -438,7 +381,7 @@ export const IndustryInternshipsScreen = () => {
         <Animated.View entering={FadeInUp.delay(150)} style={{ marginBottom: 24 }}>
           <TouchableOpacity style={styles.postBtn} onPress={handlePostNew}>
             <Plus size={16} color="#FFF" />
-            <Text style={styles.postBtnText}>Post Internship</Text>
+            <Text style={styles.postBtnText}>Post Job Profile</Text>
           </TouchableOpacity>
         </Animated.View>
 
@@ -469,82 +412,67 @@ export const IndustryInternshipsScreen = () => {
               </View>
             ))}
           </View>
-        ) : internships.length > 0 ? (
+        ) : jobs.length > 0 ? (
           <Animated.View entering={FadeInUp.delay(200)}>
-            {internships.map((job, idx) => {
-              const accentColor = job.status === 'Active' ? '#0A8099' : (job.status === 'Draft' ? '#F59E0B' : '#94A3B8');
+            {jobs.map((job, idx) => {
+              const accentColor = job.status === 'Open' ? '#0A8099' : '#94A3B8';
               return (
-                <SwipeableRow
-                  key={job.name || idx}
-                  onEdit={() => handleEdit(job)}
-                  onDelete={() => {
-                    Alert.alert(
-                      "Delete Posting",
-                      "Are you sure you want to delete this internship posting permanently?",
-                      [
-                        { text: "Cancel", style: "cancel" },
-                        { 
-                          text: "Delete", 
-                          style: "destructive",
-                          onPress: () => handleDelete(job.name)
-                        }
-                      ]
-                    );
-                  }}
-                  disableSwipe={job.status === 'Closed'}
-                >
-                  <Animated.View entering={FadeInUp.delay(250 + idx * 50)} style={[styles.card, { borderLeftWidth: 4, borderLeftColor: accentColor, marginBottom: 0 }]}>
-                    <View style={styles.cardHeader}>
-                      <View style={styles.titleArea}>
-                        <View style={styles.iconBox}>
-                          <Briefcase size={18} color="#0A8099" />
+                <Animated.View key={job.name || idx} entering={FadeInUp.delay(250 + idx * 50)}>
+                  <SwipeableRow
+                    onEdit={() => handleEdit(job)}
+                    disableSwipe={job.status !== 'Open'}
+                  >
+                    <View style={[styles.card, { borderLeftWidth: 4, borderLeftColor: accentColor, marginBottom: 0 }]}>
+                      <View style={styles.cardHeader}>
+                        <View style={styles.titleArea}>
+                          <View style={styles.iconBox}>
+                            <Briefcase size={18} color="#0A8099" />
+                          </View>
+                          <View style={styles.titleInfo}>
+                            <Text style={styles.jobRole} numberOfLines={1}>{job.job_title}</Text>
+                            <Text style={styles.jobSubtitle}>{job.employment_type} • {job.location || 'Pune'}</Text>
+                          </View>
                         </View>
-                        <View style={styles.titleInfo}>
-                          <Text style={styles.jobRole} numberOfLines={1}>{job.title || job.internship_title}</Text>
-                          <Text style={styles.jobSubtitle}>{job.type} • {job.work_mode || job.location}</Text>
+                        <View style={[styles.statusBadge, job.status === 'Open' ? styles.statusActive : styles.statusDisabled]}>
+                          <Text style={[styles.statusText, job.status === 'Open' ? styles.statusTextActive : styles.statusTextDisabled]}>
+                            {job.status}
+                          </Text>
                         </View>
                       </View>
-                      <View style={[styles.statusBadge, job.status === 'Active' ? styles.statusActive : (job.status === 'Draft' ? styles.statusClosing : styles.statusDisabled)]}>
-                        <Text style={[styles.statusText, job.status === 'Active' ? styles.statusTextActive : (job.status === 'Draft' ? styles.statusTextClosing : styles.statusTextDisabled)]}>
-                          {job.status}
-                        </Text>
+
+                      <View style={styles.infoGrid}>
+                        <View style={styles.infoItem}>
+                          <Banknote size={14} color="#16A34A" />
+                          <Text style={styles.infoText}>{formatSalary(job.salary_from, job.salary_to)}</Text>
+                        </View>
+                        <View style={styles.infoItem}>
+                          <Users size={14} color="#0A8099" />
+                          <Text style={styles.infoText}>{job.openings} Openings</Text>
+                        </View>
+                        <View style={styles.infoItem}>
+                          <Calendar size={14} color="#F59E0B" />
+                          <Text style={styles.infoText}>Ends {formatDate(job.last_date)}</Text>
+                        </View>
+                      </View>
+
+                      <View style={styles.divider} />
+
+                      <View style={styles.footerRow}>
+                        <View style={styles.appCountBox}>
+                          <Text style={styles.appCountNum}>0</Text>
+                          <Text style={styles.appCountLabel}>APPLICATIONS</Text>
+                        </View>
                       </View>
                     </View>
-
-                    <View style={styles.infoGrid}>
-                      <View style={styles.infoItem}>
-                        <Banknote size={14} color="#16A34A" />
-                        <Text style={styles.infoText}>{job.payment_mode === 'Paid' ? `₹${job.stipend}` : (job.stipend > 0 ? `₹${job.stipend}` : 'Unpaid')}</Text>
-                      </View>
-                      <View style={styles.infoItem}>
-                        <Users size={14} color="#0A8099" />
-                        <Text style={styles.infoText}>{job.openings} Openings</Text>
-                      </View>
-                      <View style={styles.infoItem}>
-                        <Calendar size={14} color="#F59E0B" />
-                        <Text style={styles.infoText}>Ends {formatDate(job.end_date)}</Text>
-                      </View>
-                    </View>
-
-                    <View style={styles.divider} />
-
-                    <View style={styles.footerRow}>
-                      <View style={styles.appCountBox}>
-                        <Text style={styles.appCountNum}>{job.total_applications || 0}</Text>
-                        <Text style={styles.appCountLabel}>APPLICATIONS</Text>
-                      </View>
-
-                      <View style={styles.actionRow} />
-                    </View>
-                  </Animated.View>
-                </SwipeableRow>
+                  </SwipeableRow>
+                </Animated.View>
               );
             })}
           </Animated.View>
         ) : (
           <View style={styles.emptyContainer}>
             <Briefcase size={48} color="#CBD5E1" />
-            <Text style={styles.emptyText}>No internship postings found.</Text>
+            <Text style={styles.emptyText}>No job postings found.</Text>
           </View>
         )}
 
@@ -555,7 +483,10 @@ export const IndustryInternshipsScreen = () => {
         visible={isModalVisible}
         animationType="slide"
         transparent={true}
-        onRequestClose={() => setIsModalVisible(false)}
+        onRequestClose={() => {
+          setIsModalVisible(false);
+          setEditingJob(null);
+        }}
       >
         <View style={styles.modalOverlay}>
           <Animated.View
@@ -570,11 +501,11 @@ export const IndustryInternshipsScreen = () => {
                   <Briefcase size={22} color="#FFF" />
                 </View>
                 <View>
-                  <Text style={styles.modalTitle}>{editingInternship ? 'Update Internship' : 'Post Internship'}</Text>
-                  <Text style={styles.modalSubtitle}>Manage your talent acquisition pipeline</Text>
+                  <Text style={styles.modalTitle}>{editingJob ? "Edit Job Profile" : "Post Job Profile"}</Text>
+                  <Text style={styles.modalSubtitle}>{editingJob ? "Update your recruitment requirements" : "Manage your talent acquisition pipeline"}</Text>
                 </View>
               </View>
-              <TouchableOpacity onPress={() => setIsModalVisible(false)} style={styles.closeBtn}>
+              <TouchableOpacity onPress={() => { setIsModalVisible(false); setEditingJob(null); }} style={styles.closeBtn}>
                 <X size={20} color="#64748B" />
               </TouchableOpacity>
             </View>
@@ -585,13 +516,13 @@ export const IndustryInternshipsScreen = () => {
               showsVerticalScrollIndicator={false}
             >
               <DynamicForm
-                fields={internshipFields}
+                fields={jobFields}
                 onSubmit={handleFormSubmit}
                 onChange={handleFormChange}
                 onCreateCustomValue={handleCreateCustomValue}
                 loading={modalLoading}
                 initialValues={formValues}
-                buttonLabel={editingInternship ? "Save Changes" : "Post Internship"}
+                buttonLabel={editingJob ? "Save Changes" : "Post Job Profile"}
                 accentColor={colors.purple[600]}
               />
               <View style={{ height: 60 }} />
@@ -599,7 +530,6 @@ export const IndustryInternshipsScreen = () => {
           </Animated.View>
         </View>
       </Modal>
-
     </SafeAreaView>
   );
 };
@@ -631,11 +561,9 @@ const styles = StyleSheet.create({
 
   statusBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, borderWidth: 1 },
   statusActive: { backgroundColor: '#ECFDF5', borderColor: '#D1FAE5' },
-  statusClosing: { backgroundColor: '#FFF7ED', borderColor: '#FFEDD5' },
   statusDisabled: { backgroundColor: '#F1F5F9', borderColor: '#E2E8F0' },
   statusText: { fontSize: 9, fontWeight: '800', textTransform: 'uppercase' },
   statusTextActive: { color: '#059669' },
-  statusTextClosing: { color: '#D97706' },
   statusTextDisabled: { color: '#94A3B8' },
 
   infoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 12 },
@@ -648,14 +576,6 @@ const styles = StyleSheet.create({
   appCountBox: { flexDirection: 'row', alignItems: 'baseline', gap: 4 },
   appCountNum: { fontSize: 16, fontWeight: '900', color: '#1E293B' },
   appCountLabel: { fontSize: 8, fontWeight: '800', color: '#CBD5E1', textTransform: 'uppercase' },
-
-  actionRow: { flexDirection: 'row', gap: 6, alignItems: 'center' },
-  actionBtn: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0' },
-  deleteBtn: { backgroundColor: '#FEF2F2' },
-  disabledBtn: { backgroundColor: '#F1F5F9', borderColor: '#E2E8F0' },
-  manageBtn: { backgroundColor: colors.purple[600], paddingHorizontal: 12, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  disabledManageBtn: { backgroundColor: '#CBD5E1' },
-  manageBtnText: { color: '#FFF', fontSize: 12, fontWeight: '800' },
 
   emptyContainer: { alignItems: 'center', justifyContent: 'center', paddingVertical: 60, opacity: 0.6 },
   emptyText: { marginTop: 12, fontSize: 14, color: '#64748B', fontWeight: '600' },
@@ -703,7 +623,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 14,
-    backgroundColor: '#F97316', // Orange from the screenshot
+    backgroundColor: '#F97316',
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#F97316',
@@ -738,16 +658,5 @@ const styles = StyleSheet.create({
     padding: 24,
     paddingTop: 16
   },
-  footerSpacer: { height: 40 },
-  moreBtn: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0' },
-  actionSheetOverlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.4)', justifyContent: 'flex-end' },
-  actionSheetContent: { backgroundColor: '#FFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 36 },
-  actionSheetDragHandle: { width: 36, height: 4, backgroundColor: '#E2E8F0', borderRadius: 2, alignSelf: 'center', marginBottom: 16 },
-  actionSheetTitle: { fontSize: 18, fontWeight: '800', color: '#0F172A', textAlign: 'center' },
-  actionSheetSubtitle: { fontSize: 13, color: '#64748B', fontWeight: '500', textAlign: 'center', marginTop: 4, marginBottom: 24 },
-  actionSheetList: { gap: 12 },
-  actionSheetItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 16, backgroundColor: '#F8FAFC', borderRadius: 12, borderWidth: 1, borderColor: '#E2E8F0' },
-  actionSheetItemText: { fontSize: 14, fontWeight: '700', color: '#1E293B' },
-  actionSheetCancelBtn: { marginTop: 16, paddingVertical: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F1F5F9', borderRadius: 12 },
-  actionSheetCancelText: { fontSize: 14, fontWeight: '700', color: '#475569' }
+  footerSpacer: { height: 40 }
 });

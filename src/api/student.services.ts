@@ -1339,3 +1339,34 @@ export const verifySessionPayment = async (payload: {
     throw error;
   }
 };
+
+export const getJobProfiles = async (studentEmail?: string) => {
+  try {
+    const response = await api.get(
+      'method/stridenex_app.stridenex_app.doctype.student_job_applications.student_job_applications.get_job_profile_list',
+      { params: studentEmail ? { student: studentEmail } : {} }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching job profiles:", error);
+    throw error;
+  }
+};
+
+export const applyForJob = async (formData: FormData) => {
+  try {
+    const response = await api.post(
+      "method/stridenex_app.stridenex_app.doctype.student_job_applications.student_job_applications.apply_for_job",
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data"
+        }
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error applying for job on mobile:", error);
+    throw error;
+  }
+};

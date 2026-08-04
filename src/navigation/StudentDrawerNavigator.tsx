@@ -26,6 +26,7 @@ import { StudentPathScreen } from '@/screens/Dashboards/StudentDashboard/Student
 import { StudentCommunityScreen } from '@/screens/Dashboards/StudentDashboard/StudentCommunityScreen';
 import { StudentInternshipScreen } from '@/screens/Dashboards/StudentDashboard/StudentInternshipScreen';
 import { StudentProjectsScreen } from '@/screens/Dashboards/StudentDashboard/StudentProjectsScreen';
+import { StudentJobsScreen } from '@/screens/Dashboards/StudentDashboard/StudentJobsScreen';
 import { StudentHabitsScreen } from '@/screens/Dashboards/StudentDashboard/StudentHabitsScreen';
 import { StudentMentorsScreen } from '@/screens/Dashboards/StudentDashboard/StudentMentorsScreen';
 import { StudentEventsScreen } from '@/screens/Dashboards/StudentDashboard/StudentEventsScreen';
@@ -110,6 +111,13 @@ export const StudentDrawerNavigator = () => {
           drawerIcon: ({ color, size }) => <Briefcase color={color} size={size} />
         }}
       />
+      {/* <Drawer.Screen
+        name="Jobs"
+        component={StudentJobsScreen}
+        options={{
+          drawerIcon: ({ color, size }) => <Briefcase color={color} size={size} />
+        }}
+      /> */}
       <Drawer.Screen
         name="Habits"
         component={StudentHabitsScreen}

@@ -6,6 +6,7 @@ import { IndustryFindTalentScreen } from '@/screens/Dashboards/IndustryDashboard
 import { IndustryPipelineScreen } from '@/screens/Dashboards/IndustryDashboard/IndustryPipelineScreen';
 import { IndustryProjectsScreen } from '@/screens/Dashboards/IndustryDashboard/IndustryProjectsScreen';
 import { IndustryInternshipsScreen } from '@/screens/Dashboards/IndustryDashboard/IndustryInternshipsScreen';
+import { IndustryJobsScreen } from '@/screens/Dashboards/IndustryDashboard/IndustryJobsScreen';
 import { IndustryFeedbackScreen } from '@/screens/Dashboards/IndustryDashboard/IndustryFeedbackScreen';
 import { IndustryAnalyticsScreen } from '@/screens/Dashboards/IndustryDashboard/IndustryAnalyticsScreen';
 import { IndustryPlansScreen } from '@/screens/Dashboards/IndustryDashboard/IndustryPlansScreen';
@@ -91,6 +92,13 @@ export const IndustryDrawerNavigator = () => {
           drawerIcon: ({ color, size }) => <UserCheck color={color} size={size} />
         }}
       />
+      {/* <Drawer.Screen
+        name="Job Profiles"
+        component={IndustryJobsScreen}
+        options={{
+          drawerIcon: ({ color, size }) => <Briefcase color={color} size={size} />
+        }}
+      /> */}
       {/* <Drawer.Screen
         name="Feedback"
         component={IndustryFeedbackScreen}
