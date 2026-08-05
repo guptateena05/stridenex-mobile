@@ -6,36 +6,78 @@ import { typography } from '@/theme/typography';
 import { spacing, borderRadius } from '@/theme/spacing';
 import { Users, Building2, Briefcase, Award } from 'lucide-react-native';
 
-const StatCard = ({ title, value, change, icon: Icon, color }: any) => (
-  <View style={[styles.statCard, { borderBottomColor: color }]}>
-    <View style={styles.statHeader}>
-      <Text style={styles.statTitle}>{title}</Text>
-      <View style={[styles.iconBox, { backgroundColor: color + '20' }]}>
-        <Icon color={color} size={16} />
+const getCardColors = (title: string) => {
+  const t = title.toLowerCase();
+  if (t.includes('students') && !t.includes('placed')) {
+    return {
+      bg: '#EFF6FF',
+      border: '#DBEAFE',
+      text: '#1E40AF',
+      icon: '#3B82F6',
+      iconBg: '#DBEAFE',
+    };
+  }
+  if (t.includes('placed')) {
+    return {
+      bg: '#ECFDF5',
+      border: '#D1FAE5',
+      text: '#065F46',
+      icon: '#10B981',
+      iconBg: '#D1FAE5',
+    };
+  }
+  if (t.includes('recruiters') || t.includes('partners')) {
+    return {
+      bg: '#F5F3FF',
+      border: '#EDE9FE',
+      text: '#5B21B6',
+      icon: '#8B5CF6',
+      iconBg: '#EDE9FE',
+    };
+  }
+  return { // Avg Package
+    bg: '#FFF7ED',
+    border: '#FFEDD5',
+    text: '#9A3412',
+    icon: '#F97316',
+    iconBg: '#FFEDD5',
+  };
+};
+
+const StatCard = ({ title, value, change, icon: Icon }: any) => {
+  const theme = getCardColors(title);
+  
+  return (
+    <View style={[styles.statCard, { backgroundColor: theme.bg, borderBottomColor: theme.border }]}>
+      <View style={styles.statHeader}>
+        <Text style={[styles.statTitle, { color: theme.text }]} numberOfLines={1}>{title}</Text>
+        <View style={[styles.iconBox, { backgroundColor: theme.iconBg }]}>
+          <Icon color={theme.icon} size={16} />
+        </View>
       </View>
+      <Text style={[styles.statValue, { color: theme.text }]}>{value}</Text>
+      {change && (
+        <View style={[styles.changeBadge, { backgroundColor: theme.iconBg }]}>
+          <Text style={[styles.changeText, { color: theme.text }]} numberOfLines={1}>{change}</Text>
+        </View>
+      )}
     </View>
-    <Text style={styles.statValue}>{value}</Text>
-    {change && (
-      <View style={styles.changeBadge}>
-        <Text style={styles.changeText}>{change}</Text>
-      </View>
-    )}
-  </View>
-);
+  );
+};
 
 export const CollegeDashboardScreen = () => {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.welcomeText}>Welcome back</Text>
       
-      {/* <View style={styles.gridContainer}>
+      <View style={styles.gridContainer}>
         <View style={styles.row}>
-          <StatCard title="Total Students" value="2,450" change="98% onboarded" icon={Users} color={colors.info || '#3b82f6'} />
-          <StatCard title="Students Placed" value="845" change="+120 this month" icon={Award} color={colors.success || '#10b981'} />
+          <StatCard title="Total Students" value="2,450" change="98% onboarded" icon={Users} />
+          <StatCard title="Students Placed" value="845" change="+120 this month" icon={Award} />
         </View>
         <View style={styles.row}>
-          <StatCard title="Active Recruiters" value="64" change="+12 new partners" icon={Building2} color={colors.primary.DEFAULT} />
-          <StatCard title="Avg Package" value="₹6.8L" change="+15% YoY" icon={Briefcase} color={colors.accent.DEFAULT} />
+          <StatCard title="Active Recruiters" value="64" change="+12 new partners" icon={Building2} />
+          <StatCard title="Avg Package" value="₹6.8L" change="+15% YoY" icon={Briefcase} />
         </View>
       </View>
 
@@ -74,7 +116,7 @@ export const CollegeDashboardScreen = () => {
           </View>
           <Text style={styles.statusBadge}>Active</Text>
         </View>
-      </Card> */}
+      </Card>
       
     </ScrollView>
   );
@@ -86,7 +128,7 @@ const styles = StyleSheet.create({
   welcomeText: { fontSize: typography.fontSize.xl, fontWeight: typography.fontWeight.bold, color: colors.navy, marginBottom: spacing.lg, fontFamily: typography.fontFamily.display },
   gridContainer: { marginBottom: spacing.md },
   row: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: spacing.md },
-  statCard: { flex: 1, backgroundColor: '#fff', borderRadius: borderRadius.xl, padding: spacing.md, marginHorizontal: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2, borderBottomWidth: 3 },
+  statCard: { flex: 1, borderRadius: borderRadius.xl, padding: spacing.md, marginHorizontal: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2, borderBottomWidth: 3 },
   statHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: spacing.sm },
   statTitle: { fontSize: typography.fontSize.xs, color: colors.text.secondary, flex: 1 },
   iconBox: { padding: 4, borderRadius: 6 },
