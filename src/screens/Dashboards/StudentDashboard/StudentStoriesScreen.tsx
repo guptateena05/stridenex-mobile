@@ -5,14 +5,14 @@ import {
   StyleSheet, 
   ScrollView, 
   TouchableOpacity, 
-  Dimensions,
-  Modal,
+  Modal, 
   TextInput,
   ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Platform,
-  RefreshControl
+  RefreshControl,
+  Dimensions
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '@/theme/colors';
@@ -20,7 +20,6 @@ import { typography } from '@/theme/typography';
 import { 
   Quote, 
   Briefcase, 
-  IndianRupee, 
   Rocket, 
   Sparkles, 
   ChevronRight, 
@@ -125,7 +124,6 @@ export const StudentStoriesScreen = () => {
     setSubmitting(true);
     
     try {
-      // 1. Resolve student identifier, refetching if missing
       let resolvedStudentId = studentData?.name;
       if (!resolvedStudentId && userName) {
         const freshProfile = await fetchStudentProfile(userName);
@@ -243,6 +241,7 @@ export const StudentStoriesScreen = () => {
             <TouchableOpacity 
               onPress={() => setModalVisible(true)}
               style={styles.headerBtn}
+              activeOpacity={0.8}
             >
               <Sparkles size={12} color="#FFF" />
               <Text style={styles.headerBtnText}>Share</Text>
@@ -251,7 +250,7 @@ export const StudentStoriesScreen = () => {
           <Text style={styles.subtitle}>Real outcomes from StrideNex students</Text>
         </Animated.View>
 
-        {/* Stories List */}
+        {/* Stories Horizontal Carousel */}
         {loadingStories ? (
           <View style={styles.centered}>
             <ActivityIndicator size="large" color={colors.accent.DEFAULT} />
@@ -275,11 +274,48 @@ export const StudentStoriesScreen = () => {
               const initials = getInitials(story);
               const avatarStyle = getAvatarStyle(story);
               
+              let leftBarColor = '#EC4899';
+              let badgeBg = 'rgba(236, 72, 153, 0.06)';
+              let badgeText = '#EC4899';
+              let badgeBorder = 'rgba(236, 72, 153, 0.1)';
+              let iconBg = 'rgba(236, 72, 153, 0.08)';
+              let iconColor = '#EC4899';
+              
+              if (story.outcome_category?.toLowerCase() === 'placement') {
+                leftBarColor = '#F97316';
+                badgeBg = 'rgba(249, 115, 22, 0.06)';
+                badgeText = '#F97316';
+                badgeBorder = 'rgba(249, 115, 22, 0.1)';
+                iconBg = 'rgba(249, 115, 22, 0.08)';
+                iconColor = '#F97316';
+              } else if (story.outcome_category?.toLowerCase() === 'internship') {
+                leftBarColor = '#10B981';
+                badgeBg = 'rgba(16, 185, 129, 0.06)';
+                badgeText = '#10B981';
+                badgeBorder = 'rgba(16, 185, 129, 0.1)';
+                iconBg = 'rgba(16, 185, 129, 0.08)';
+                iconColor = '#10B981';
+              } else if (story.outcome_category?.toLowerCase() === 'startup') {
+                leftBarColor = '#8B5CF6';
+                badgeBg = 'rgba(139, 92, 246, 0.06)';
+                badgeText = '#8B5CF6';
+                badgeBorder = 'rgba(139, 92, 246, 0.1)';
+                iconBg = 'rgba(139, 92, 246, 0.08)';
+                iconColor = '#8B5CF6';
+              } else if (story.outcome_category?.toLowerCase() === 'higher studies') {
+                leftBarColor = '#3B82F6';
+                badgeBg = 'rgba(59, 130, 246, 0.06)';
+                badgeText = '#3B82F6';
+                badgeBorder = 'rgba(59, 130, 246, 0.1)';
+                iconBg = 'rgba(59, 130, 246, 0.08)';
+                iconColor = '#3B82F6';
+              }
+
               return (
                 <Animated.View 
                   key={story.id || index.toString()} 
-                  entering={FadeInUp.delay(200 + index * 100)}
-                  style={styles.storyCard}
+                  entering={FadeInUp.delay(100 + index * 50)}
+                  style={[styles.storyCard, { borderLeftWidth: 4, borderLeftColor: leftBarColor }]}
                 >
                   <View style={styles.cardHeader}>
                     <View style={styles.userInfo}>
@@ -291,20 +327,28 @@ export const StudentStoriesScreen = () => {
                         <Text style={styles.userCollege} numberOfLines={1}>{story.college || "StrideNex Student"}</Text>
                       </View>
                     </View>
-                    <View style={styles.successBadge}>
-                      <Text style={styles.successBadgeText}>{story.outcome_category}</Text>
+                    <View style={[styles.successBadge, { backgroundColor: badgeBg, borderColor: badgeBorder }]}>
+                      <Text style={[styles.successBadgeText, { color: badgeText }]}>{story.outcome_category}</Text>
                     </View>
                   </View>
 
-                  {/* Achievement & Package Row */}
+                  {/* Testimonial Quote Box */}
+                  <View style={styles.quoteBox}>
+                    <View style={styles.quoteIconWrapper}>
+                      <Quote size={20} color="rgba(148, 163, 184, 0.12)" />
+                    </View>
+                    <Text style={styles.quoteText}>"{story.testimonial}"</Text>
+                  </View>
+
+                  {/* Achievement Row */}
                   <View style={styles.achievementRow}>
                     <View style={styles.achievementLeft}>
-                      <View style={styles.achievementIconBg}>
-                        <Icon size={14} color={colors.accent.DEFAULT} />
+                      <View style={[styles.achievementIconBg, { backgroundColor: iconBg }]}>
+                        <Icon size={12} color={iconColor} />
                       </View>
                       <View style={{ flex: 1 }}>
                         <Text style={styles.achievementLabel}>ACHIEVEMENT</Text>
-                        <Text style={styles.achievementTitle} numberOfLines={2}>{story.outcome_title}</Text>
+                        <Text style={styles.achievementTitle} numberOfLines={1}>{story.outcome_title}</Text>
                       </View>
                     </View>
                     {story.outcome_metric && (
@@ -313,11 +357,6 @@ export const StudentStoriesScreen = () => {
                       </View>
                     )}
                   </View>
-
-                  {/* Quote Box */}
-                  <View style={styles.quoteBox}>
-                    <Text style={styles.quoteText}>"{story.testimonial}"</Text>
-                  </View>
                 </Animated.View>
               );
             })}
@@ -325,18 +364,19 @@ export const StudentStoriesScreen = () => {
         )}
 
         {/* CTA Banner */}
-        <Animated.View entering={FadeInUp.delay(600)} style={styles.ctaWrapper}>
-          <View style={[styles.ctaBanner, { backgroundColor: '#FFEDD5' }]}>
+        <Animated.View entering={FadeInUp.delay(300)} style={styles.ctaWrapper}>
+          <View style={[styles.ctaBanner, { backgroundColor: '#FFF7ED' }]}>
             <Text style={styles.ctaTitle}>Your Success Story Starts Today</Text>
             <Text style={styles.ctaSubtitle}>Join 10,000+ students building their future on StrideNex</Text>
             
-            <TouchableOpacity style={styles.startPathButton}>
+            <TouchableOpacity style={styles.startPathButton} activeOpacity={0.8}>
               <Text style={styles.startPathButtonText}>Start Your Path</Text>
             </TouchableOpacity>
             
             <TouchableOpacity 
               style={styles.viewAllButton}
               onPress={() => setModalVisible(true)}
+              activeOpacity={0.8}
             >
               <Text style={styles.viewAllText}>Share Your Story</Text>
               <ChevronRight size={14} color={colors.accent.DEFAULT} />
@@ -406,9 +446,10 @@ export const StudentStoriesScreen = () => {
                           setCategoryDropdownOpen(false);
                         }}
                       >
-                        <Text style={[styles.dropdownItemText, category === cat && styles.dropdownItemTextSelected]}>
-                          {cat}
-                        </Text>
+                        <Text style={[
+                          styles.dropdownItemText,
+                          category === cat && styles.dropdownItemTextSelected
+                        ]}>{cat}</Text>
                       </TouchableOpacity>
                     ))}
                   </View>
@@ -431,25 +472,26 @@ export const StudentStoriesScreen = () => {
                 
                 {statusDropdownOpen && (
                   <View style={styles.dropdownList}>
-                    {statuses.map((stat) => (
+                    {statuses.map((st) => (
                       <TouchableOpacity
-                        key={stat}
+                        key={st}
                         style={styles.dropdownItem}
                         onPress={() => {
-                          setStatus(stat);
+                          setStatus(st);
                           setStatusDropdownOpen(false);
                         }}
                       >
-                        <Text style={[styles.dropdownItemText, status === stat && styles.dropdownItemTextSelected]}>
-                          {stat}
-                        </Text>
+                        <Text style={[
+                          styles.dropdownItemText,
+                          status === st && styles.dropdownItemTextSelected
+                        ]}>{st}</Text>
                       </TouchableOpacity>
                     ))}
                   </View>
                 )}
               </View>
 
-              {/* Title Input */}
+              {/* Outcome Title Input */}
               <Text style={styles.label}>Outcome Title</Text>
               <TextInput
                 style={styles.input}
@@ -459,7 +501,7 @@ export const StudentStoriesScreen = () => {
                 onChangeText={setTitle}
               />
 
-              {/* Metric Input */}
+              {/* Outcome Metric Input */}
               <Text style={styles.label}>Outcome Metric / Package (Optional)</Text>
               <TextInput
                 style={styles.input}
@@ -469,24 +511,23 @@ export const StudentStoriesScreen = () => {
                 onChangeText={setMetric}
               />
 
-              {/* Testimonial Input */}
+              {/* Testimonial Quote Input */}
               <Text style={styles.label}>Testimonial</Text>
               <TextInput
                 style={[styles.input, styles.textArea]}
-                placeholder="Share your experience and how StrideNex helped you achieve your goals..."
+                placeholder="Share your experience and how StrideNex helped you..."
                 placeholderTextColor="#94A3B8"
-                multiline
+                multiline={true}
                 numberOfLines={4}
                 value={testimonial}
                 onChangeText={setTestimonial}
               />
 
-              {/* Action Buttons */}
+              {/* Form Actions */}
               <View style={styles.modalActions}>
                 <TouchableOpacity
                   style={[styles.modalBtn, styles.cancelBtn]}
                   onPress={() => setModalVisible(false)}
-                  disabled={submitting}
                 >
                   <Text style={styles.cancelBtnText}>Cancel</Text>
                 </TouchableOpacity>
@@ -517,6 +558,9 @@ const styles = StyleSheet.create({
   header: {
     marginBottom: 20,
     paddingHorizontal: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+    paddingBottom: 16,
   },
   headerTop: {
     flexDirection: 'row',
@@ -610,16 +654,11 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     fontSize: 13,
   },
-  listContainer: { gap: 14, marginBottom: 32 },
   storyCard: { 
     backgroundColor: '#FFFFFF', 
-    borderRadius: 18, 
-    padding: 16, 
-    borderTopWidth: 1.5, 
-    borderBottomWidth: 1.5, 
-    borderRightWidth: 1.5, 
-    borderLeftWidth: 4, 
-    borderLeftColor: '#FF6B00', 
+    borderRadius: 16, 
+    padding: 14, 
+    borderWidth: 1.5, 
     borderColor: '#F1F5F9', 
     shadowColor: '#64748B', 
     shadowOffset: { width: 0, height: 4 }, 
@@ -627,26 +666,22 @@ const styles = StyleSheet.create({
     shadowRadius: 8, 
     elevation: 2 
   },
-  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+  listContainer: { gap: 14, marginBottom: 32 },
+  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
   userInfo: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
-  avatar: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
-  avatarText: { fontSize: 13, fontWeight: '800', color: '#FFFFFF' },
+  avatar: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },
+  avatarText: { fontSize: 11, fontWeight: '800', color: '#FFFFFF' },
   userMeta: { flex: 1 },
-  userName: { fontSize: 14, fontWeight: '800', color: '#1E293B', marginBottom: 1 },
-  userCollege: { fontSize: 11, fontWeight: '500', color: '#94A3B8' },
-  successBadge: { backgroundColor: 'rgba(255, 107, 0, 0.06)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, borderWidth: 1, borderColor: 'rgba(255, 107, 0, 0.1)' },
-  successBadgeText: { fontSize: 9, fontWeight: '700', color: colors.accent.DEFAULT },
+  userName: { fontSize: 13, fontWeight: '800', color: '#1E293B', marginBottom: 1 },
+  userCollege: { fontSize: 10, fontWeight: '500', color: '#94A3B8' },
+  successBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, borderWidth: 1 },
+  successBadgeText: { fontSize: 8, fontWeight: '700' },
   
   achievementRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#F8FAFC',
-    borderWidth: 1,
-    borderColor: '#F1F5F9',
-    borderRadius: 12,
-    padding: 10,
-    marginBottom: 12,
+    marginTop: 2,
   },
   achievementLeft: {
     flexDirection: 'row',
@@ -655,10 +690,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   achievementIconBg: {
-    width: 26,
-    height: 26,
-    borderRadius: 6,
-    backgroundColor: 'rgba(255, 107, 0, 0.08)',
+    width: 28,
+    height: 28,
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -667,48 +701,59 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#94A3B8',
     letterSpacing: 0.5,
+    lineHeight: 8,
   },
   achievementTitle: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#475569',
+    color: '#334155',
     marginTop: 1,
+    lineHeight: 12,
   },
   metricBadge: {
-    backgroundColor: '#E8F5E9',
-    borderWidth: 1,
-    borderColor: '#C8E6C9',
+    backgroundColor: '#10B981',
     paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 8,
+    borderRadius: 6,
   },
   metricBadgeText: {
-    color: '#2E7D32',
-    fontSize: 10,
-    fontWeight: '800',
+    color: '#FFFFFF',
+    fontSize: 8.5,
+    fontWeight: '900',
   },
-  
   quoteBox: {
-    borderLeftWidth: 2,
-    borderLeftColor: '#FF6B00',
-    paddingLeft: 8,
-    marginTop: 2,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+    borderRadius: 10,
+    padding: 10,
+    marginVertical: 10,
+    position: 'relative',
+    minHeight: 46,
+    justifyContent: 'center',
+  },
+  quoteIconWrapper: {
+    position: 'absolute',
+    right: 6,
+    top: 4,
+    opacity: 0.8,
   },
   quoteText: {
     fontSize: 11,
-    color: '#64748B',
+    color: '#475569',
     fontStyle: 'italic',
-    lineHeight: 16,
+    lineHeight: 15,
     fontWeight: '500',
+    paddingRight: 20,
   },
   
-  ctaWrapper: { overflow: 'hidden', borderRadius: 24, borderWidth: 1, borderColor: '#FFEDD5' },
+  ctaWrapper: { overflow: 'hidden', borderRadius: 24, borderWidth: 1.5, borderColor: '#FFEDD5', marginTop: 12 },
   ctaBanner: { padding: 24, alignItems: 'center' },
-  ctaTitle: { fontSize: 20, fontWeight: '900', color: '#1E293B', marginBottom: 8, textAlign: 'center' },
-  ctaSubtitle: { fontSize: 13, color: '#475569', fontWeight: '500', marginBottom: 24, textAlign: 'center', paddingHorizontal: 16 },
-  startPathButton: { width: '100%', backgroundColor: colors.accent.DEFAULT, paddingVertical: 16, borderRadius: 14, alignItems: 'center', shadowColor: colors.accent.DEFAULT, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, marginBottom: 12 },
+  ctaTitle: { fontSize: 18, fontWeight: '900', color: '#1E293B', marginBottom: 8, textAlign: 'center' },
+  ctaSubtitle: { fontSize: 12, color: '#64748B', fontWeight: '500', marginBottom: 20, textAlign: 'center', paddingHorizontal: 16 },
+  startPathButton: { width: '100%', backgroundColor: colors.accent.DEFAULT, paddingVertical: 14, borderRadius: 12, alignItems: 'center', shadowColor: colors.accent.DEFAULT, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, marginBottom: 12 },
   startPathButtonText: { color: '#FFFFFF', fontSize: 14, fontWeight: '800' },
-  viewAllButton: { width: '100%', flexDirection: 'row', justifyContent: 'center', backgroundColor: 'rgba(255, 255, 255, 0.5)', paddingVertical: 16, borderRadius: 14, borderWidth: 1.5, borderColor: '#FDBA74', alignItems: 'center', gap: 6 },
+  viewAllButton: { width: '100%', flexDirection: 'row', justifyContent: 'center', backgroundColor: 'rgba(255, 255, 255, 0.5)', paddingVertical: 14, borderRadius: 12, borderWidth: 1.5, borderColor: '#FDBA74', alignItems: 'center', gap: 6 },
   viewAllText: { color: colors.accent.DEFAULT, fontSize: 14, fontWeight: '800' },
 
   footerSpacer: { height: 40 },

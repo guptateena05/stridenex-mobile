@@ -10,16 +10,17 @@ import { RoleBannerWidget } from '@/components/dashboard/RoleBannerWidget';
 import { StatsCard } from '@/components/dashboard/StatsCard';
 import { LearningActivityGraph } from '@/components/dashboard/LearningActivityGraph';
 import { AICoachCard } from '@/components/dashboard/AICoachCard';
-import { SkillsCard } from '@/components/dashboard/SkillsCard';
 import { AlertsAgendaCard } from '@/components/dashboard/AlertsAgendaCard';
-import { TrendingUp, Award, Briefcase, Bot, X, MapPin, Clock, IndianRupee } from 'lucide-react-native';
+import { useNavigation } from '@react-navigation/native';
+import { TrendingUp, Award, Briefcase, Bot, X, MapPin, Clock, IndianRupee, Target, ShieldCheck, Factory, FileText, ChevronRight } from 'lucide-react-native';
 
 import Animated, { FadeInUp, FadeInRight } from 'react-native-reanimated';
-import { getStudentByEmail, updateStudent, mapYearToWord, getStudentSkills, getDashboardStats, getStudentInternshipList, getLearningActivity, getTodaysOpportunityAlerts } from '@/api/student.services';
+import { getStudentByEmail, updateStudent, mapYearToWord, getSkillLedger, getDashboardStats, getStudentInternshipList, getLearningActivity, getTodaysOpportunityAlerts } from '@/api/student.services';
 import DynamicForm from '@/components/forms/DynamicForm';
 import { FormField } from '@/components/forms/DynamicField';
 
 export const StudentDashboardScreen = () => {
+  const navigation = useNavigation<any>();
   const { userName, userFullName, role } = useAuth();
   const [studentData, setStudentData] = useState<any>(null);
   const [loadingDetails, setLoadingDetails] = useState(true);
@@ -65,7 +66,7 @@ export const StudentDashboardScreen = () => {
     }
   };
 
-  const [skillsData, setSkillsData] = useState<any[]>([]);
+  const [ledgerSummary, setLedgerSummary] = useState<any>({});
 
   useEffect(() => {
     fetchStudentData();
@@ -75,37 +76,13 @@ export const StudentDashboardScreen = () => {
     if (!userName) return;
     const fetchSkills = async () => {
       try {
-        const res = await getStudentSkills(userName);
+        const res = await getSkillLedger(userName);
         console.log("Mobile student skills response:", res);
-        let rawSkills = [];
-        const data = res?.data || res?.message?.skills || res?.message || res;
-        if (data && Array.isArray(data)) {
-          rawSkills = data;
-        } else if (data && typeof data === 'object' && Array.isArray(data.skills)) {
-          rawSkills = data.skills;
-        } else if (res && res.skills && Array.isArray(res.skills)) {
-          rawSkills = res.skills;
+        if (res?.message) {
+          setLedgerSummary(res.message.summary || {});
         }
-
-        const mapLevelToPercentage = (level?: string): number => {
-          if (!level) return 0;
-          switch (level.toLowerCase()) {
-            case "beginner": return 35;
-            case "intermediate": return 65;
-            case "advanced": return 85;
-            case "expert": return 100;
-            default: return 50;
-          }
-        };
-
-        const mapped = rawSkills.map((item: any) => ({
-          name: item.skill,
-          level: item.level || "Beginner",
-          percentage: mapLevelToPercentage(item.level)
-        }));
-        setSkillsData(mapped);
       } catch (err) {
-        console.error("Error loading mobile skills:", err);
+        console.error("Error loading mobile skills summary:", err);
       }
     };
     fetchSkills();
@@ -276,21 +253,26 @@ export const StudentDashboardScreen = () => {
     ];
   }, [statsData]);
 
-  const fallbackSkills = [
-    { name: 'Python', level: 'Advanced', percentage: 78 },
-    { name: 'SQL', level: 'Advanced', percentage: 85 },
-    { name: 'ML', level: 'Intermediate', percentage: 61 },
-    { name: 'Viz', level: 'Beginner', percentage: 55 },
-  ];
-  
-  const displayedSkills = skillsData.length > 0 ? skillsData : fallbackSkills;
+  const fallbackSummary = {
+    total_skills: 4,
+    ai_verified: 2,
+    mentor_endorsed: 1,
+    industry_endorsed: 1,
+    evidence_items: 6
+  };
+  const summary = Object.keys(ledgerSummary).length > 0 ? ledgerSummary : fallbackSummary;
+
+  const ledgerStats = useMemo(() => [
+    { label: 'Total Skills', value: String(summary.total_skills || 0), icon: Target, color: '#EF4444', bg: '#FEF2F2' },
+    { label: 'AI Verified', value: String(summary.ai_verified || 0), icon: ShieldCheck, color: '#3B82F6', bg: '#EFF6FF' },
+    { label: 'Mentor Endorsed', value: String(summary.mentor_endorsed || 0), icon: Award, color: '#F59E0B', bg: '#FFFBEB' },
+    { label: 'Industry Endorsed', value: String(summary.industry_endorsed || 0), icon: Factory, color: '#8B5CF6', bg: '#F5F3FF' },
+    { label: 'Evidence Items', value: String(summary.evidence_items || 0), icon: FileText, color: '#64748B', bg: '#F8FAFC' },
+  ], [summary]);
 
   const alerts = opportunityAlerts;
 
-  const agenda = [
-    { icon: 'education', text: 'ML Module Ch.2 — Today' },
-    { icon: 'call', text: 'Mentor call — Feb 27 4PM' },
-  ];
+
 
   // Initial Form values derived from fetched profile details
   const initialFormValues = useMemo(() => {
@@ -541,23 +523,44 @@ export const StudentDashboardScreen = () => {
           <LearningActivityGraph data={learningActivityData} />
         </Animated.View>
 
-        <Animated.View entering={FadeInUp.delay(500)}>
-          <AICoachCard 
-            message="Your SQL velocity is impressive. 🚀 You've unlocked the next 'Strategic Learning' path."
-            task="Optimize Ch.4 Joins + solving 3 advanced queries."
-          />
-        </Animated.View>
 
-        <Animated.View entering={FadeInUp.delay(600)}>
-          <SkillsCard skills={displayedSkills} />
+
+        <Animated.View entering={FadeInUp.delay(600)} style={styles.premiumCard}>
+          <TouchableOpacity 
+            style={styles.cardHeader} 
+            activeOpacity={0.7}
+            onPress={() => navigation.navigate('Skill Ledger')}
+          >
+            <View style={styles.cardHeaderTitle}>
+              <Text style={styles.sectionTitle}>Ledger Summary</Text>
+            </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Text style={{ fontSize: 13, fontWeight: '600', color: colors.accent.DEFAULT }}>Full Ledger</Text>
+              <ChevronRight size={16} color={colors.accent.DEFAULT} style={{ marginLeft: 2 }} />
+            </View>
+          </TouchableOpacity>
+
+          <View style={styles.statsList}>
+            {ledgerStats.map((stat, i) => (
+              <View key={i} style={styles.statItem}>
+                <View style={[styles.statIcon, { backgroundColor: stat.bg }]}>
+                  <stat.icon size={11} color={stat.color} />
+                </View>
+                <View style={{ flex: 1, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: '#475569' }}>{stat.label}</Text>
+                  <Text style={styles.statValue}>{stat.value}</Text>
+                </View>
+              </View>
+            ))}
+          </View>
         </Animated.View>
 
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Communications</Text>
+          <Text style={styles.sectionTitle}>Alerts</Text>
         </View>
 
         <Animated.View entering={FadeInUp.delay(700)}>
-          <AlertsAgendaCard alerts={alerts} agenda={agenda} />
+          <AlertsAgendaCard alerts={alerts} />
         </Animated.View>
 
         <View style={styles.sectionHeader}>
@@ -606,6 +609,17 @@ export const StudentDashboardScreen = () => {
               ))}
             </View>
           )}
+        </Animated.View>
+
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>AI Coach</Text>
+        </View>
+
+        <Animated.View entering={FadeInUp.delay(900)}>
+          <AICoachCard 
+            message="Your SQL velocity is impressive. 🚀 You've unlocked the next 'Strategic Learning' path."
+            task="Optimize Ch.4 Joins + solving 3 advanced queries."
+          />
         </Animated.View>
         
         <View style={styles.footerSpacer} />
@@ -793,5 +807,49 @@ const styles = StyleSheet.create({
   stipendText: {
     color: '#15803D',
     fontWeight: '700',
+  },
+  premiumCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1.5,
+    borderColor: '#F1F5F9',
+    shadowColor: '#64748B',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.05,
+    shadowRadius: 15,
+    elevation: 3,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  cardHeaderTitle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  statsList: {
+    gap: 14,
+  },
+  statItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  statIcon: {
+    width: 26,
+    height: 26,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  statValue: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#1E293B',
   },
 });

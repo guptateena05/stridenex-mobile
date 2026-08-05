@@ -77,14 +77,14 @@ export const StudentDrawerNavigator = () => {
         }}
       />
       <Drawer.Screen
-        name="Skills"
+        name="Skill Ledger"
         component={StudentSkillsScreen}
         options={{
           drawerIcon: ({ color, size }) => <Zap color={color} size={size} />,
         }}
       />
       <Drawer.Screen
-        name="Path"
+        name="Skill Path"
         component={StudentPathScreen}
         options={{
           drawerIcon: ({ color, size }) => <Navigation color={color} size={size} />,
@@ -111,13 +111,13 @@ export const StudentDrawerNavigator = () => {
           drawerIcon: ({ color, size }) => <Briefcase color={color} size={size} />
         }}
       />
-      {/* <Drawer.Screen
+      <Drawer.Screen
         name="Jobs"
         component={StudentJobsScreen}
         options={{
           drawerIcon: ({ color, size }) => <Briefcase color={color} size={size} />
         }}
-      /> */}
+      />
       <Drawer.Screen
         name="Habits"
         component={StudentHabitsScreen}

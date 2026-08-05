@@ -309,7 +309,7 @@ const VerticalShortCard = ({
                 <Text style={styles.verticalActionText}>{likeCount}</Text>
              </TouchableOpacity>
 
-             {/* Comment item */}
+             {/* Comment item - Hidden for now
              <TouchableOpacity 
                onPress={() => onOpenComments(video)}
                style={styles.verticalActionItem}
@@ -319,6 +319,7 @@ const VerticalShortCard = ({
                 </View>
                  <Text style={styles.verticalActionText}>{video.commentCount ?? 0}</Text>
              </TouchableOpacity>
+             */}
 
              {/* Save/Unsave item in the actions column */}
              <TouchableOpacity 
