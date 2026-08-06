@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { User, ShieldCheck, Calendar, Users, Award, Briefcase, Target, Pen } from 'lucide-react-native';
+import { User, ShieldCheck, Calendar, Users, Award, Briefcase, Target, Pen, FileText } from 'lucide-react-native';
 import { Svg, Defs, LinearGradient as SvgGradient, Stop, Rect, Circle } from 'react-native-svg';
 
 interface RoleBannerWidgetProps {
@@ -13,9 +13,10 @@ interface RoleBannerWidgetProps {
   title?: string;
   subtitle?: string;
   onEditPress?: () => void;
+  onCreateResumePress?: () => void;
 }
 
-export const RoleBannerWidget = ({ fullName, date, role, progress, theme = 'orange', metrics, title, subtitle, onEditPress }: RoleBannerWidgetProps) => {
+export const RoleBannerWidget = ({ fullName, date, role, progress, theme = 'orange', metrics, title, subtitle, onEditPress, onCreateResumePress }: RoleBannerWidgetProps) => {
   const isPurple = theme === 'purple';
   const isMentor = theme === 'mentor';
   const isCollege = theme === 'college' || role?.toLowerCase() === 'college';
@@ -76,7 +77,19 @@ export const RoleBannerWidget = ({ fullName, date, role, progress, theme = 'oran
           <View style={{ flex: 1, paddingRight: 16 }}>
             {title ? (
               <>
-                <Text style={styles.titleText} numberOfLines={2}>{title}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap' }}>
+                  <Text style={styles.titleText} numberOfLines={2}>{title}</Text>
+                  {onCreateResumePress && (
+                    <TouchableOpacity 
+                      style={styles.createResumeBtn} 
+                      onPress={onCreateResumePress}
+                      activeOpacity={0.8}
+                    >
+                      <FileText size={10} color={gradEnd} style={{ marginRight: 3 }} />
+                      <Text style={[styles.createResumeBtnText, { color: gradEnd }]}>Create Resume</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
                 {subtitle ? (
                   <Text style={styles.subtitleText}>{subtitle}</Text>
                 ) : null}
@@ -256,6 +269,26 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     color: '#fff',
     letterSpacing: -0.5,
+  },
+  createResumeBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginLeft: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  createResumeBtnText: {
+    fontSize: 9,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
   },
   subtitleText: {
     fontSize: 11,

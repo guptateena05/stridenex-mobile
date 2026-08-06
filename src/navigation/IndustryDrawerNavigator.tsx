@@ -68,7 +68,8 @@ export const IndustryDrawerNavigator = () => {
         name="Find Talent"
         component={IndustryFindTalentScreen}
         options={{
-          drawerIcon: ({ color, size }) => <Briefcase color={color} size={size} />
+          drawerIcon: ({ color, size }) => <Briefcase color={color} size={size} />,
+          drawerItemStyle: { display: 'none' }
         }}
       />
       <Drawer.Screen

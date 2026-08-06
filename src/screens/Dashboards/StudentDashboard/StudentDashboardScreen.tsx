@@ -422,6 +422,8 @@ export const StudentDashboardScreen = () => {
       required: true,
       placeholder: 'Select Date of Birth',
       layout: 'full',
+      textTransform: 'uppercase',
+      testTransform: 'uppercase',
     },
     {
       fieldname: 'gender',
@@ -499,6 +501,9 @@ export const StudentDashboardScreen = () => {
             onEditPress={() => {
               setProfileFormValues(initialFormValues);
               setIsEditModalVisible(true);
+            }}
+            onCreateResumePress={() => {
+              navigation.navigate('Resume');
             }}
           />
         </Animated.View>

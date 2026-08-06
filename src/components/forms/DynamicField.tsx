@@ -35,6 +35,8 @@ export interface FormField {
   hidden?: boolean;
   minDate?: Date;
   maxDate?: Date;
+  textTransform?: 'uppercase' | 'lowercase' | 'capitalize' | 'none';
+  testTransform?: 'uppercase' | 'lowercase' | 'capitalize' | 'none';
 }
 
 interface DynamicFieldProps {
@@ -815,6 +817,7 @@ export default function DynamicField({ field, value, onChange, onCreateCustomVal
 
       case 'Date':
         const displayValue = value ? value.split('-').reverse().join('-') : '';
+        const shouldUppercase = field.textTransform === 'uppercase' || (field as any).testTransform === 'uppercase';
         return (
           <>
             <TouchableOpacity
@@ -825,7 +828,8 @@ export default function DynamicField({ field, value, onChange, onCreateCustomVal
               <Text style={[
                 styles.inputText,
                 { color: textPrimary },
-                !value && { color: textSecondary }
+                !value && { color: textSecondary },
+                shouldUppercase && { textTransform: 'uppercase' }
               ]}>
                 {displayValue || field.placeholder || 'Select date'}
               </Text>

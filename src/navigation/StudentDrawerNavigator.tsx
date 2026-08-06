@@ -18,7 +18,8 @@ import {
   BookOpen,
   History,
   Video,
-  Target
+  Target,
+  FileText
 } from 'lucide-react-native';
 
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
@@ -33,6 +34,7 @@ import { StudentEventsScreen } from '@/screens/Dashboards/StudentDashboard/Stude
 import { StudentStoriesScreen } from '@/screens/Dashboards/StudentDashboard/StudentStoriesScreen';
 import { StudentPlansScreen } from '@/screens/Dashboards/StudentDashboard/StudentPlansScreen';
 import { StudentShortsScreen } from '@/screens/Dashboards/StudentDashboard/StudentShortsScreen';
+import { StudentResumeScreen } from '@/screens/Dashboards/StudentDashboard/StudentResumeScreen';
 
 const Drawer = createDrawerNavigator();
 
@@ -159,6 +161,14 @@ export const StudentDrawerNavigator = () => {
         component={StudentPlansScreen}
         options={{
           drawerIcon: ({ color, size }) => <BookOpen color={color} size={size} />
+        }}
+      />
+      <Drawer.Screen
+        name="Resume"
+        component={StudentResumeScreen}
+        options={{
+          drawerIcon: ({ color, size }) => <FileText color={color} size={size} />,
+          drawerItemStyle: { display: 'none' }
         }}
       />
     </Drawer.Navigator>
