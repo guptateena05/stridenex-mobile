@@ -1370,3 +1370,88 @@ export const applyForJob = async (formData: FormData) => {
     throw error;
   }
 };
+
+/**
+ * Create a new playlist.
+ */
+export const createPlaylist = async (payload: { student: string; playlist_name: string }): Promise<any> => {
+  try {
+    const storedToken = await AsyncStorage.getItem("token");
+    const token = storedToken ? storedToken.trim() : null;
+
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    if (token) {
+      headers["Authorization"] = `token ${token}`;
+    }
+
+    const response = await api.post(
+      "method/stridenex_app.stridenex_app.doctype.playlist_shorts.playlist_shorts.create_playlist",
+      payload,
+      { headers }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error creating playlist:", error);
+    throw error;
+  }
+};
+
+/**
+ * Save educational short to a playlist.
+ */
+export const saveShortToPlaylist = async (payload: { playlist: string; shorts: string }): Promise<any> => {
+  try {
+    const storedToken = await AsyncStorage.getItem("token");
+    const token = storedToken ? storedToken.trim() : null;
+
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    if (token) {
+      headers["Authorization"] = `token ${token}`;
+    }
+
+    const url = `method/stridenex_app.stridenex_app.doctype.playlist_shorts.playlist_shorts.save_short_to_playlist?playlist=${encodeURIComponent(payload.playlist)}&shorts=${encodeURIComponent(payload.shorts)}`;
+
+    const response = await api.post(
+      url,
+      payload,
+      { headers }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error saving short to playlist:", error);
+    throw error;
+  }
+};
+
+/**
+ * Fetch playlists for a student.
+ */
+export const getStudentPlaylists = async (studentEmail: string): Promise<any> => {
+  try {
+    const storedToken = await AsyncStorage.getItem("token");
+    const token = storedToken ? storedToken.trim() : null;
+
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    if (token) {
+      headers["Authorization"] = `token ${token}`;
+    }
+
+    const response = await api.get(
+      "method/stridenex_app.stridenex_app.doctype.playlist_shorts.playlist_shorts.get_student_playlists",
+      {
+        params: { student: studentEmail },
+        headers
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching student playlists:", error);
+    throw error;
+  }
+};

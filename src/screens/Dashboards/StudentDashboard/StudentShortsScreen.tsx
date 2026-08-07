@@ -22,7 +22,7 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getShortsFeed, saveShort, unsaveShort, getSavedShorts, toggleLikeShort, addShortComment, getShortComments, toggleLikeComment } from '@/api/student.services';
+import { getShortsFeed, saveShort, unsaveShort, getSavedShorts, toggleLikeShort, addShortComment, getShortComments, toggleLikeComment, createPlaylist, saveShortToPlaylist, getStudentPlaylists } from '@/api/student.services';
 import { useAuth } from '@/context/AuthContext';
 import { WebView } from 'react-native-webview';
 import { colors } from '@/theme/colors';
@@ -49,7 +49,9 @@ import {
   Compass,
   Copy,
   MoreHorizontal,
-  Paperclip
+  Paperclip,
+  ChevronRight,
+  ChevronLeft
 } from 'lucide-react-native';
 import { useNavigation, DrawerActions } from '@react-navigation/native';
 
@@ -391,6 +393,125 @@ export const StudentShortsScreen = () => {
   const [newCommentText, setNewCommentText] = useState('');
   const [replyingTo, setReplyingTo] = useState<{ id: string; name?: string; author: string } | null>(null);
   const [commentsLoading, setCommentsLoading] = useState<boolean>(false);
+
+  const [isPlaylistModalVisible, setIsPlaylistModalVisible] = useState(false);
+  const [playlists, setPlaylists] = useState<any[]>([]);
+  const [playlistsLoading, setPlaylistsLoading] = useState(false);
+  const [newPlaylistName, setNewPlaylistName] = useState("");
+  const [isCreatingPlaylist, setIsCreatingPlaylist] = useState(false);
+  const [selectedPlaylistForView, setSelectedPlaylistForView] = useState<any | null>(null);
+  const [selectedPlaylistForAddView, setSelectedPlaylistForAddView] = useState<any | null>(null);
+
+  const playPlaylistShort = (shortItem: any) => {
+    const shortId = String(shortItem.name || shortItem.id);
+    const existsIdx = shortsList.findIndex(s => String(s.id) === shortId);
+    
+    if (existsIdx === -1) {
+      const BASE_DOMAIN = "https://devstridenex.quantcloud.in";
+      const videoUrl = shortItem.video ? (shortItem.video.startsWith('http') ? shortItem.video : `${BASE_DOMAIN}${shortItem.video}`) : '';
+      const posterUrl = shortItem.thumbnail ? (shortItem.thumbnail.startsWith('http') ? shortItem.thumbnail : `${BASE_DOMAIN}${shortItem.thumbnail}`) : 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=500';
+      
+      const mappedShort = {
+        id: shortId,
+        title: shortItem.title || "Untitled Short",
+        category: shortItem.skill || "Skill",
+        duration: shortItem.duration_display || `${shortItem.duration_seconds || 30} sec`,
+        views: shortItem.views_display || `${shortItem.view_count || 0}`,
+        author: "StrideNex",
+        authorHandle: "@stridenex",
+        authorAvatar: (shortItem.skill || "Skill").substring(0, 2).toUpperCase(),
+        tags: [],
+        description: shortItem.description || "",
+        isSaved: true,
+        videoUrl: videoUrl,
+        posterUrl: posterUrl,
+        commentCount: Number(shortItem.comment_count || 0),
+        comments: [],
+        likes: String(shortItem.like_count || 0)
+      };
+      
+      setShortsList(prev => [...prev, mappedShort]);
+      setDisplayedShorts(prev => [...prev, mappedShort]);
+      
+      setTimeout(() => {
+        // Appended to the end
+        const newIdx = shortsList.length;
+        flatListRef.current?.scrollToIndex({ index: newIdx, animated: true });
+        setActiveIndex(newIdx);
+      }, 350);
+    } else {
+      flatListRef.current?.scrollToIndex({ index: existsIdx, animated: true });
+      setActiveIndex(existsIdx);
+    }
+    setIsSavedVideosListVisible(false);
+  };
+
+  const fetchPlaylists = async () => {
+    if (!userName) return;
+    try {
+      setPlaylistsLoading(true);
+      const res = await getStudentPlaylists(userName);
+      console.log("[Mobile Debug] getStudentPlaylists response:", JSON.stringify(res));
+      let rawPlaylists = [];
+      if (res && Array.isArray(res.message)) {
+        rawPlaylists = res.message;
+      } else if (res && Array.isArray(res.data)) {
+        rawPlaylists = res.data;
+      } else if (res && res.message && Array.isArray(res.message.data)) {
+        rawPlaylists = res.message.data;
+      }
+      console.log("[Mobile Debug] Parsed playlists:", JSON.stringify(rawPlaylists));
+      setPlaylists(rawPlaylists);
+    } catch (err) {
+      console.error("Error loading student playlists on mobile:", err);
+    } finally {
+      setPlaylistsLoading(false);
+    }
+  };
+
+  const handleCreatePlaylist = async () => {
+    if (!newPlaylistName.trim() || !userName) return;
+    try {
+      setIsCreatingPlaylist(true);
+      const res = await createPlaylist({
+        student: userName,
+        playlist_name: newPlaylistName.trim()
+      });
+      const alertMsg = res?.message?.message || "Playlist created!";
+      if (Platform.OS === 'android') {
+        ToastAndroid.show(alertMsg, ToastAndroid.SHORT);
+      } else {
+        Alert.alert("Success", alertMsg);
+      }
+      setNewPlaylistName("");
+      await fetchPlaylists();
+    } catch (err: any) {
+      console.error("Error creating playlist on mobile:", err);
+      Alert.alert("Error", err.message || "Failed to create playlist");
+    } finally {
+      setIsCreatingPlaylist(false);
+    }
+  };
+
+  const handleSaveToPlaylist = async (playlistId: string) => {
+    if (!selectedShort) return;
+    try {
+      const res = await saveShortToPlaylist({
+        playlist: playlistId,
+        shorts: String(selectedShort.id)
+      });
+      const alertMsg = res?.message?.message || "Short added to playlist!";
+      if (Platform.OS === 'android') {
+        ToastAndroid.show(alertMsg, ToastAndroid.SHORT);
+      } else {
+        Alert.alert("Success", alertMsg);
+      }
+      setIsPlaylistModalVisible(false);
+    } catch (err: any) {
+      console.error("Error saving short to playlist on mobile:", err);
+      Alert.alert("Error", err.message || "Failed to add short to playlist");
+    }
+  };
 
   const formatComments = (rawList: any[]): any[] => {
     if (!Array.isArray(rawList)) return [];
@@ -1262,6 +1383,8 @@ export const StudentShortsScreen = () => {
                   onPress={() => {
                     setIsMoreOptionsVisible(false);
                     setTimeout(() => {
+                      fetchPlaylists();
+                      setSelectedPlaylistForView(null);
                       setIsSavedVideosListVisible(true);
                       fetchSaved();
                     }, 300);
@@ -1275,7 +1398,11 @@ export const StudentShortsScreen = () => {
                   style={styles.optionBtn}
                   onPress={() => {
                     setIsMoreOptionsVisible(false);
-                    Alert.alert("Playlists", "Short added to Playlist!");
+                    setTimeout(() => {
+                      setSelectedPlaylistForAddView(null);
+                      setIsPlaylistModalVisible(true);
+                      fetchPlaylists();
+                    }, 300);
                   }}
                 >
                   <Plus size={20} color="#0F172A" />
@@ -1328,45 +1455,128 @@ export const StudentShortsScreen = () => {
           <View style={styles.bottomSheetContainer} onStartShouldSetResponder={() => true}>
             <View style={styles.dragHandle} />
             <View style={styles.sheetHeader}>
-              <Text style={styles.sheetTitle}>Saved Shorts Playlist</Text>
+              <Text style={styles.sheetTitle}>
+                {selectedPlaylistForView ? `Playlist: ${selectedPlaylistForView.playlist_name}` : "Saved & Playlists"}
+              </Text>
               <TouchableOpacity onPress={() => setIsSavedVideosListVisible(false)} style={styles.closeBtn}>
                 <X size={20} color="#0F172A" />
               </TouchableOpacity>
             </View>
 
             <ScrollView contentContainerStyle={styles.savedListScroll} showsVerticalScrollIndicator={false}>
-              {savedItems.length === 0 ? (
-                <View style={styles.emptySavedContainer}>
-                  <Bookmark size={48} color="#CBD5E1" />
-                  <Text style={styles.emptySavedText}>No saved shorts yet.</Text>
-                  <Text style={styles.emptySavedSubtext}>Click the 3-dots on any Short video to save it here!</Text>
+              {selectedPlaylistForView ? (
+                <View style={{ width: "100%" }}>
+                  <TouchableOpacity
+                    onPress={() => setSelectedPlaylistForView(null)}
+                    style={{ flexDirection: "row", alignItems: "center", marginBottom: 16 }}
+                  >
+                    <ChevronLeft size={16} color="#FF6B00" style={{ marginRight: 4 }} />
+                    <Text style={{ fontSize: 14, color: "#FF6B00", fontWeight: "700" }}>Back to Playlists</Text>
+                  </TouchableOpacity>
+
+                  {(!selectedPlaylistForView.shorts || selectedPlaylistForView.shorts.length === 0) ? (
+                    <View style={styles.emptySavedContainer}>
+                      <Text style={styles.emptySavedText}>No shorts saved in this playlist yet.</Text>
+                    </View>
+                  ) : (
+                    selectedPlaylistForView.shorts.map((shortItem: any, idx: number) => {
+                      const BASE_DOMAIN = "https://devstridenex.quantcloud.in";
+                      const posterUrl = shortItem.thumbnail ? (shortItem.thumbnail.startsWith('http') ? shortItem.thumbnail : `${BASE_DOMAIN}${shortItem.thumbnail}`) : 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=500';
+                      return (
+                        <TouchableOpacity 
+                          key={String(shortItem.name || shortItem.id || idx)} 
+                          style={styles.savedPlaylistItem}
+                          onPress={() => playPlaylistShort(shortItem)}
+                        >
+                          <ImageBackground 
+                            source={{ uri: posterUrl }} 
+                            style={styles.playlistThumb}
+                            imageStyle={{ borderRadius: 8 }}
+                            resizeMode="cover"
+                          >
+                             <View style={styles.playlistPlayIndicator}>
+                                <Play size={16} color="#FFFFFF" fill="#FFFFFF" />
+                             </View>
+                          </ImageBackground>
+                          <View style={styles.playlistDetails}>
+                            <Text style={styles.playlistTitle} numberOfLines={2}>{shortItem.title || "Untitled Short"}</Text>
+                            <Text style={styles.playlistViews}>{shortItem.skill || "Skill"}</Text>
+                            <Text style={styles.playlistAuthor}>@stridenex</Text>
+                          </View>
+                        </TouchableOpacity>
+                      );
+                    })
+                  )}
                 </View>
               ) : (
-                shortsList
-                  .filter(item => savedItems.includes(String(item.id)))
-                  .map(item => (
-                    <TouchableOpacity 
-                      key={item.id} 
-                      style={styles.savedPlaylistItem}
-                      onPress={() => handlePlaySavedShort(item.id)}
-                    >
-                      <ImageBackground 
-                        source={{ uri: item.posterUrl }} 
-                        style={styles.playlistThumb}
-                        imageStyle={{ borderRadius: 8 }}
-                        resizeMode="cover"
-                      >
-                         <View style={styles.playlistPlayIndicator}>
-                            <Play size={16} color="#FFFFFF" fill="#FFFFFF" />
-                         </View>
-                      </ImageBackground>
-                      <View style={styles.playlistDetails}>
-                        <Text style={styles.playlistTitle} numberOfLines={2}>{item.title}</Text>
-                        <Text style={styles.playlistViews}>{item.views} views • {item.category}</Text>
-                        <Text style={styles.playlistAuthor}>{item.authorHandle}</Text>
+                <View style={{ width: "100%" }}>
+                  {/* Playlists section */}
+                  <View style={{ marginBottom: 24 }}>
+                    <Text style={{ fontSize: 11, fontWeight: "700", color: "#64748B", letterSpacing: 1, textTransform: "uppercase", marginBottom: 12 }}>My Playlists</Text>
+                    {playlistsLoading ? (
+                      <ActivityIndicator size="small" color="#FF6B00" style={{ marginVertical: 12 }} />
+                    ) : playlists.length === 0 ? (
+                      <View style={{ padding: 16, backgroundColor: "#F8FAFC", borderStyle: "dashed", borderWidth: 1, borderColor: "#CBD5E1", borderRadius: 12, alignItems: "center" }}>
+                        <Text style={{ fontSize: 12, color: "#64748B", fontWeight: "500" }}>No custom playlists created yet.</Text>
                       </View>
-                    </TouchableOpacity>
-                  ))
+                    ) : (
+                      playlists.map((pl, idx) => (
+                        <TouchableOpacity
+                          key={pl.playlist_id || pl.name || `pl-${idx}`}
+                          onPress={() => {
+                            console.log("[Mobile Debug] Playlist clicked:", JSON.stringify(pl));
+                            setSelectedPlaylistForView(pl);
+                          }}
+                          style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: 14, backgroundColor: "#F8FAFC", borderWidth: 1, borderColor: "#E2E8F0", borderRadius: 12, marginBottom: 8 }}
+                        >
+                          <View style={{ flex: 1 }}>
+                            <Text style={{ fontSize: 14, fontWeight: "700", color: "#0F172A" }}>{pl.playlist_name}</Text>
+                            <Text style={{ fontSize: 12, color: "#64748B", marginTop: 2 }}>
+                              {pl.total_shorts || (pl.shorts ? pl.shorts.length : 0)} shorts
+                            </Text>
+                          </View>
+                          <ChevronRight size={18} color="#94A3B8" />
+                        </TouchableOpacity>
+                      ))
+                    )}
+                  </View>
+
+                  {/* Standard library saved section */}
+                  <View>
+                    <Text style={{ fontSize: 11, fontWeight: "700", color: "#64748B", letterSpacing: 1, textTransform: "uppercase", marginBottom: 12 }}>Library Saved Shorts</Text>
+                    {savedItems.length === 0 ? (
+                      <View style={{ padding: 16, backgroundColor: "#F8FAFC", borderStyle: "dashed", borderWidth: 1, borderColor: "#CBD5E1", borderRadius: 12, alignItems: "center" }}>
+                        <Text style={{ fontSize: 12, color: "#64748B", fontWeight: "500" }}>No saved shorts in Library yet.</Text>
+                      </View>
+                    ) : (
+                      shortsList
+                        .filter(item => savedItems.includes(String(item.id)))
+                        .map(item => (
+                          <TouchableOpacity 
+                            key={item.id} 
+                            style={styles.savedPlaylistItem}
+                            onPress={() => handlePlaySavedShort(item.id)}
+                          >
+                            <ImageBackground 
+                              source={{ uri: item.posterUrl }} 
+                              style={styles.playlistThumb}
+                              imageStyle={{ borderRadius: 8 }}
+                              resizeMode="cover"
+                            >
+                               <View style={styles.playlistPlayIndicator}>
+                                  <Play size={16} color="#FFFFFF" fill="#FFFFFF" />
+                               </View>
+                            </ImageBackground>
+                            <View style={styles.playlistDetails}>
+                              <Text style={styles.playlistTitle} numberOfLines={2}>{item.title}</Text>
+                              <Text style={styles.playlistViews}>{item.views} views • {item.category}</Text>
+                              <Text style={styles.playlistAuthor}>{item.authorHandle}</Text>
+                            </View>
+                          </TouchableOpacity>
+                        ))
+                    )}
+                  </View>
+                </View>
               )}
             </ScrollView>
           </View>
@@ -1477,6 +1687,142 @@ export const StudentShortsScreen = () => {
                   <MoreHorizontal size={22} color="#FFFFFF" />
                 </View>
                 <Text style={styles.shareOptionText}>More</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* --- PLAYLIST BOTTOM SHEET --- */}
+      <Modal
+        visible={isPlaylistModalVisible}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setIsPlaylistModalVisible(false)}
+      >
+        <TouchableOpacity 
+          style={styles.modalBackdrop} 
+          activeOpacity={1} 
+          onPress={() => setIsPlaylistModalVisible(false)}
+        >
+          <View style={styles.bottomSheetContainer} onStartShouldSetResponder={() => true}>
+            <View style={styles.dragHandle} />
+            <View style={styles.sheetHeader}>
+              <Text style={styles.sheetTitle}>
+                {selectedPlaylistForAddView ? `Playlist: ${selectedPlaylistForAddView.playlist_name}` : "Add to Playlist"}
+              </Text>
+              <TouchableOpacity onPress={() => setIsPlaylistModalVisible(false)} style={styles.closeBtn}>
+                <X size={20} color="#0F172A" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView contentContainerStyle={styles.savedListScroll} showsVerticalScrollIndicator={false}>
+              {playlistsLoading ? (
+                <ActivityIndicator size="small" color="#FF6B00" style={{ marginVertical: 20 }} />
+              ) : selectedPlaylistForAddView ? (
+                // View Playlist shorts inside the Add to Playlist modal
+                <View style={{ width: "100%" }}>
+                  <TouchableOpacity
+                    onPress={() => setSelectedPlaylistForAddView(null)}
+                    style={{ flexDirection: "row", alignItems: "center", marginBottom: 16 }}
+                  >
+                    <ChevronLeft size={16} color="#FF6B00" style={{ marginRight: 4 }} />
+                    <Text style={{ fontSize: 14, color: "#FF6B00", fontWeight: "700" }}>Back to Playlists</Text>
+                  </TouchableOpacity>
+
+                  {(!selectedPlaylistForAddView.shorts || selectedPlaylistForAddView.shorts.length === 0) ? (
+                    <View style={styles.emptySavedContainer}>
+                      <Text style={styles.emptySavedText}>No shorts saved in this playlist yet.</Text>
+                    </View>
+                  ) : (
+                    selectedPlaylistForAddView.shorts.map((shortItem: any, idx: number) => {
+                      const BASE_DOMAIN = "https://devstridenex.quantcloud.in";
+                      const posterUrl = shortItem.thumbnail ? (shortItem.thumbnail.startsWith('http') ? shortItem.thumbnail : `${BASE_DOMAIN}${shortItem.thumbnail}`) : 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=500';
+                      return (
+                        <TouchableOpacity 
+                          key={String(shortItem.name || shortItem.id || idx)} 
+                          style={styles.savedPlaylistItem}
+                          onPress={() => {
+                            setIsPlaylistModalVisible(false);
+                            playPlaylistShort(shortItem);
+                          }}
+                        >
+                          <ImageBackground 
+                            source={{ uri: posterUrl }} 
+                            style={styles.playlistThumb}
+                            imageStyle={{ borderRadius: 8 }}
+                            resizeMode="cover"
+                          >
+                             <View style={styles.playlistPlayIndicator}>
+                                <Play size={16} color="#FFFFFF" fill="#FFFFFF" />
+                             </View>
+                          </ImageBackground>
+                          <View style={styles.playlistDetails}>
+                            <Text style={styles.playlistTitle} numberOfLines={2}>{shortItem.title || "Untitled Short"}</Text>
+                            <Text style={styles.playlistViews}>{shortItem.skill || "Skill"}</Text>
+                            <Text style={styles.playlistAuthor}>@stridenex</Text>
+                          </View>
+                        </TouchableOpacity>
+                      );
+                    })
+                  )}
+                </View>
+              ) : playlists.length === 0 ? (
+                <View style={styles.emptySavedContainer}>
+                  <Text style={styles.emptySavedText}>No playlists found.</Text>
+                  <Text style={styles.emptySavedSubtext}>Create one below to save this short video!</Text>
+                </View>
+              ) : (
+                playlists.map((playlist, index) => (
+                  <View 
+                    key={playlist.playlist_id || playlist.name || `playlist-${index}`} 
+                    style={[styles.playlistSelectorItem, { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 12 }]}
+                  >
+                    {/* Tapping on the left part (details) opens/expands the playlist contents */}
+                    <TouchableOpacity 
+                      style={{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}
+                      onPress={() => setSelectedPlaylistForAddView(playlist)}
+                    >
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.playlistSelectorName}>{playlist.playlist_name}</Text>
+                        <Text style={{ fontSize: 11, color: "#64748B", marginTop: 2 }}>
+                          {playlist.total_shorts || (playlist.shorts ? playlist.shorts.length : 0)} shorts
+                        </Text>
+                      </View>
+                      <ChevronRight size={16} color="#94A3B8" style={{ marginRight: 12 }} />
+                    </TouchableOpacity>
+
+                    {/* Tapping on the plus button saves the current video to the playlist */}
+                    <TouchableOpacity
+                      onPress={() => handleSaveToPlaylist(playlist.playlist_id || playlist.name)}
+                      style={{ padding: 8, backgroundColor: "#F1F5F9", borderRadius: 8 }}
+                    >
+                      <Plus size={18} color="#FF6B00" />
+                    </TouchableOpacity>
+                  </View>
+                ))
+              )}
+            </ScrollView>
+
+            {/* Input Box for Creating New Playlist */}
+            <View style={styles.playlistInputContainer}>
+              <TextInput
+                style={styles.playlistTextInput}
+                placeholder="New playlist name..."
+                placeholderTextColor="#94A3B8"
+                value={newPlaylistName}
+                onChangeText={setNewPlaylistName}
+              />
+              <TouchableOpacity 
+                style={[styles.playlistCreateBtn, (!newPlaylistName.trim() || isCreatingPlaylist) && styles.disabledPostBtn]}
+                onPress={handleCreatePlaylist}
+                disabled={!newPlaylistName.trim() || isCreatingPlaylist}
+              >
+                {isCreatingPlaylist ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.playlistCreateBtnText}>Create</Text>
+                )}
               </TouchableOpacity>
             </View>
           </View>
@@ -2129,5 +2475,51 @@ const styles = StyleSheet.create({
   replyingToText: {
     fontSize: 12,
     color: '#64748B',
+  },
+  playlistSelectorItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 14,
+    paddingHorizontal: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  playlistSelectorName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#0F172A',
+  },
+  playlistInputContainer: {
+    flexDirection: 'row',
+    gap: 12,
+    paddingVertical: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    marginBottom: Platform.OS === 'ios' ? 20 : 0,
+  },
+  playlistTextInput: {
+    flex: 1,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F1F5F9',
+    paddingHorizontal: 16,
+    fontSize: 14,
+    color: '#0F172A',
+  },
+  playlistCreateBtn: {
+    paddingHorizontal: 16,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#FF6B00',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  playlistCreateBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
 });
