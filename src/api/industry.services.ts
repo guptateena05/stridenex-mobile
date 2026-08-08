@@ -475,7 +475,7 @@ export const getStudentByEmail = async (emailId: string) => {
 export const updateApplicationStatus = async (name: string, status: string) => {
   try {
     const response = await api.post(
-      `method/stridenex_app.stridenex_app.doctype.internship_application.internship_application.update_application_status`,
+      `method/stridenex_app.stridenex_app.doctype.student_applications.student_applications.update_application_status`,
       { name, status }
     );
     return response.data;
@@ -613,4 +613,61 @@ export const uploadFile = async (file: { uri: string; type: string; name: string
     throw error;
   }
 };
+
+export const getApplications = async (params: {
+  opportunity_type: string;
+  industry: string;
+  project?: string;
+  proect?: string;
+  internship?: string;
+  job_profile?: string;
+}) => {
+  try {
+    const response = await api.get(
+      'method/stridenex_app.stridenex_app.doctype.student_applications.student_applications.get_applications',
+      { params }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching applications:", error);
+    throw error;
+  }
+};
+
+export const getAllDropdownData = async (params: {
+  opportunity_type: string;
+  industry: string;
+}) => {
+  try {
+    const response = await api.get(
+      'method/stridenex_app.stridenex_app.doctype.student_applications.student_applications.get_all_dropdown_data',
+      { params }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching dropdown data:", error);
+    throw error;
+  }
+};
+
+export const getApplicationsCount = async (params: {
+  opportunity_type: string;
+  industry: string;
+  project?: string;
+  proect?: string;
+  internship?: string;
+  job_profile?: string;
+}) => {
+  try {
+    const response = await api.get(
+      'method/stridenex_app.stridenex_app.doctype.student_applications.student_applications.get_applications_count',
+      { params }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching applications count:", error);
+    throw error;
+  }
+};
+
 

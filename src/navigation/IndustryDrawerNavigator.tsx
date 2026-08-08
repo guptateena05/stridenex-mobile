@@ -73,7 +73,7 @@ export const IndustryDrawerNavigator = () => {
         }}
       />
       <Drawer.Screen
-        name="Internships Pipeline"
+        name="Pipeline"
         component={IndustryPipelineScreen}
         options={{
           drawerIcon: ({ color, size }) => <Mail color={color} size={size} />

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
   View,
   Text,
@@ -30,22 +30,19 @@ import {
   Mail,
   ChevronRight,
   GraduationCap,
-  TrendingUp
+  TrendingUp,
+  Trophy,
+  FileText
 } from 'lucide-react-native';
-import Animated, { FadeInUp, FadeInRight, Layout, SlideInRight } from 'react-native-reanimated';
+import Animated, { FadeInUp, FadeInRight } from 'react-native-reanimated';
 import { useIndustry } from '@/context/IndustryContext';
-import { getStudentApplicationList, getStudentByEmail, updateApplicationStatus } from '@/api/industry.services';
-
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-
-const pipelineColumns = [
-  { id: "Applied", title: "Applied", color: '#1E293B', icon: Mail },
-  { id: "Shortlisted", title: "Shortlisted", color: '#3B82F6', icon: UserCheck },
-  { id: "Tech Interview", title: "Tech Interview", color: '#F97316', icon: PhoneCall },
-  { id: "HR", title: "HR", color: '#8B5CF6', icon: PhoneCall },
-  { id: "Rejected", title: "Rejected", color: '#EF4444', icon: XCircle },
-  { id: "Selected", title: "Selected", color: '#10B981', icon: CheckCircle2 }
-];
+import { 
+  getApplications, 
+  getAllDropdownData,
+  getApplicationsCount,
+  getStudentByEmail, 
+  updateApplicationStatus 
+} from '@/api/industry.services';
 
 interface Candidate {
   id: string;
@@ -59,10 +56,22 @@ interface Candidate {
   match: number;
   initials: string;
   bgColor: string;
+  firstName?: string;
+  lastName?: string;
+  course?: string;
+  department?: string;
+  mobileNo?: string;
 }
 
-export const IndustryPipelineScreen = () => {
+interface DropdownOption {
+  name: string;
+  title: string;
+}
+
+export const IndustryPipelineScreen = ({ route }: any) => {
   const { industryData } = useIndustry();
+  const routeParams = route?.params;
+
   const [activeTab, setActiveTab] = useState("Applied");
   const [candidates, setCandidates] = useState<Record<string, Candidate[]>>({
     "Applied": [],
@@ -71,10 +80,32 @@ export const IndustryPipelineScreen = () => {
     "HR": [],
     "Rejected": [],
     "Selected": [],
+    "Interview Scheduled": [],
+    "Awarded": []
   });
+
+  const [statusCounts, setStatusCounts] = useState<Record<string, number>>({
+    "Applied": 0,
+    "Shortlisted": 0,
+    "Tech Interview": 0,
+    "HR": 0,
+    "Rejected": 0,
+    "Selected": 0,
+    "Interview Scheduled": 0,
+    "Awarded": 0
+  });
+
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  
+
+  // Dropdown / Filter States
+  const [opportunityType, setOpportunityType] = useState<string>("Internship");
+  const [selectedSubFilter, setSelectedSubFilter] = useState<string>("All");
+  const [subFilterOptions, setSubFilterOptions] = useState<DropdownOption[]>([]);
+  const [loadingOptions, setLoadingOptions] = useState<boolean>(false);
+  const [isTypePickerOpen, setIsTypePickerOpen] = useState(false);
+  const [isSubPickerOpen, setIsSubPickerOpen] = useState(false);
+
   // Modal states
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
@@ -84,15 +115,63 @@ export const IndustryPipelineScreen = () => {
   const [updateStatusLoading, setUpdateStatusLoading] = useState(false);
   const [isStatusPickerOpen, setIsStatusPickerOpen] = useState(false);
 
-  const companyName = industryData?.company_name || "";
+  const companyName = industryData?.company_name || industryData?.name || "";
   const tabScrollRef = useRef<ScrollView>(null);
 
-  const fetchApplications = useCallback(async (name: string) => {
+  const currentColumns = useMemo(() => {
+    if (opportunityType === "Project") {
+      return [
+        { id: "Applied", title: "Applied", color: '#1E293B', icon: FileText },
+        { id: "Shortlisted", title: "Shortlisted", color: '#3B82F6', icon: UserCheck },
+        { id: "Interview Scheduled", title: "Interview Scheduled", color: '#F97316', icon: PhoneCall },
+        { id: "Rejected", title: "Rejected", color: '#EF4444', icon: XCircle },
+        { id: "Selected", title: "Selected", color: '#10B981', icon: CheckCircle2 },
+        { id: "Awarded", title: "Awarded", color: '#8B5CF6', icon: Trophy }
+      ];
+    } else {
+      return [
+        { id: "Applied", title: "Applied", color: '#1E293B', icon: Mail },
+        { id: "Shortlisted", title: "Shortlisted", color: '#3B82F6', icon: UserCheck },
+        { id: "Tech Interview", title: "Tech Interview", color: '#F97316', icon: PhoneCall },
+        { id: "HR", title: "HR", color: '#8B5CF6', icon: PhoneCall },
+        { id: "Rejected", title: "Rejected", color: '#EF4444', icon: XCircle },
+        { id: "Selected", title: "Selected", color: '#10B981', icon: CheckCircle2 }
+      ];
+    }
+  }, [opportunityType]);
+
+  const fetchApplications = useCallback(async (
+    compName: string,
+    type: string,
+    subFilter: string
+  ) => {
     try {
       if (!refreshing) setLoading(true);
-      const response = await getStudentApplicationList(name);
-      
-      const apiData = response?.data || response?.message?.data || [];
+      const params: any = {
+        opportunity_type: type,
+        industry: compName
+      };
+
+      if (subFilter && subFilter !== "All") {
+        if (type === "Project") {
+          params.project = subFilter;
+          params.proect = subFilter;
+        } else if (type === "Internship") {
+          params.internship = subFilter;
+        } else if (type === "Job") {
+          params.job_profile = subFilter;
+        }
+      }
+
+      const [response, responseCount] = await Promise.all([
+        getApplications(params),
+        getApplicationsCount(params).catch(err => {
+          console.error("Error fetching application counts:", err);
+          return null;
+        })
+      ]);
+
+      const apiData = response?.data || response?.message?.data || response || [];
 
       if (Array.isArray(apiData)) {
         const newCandidates: Record<string, Candidate[]> = {
@@ -102,26 +181,41 @@ export const IndustryPipelineScreen = () => {
           "HR": [],
           "Rejected": [],
           "Selected": [],
+          "Interview Scheduled": [],
+          "Awarded": []
         };
 
         apiData.forEach((app: any) => {
-          const email = app.student || "Student";
-          const initials = email.charAt(0).toUpperCase();
+          const email = app.email_id || app.student || "Student";
+          
+          const nameVal = app.first_name && app.last_name 
+            ? `${app.first_name} ${app.last_name}` 
+            : app.student_name || email.split('@')[0];
+
+          const initialsVal = app.first_name
+            ? (app.first_name.charAt(0) + (app.last_name ? app.last_name.charAt(0) : "")).toUpperCase()
+            : email.charAt(0).toUpperCase();
+
           const bgColors = ['#EF4444', '#3B82F6', '#10B981', '#6366F1', '#F59E0B', '#8B5CF6'];
           const randomColor = bgColors[Math.floor(Math.random() * bgColors.length)];
 
           const candidate: Candidate = {
             id: app.name || Math.random().toString(),
-            name: app.student_name || email.split('@')[0],
+            name: nameVal,
             owner: app.owner || app.modified_by || "Unknown",
             status: app.status || "Applied",
-            studentEmail: app.student,
-            internship: app.internship || "Unknown",
-            initials: initials,
+            studentEmail: email,
+            internship: app.internship || app.project || app.job_profile || "Unknown",
+            initials: initialsVal,
             bgColor: randomColor,
-            college: app.college || "N/A",
+            college: app.college || (app.course && app.department ? `${app.course} (${app.department})` : "N/A"),
             applied_on: app.applied_on ? new Date(app.applied_on).toLocaleDateString() : "N/A",
-            match: Math.round(app.match_score) || 0
+            match: Math.round(app.match_score) || 0,
+            firstName: app.first_name,
+            lastName: app.last_name,
+            course: app.course,
+            department: app.department,
+            mobileNo: app.mobile_no
           };
 
           if (newCandidates[candidate.status]) {
@@ -133,6 +227,36 @@ export const IndustryPipelineScreen = () => {
 
         setCandidates(newCandidates);
       }
+
+      let countData: any = {};
+      if (responseCount) {
+        if (responseCount.message && typeof responseCount.message === 'object') {
+          if (responseCount.message.data && typeof responseCount.message.data === 'object') {
+            countData = responseCount.message.data;
+          } else {
+            countData = responseCount.message;
+          }
+        } else if (responseCount.data && typeof responseCount.data === 'object') {
+          if (responseCount.data.data && typeof responseCount.data.data === 'object') {
+            countData = responseCount.data.data;
+          } else {
+            countData = responseCount.data;
+          }
+        } else {
+          countData = responseCount;
+        }
+      }
+      setStatusCounts({
+        "Applied": countData.Applied || 0,
+        "Shortlisted": countData.Shortlisted || 0,
+        "Tech Interview": countData["Tech Interview"] || 0,
+        "HR": countData.HR || 0,
+        "Rejected": countData.Rejected || 0,
+        "Selected": countData.Selected || 0,
+        "Interview Scheduled": countData["Interview Scheduled"] || 0,
+        "Awarded": countData.Awarded || 0
+      });
+
     } catch (err: any) {
       console.error("Error fetching applications:", err);
       if (err?.status === 404 || err?.message?.includes("404")) {
@@ -143,6 +267,8 @@ export const IndustryPipelineScreen = () => {
           "HR": [],
           "Rejected": [],
           "Selected": [],
+          "Interview Scheduled": [],
+          "Awarded": []
         });
       }
     } finally {
@@ -153,13 +279,83 @@ export const IndustryPipelineScreen = () => {
 
   useEffect(() => {
     if (companyName) {
-      fetchApplications(companyName);
+      const typeParam = routeParams?.type;
+      const projectParam = routeParams?.project;
+      const internshipParam = routeParams?.internship;
+      const jobParam = routeParams?.job_profile;
+
+      let resolvedType = "Internship";
+      let resolvedSubFilter = "All";
+
+      if (typeParam) {
+        const typeLower = typeParam.toLowerCase();
+        if (typeLower === "project") resolvedType = "Project";
+        else if (typeLower === "internship" || typeLower === "internships") resolvedType = "Internship";
+        else if (typeLower === "job" || typeLower === "job_profile") resolvedType = "Job";
+      }
+      if (resolvedType === "Project" && projectParam) {
+        resolvedSubFilter = projectParam;
+      } else if (resolvedType === "Internship" && internshipParam) {
+        resolvedSubFilter = internshipParam;
+      } else if (resolvedType === "Job" && jobParam) {
+        resolvedSubFilter = jobParam;
+      }
+
+      setOpportunityType(resolvedType);
+      setSelectedSubFilter(resolvedSubFilter);
+      setActiveTab("Applied");
+      fetchApplications(companyName, resolvedType, resolvedSubFilter);
     }
-  }, [companyName, fetchApplications]);
+  }, [companyName, routeParams, fetchApplications]);
+
+  // Load sub-filter options when type or companyName changes
+  useEffect(() => {
+    const loadSubOptions = async () => {
+      if (!companyName) return;
+      try {
+        setLoadingOptions(true);
+        const res = await getAllDropdownData({
+          opportunity_type: opportunityType,
+          industry: companyName
+        });
+        const responseData = res?.data || res?.message?.data || res || [];
+        const options: DropdownOption[] = Array.isArray(responseData)
+          ? responseData.map((item: any) => ({
+              name: item.name || item,
+              title: item.title || item.name || item
+            }))
+          : [];
+        setSubFilterOptions(options);
+      } catch (err) {
+        console.error("Error loading options:", err);
+        setSubFilterOptions([]);
+      } finally {
+        loadSubOptions();
+      }
+    };
+
+    loadSubOptions();
+  }, [opportunityType, companyName]);
+
+  const handleOpportunityTypeChange = (type: string) => {
+    setOpportunityType(type);
+    setSelectedSubFilter("All");
+    setActiveTab("Applied");
+    if (companyName) {
+      fetchApplications(companyName, type, "All");
+    }
+  };
+
+  const handleSubFilterChange = (filter: string) => {
+    setSelectedSubFilter(filter);
+    if (companyName) {
+      fetchApplications(companyName, opportunityType, filter);
+    }
+  };
 
   const onRefresh = () => {
     setRefreshing(true);
-    fetchApplications(companyName);
+    fetchApplications(companyName, opportunityType, selectedSubFilter);
   };
 
   const handleCardClick = async (candidate: Candidate) => {
@@ -167,7 +363,17 @@ export const IndustryPipelineScreen = () => {
     setSelectedStatus(candidate.status);
     setIsModalOpen(true);
     setLoadingDetails(true);
-    setStudentDetails(null);
+
+    // Set fallback details immediately from the card
+    setStudentDetails({
+      name: candidate.studentEmail,
+      first_name: candidate.firstName || "",
+      last_name: candidate.lastName || "",
+      college: candidate.college || "",
+      course: candidate.course || "",
+      stream: candidate.department || ""
+    });
+
     try {
       const response = await getStudentByEmail(candidate.studentEmail);
       const data = response?.message?.data || response?.data || response;
@@ -186,7 +392,7 @@ export const IndustryPipelineScreen = () => {
     try {
       setUpdateStatusLoading(true);
       await updateApplicationStatus(selectedCandidate.id, selectedStatus);
-      await fetchApplications(companyName);
+      await fetchApplications(companyName, opportunityType, selectedSubFilter);
       setSelectedCandidate(prev => prev ? { ...prev, status: selectedStatus } : null);
       Alert.alert("Success", `Status updated to ${selectedStatus}`);
       setIsModalOpen(false);
@@ -197,7 +403,13 @@ export const IndustryPipelineScreen = () => {
     }
   };
 
-  const activeColor = pipelineColumns.find(c => c.id === activeTab)?.color || colors.purple[600];
+  const activeColor = currentColumns.find(c => c.id === activeTab)?.color || colors.purple[600];
+
+  const selectedSubFilterTitle = useMemo(() => {
+    if (selectedSubFilter === 'All') return 'All';
+    const match = subFilterOptions.find(o => o.name === selectedSubFilter);
+    return match ? match.title.trim() : selectedSubFilter;
+  }, [selectedSubFilter, subFilterOptions]);
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['bottom']}>
@@ -213,6 +425,43 @@ export const IndustryPipelineScreen = () => {
         <Text style={styles.subtitle}>Manage your talent acquisition funnel</Text>
       </View>
 
+      {/* Dropdown Filters Row */}
+      <View style={styles.filtersRow}>
+        {/* Opportunity Type Selector */}
+        <TouchableOpacity 
+          style={styles.dropdownButton}
+          onPress={() => setIsTypePickerOpen(true)}
+        >
+          <Text style={styles.dropdownLabel}>Type</Text>
+          <View style={styles.dropdownValueRow}>
+            <Text style={styles.dropdownValueText} numberOfLines={1}>
+              {opportunityType === 'Internship' ? 'Internships' : opportunityType === 'Project' ? 'Projects' : 'Jobs'}
+            </Text>
+            <ChevronDown size={14} color="#64748B" />
+          </View>
+        </TouchableOpacity>
+
+        {/* Sub-filter Selector */}
+        <TouchableOpacity 
+          style={[styles.dropdownButton, { marginLeft: 10 }]}
+          onPress={() => setIsSubPickerOpen(true)}
+          disabled={loadingOptions}
+        >
+          <Text style={styles.dropdownLabel}>
+            {opportunityType === 'Project' ? 'Project' : opportunityType === 'Internship' ? 'Internship' : 'Job'}
+          </Text>
+          <View style={styles.dropdownValueRow}>
+            {loadingOptions ? (
+              <ActivityIndicator size="small" color={colors.purple[600]} style={{ marginRight: 4 }} />
+            ) : null}
+            <Text style={styles.dropdownValueText} numberOfLines={1}>
+              {selectedSubFilterTitle}
+            </Text>
+            <ChevronDown size={14} color="#64748B" />
+          </View>
+        </TouchableOpacity>
+      </View>
+
       {/* Custom Tabs */}
       <View style={styles.tabsContainer}>
         <ScrollView
@@ -221,7 +470,7 @@ export const IndustryPipelineScreen = () => {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.tabsContent}
         >
-          {pipelineColumns.map((col) => {
+          {currentColumns.map((col) => {
             const isActive = activeTab === col.id;
             return (
               <TouchableOpacity
@@ -244,7 +493,7 @@ export const IndustryPipelineScreen = () => {
                   <Text style={[
                     styles.tabCountText,
                     { color: isActive ? '#FFF' : '#64748B' }
-                  ]}>{candidates[col.id]?.length || 0}</Text>
+                  ]}>{statusCounts[col.id] || 0}</Text>
                 </View>
               </TouchableOpacity>
             );
@@ -264,11 +513,11 @@ export const IndustryPipelineScreen = () => {
       >
         <View style={styles.stageHero}>
           <View style={[styles.heroIconBox, { backgroundColor: `${activeColor}10` }]}>
-            {React.createElement(pipelineColumns.find(c => c.id === activeTab)!.icon, { size: 24, color: activeColor })}
+            {React.createElement(currentColumns.find(c => c.id === activeTab)?.icon || Mail, { size: 24, color: activeColor })}
           </View>
           <View>
             <Text style={[styles.heroTitle, { color: activeColor }]}>{activeTab}</Text>
-            <Text style={styles.heroSubtitle}>{candidates[activeTab]?.length || 0} candidates in this stage</Text>
+            <Text style={styles.heroSubtitle}>{statusCounts[activeTab] || 0} candidates in this stage</Text>
           </View>
         </View>
 
@@ -392,11 +641,11 @@ export const IndustryPipelineScreen = () => {
                 <View style={styles.detailsList}>
                   <View style={styles.detailsCard}>
                     {[
-                      { label: "Email", value: studentDetails.name },
+                      { label: "Email", value: studentDetails.name || studentDetails.email_id },
                       { label: "First Name", value: studentDetails.first_name },
                       { label: "Last Name", value: studentDetails.last_name },
                       { label: "College", value: studentDetails.college },
-                      { label: "Stream", value: studentDetails.stream },
+                      { label: "Stream", value: studentDetails.stream || studentDetails.department },
                       { label: "Course", value: studentDetails.course },
                     ].map((item, idx) => (
                       <View key={idx} style={styles.detailItem}>
@@ -459,7 +708,7 @@ export const IndustryPipelineScreen = () => {
           >
             <View style={styles.pickerContent}>
               <Text style={styles.pickerHeader}>Select Status</Text>
-              {pipelineColumns.map((col) => (
+              {currentColumns.map((col) => (
                 <TouchableOpacity
                   key={col.id}
                   style={[
@@ -482,6 +731,102 @@ export const IndustryPipelineScreen = () => {
           </TouchableOpacity>
         </Modal>
       </Modal>
+
+      {/* Opportunity Type Picker Modal */}
+      <Modal
+        visible={isTypePickerOpen}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setIsTypePickerOpen(false)}
+      >
+        <TouchableOpacity 
+          style={styles.pickerOverlay} 
+          activeOpacity={1} 
+          onPress={() => setIsTypePickerOpen(false)}
+        >
+          <View style={styles.pickerContent}>
+            <Text style={styles.pickerHeader}>Select Type</Text>
+            {[
+              { id: 'Internship', label: 'Internships' },
+              { id: 'Project', label: 'Projects' },
+              { id: 'Job', label: 'Jobs' }
+            ].map((item) => (
+              <TouchableOpacity
+                key={item.id}
+                style={[
+                  styles.pickerItem,
+                  opportunityType === item.id && styles.pickerItemActive
+                ]}
+                onPress={() => {
+                  handleOpportunityTypeChange(item.id);
+                  setIsTypePickerOpen(false);
+                }}
+              >
+                <Text style={[
+                  styles.pickerItemText,
+                  opportunityType === item.id && styles.pickerItemTextActive
+                ]}>{item.label}</Text>
+                {opportunityType === item.id && <CheckCircle2 size={16} color={colors.purple[600]} />}
+              </TouchableOpacity>
+            ))}
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Sub-Filter Picker Modal */}
+      <Modal
+        visible={isSubPickerOpen}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setIsSubPickerOpen(false)}
+      >
+        <TouchableOpacity 
+          style={styles.pickerOverlay} 
+          activeOpacity={1} 
+          onPress={() => setIsSubPickerOpen(false)}
+        >
+          <View style={styles.pickerContent}>
+            <Text style={styles.pickerHeader}>Select Option</Text>
+            <ScrollView style={{ maxHeight: 300 }}>
+              <TouchableOpacity
+                style={[
+                  styles.pickerItem,
+                  selectedSubFilter === 'All' && styles.pickerItemActive
+                ]}
+                onPress={() => {
+                  handleSubFilterChange('All');
+                  setIsSubPickerOpen(false);
+                }}
+              >
+                <Text style={[
+                  styles.pickerItemText,
+                  selectedSubFilter === 'All' && styles.pickerItemTextActive
+                ]}>All</Text>
+                {selectedSubFilter === 'All' && <CheckCircle2 size={16} color={colors.purple[600]} />}
+              </TouchableOpacity>
+              {subFilterOptions.map((opt) => (
+                <TouchableOpacity
+                  key={opt.name}
+                  style={[
+                    styles.pickerItem,
+                    selectedSubFilter === opt.name && styles.pickerItemActive
+                  ]}
+                  onPress={() => {
+                    handleSubFilterChange(opt.name);
+                    setIsSubPickerOpen(false);
+                  }}
+                >
+                  <Text style={[
+                    styles.pickerItemText,
+                    selectedSubFilter === opt.name && styles.pickerItemTextActive
+                  ]}>{opt.title.trim()}</Text>
+                  {selectedSubFilter === opt.name && <CheckCircle2 size={16} color={colors.purple[600]} />}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -497,6 +842,43 @@ const styles = StyleSheet.create({
   headerBadgeText: { fontSize: 8, fontWeight: '800', color: colors.purple[600], letterSpacing: 0.5 },
   title: { fontSize: 28, fontWeight: '800', color: '#0F172A', fontFamily: typography.fontFamily.display },
   subtitle: { fontSize: 13, color: '#64748B', fontWeight: '500' },
+
+  filtersRow: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+    backgroundColor: '#FFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9'
+  },
+  dropdownButton: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  dropdownLabel: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#94A3B8',
+    textTransform: 'uppercase',
+    marginBottom: 2
+  },
+  dropdownValueRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between'
+  },
+  dropdownValueText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#1E293B',
+    flex: 1,
+    marginRight: 4
+  },
 
   tabsContainer: { backgroundColor: '#FFF', borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
   tabsContent: { paddingHorizontal: 16, paddingVertical: 12, gap: 10 },
