@@ -1,6 +1,6 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { User, ShieldCheck, Calendar, Users, Award, Briefcase, Target, Pen, FileText } from 'lucide-react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Modal } from 'react-native';
+import { User, ShieldCheck, Calendar, Users, Award, Briefcase, Target, Pen, FileText, Eye, X } from 'lucide-react-native';
 import { Svg, Defs, LinearGradient as SvgGradient, Stop, Rect, Circle } from 'react-native-svg';
 
 interface RoleBannerWidgetProps {
@@ -14,9 +14,10 @@ interface RoleBannerWidgetProps {
   subtitle?: string;
   onEditPress?: () => void;
   onCreateResumePress?: () => void;
+  onPreviewResumePress?: () => void;
 }
 
-export const RoleBannerWidget = ({ fullName, date, role, progress, theme = 'orange', metrics, title, subtitle, onEditPress, onCreateResumePress }: RoleBannerWidgetProps) => {
+export const RoleBannerWidget = ({ fullName, date, role, progress, theme = 'orange', metrics, title, subtitle, onEditPress, onCreateResumePress, onPreviewResumePress }: RoleBannerWidgetProps) => {
   const isPurple = theme === 'purple';
   const isMentor = theme === 'mentor';
   const isCollege = theme === 'college' || role?.toLowerCase() === 'college';
@@ -77,7 +78,7 @@ export const RoleBannerWidget = ({ fullName, date, role, progress, theme = 'oran
           <View style={{ flex: 1, paddingRight: 16 }}>
             {title ? (
               <>
-                <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap' }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
                   <Text style={styles.titleText} numberOfLines={2}>{title}</Text>
                   {onCreateResumePress && (
                     <TouchableOpacity 
@@ -87,6 +88,16 @@ export const RoleBannerWidget = ({ fullName, date, role, progress, theme = 'oran
                     >
                       <FileText size={10} color={gradEnd} style={{ marginRight: 3 }} />
                       <Text style={[styles.createResumeBtnText, { color: gradEnd }]}>Create Resume</Text>
+                    </TouchableOpacity>
+                  )}
+                  {onPreviewResumePress && (
+                    <TouchableOpacity 
+                      style={styles.createResumeBtn} 
+                      onPress={onPreviewResumePress}
+                      activeOpacity={0.8}
+                    >
+                      <Eye size={10} color={gradEnd} style={{ marginRight: 3 }} />
+                      <Text style={[styles.createResumeBtnText, { color: gradEnd }]}>Preview</Text>
                     </TouchableOpacity>
                   )}
                 </View>
@@ -296,5 +307,47 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.9)',
     marginTop: 4,
     lineHeight: 16,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  dropdownContainer: {
+    width: '85%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.25,
+    shadowRadius: 15,
+    elevation: 5,
+  },
+  dropdownHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+    paddingBottom: 10,
+  },
+  dropdownTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  dropdownItem: {
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  dropdownItemText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#334155',
   }
 });

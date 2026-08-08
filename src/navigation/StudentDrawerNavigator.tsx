@@ -35,6 +35,7 @@ import { StudentStoriesScreen } from '@/screens/Dashboards/StudentDashboard/Stud
 import { StudentPlansScreen } from '@/screens/Dashboards/StudentDashboard/StudentPlansScreen';
 import { StudentShortsScreen } from '@/screens/Dashboards/StudentDashboard/StudentShortsScreen';
 import { StudentResumeScreen } from '@/screens/Dashboards/StudentDashboard/StudentResumeScreen';
+import { StudentResumePreviewScreen } from '@/screens/Dashboards/StudentDashboard/StudentResumePreviewScreen';
 
 const Drawer = createDrawerNavigator();
 
@@ -166,6 +167,14 @@ export const StudentDrawerNavigator = () => {
       <Drawer.Screen
         name="Resume"
         component={StudentResumeScreen}
+        options={{
+          drawerIcon: ({ color, size }) => <FileText color={color} size={size} />,
+          drawerItemStyle: { display: 'none' }
+        }}
+      />
+      <Drawer.Screen
+        name="ResumePreview"
+        component={StudentResumePreviewScreen}
         options={{
           drawerIcon: ({ color, size }) => <FileText color={color} size={size} />,
           drawerItemStyle: { display: 'none' }

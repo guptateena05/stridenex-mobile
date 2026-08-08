@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, Modal, KeyboardAvoidingView, Platform, Alert, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Modal, KeyboardAvoidingView, Platform, Alert, TouchableOpacity, ActivityIndicator, Linking } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '@/theme/colors';
@@ -504,6 +504,9 @@ export const StudentDashboardScreen = () => {
             }}
             onCreateResumePress={() => {
               navigation.navigate('Resume');
+            }}
+            onPreviewResumePress={() => {
+              navigation.navigate('ResumePreview');
             }}
           />
         </Animated.View>
