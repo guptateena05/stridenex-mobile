@@ -38,7 +38,7 @@ import { useAuth } from '@/context/AuthContext';
 import { SwipeableRow, SwipeAction } from '@/components/Shared/SwipeableRow';
 import { 
   getStudentInternshipList, 
-  createStudentApplication, 
+  applyOpportunity, 
   getStudentByEmail 
 } from '@/api/student.services';
 
@@ -147,20 +147,21 @@ export const StudentInternshipScreen = () => {
       setApplying(internship.name);
       const payload = {
         student: userName,
-        internship: internship.name,
-        industry: internship.industry,
-        status: "Applied",
-        applied_on: new Date().toISOString().slice(0, 19).replace('T', ' '),
-        match_score: 100.0,
+        opportunity_type: "Internship",
+        opportunity_name: internship.name,
+        notes: "Very interested in this internship, available immediately."
       };
 
-      const response = await createStudentApplication(payload);
+      const response = await applyOpportunity(payload);
 
-      if (response && (response.status === 200 || response.status === "200" || response.message?.status === 200)) {
+      if (response && (response.status === 200 || response.status === "200" || response.message?.status === 200 || response.message?.message?.includes("success"))) {
         Alert.alert("Success", `Applied successfully for ${internship.role_name || internship.title || 'the internship'}!`);
         loadData(false);
       } else {
-        Alert.alert("Error", response?.message || "Something went wrong. Please try again.");
+        const errMsg = response && typeof response.message === 'object' 
+          ? response.message.message 
+          : response?.message;
+        Alert.alert("Error", errMsg || "Something went wrong. Please try again.");
       }
     } catch (err: any) {
       console.error("Application error:", err);

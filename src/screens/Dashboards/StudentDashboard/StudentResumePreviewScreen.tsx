@@ -12,10 +12,12 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
-import { ArrowLeft, Download, Sparkles, Eye } from 'lucide-react-native';
+import { ArrowLeft, Download, Sparkles, Eye, Upload } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '@/context/AuthContext';
 import { colors } from '@/theme/colors';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as DocumentPicker from '@react-native-documents/picker';
 
 const templates = [
   { value: "classic_resume", label: "Classic" },
@@ -30,6 +32,8 @@ export const StudentResumePreviewScreen = () => {
   const { userName } = useAuth();
   const [selectedTemplate, setSelectedTemplate] = useState("professional_resume");
   const [webViewLoading, setWebViewLoading] = useState(true);
+
+  const [uploading, setUploading] = useState(false);
 
   const directPdfUrl = `https://devstridenex.quantcloud.in/api/method/stridenex_app.api_stridenex_app.student.student.get_student_resume?student=${encodeURIComponent(userName || "")}&template=${selectedTemplate}`;
   
@@ -47,6 +51,74 @@ export const StudentResumePreviewScreen = () => {
       console.error("Failed to download PDF on mobile:", err);
       Alert.alert("Error", "Could not start PDF download.");
     });
+  };
+
+  const handleResumePickAndUpload = async () => {
+    try {
+      const result = await DocumentPicker.pick({
+        type: [DocumentPicker.types.pdf, DocumentPicker.types.docx, DocumentPicker.types.doc, DocumentPicker.types.allFiles],
+        allowMultiSelection: false,
+      });
+
+      if (result) {
+        const file = Array.isArray(result) ? result[0] : result;
+        if (file.size && file.size > 10 * 1024 * 1024) {
+          Alert.alert('File Size Error', 'File size should be less than 10MB');
+          return;
+        }
+        
+        // Start upload
+        setUploading(true);
+        const fd = new FormData();
+        fd.append("doctype", "Student");
+        fd.append("docname", userName || "");
+        fd.append("fieldname", "resume");
+        fd.append("is_private", "0");
+        fd.append("file", {
+          uri: file.uri,
+          type: file.type || 'application/pdf',
+          name: file.name || 'resume.pdf'
+        } as any);
+
+        const storedToken = await AsyncStorage.getItem("token");
+        const token = storedToken ? storedToken.trim() : null;
+        const headers: Record<string, string> = {
+          "Content-Type": "multipart/form-data",
+        };
+        if (token) {
+          headers["Authorization"] = `token ${token}`;
+        }
+
+        const response = await fetch(`https://devstridenex.quantcloud.in/api/method/stridenex_app.api_stridenex_app.app.upload_file_api`, {
+          method: "POST",
+          headers,
+          body: fd
+        });
+
+        const resText = await response.text();
+        console.log("Upload response:", resText);
+        
+        let resJson: any = {};
+        try {
+          resJson = JSON.parse(resText);
+        } catch(e) {}
+
+        if (response.ok) {
+          Alert.alert("Success", "Resume uploaded successfully!");
+        } else {
+          Alert.alert("Error", resJson?.message || "Failed to upload resume.");
+        }
+      }
+    } catch (err: any) {
+      if (err.code === 'DOCUMENT_PICKER_CANCELED' || err.code === 'CANCELED') {
+        console.log("User cancelled file selection");
+      } else {
+        console.error("Resume file pick error:", err);
+        Alert.alert("Error", err?.message || "Something went wrong during picker/upload.");
+      }
+    } finally {
+      setUploading(false);
+    }
   };
 
   return (
@@ -115,15 +187,31 @@ export const StudentResumePreviewScreen = () => {
         />
       </View>
 
-      {/* Download Action Bar */}
+      {/* Action Bar */}
       <View style={styles.footer}>
         <TouchableOpacity 
-          style={styles.downloadBtn}
+          style={styles.downloadBtnSecondary}
           onPress={handleDownload}
           activeOpacity={0.8}
         >
-          <Download size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
-          <Text style={styles.downloadBtnText}>Download PDF</Text>
+          <Download size={18} color="#FF6B00" style={{ marginRight: 8 }} />
+          <Text style={styles.downloadBtnTextSecondary}>Download</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={styles.uploadBtn}
+          onPress={handleResumePickAndUpload}
+          activeOpacity={0.8}
+          disabled={uploading}
+        >
+          {uploading ? (
+            <ActivityIndicator size="small" color="#FFFFFF" />
+          ) : (
+            <>
+              <Upload size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
+              <Text style={styles.uploadBtnText}>Upload</Text>
+            </>
+          )}
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -221,12 +309,31 @@ const styles = StyleSheet.create({
     color: '#64748B',
   },
   footer: {
+    flexDirection: 'row',
     padding: 16,
     borderTopWidth: 1,
     borderTopColor: '#F1F5F9',
     backgroundColor: '#FFFFFF',
+    gap: 12,
   },
-  downloadBtn: {
+  downloadBtnSecondary: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFF7ED',
+    borderWidth: 1.5,
+    borderColor: '#FF6B00',
+    borderRadius: 16,
+    height: 50,
+  },
+  downloadBtnTextSecondary: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#FF6B00',
+  },
+  uploadBtn: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -239,7 +346,7 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 4,
   },
-  downloadBtnText: {
+  uploadBtnText: {
     fontSize: 14,
     fontWeight: '800',
     color: '#FFFFFF',

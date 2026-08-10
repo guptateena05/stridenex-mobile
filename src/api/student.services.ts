@@ -252,32 +252,46 @@ export const getStudentProjectList = async (
   }
 };
 
-/**
- * Apply for an internship.
- */
-export const createStudentApplication = async (data: any) => {
+export const applyOpportunity = async (data: {
+  student: string;
+  opportunity_type: string;
+  opportunity_name: string;
+  notes?: string;
+}) => {
   try {
     const response = await api.post(
-      "method/stridenex_app.stridenex_app.doctype.internship_application.internship_application.create_student_application",
+      "method/stridenex_app.stridenex_app.doctype.student_applications.student_applications.apply",
       data
     );
     return response.data;
+  } catch (error) {
+    console.error("Error applying for opportunity:", error);
+    throw error;
+  }
+};
+
+export const createStudentApplication = async (data: any) => {
+  try {
+    return await applyOpportunity({
+      student: data.student,
+      opportunity_type: "Internship",
+      opportunity_name: data.internship || data.opportunity_name,
+      notes: data.notes || "Interested in this internship."
+    });
   } catch (error) {
     console.error("Error creating student application:", error);
     throw error;
   }
 };
 
-/**
- * Enroll in a project.
- */
 export const createStudentProjectEnrollment = async (data: any) => {
   try {
-    const response = await api.post(
-      "method/stridenex_app.stridenex_app.doctype.student_project_enrollment.student_project_enrollment.create_student_project_enrollment",
-      data
-    );
-    return response.data;
+    return await applyOpportunity({
+      student: data.student,
+      opportunity_type: "Project",
+      opportunity_name: data.project || data.opportunity_name,
+      notes: data.notes || "Interested in this project."
+    });
   } catch (error) {
     console.error("Error creating student project enrollment:", error);
     throw error;
@@ -1452,6 +1466,18 @@ export const getStudentPlaylists = async (studentEmail: string): Promise<any> =>
     return response.data;
   } catch (error) {
     console.error("Error fetching student playlists:", error);
+    throw error;
+  }
+};
+
+export const getCampusDriveList = async () => {
+  try {
+    const response = await api.get(
+      "method/stridenex_app.stridenex_app.doctype.college_campus_drives.college_campus_drives.get_campus_drive_list"
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching campus drives:", error);
     throw error;
   }
 };

@@ -33,7 +33,7 @@ import { useAuth } from '@/context/AuthContext';
 import { SwipeableRow, SwipeAction } from '@/components/Shared/SwipeableRow';
 import { 
   getStudentProjectList, 
-  createStudentProjectEnrollment, 
+  applyOpportunity, 
   getStudentByEmail 
 } from '@/api/student.services';
 
@@ -150,22 +150,21 @@ export const StudentProjectsScreen = () => {
       setApplying(project.name);
       const payload = {
         student: userName,
-        project: project.name,
-        industry: project.industry || "",
-        status: "Applied",
-        applied_on: new Date().toISOString().slice(0, 19).replace("T", " "),
-        resume: null,
-        match_score: 0.0,
-        notes: "Enrolled from Student Dashboard",
+        opportunity_type: "Project",
+        opportunity_name: project.name,
+        notes: "Interested in this project."
       };
 
-      const response = await createStudentProjectEnrollment(payload);
+      const response = await applyOpportunity(payload);
 
-      if (response && (response.status === 200 || response.status === "200" || response.message?.status === 200)) {
+      if (response && (response.status === 200 || response.status === "200" || response.message?.status === 200 || response.message?.message?.includes("success"))) {
         Alert.alert("Success", `Successfully applied/enrolled in ${project.project_name || 'the project'}!`);
         loadData(false);
       } else {
-        Alert.alert("Error", response?.message || "Something went wrong. Please try again.");
+        const errMsg = response && typeof response.message === 'object' 
+          ? response.message.message 
+          : response?.message;
+        Alert.alert("Error", errMsg || "Something went wrong. Please try again.");
       }
     } catch (err: any) {
       console.error("Enrollment error:", err);

@@ -19,7 +19,10 @@ import {
   History,
   Video,
   Target,
-  FileText
+  FileText,
+  Building2,
+  Award,
+  FolderGit2
 } from 'lucide-react-native';
 
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
@@ -28,6 +31,7 @@ import { StudentCommunityScreen } from '@/screens/Dashboards/StudentDashboard/St
 import { StudentInternshipScreen } from '@/screens/Dashboards/StudentDashboard/StudentInternshipScreen';
 import { StudentProjectsScreen } from '@/screens/Dashboards/StudentDashboard/StudentProjectsScreen';
 import { StudentJobsScreen } from '@/screens/Dashboards/StudentDashboard/StudentJobsScreen';
+import { StudentCampusDrivesScreen } from '@/screens/Dashboards/StudentDashboard/StudentCampusDrivesScreen';
 import { StudentHabitsScreen } from '@/screens/Dashboards/StudentDashboard/StudentHabitsScreen';
 import { StudentMentorsScreen } from '@/screens/Dashboards/StudentDashboard/StudentMentorsScreen';
 import { StudentEventsScreen } from '@/screens/Dashboards/StudentDashboard/StudentEventsScreen';
@@ -104,7 +108,7 @@ export const StudentDrawerNavigator = () => {
         name="Projects"
         component={StudentProjectsScreen}
         options={{
-          drawerIcon: ({ color, size }) => <Target color={color} size={size} />
+          drawerIcon: ({ color, size }) => <FolderGit2 color={color} size={size} />
         }}
       />
       <Drawer.Screen
@@ -118,7 +122,14 @@ export const StudentDrawerNavigator = () => {
         name="Jobs"
         component={StudentJobsScreen}
         options={{
-          drawerIcon: ({ color, size }) => <Briefcase color={color} size={size} />
+          drawerIcon: ({ color, size }) => <Award color={color} size={size} />
+        }}
+      />
+      <Drawer.Screen
+        name="Campus Drives"
+        component={StudentCampusDrivesScreen}
+        options={{
+          drawerIcon: ({ color, size }) => <Building2 color={color} size={size} />
         }}
       />
       <Drawer.Screen
