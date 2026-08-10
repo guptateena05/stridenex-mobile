@@ -270,6 +270,35 @@ export const applyOpportunity = async (data: {
   }
 };
 
+export const getStudentApplications = async (params: {
+  student: string;
+  opportunity_type?: string;
+}) => {
+  try {
+    const response = await api.get(
+      "method/stridenex_app.stridenex_app.doctype.student_applications.student_applications.get_applications",
+      { params }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error getting student applications:", error);
+    throw error;
+  }
+};
+
+export const updateApplicationStatus = async (name: string, status: string) => {
+  try {
+    const response = await api.post(
+      "method/stridenex_app.stridenex_app.doctype.student_applications.student_applications.update_application_status",
+      { name, status }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error updating application status:", error);
+    throw error;
+  }
+};
+
 export const createStudentApplication = async (data: any) => {
   try {
     return await applyOpportunity({

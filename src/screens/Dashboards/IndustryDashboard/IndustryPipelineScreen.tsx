@@ -9,7 +9,8 @@ import {
   Modal,
   Dimensions,
   RefreshControl,
-  Alert
+  Alert,
+  Linking
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '@/theme/colors';
@@ -61,6 +62,7 @@ interface Candidate {
   course?: string;
   department?: string;
   mobileNo?: string;
+  resume?: string;
 }
 
 interface DropdownOption {
@@ -215,7 +217,8 @@ export const IndustryPipelineScreen = ({ route }: any) => {
             lastName: app.last_name,
             course: app.course,
             department: app.department,
-            mobileNo: app.mobile_no
+            mobileNo: app.mobile_no,
+            resume: app.resume || ""
           };
 
           if (newCandidates[candidate.status]) {
@@ -654,6 +657,29 @@ export const IndustryPipelineScreen = ({ route }: any) => {
                       </View>
                     ))}
                   </View>
+
+                  {(selectedCandidate?.resume || studentDetails?.resume) ? (
+                    <View style={[styles.detailsCard, { marginTop: 12, paddingVertical: 12 }]}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', display: 'flex', width: '100%' }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                          <FileText size={16} color="#F97316" style={{ marginRight: 8 }} />
+                          <Text style={[styles.detailLabel, { marginBottom: 0 }]}>RESUME</Text>
+                        </View>
+                        <TouchableOpacity 
+                          onPress={() => {
+                            const url = selectedCandidate?.resume || studentDetails?.resume || "";
+                            const fullUrl = url.startsWith('http') ? url : `https://devstridenex.quantcloud.in${url}`;
+                            Linking.openURL(fullUrl).catch(err => {
+                              console.error("Failed to open URL:", err);
+                              Alert.alert("Error", "Could not open the resume link.");
+                            });
+                          }}
+                        >
+                          <Text style={{ color: '#F97316', fontWeight: '800', fontSize: 13 }}>View Resume</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  ) : null}
 
                   <View style={styles.updateStatusSection}>
                     <View style={styles.sectionHeader}>

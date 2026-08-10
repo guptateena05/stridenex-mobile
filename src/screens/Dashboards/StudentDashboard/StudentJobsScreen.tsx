@@ -24,7 +24,7 @@ import {
   FileText
 } from 'lucide-react-native';
 import Animated, { FadeInUp, FadeInRight } from 'react-native-reanimated';
-import { getJobProfiles, applyForJob } from '@/api/student.services';
+import { getJobProfiles, applyForJob, getStudentApplications, updateApplicationStatus } from '@/api/student.services';
 import { StatsCard } from '@/components/dashboard/StatsCard';
 import { SwipeableRow, SwipeAction } from '@/components/Shared/SwipeableRow';
 import * as DocumentPicker from '@react-native-documents/picker';
@@ -32,6 +32,8 @@ import * as DocumentPicker from '@react-native-documents/picker';
 export const StudentJobsScreen = () => {
   const { userName } = useAuth();
   const [jobs, setJobs] = useState<any[]>([]);
+  const [studentApplications, setStudentApplications] = useState<any[]>([]);
+  const [acceptingOffer, setAcceptingOffer] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState("");
@@ -39,6 +41,80 @@ export const StudentJobsScreen = () => {
   const [successfullyApplied, setSuccessfullyApplied] = useState<string[]>([]);
   const [selectedJob, setSelectedJob] = useState<any>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
+
+  const getApplicationName = (item: any, type: string) => {
+    if (item.application) return item.application;
+    if (item.application_name) return item.application_name;
+    if (item.application_id) return item.application_id;
+    
+    const match = studentApplications.find(app => {
+      if (type === "Internship") {
+        return app.internship === item.name;
+      }
+      if (type === "Project") {
+        return app.project === item.name;
+      }
+      if (type === "Job") {
+        return app.job_profile === item.name;
+      }
+      return false;
+    });
+    return match?.name || null;
+  };
+
+  const handleAcceptOffer = async (item: any, type: string) => {
+    const appName = getApplicationName(item, type);
+    if (!appName) {
+      Alert.alert("Error", "Application ID not found. Please try refreshing the screen.");
+      return;
+    }
+    
+    Alert.alert(
+      "Accept Offer",
+      "Are you sure you want to accept this offer?",
+      [
+        { text: "Cancel", style: "cancel" },
+        { 
+          text: "Accept", 
+          onPress: async () => {
+            try {
+              setAcceptingOffer(item.name);
+              await updateApplicationStatus(appName, "Accepted");
+              Alert.alert("Success", "Congratulations! You have accepted the offer.");
+              fetchJobsData();
+            } catch (err: any) {
+              console.error("Error accepting offer:", err);
+              Alert.alert("Error", err.message || "Failed to accept the offer. Please try again.");
+            } finally {
+              setAcceptingOffer(null);
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const getJobStatusConfig = (status: string) => {
+    const s = status?.toLowerCase();
+    switch (s) {
+      case 'applied':
+        return { bg: "#EFF6FF", text: "#2563EB", border: "#DBEAFE", label: "Applied" };
+      case 'shortlisted':
+        return { bg: "#F5F3FF", text: "#7C3AED", border: "#DDD6FE", label: "Shortlisted" };
+      case 'tech interview':
+        return { bg: "#EEF2F6", text: "#6D28D9", border: "#E2E8F0", label: "Tech Interview" };
+      case 'hr':
+        return { bg: "#FFF1F2", text: "#DB2777", border: "#FFE4E6", label: "HR" };
+      case 'selected':
+        return { bg: "#FFFBEB", text: "#D97706", border: "#FEF3C7", label: "Selected" };
+      case 'accepted':
+        return { bg: "#ECFDF5", text: "#059669", border: "#D1FAE5", label: "Accepted" };
+      case 'rejected':
+        return { bg: "#FEF2F2", text: "#DC2626", border: "#FEE2E2", label: "Rejected" };
+      default:
+        return { bg: "#F8FAFC", text: "#64748B", border: "#E2E8F0", label: status || "N/A" };
+    }
+  };
   const [showApplyModal, setShowApplyModal] = useState(false);
   const [expectedSalary, setExpectedSalary] = useState("");
   const [availableFrom, setAvailableFrom] = useState("");
@@ -49,6 +125,15 @@ export const StudentJobsScreen = () => {
   const fetchJobsData = useCallback(async () => {
     try {
       setLoading(true);
+      if (userName) {
+        getStudentApplications({ student: userName, opportunity_type: "Job" })
+          .then(res => {
+            const list = res?.data?.data || res?.message?.data || res?.data || res?.message || [];
+            setStudentApplications(Array.isArray(list) ? list : []);
+          })
+          .catch(err => console.error("Error fetching student applications list:", err));
+      }
+
       const response = await getJobProfiles(userName || undefined);
       const dataObj = response?.data || response?.message?.data || response?.message || response || [];
       let list = [];
@@ -262,7 +347,7 @@ export const StudentJobsScreen = () => {
             </View>
           ) : (
             filteredJobs.map((job, index) => {
-              const hasApplied = successfullyApplied.includes(job.name);
+              const hasApplied = successfullyApplied.includes(job.name) || (job.applied_status && job.applied_status !== "Not Applied");
               const isClosed = job.status?.toLowerCase() === 'closed';
 
               const actions: SwipeAction[] = [
@@ -288,12 +373,22 @@ export const StudentJobsScreen = () => {
                 });
               } else if (hasApplied) {
                 actions.push({
-                  label: 'Applied',
+                  label: String(job.applied_status || 'Applied'),
                   icon: CheckCircle2,
                   color: '#2563EB',
                   bgColor: '#EFF6FF',
                   onPress: () => {}
                 });
+
+                if (job.applied_status?.toLowerCase() === "selected") {
+                  actions.push({
+                    label: 'Accept Offer',
+                    icon: CheckCircle2,
+                    color: '#059669',
+                    bgColor: '#ECFDF5',
+                    onPress: () => handleAcceptOffer(job, "Job")
+                  });
+                }
               }
 
               return (
@@ -348,9 +443,15 @@ export const StudentJobsScreen = () => {
                         )}
                         
                         {hasApplied && (
-                          <View style={[styles.statusTag, { backgroundColor: '#EFF6FF', borderColor: '#DBEAFE' }]}>
-                            <Text style={[styles.statusTagTextActive, { color: '#2563EB' }]}>
-                              Applied
+                          <View style={[styles.statusTag, {
+                            backgroundColor: getJobStatusConfig(job.applied_status || "").bg,
+                            borderColor: getJobStatusConfig(job.applied_status || "").border,
+                            borderWidth: 1
+                          }]}>
+                            <Text style={[styles.statusTagTextActive, {
+                              color: getJobStatusConfig(job.applied_status || "").text
+                            }]}>
+                              {getJobStatusConfig(job.applied_status || "").label}
                             </Text>
                           </View>
                         )}
@@ -542,25 +643,49 @@ export const StudentJobsScreen = () => {
 
               </View>
             </ScrollView>
-
             {/* Footer Buttons */}
             <View style={styles.modalFooter}>
               <TouchableOpacity activeOpacity={0.7} onPress={() => setShowDetailsModal(false)} style={styles.cancelBtn}>
                 <Text style={styles.cancelBtnText}>Close</Text>
               </TouchableOpacity>
-              <TouchableOpacity
-                activeOpacity={0.8}
-                disabled={successfullyApplied.includes(selectedJob?.name) || applying === selectedJob?.name}
-                onPress={() => {
-                  handleApplyJob(selectedJob);
-                  setShowDetailsModal(false);
-                }}
-                style={[styles.confirmBtn, successfullyApplied.includes(selectedJob?.name) && styles.appliedButton]}
-              >
-                <Text style={[styles.confirmBtnText, successfullyApplied.includes(selectedJob?.name) && styles.appliedButtonText]}>
-                  {successfullyApplied.includes(selectedJob?.name) ? 'Applied' : 'Apply Now'}
-                </Text>
-              </TouchableOpacity>
+              
+              {selectedJob?.applied_status?.toLowerCase() === 'selected' ? (
+                <TouchableOpacity 
+                  activeOpacity={0.7}
+                  disabled={acceptingOffer === selectedJob?.name}
+                  onPress={() => {
+                    handleAcceptOffer(selectedJob, "Job");
+                    setShowDetailsModal(false);
+                  }}
+                  style={[styles.confirmBtn, { backgroundColor: '#10B981' }]}
+                >
+                  <Text style={[styles.confirmBtnText, { color: '#FFFFFF' }]}>
+                    {acceptingOffer === selectedJob?.name ? "Accepting..." : "Accept Offer"}
+                  </Text>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  disabled={(successfullyApplied.includes(selectedJob?.name) || (selectedJob?.applied_status && selectedJob.applied_status !== "Not Applied")) || applying === selectedJob?.name}
+                  onPress={() => {
+                    handleApplyJob(selectedJob);
+                    setShowDetailsModal(false);
+                  }}
+                  style={[
+                    styles.confirmBtn, 
+                    (successfullyApplied.includes(selectedJob?.name) || (selectedJob?.applied_status && selectedJob.applied_status !== "Not Applied")) && styles.appliedButton
+                  ]}
+                >
+                  <Text style={[
+                    styles.confirmBtnText, 
+                    (successfullyApplied.includes(selectedJob?.name) || (selectedJob?.applied_status && selectedJob.applied_status !== "Not Applied")) && styles.appliedButtonText
+                  ]}>
+                    {(successfullyApplied.includes(selectedJob?.name) || (selectedJob?.applied_status && selectedJob.applied_status !== "Not Applied")) 
+                      ? (selectedJob?.applied_status || 'Applied') 
+                      : 'Apply Now'}
+                  </Text>
+                </TouchableOpacity>
+              )}
             </View>
           </View>
         </SafeAreaView>

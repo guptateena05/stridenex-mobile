@@ -39,7 +39,9 @@ import { SwipeableRow, SwipeAction } from '@/components/Shared/SwipeableRow';
 import { 
   getStudentInternshipList, 
   applyOpportunity, 
-  getStudentByEmail 
+  getStudentByEmail,
+  getStudentApplications,
+  updateApplicationStatus
 } from '@/api/student.services';
 
 export const StudentInternshipScreen = () => {
@@ -47,6 +49,8 @@ export const StudentInternshipScreen = () => {
   
   // Data list
   const [internships, setInternships] = useState<any[]>([]);
+  const [studentApplications, setStudentApplications] = useState<any[]>([]);
+  const [acceptingOffer, setAcceptingOffer] = useState<string | null>(null);
   const [statistics, setStatistics] = useState({ total_internships: 0, scheduled_interview_count: 0 });
   // States
   const [loading, setLoading] = useState(true);
@@ -60,6 +64,58 @@ export const StudentInternshipScreen = () => {
   
   // Cached student profile info
   const [studentProfile, setStudentProfile] = useState<any>(null);
+
+  const getApplicationName = (item: any, type: string) => {
+    if (item.application) return item.application;
+    if (item.application_name) return item.application_name;
+    if (item.application_id) return item.application_id;
+    
+    const match = studentApplications.find(app => {
+      if (type === "Internship") {
+        return app.internship === item.name;
+      }
+      if (type === "Project") {
+        return app.project === item.name;
+      }
+      if (type === "Job") {
+        return app.job_profile === item.name;
+      }
+      return false;
+    });
+    return match?.name || null;
+  };
+
+  const handleAcceptOffer = async (item: any, type: string) => {
+    const appName = getApplicationName(item, type);
+    if (!appName) {
+      Alert.alert("Error", "Application ID not found. Please try refreshing the screen.");
+      return;
+    }
+    
+    Alert.alert(
+      "Accept Offer",
+      "Are you sure you want to accept this offer?",
+      [
+        { text: "Cancel", style: "cancel" },
+        { 
+          text: "Accept", 
+          onPress: async () => {
+            try {
+              setAcceptingOffer(item.name);
+              await updateApplicationStatus(appName, "Accepted");
+              Alert.alert("Success", "Congratulations! You have accepted the offer.");
+              fetchInternshipsData();
+            } catch (err: any) {
+              console.error("Error accepting offer:", err);
+              Alert.alert("Error", err.message || "Failed to accept the offer. Please try again.");
+            } finally {
+              setAcceptingOffer(null);
+            }
+          }
+        }
+      ]
+    );
+  };
 
   // Fetch student profile details (course, department, etc.) to use as query filters
   const fetchStudentProfile = async () => {
@@ -81,6 +137,17 @@ export const StudentInternshipScreen = () => {
   const fetchInternshipsData = useCallback(async (profileData?: any, searchVal?: string) => {
     try {
       const profile = profileData || studentProfile || {};
+      let appsList: any[] = [];
+      if (userName) {
+        try {
+          const resApps = await getStudentApplications({ student: userName, opportunity_type: "Internship" });
+          appsList = resApps?.data?.data || resApps?.message?.data || resApps?.data || resApps?.message || [];
+          setStudentApplications(Array.isArray(appsList) ? appsList : []);
+        } catch (err) {
+          console.error("Error fetching student applications list:", err);
+        }
+      }
+
       const response = await getStudentInternshipList(
         userName || undefined,
         profile.course || null,
@@ -90,10 +157,19 @@ export const StudentInternshipScreen = () => {
       );
       const dataContainer = (response?.data && typeof response.data === 'object' && !Array.isArray(response.data)) ? response : (response?.message && typeof response.message === 'object' ? response.message : response);
       const data = dataContainer?.data?.internships || dataContainer?.internships || [];
+      
+      const mappedInternships = (Array.isArray(data) ? data : []).map((item: any) => {
+        const match = appsList.find(app => app.internship === item.name);
+        if (match) {
+          return { ...item, applied_status: match.status };
+        }
+        return item;
+      });
+
       const stats = dataContainer?.data?.statistics || dataContainer?.statistics || {};
-      setInternships(Array.isArray(data) ? data : []);
+      setInternships(mappedInternships);
       setStatistics({
-        total_internships: stats.total_internships ?? data.length,
+        total_internships: stats.total_internships ?? mappedInternships.length,
         scheduled_interview_count: stats.scheduled_interview_count ?? 0,
       });
     } catch (err) {
@@ -187,6 +263,8 @@ export const StudentInternshipScreen = () => {
         return { bg: "#FEF2F2", text: "#DC2626", border: "#FEE2E2", label: "Rejected" };
       case 'selected':
         return { bg: "#FFFBEB", text: "#D97706", border: "#FEF3C7", label: "Selected" };
+      case 'accepted':
+        return { bg: "#ECFDF5", text: "#059669", border: "#D1FAE5", label: "Accepted" };
       default:
         return { bg: "#F8FAFC", text: "#64748B", border: "#E2E8F0", label: status || "N/A" };
     }
@@ -308,6 +386,16 @@ export const StudentInternshipScreen = () => {
                   bgColor: statusConf.bg || '#EFF6FF',
                   onPress: () => {}
                 });
+                
+                if (internship.applied_status?.toLowerCase() === "selected") {
+                  actions.push({
+                    label: 'Accept Offer',
+                    icon: CheckCircle2,
+                    color: '#059669',
+                    bgColor: '#ECFDF5',
+                    onPress: () => handleAcceptOffer(internship, "Internship")
+                  });
+                }
               }
 
               return (
@@ -538,27 +626,43 @@ export const StudentInternshipScreen = () => {
                 <Text style={styles.modalCancelBtnText}>Close</Text>
               </TouchableOpacity>
               
-              <TouchableOpacity 
-                activeOpacity={0.7}
-                disabled={selectedInternship?.status?.toLowerCase() === 'closed' || (selectedInternship?.applied_status && selectedInternship.applied_status !== "Not Applied")}
-                onPress={() => {
-                  handleApplyInternship(selectedInternship);
-                  setShowDetailsModal(false);
-                }}
-                style={[
-                  styles.modalApplyBtn,
-                  selectedInternship?.status?.toLowerCase() === 'closed' && { backgroundColor: '#F1F5F9' },
-                  (selectedInternship?.applied_status && selectedInternship.applied_status !== "Not Applied") && { backgroundColor: '#EFF6FF' }
-                ]}
-              >
-                <Text style={[
-                  styles.modalApplyBtnText,
-                  selectedInternship?.status?.toLowerCase() === 'closed' && { color: '#94A3B8' },
-                  (selectedInternship?.applied_status && selectedInternship.applied_status !== "Not Applied") && { color: '#2563EB' }
-                ]}>
-                  {selectedInternship?.applied_status && selectedInternship.applied_status !== "Not Applied" ? selectedInternship.applied_status : (selectedInternship?.status?.toLowerCase() === 'closed' ? 'Closed' : 'Apply Now')}
-                </Text>
-              </TouchableOpacity>
+              {selectedInternship?.applied_status?.toLowerCase() === 'selected' ? (
+                <TouchableOpacity 
+                  activeOpacity={0.7}
+                  disabled={acceptingOffer === selectedInternship?.name}
+                  onPress={() => {
+                    handleAcceptOffer(selectedInternship, "Internship");
+                    setShowDetailsModal(false);
+                  }}
+                  style={[styles.modalApplyBtn, { backgroundColor: '#10B981' }]}
+                >
+                  <Text style={[styles.modalApplyBtnText, { color: '#FFFFFF' }]}>
+                    {acceptingOffer === selectedInternship?.name ? "Accepting..." : "Accept Offer"}
+                  </Text>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity 
+                  activeOpacity={0.7}
+                  disabled={selectedInternship?.status?.toLowerCase() === 'closed' || (selectedInternship?.applied_status && selectedInternship.applied_status !== "Not Applied")}
+                  onPress={() => {
+                    handleApplyInternship(selectedInternship);
+                    setShowDetailsModal(false);
+                  }}
+                  style={[
+                    styles.modalApplyBtn,
+                    selectedInternship?.status?.toLowerCase() === 'closed' && { backgroundColor: '#F1F5F9' },
+                    (selectedInternship?.applied_status && selectedInternship.applied_status !== "Not Applied") && { backgroundColor: '#EFF6FF' }
+                  ]}
+                >
+                  <Text style={[
+                    styles.modalApplyBtnText,
+                    selectedInternship?.status?.toLowerCase() === 'closed' && { color: '#94A3B8' },
+                    (selectedInternship?.applied_status && selectedInternship.applied_status !== "Not Applied") && { color: '#2563EB' }
+                  ]}>
+                    {selectedInternship?.applied_status && selectedInternship.applied_status !== "Not Applied" ? selectedInternship.applied_status : (selectedInternship?.status?.toLowerCase() === 'closed' ? 'Closed' : 'Apply Now')}
+                  </Text>
+                </TouchableOpacity>
+              )}
             </View>
           </View>
         </SafeAreaView>

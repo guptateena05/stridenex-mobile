@@ -34,7 +34,9 @@ import { SwipeableRow, SwipeAction } from '@/components/Shared/SwipeableRow';
 import { 
   getStudentProjectList, 
   applyOpportunity, 
-  getStudentByEmail 
+  getStudentByEmail,
+  getStudentApplications,
+  updateApplicationStatus
 } from '@/api/student.services';
 
 export const StudentProjectsScreen = () => {
@@ -42,6 +44,8 @@ export const StudentProjectsScreen = () => {
   
   // Data list
   const [projects, setProjects] = useState<any[]>([]);
+  const [studentApplications, setStudentApplications] = useState<any[]>([]);
+  const [acceptingOffer, setAcceptingOffer] = useState<string | null>(null);
   const [statistics, setStatistics] = useState({ total_projects: 0, total_applied: 0, total_completed: 0, total_awarded: 0 });
   const [pagination, setPagination] = useState<any>(null);
   // States
@@ -55,6 +59,76 @@ export const StudentProjectsScreen = () => {
   
   // Cached student profile info
   const [studentProfile, setStudentProfile] = useState<any>(null);
+
+  const getApplicationName = (item: any, type: string) => {
+    if (item.application) return item.application;
+    if (item.application_name) return item.application_name;
+    if (item.application_id) return item.application_id;
+    
+    const match = studentApplications.find(app => {
+      if (type === "Internship") {
+        return app.internship === item.name;
+      }
+      if (type === "Project") {
+        return app.project === item.name;
+      }
+      if (type === "Job") {
+        return app.job_profile === item.name;
+      }
+      return false;
+    });
+    return match?.name || null;
+  };
+
+  const handleAcceptOffer = async (item: any, type: string) => {
+    const appName = getApplicationName(item, type);
+    if (!appName) {
+      Alert.alert("Error", "Application ID not found. Please try refreshing the screen.");
+      return;
+    }
+    
+    Alert.alert(
+      "Accept Offer",
+      "Are you sure you want to accept this offer?",
+      [
+        { text: "Cancel", style: "cancel" },
+        { 
+          text: "Accept", 
+          onPress: async () => {
+            try {
+              setAcceptingOffer(item.name);
+              await updateApplicationStatus(appName, "Accepted");
+              Alert.alert("Success", "Congratulations! You have accepted the offer.");
+              fetchProjectsData();
+            } catch (err: any) {
+              console.error("Error accepting offer:", err);
+              Alert.alert("Error", err.message || "Failed to accept the offer. Please try again.");
+            } finally {
+              setAcceptingOffer(null);
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const getProjectStatusConfig = (status: string) => {
+    const s = status?.toLowerCase();
+    switch (s) {
+      case 'applied':
+        return { bg: "#EFF6FF", text: "#2563EB", border: "#DBEAFE", label: "Applied" };
+      case 'shortlisted':
+        return { bg: "#F5F3FF", text: "#7C3AED", border: "#DDD6FE", label: "Shortlisted" };
+      case 'selected':
+        return { bg: "#FFFBEB", text: "#D97706", border: "#FEF3C7", label: "Selected" };
+      case 'awarded':
+        return { bg: "#EEF2F6", text: "#3B82F6", border: "#E2E8F0", label: "Awarded" };
+      case 'accepted':
+        return { bg: "#ECFDF5", text: "#059669", border: "#D1FAE5", label: "Accepted" };
+      default:
+        return { bg: "#F8FAFC", text: "#64748B", border: "#E2E8F0", label: status || "N/A" };
+    }
+  };
 
   // Fetch student profile details (course, department, etc.) to use as query filters
   const fetchStudentProfile = async () => {
@@ -76,6 +150,17 @@ export const StudentProjectsScreen = () => {
   const fetchProjectsData = useCallback(async (profileData?: any, searchVal?: string) => {
     try {
       const profile = profileData || studentProfile || {};
+      let appsList: any[] = [];
+      if (userName) {
+        try {
+          const resApps = await getStudentApplications({ student: userName, opportunity_type: "Project" });
+          appsList = resApps?.data?.data || resApps?.message?.data || resApps?.data || resApps?.message || [];
+          setStudentApplications(Array.isArray(appsList) ? appsList : []);
+        } catch (err) {
+          console.error("Error fetching student applications list:", err);
+        }
+      }
+
       const response = await getStudentProjectList(
         userName || undefined,
         profile.course || null,
@@ -85,13 +170,22 @@ export const StudentProjectsScreen = () => {
       );
       const dataContainer = (response?.data && typeof response.data === 'object' && !Array.isArray(response.data)) ? response : (response?.message && typeof response.message === 'object' ? response.message : response);
       const data = dataContainer?.data?.projects || dataContainer?.projects || [];
+      
+      const mappedProjects = (Array.isArray(data) ? data : []).map((item: any) => {
+        const match = appsList.find(app => app.project === item.name);
+        if (match) {
+          return { ...item, applied_status: match.status };
+        }
+        return item;
+      });
+
       const stats = dataContainer?.data?.statistics || dataContainer?.statistics || {};
       const pag = dataContainer?.data?.pagination || dataContainer?.pagination || null;
-      const activeProjectsCount = (Array.isArray(data) ? data : []).filter(
+      const activeProjectsCount = mappedProjects.filter(
         (p: any) => p.status === "Active" || p.status === "active" || !p.status
       ).length;
 
-      setProjects(Array.isArray(data) ? data : []);
+      setProjects(mappedProjects);
       setStatistics({
         total_projects: activeProjectsCount,
         total_applied: stats.total_applied ?? 0,
@@ -288,6 +382,16 @@ export const StudentProjectsScreen = () => {
                   bgColor: project.applied_status === 'Shortlisted' ? '#F5F3FF' : '#EFF6FF',
                   onPress: () => {}
                 });
+
+                if (project.applied_status?.toLowerCase() === "selected" || project.applied_status?.toLowerCase() === "awarded") {
+                  actions.push({
+                    label: 'Accept Offer',
+                    icon: CheckCircle2,
+                    color: '#059669',
+                    bgColor: '#ECFDF5',
+                    onPress: () => handleAcceptOffer(project, "Project")
+                  });
+                }
               }
 
               return (
@@ -326,17 +430,15 @@ export const StudentProjectsScreen = () => {
                         )}
                         
                         {hasApplied && (
-                          <View style={[styles.statusTag, 
-                            project.applied_status === 'Shortlisted'
-                              ? { backgroundColor: '#F5F3FF', borderColor: '#DDD6FE' }
-                              : { backgroundColor: '#EFF6FF', borderColor: '#DBEAFE' }
-                          ]}>
-                            <Text style={[styles.statusTagTextActive, 
-                              project.applied_status === 'Shortlisted' 
-                                ? { color: '#7C3AED' } 
-                                : { color: '#2563EB' }
-                            ]}>
-                              {project.applied_status}
+                          <View style={[styles.statusTag, {
+                            backgroundColor: getProjectStatusConfig(project.applied_status || "").bg,
+                            borderColor: getProjectStatusConfig(project.applied_status || "").border,
+                            borderWidth: 1
+                          }]}>
+                            <Text style={[styles.statusTagTextActive, {
+                              color: getProjectStatusConfig(project.applied_status || "").text
+                            }]}>
+                              {getProjectStatusConfig(project.applied_status || "").label}
                             </Text>
                           </View>
                         )}
@@ -511,27 +613,43 @@ export const StudentProjectsScreen = () => {
                 <Text style={styles.modalCancelBtnText}>Close</Text>
               </TouchableOpacity>
               
-              <TouchableOpacity 
-                activeOpacity={0.7}
-                disabled={selectedProject?.status?.toLowerCase() === 'disabled' || selectedProject?.status?.toLowerCase() === 'disable' || (selectedProject?.applied_status && selectedProject.applied_status !== "Not Applied")}
-                onPress={() => {
-                  handleEnrollProject(selectedProject);
-                  setShowDetailsModal(false);
-                }}
-                style={[
-                  styles.modalApplyBtn,
-                  (selectedProject?.status?.toLowerCase() === 'disabled' || selectedProject?.status?.toLowerCase() === 'disable') && { backgroundColor: '#F1F5F9' },
-                  (selectedProject?.applied_status && selectedProject.applied_status !== "Not Applied") && { backgroundColor: '#EFF6FF' }
-                ]}
-              >
-                <Text style={[
-                  styles.modalApplyBtnText,
-                  (selectedProject?.status?.toLowerCase() === 'disabled' || selectedProject?.status?.toLowerCase() === 'disable') && { color: '#94A3B8' },
-                  (selectedProject?.applied_status && selectedProject.applied_status !== "Not Applied") && { color: '#2563EB' }
-                ]}>
-                  {selectedProject?.applied_status && selectedProject.applied_status !== "Not Applied" ? 'Applied' : (selectedProject?.status?.toLowerCase() === 'disabled' || selectedProject?.status?.toLowerCase() === 'disable' ? 'Disabled' : 'Apply Now')}
-                </Text>
-              </TouchableOpacity>
+              {selectedProject?.applied_status?.toLowerCase() === 'selected' || selectedProject?.applied_status?.toLowerCase() === 'awarded' ? (
+                <TouchableOpacity 
+                  activeOpacity={0.7}
+                  disabled={acceptingOffer === selectedProject?.name}
+                  onPress={() => {
+                    handleAcceptOffer(selectedProject, "Project");
+                    setShowDetailsModal(false);
+                  }}
+                  style={[styles.modalApplyBtn, { backgroundColor: '#10B981' }]}
+                >
+                  <Text style={[styles.modalApplyBtnText, { color: '#FFFFFF' }]}>
+                    {acceptingOffer === selectedProject?.name ? "Accepting..." : "Accept Offer"}
+                  </Text>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity 
+                  activeOpacity={0.7}
+                  disabled={selectedProject?.status?.toLowerCase() === 'disabled' || selectedProject?.status?.toLowerCase() === 'disable' || (selectedProject?.applied_status && selectedProject.applied_status !== "Not Applied")}
+                  onPress={() => {
+                    handleEnrollProject(selectedProject);
+                    setShowDetailsModal(false);
+                  }}
+                  style={[
+                    styles.modalApplyBtn,
+                    (selectedProject?.status?.toLowerCase() === 'disabled' || selectedProject?.status?.toLowerCase() === 'disable') && { backgroundColor: '#F1F5F9' },
+                    (selectedProject?.applied_status && selectedProject.applied_status !== "Not Applied") && { backgroundColor: '#EFF6FF' }
+                  ]}
+                >
+                  <Text style={[
+                    styles.modalApplyBtnText,
+                    (selectedProject?.status?.toLowerCase() === 'disabled' || selectedProject?.status?.toLowerCase() === 'disable') && { color: '#94A3B8' },
+                    (selectedProject?.applied_status && selectedProject.applied_status !== "Not Applied") && { color: '#2563EB' }
+                  ]}>
+                    {selectedProject?.applied_status && selectedProject.applied_status !== "Not Applied" ? 'Applied' : (selectedProject?.status?.toLowerCase() === 'disabled' || selectedProject?.status?.toLowerCase() === 'disable' ? 'Disabled' : 'Apply Now')}
+                  </Text>
+                </TouchableOpacity>
+              )}
             </View>
           </View>
         </SafeAreaView>
