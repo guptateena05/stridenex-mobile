@@ -46,7 +46,8 @@ import {
   getBookedSessions, 
   getMentorOfferings,
   initiateSessionBooking,
-  verifySessionPayment
+  verifySessionPayment,
+  getNewGroupWorkshopOfferings
 } from '@/api/student.services';
 import { WebView } from 'react-native-webview';
 
@@ -78,6 +79,12 @@ export const StudentMentorsScreen = () => {
   const [selectedMentor, setSelectedMentor] = useState<any | null>(null);
   const [offerings, setOfferings] = useState<any[]>([]);
   const [loadingOfferings, setLoadingOfferings] = useState(false);
+
+  // Group Sessions & Workshops offerings
+  const [groupOfferings, setGroupOfferings] = useState<any[]>([]);
+  const [loadingGroupOfferings, setLoadingGroupOfferings] = useState(true);
+  const [groupOfferingType, setGroupOfferingType] = useState<'Group Session' | 'Workshop'>('Group Session');
+  const [groupOfferingSearch, setGroupOfferingSearch] = useState('');
   const [selectedOffering, setSelectedOffering] = useState<any | null>(null);
   const [slotCalendar, setSlotCalendar] = useState<any>({});
   const [loadingSlots, setLoadingSlots] = useState(false);
@@ -224,6 +231,25 @@ export const StudentMentorsScreen = () => {
   useEffect(() => {
     fetchBookedSessions();
   }, [fetchBookedSessions]);
+
+  // Fetch group/workshop offerings
+  const fetchGroupOfferings = useCallback(async (type: string, search?: string) => {
+    try {
+      setLoadingGroupOfferings(true);
+      const res = await getNewGroupWorkshopOfferings({ offering_type: type, search });
+      const data = res?.message?.data || res?.message || res?.data || [];
+      setGroupOfferings(Array.isArray(data) ? data.filter(Boolean) : []);
+    } catch (err) {
+      console.error('Error fetching group offerings:', err);
+      setGroupOfferings([]);
+    } finally {
+      setLoadingGroupOfferings(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchGroupOfferings(groupOfferingType, groupOfferingSearch || undefined);
+  }, [groupOfferingType, fetchGroupOfferings]);
 
   // Next slots prefetch
   useEffect(() => {
@@ -886,6 +912,113 @@ export const StudentMentorsScreen = () => {
 
         {activeTab === 'mentors' ? (
           <View>
+            {/* ── Group Sessions & Workshops ── */}
+            <Animated.View entering={FadeInUp.delay(130)} style={styles.offeringsSection}>
+              <Text style={styles.sectionTitle}>Sessions &amp; Workshops</Text>
+              <Text style={styles.sectionSubtitle}>Expert-led group sessions open to enroll</Text>
+
+              {/* Type tabs */}
+              <View style={styles.offeringTabRow}>
+                {(['Group Session', 'Workshop'] as const).map(type => (
+                  <TouchableOpacity
+                    key={type}
+                    onPress={() => setGroupOfferingType(type)}
+                    style={[styles.offeringTabBtn, groupOfferingType === type && styles.offeringTabBtnActive]}
+                  >
+                    <Text style={[styles.offeringTabText, groupOfferingType === type && styles.offeringTabTextActive]}>
+                      {type}s
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {loadingGroupOfferings ? (
+                <View style={styles.offeringLoader}>
+                  <ActivityIndicator size="small" color="#F97316" />
+                  <Text style={styles.offeringLoaderText}>Loading {groupOfferingType}s...</Text>
+                </View>
+              ) : groupOfferings.length === 0 ? (
+                <View style={styles.offeringEmpty}>
+                  <Text style={styles.offeringEmptyText}>No {groupOfferingType}s available right now.</Text>
+                </View>
+              ) : (
+                <View style={styles.offeringList}>
+                  {groupOfferings.map((offering, idx) => (
+                    <View key={offering.name || idx} style={styles.groupOfferingCard}>
+                      {/* Header row */}
+                      <View style={styles.groupOfferingHeader}>
+                        <View style={styles.groupOfferingTypeBadge}>
+                          <Text style={styles.groupOfferingTypeText}>{offering.offering_type}</Text>
+                        </View>
+                        <View style={styles.groupOfferingDurationBadge}>
+                          <Text style={styles.groupOfferingDurationText}>{offering.duration_minutes || 60} mins</Text>
+                        </View>
+                      </View>
+
+                      {/* Title */}
+                      <Text style={styles.groupOfferingTitle} numberOfLines={2}>
+                        {offering.title}
+                      </Text>
+
+                      {/* Mentor + Category */}
+                      <View style={styles.groupOfferingMentorRow}>
+                        <View style={styles.groupOfferingAvatar}>
+                          <Text style={styles.groupOfferingAvatarText}>
+                            {(offering.mentor_full_name || offering.mentor || 'M').charAt(0).toUpperCase()}
+                          </Text>
+                        </View>
+                        <Text style={styles.groupOfferingMentorName} numberOfLines={1}>
+                          {offering.mentor_full_name || offering.mentor}
+                        </Text>
+                        {offering.category ? (
+                          <View style={styles.groupOfferingCategoryBadge}>
+                            <Text style={styles.groupOfferingCategoryText}>{offering.category}</Text>
+                          </View>
+                        ) : null}
+                      </View>
+
+                      {/* Description */}
+                      {offering.description ? (
+                        <Text style={styles.groupOfferingDesc} numberOfLines={2}>{offering.description}</Text>
+                      ) : null}
+
+                      {/* Seats + Price */}
+                      <View style={styles.groupOfferingMetaRow}>
+                        <View style={styles.seatsBadge}>
+                          <Text style={styles.seatsBadgeText}>
+                            {offering.remaining_seats ?? offering.max_group_size ?? '—'} seats left
+                          </Text>
+                        </View>
+                        <View style={styles.priceBadge}>
+                          <Text style={styles.priceBadgeText}>
+                            {offering.price_per_session ? `₹${offering.price_per_session}` : 'Free'}
+                          </Text>
+                        </View>
+                      </View>
+
+                      {/* Footer: date + join button */}
+                      <View style={styles.groupOfferingFooter}>
+                        <View>
+                          <Text style={styles.groupOfferingDateLabel}>DATE &amp; TIME</Text>
+                          <Text style={styles.groupOfferingDateValue}>
+                            {offering.start_date
+                              ? new Date(offering.start_date).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })
+                              : 'Upcoming'}{' '}• {offering.start_time ? offering.start_time.slice(0, 5) : 'TBD'}
+                          </Text>
+                        </View>
+                        <TouchableOpacity
+                          style={styles.joinBtn}
+                          onPress={() => Alert.alert('Join Session', `Join "${offering.title}"?\n\nThis will open the booking flow.`)}
+                        >
+                          <Text style={styles.joinBtnText}>Join</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              )}
+            </Animated.View>
+
             {/* Search Bar */}
             <Animated.View entering={FadeInUp.delay(150)} style={styles.searchContainer}>
               <Search size={18} color="#94A3B8" style={styles.searchIcon} />
@@ -1531,5 +1664,240 @@ const styles = StyleSheet.create({
     fontWeight: '800'
   },
 
-  footerSpacer: { height: 40 }
+  footerSpacer: { height: 40 },
+
+  // ── Group Offerings Section ──
+  offeringsSection: {
+    marginBottom: 8,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1E293B',
+    marginBottom: 2,
+  },
+  sectionSubtitle: {
+    fontSize: 12,
+    color: '#64748B',
+    marginBottom: 12,
+  },
+  offeringTabRow: {
+    flexDirection: 'row',
+    backgroundColor: '#F1F5F9',
+    borderRadius: 12,
+    padding: 4,
+    marginBottom: 14,
+  },
+  offeringTabBtn: {
+    flex: 1,
+    paddingVertical: 8,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  offeringTabBtnActive: {
+    backgroundColor: '#fff',
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  offeringTabText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#64748B',
+  },
+  offeringTabTextActive: {
+    color: '#F97316',
+    fontWeight: '700',
+  },
+  offeringLoader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 24,
+  },
+  offeringLoaderText: {
+    fontSize: 12,
+    color: '#64748B',
+    fontWeight: '600',
+  },
+  offeringEmpty: {
+    alignItems: 'center',
+    paddingVertical: 24,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderStyle: 'dashed',
+  },
+  offeringEmptyText: {
+    fontSize: 12,
+    color: '#94A3B8',
+    fontWeight: '600',
+  },
+  offeringList: {
+    gap: 12,
+  },
+  groupOfferingCard: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
+    marginBottom: 4,
+  },
+  groupOfferingHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+  groupOfferingTypeBadge: {
+    backgroundColor: '#FFF7ED',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderWidth: 1,
+    borderColor: '#FDBA74',
+  },
+  groupOfferingTypeText: {
+    fontSize: 9,
+    color: '#EA580C',
+    fontWeight: '700',
+    textTransform: 'uppercase',
+  },
+  groupOfferingDurationBadge: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  groupOfferingDurationText: {
+    fontSize: 9,
+    color: '#475569',
+    fontWeight: '700',
+  },
+  groupOfferingTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1E293B',
+    marginBottom: 8,
+    lineHeight: 20,
+  },
+  groupOfferingMentorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+  groupOfferingAvatar: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#EEF2FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  groupOfferingAvatarText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#4F46E5',
+  },
+  groupOfferingMentorName: {
+    flex: 1,
+    fontSize: 12,
+    color: '#475569',
+    fontWeight: '600',
+  },
+  groupOfferingCategoryBadge: {
+    backgroundColor: '#EEF2FF',
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderWidth: 1,
+    borderColor: '#C7D2FE',
+  },
+  groupOfferingCategoryText: {
+    fontSize: 9,
+    color: '#4F46E5',
+    fontWeight: '700',
+  },
+  groupOfferingDesc: {
+    fontSize: 11,
+    color: '#64748B',
+    lineHeight: 16,
+    marginBottom: 8,
+  },
+  groupOfferingMetaRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 10,
+  },
+  seatsBadge: {
+    backgroundColor: '#F0FDF4',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+  },
+  seatsBadgeText: {
+    fontSize: 10,
+    color: '#16A34A',
+    fontWeight: '700',
+  },
+  priceBadge: {
+    backgroundColor: '#FFF7ED',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderWidth: 1,
+    borderColor: '#FED7AA',
+  },
+  priceBadgeText: {
+    fontSize: 10,
+    color: '#EA580C',
+    fontWeight: '700',
+  },
+  groupOfferingFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+  },
+  groupOfferingDateLabel: {
+    fontSize: 9,
+    color: '#94A3B8',
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 2,
+  },
+  groupOfferingDateValue: {
+    fontSize: 11,
+    color: '#334155',
+    fontWeight: '700',
+  },
+  joinBtn: {
+    backgroundColor: '#F97316',
+    borderRadius: 10,
+    paddingHorizontal: 18,
+    paddingVertical: 8,
+  },
+  joinBtnText: {
+    fontSize: 12,
+    color: '#fff',
+    fontWeight: '700',
+  },
 });

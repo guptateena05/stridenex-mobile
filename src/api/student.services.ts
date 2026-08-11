@@ -1510,3 +1510,23 @@ export const getCampusDriveList = async () => {
     throw error;
   }
 };
+
+/**
+ * Fetch new Group Session and Workshop offerings for students.
+ */
+export const getNewGroupWorkshopOfferings = async (params: {
+  offering_type?: string;
+  search?: string;
+}) => {
+  try {
+    const queryParams = new URLSearchParams();
+    if (params.offering_type) queryParams.append('offering_type', params.offering_type);
+    if (params.search) queryParams.append('search', params.search);
+    const url = `method/stridenex_app.stridenex_app.doctype.mentor_offering.mentor_offering.get_new_group_workshop_offerings${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+    const response = await api.get(url);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching group/workshop offerings:', error);
+    throw error;
+  }
+};
