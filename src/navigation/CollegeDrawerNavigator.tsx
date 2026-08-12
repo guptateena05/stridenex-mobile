@@ -8,6 +8,7 @@ import { CollegeInterventionsScreen } from '@/screens/Dashboards/CollegeDashboar
 import { CollegeNoticeBoardScreen } from '@/screens/Dashboards/CollegeDashboard/CollegeNoticeBoardScreen';
 import { CollegeReportsScreen } from '@/screens/Dashboards/CollegeDashboard/CollegeReportsScreen';
 import { CollegePlansScreen } from '@/screens/Dashboards/CollegeDashboard/CollegePlansScreen';
+import { CollegeCommunityScreen } from '@/screens/Dashboards/CollegeDashboard/CollegeCommunityScreen';
 import { CustomDrawerContent } from '@/components/dashboard/CustomDrawerContent';
 import { colors } from '@/theme/colors';
 import {
@@ -155,6 +156,11 @@ export const CollegeDrawerNavigator = () => {
         name="Interventions"
         component={CollegeInterventionsScreen}
         options={{ drawerIcon: ({ color, size }) => <Target color={color} size={size} /> }}
+      />
+      <Drawer.Screen
+        name="Community"
+        component={CollegeCommunityScreen}
+        options={{ drawerIcon: ({ color, size }) => <Users color={color} size={size} /> }}
       />
       <Drawer.Screen
         name="Notice Board"

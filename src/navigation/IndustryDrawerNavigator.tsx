@@ -10,6 +10,7 @@ import { IndustryJobsScreen } from '@/screens/Dashboards/IndustryDashboard/Indus
 import { IndustryFeedbackScreen } from '@/screens/Dashboards/IndustryDashboard/IndustryFeedbackScreen';
 import { IndustryAnalyticsScreen } from '@/screens/Dashboards/IndustryDashboard/IndustryAnalyticsScreen';
 import { IndustryPlansScreen } from '@/screens/Dashboards/IndustryDashboard/IndustryPlansScreen';
+import { IndustryCommunityScreen } from '@/screens/Dashboards/IndustryDashboard/IndustryCommunityScreen';
 import { CustomDrawerContent } from '@/components/dashboard/CustomDrawerContent';
 import { colors } from '@/theme/colors';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
@@ -23,7 +24,8 @@ import {
   Star,
   Calendar,
   School,
-  Settings
+  Settings,
+  Users
 } from 'lucide-react-native';
 import { IndustrySettingsScreen } from '@/screens/Dashboards/IndustryDashboard/IndustrySettingsScreen';
 import { IndustryProjectPipelineScreen } from '@/screens/Dashboards/IndustryDashboard/IndustryProjectPipelineScreen';
@@ -77,6 +79,13 @@ export const IndustryDrawerNavigator = () => {
         component={IndustryPipelineScreen}
         options={{
           drawerIcon: ({ color, size }) => <Mail color={color} size={size} />
+        }}
+      />
+      <Drawer.Screen
+        name="Community"
+        component={IndustryCommunityScreen}
+        options={{
+          drawerIcon: ({ color, size }) => <Users color={color} size={size} />
         }}
       />
       <Drawer.Screen

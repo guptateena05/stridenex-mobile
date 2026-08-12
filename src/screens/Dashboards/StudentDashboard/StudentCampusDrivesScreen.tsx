@@ -34,7 +34,8 @@ import Animated, { FadeInUp } from 'react-native-reanimated';
 import { StatsCard } from '@/components/dashboard/StatsCard';
 import { useAuth } from '@/context/AuthContext';
 import { SwipeableRow, SwipeAction } from '@/components/Shared/SwipeableRow';
-import { getCampusDriveList, applyOpportunity } from '@/api/student.services';
+import { getCampusDriveList, applyCampusDrive, getMasterData, getStudentByEmail } from '@/api/student.services';
+import { MasterDropdownModal } from '@/components/Shared/MasterDropdownModal';
 
 export const StudentCampusDrivesScreen = () => {
   const { userName } = useAuth();
@@ -46,6 +47,8 @@ export const StudentCampusDrivesScreen = () => {
   const [selectedDrive, setSelectedDrive] = useState<any>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [search, setSearch] = useState("");
+  const [studentCollege, setStudentCollege] = useState("");
+  const [filterSkill, setFilterSkill] = useState<string[]>([]);
 
   // Load successfully applied drive IDs from AsyncStorage on mount
   useEffect(() => {
@@ -60,8 +63,27 @@ export const StudentCampusDrivesScreen = () => {
       }
     };
     loadSavedApplications();
-    fetchDrivesData();
   }, [userName]);
+
+  useEffect(() => {
+    if (userName) {
+      getStudentByEmail(userName).then(res => {
+        const studentData = res?.data?.data || res?.message?.data || res?.data || res;
+        if (studentData?.college) {
+          setStudentCollege(studentData.college);
+        }
+      }).catch(err => console.error("Error fetching student profile:", err));
+    }
+  }, [userName]);
+
+  useEffect(() => {
+    const delayDebounceFn = setTimeout(() => {
+      if (userName) {
+        fetchDrivesData();
+      }
+    }, 500);
+    return () => clearTimeout(delayDebounceFn);
+  }, [userName, studentCollege, filterSkill]);
 
   const fetchDrivesData = async (showRefresher = false) => {
     try {
@@ -70,9 +92,27 @@ export const StudentCampusDrivesScreen = () => {
       } else {
         setLoading(true);
       }
-      const response = await getCampusDriveList();
-      const rawData = response?.data || response?.message?.data || response?.message || response || [];
-      const driveList = Array.isArray(rawData) ? rawData : [];
+      const response = await getCampusDriveList({ 
+        student: userName || undefined,
+        college: studentCollege || undefined,
+        required_skill: filterSkill.length > 0 ? filterSkill.join(",") : undefined
+      });
+      let drivesArray = response?.data?.drives || response?.message?.data?.drives || response?.message?.drives || response?.drives;
+      
+      if (!drivesArray) {
+        if (Array.isArray(response?.data)) drivesArray = response.data;
+        else if (Array.isArray(response?.message?.data)) drivesArray = response.message.data;
+        else if (Array.isArray(response?.message)) drivesArray = response.message;
+        else if (Array.isArray(response)) drivesArray = response;
+      }
+      
+      const driveList = Array.isArray(drivesArray) ? drivesArray.map((d: any) => ({
+        ...d,
+        company: d.industry_name || d.industry || d.company,
+        role: d.job_title || d.role,
+        branch: d.college || d.branch
+      })) : [];
+      
       setDrives(driveList);
     } catch (err) {
       console.error("Error fetching campus drives:", err);
@@ -93,12 +133,11 @@ export const StudentCampusDrivesScreen = () => {
       setApplying(drive.name);
       const payload = {
         student: userName,
-        opportunity_type: "Campus Drive",
-        opportunity_name: drive.name,
-        notes: "Applying to campus drive."
+        drive: drive.name,
+        remarks: "Applying to campus drive."
       };
 
-      const response = await applyOpportunity(payload);
+      const response = await applyCampusDrive(payload);
 
       // Check if successful (or duplicate warning 409)
       const isSuccess = response && (response.status === 200 || response.status === "200" || response.message?.status === 200 || response.message?.message?.includes("success"));
@@ -107,9 +146,7 @@ export const StudentCampusDrivesScreen = () => {
         : response?.message;
 
       if (isSuccess || (errMsg && errMsg.toLowerCase().includes("already applied"))) {
-        const updated = [...successfullyApplied, drive.name];
-        setSuccessfullyApplied(updated);
-        await AsyncStorage.setItem(`applied_campus_drives_${userName}`, JSON.stringify(updated));
+        setDrives(prev => prev.map(d => d.name === drive.name ? { ...d, applied_status: "Applied" } : d));
         Alert.alert(
           "Success", 
           isSuccess 
@@ -138,7 +175,7 @@ export const StudentCampusDrivesScreen = () => {
   }, [drives, search]);
 
   const activeDrivesCount = useMemo(() => drives.filter(d => d.status !== "Closed").length, [drives]);
-  const appliedDrivesCount = useMemo(() => successfullyApplied.length, [successfullyApplied]);
+  const appliedDrivesCount = useMemo(() => drives.filter(d => d.applied_status && d.applied_status !== "Not Applied").length, [drives]);
 
   if (loading && drives.length === 0) {
     return (
@@ -180,17 +217,30 @@ export const StudentCampusDrivesScreen = () => {
         </View>
 
         {/* Search Header */}
-        <View style={styles.searchContainer}>
-          <Search size={18} color="#94A3B8" style={styles.searchIcon} />
-          <TextInput
-            placeholder="Search drives, companies or roles..."
-            placeholderTextColor="#94A3B8"
-            style={styles.searchInput}
-            value={search}
-            onChangeText={setSearch}
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
+        <View style={styles.filterSection}>
+
+          <View style={styles.filtersRow}>
+            <MasterDropdownModal
+              label="Skills"
+              placeholder="Filter by Skill"
+              value={filterSkill}
+              onChange={setFilterSkill}
+              multiSelect={true}
+              fetchData={(page, search) => getMasterData("Skill", { page, search, page_size: 20 })}
+            />
+          </View>
+          <View style={[styles.searchContainer, { marginBottom: 0 }]}>
+            <Search size={18} color="#94A3B8" style={styles.searchIcon} />
+            <TextInput
+              placeholder="Search drives, companies or roles..."
+              placeholderTextColor="#94A3B8"
+              style={styles.searchInput}
+              value={search}
+              onChangeText={setSearch}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+          </View>
         </View>
 
         {/* Section Header */}
@@ -207,9 +257,11 @@ export const StudentCampusDrivesScreen = () => {
             </View>
           ) : (
             filteredDrives.map((drive, index) => {
-              const hasApplied = successfullyApplied.includes(drive.name);
+              const hasApplied = drive.applied_status && drive.applied_status !== "Not Applied";
               const isClosed = drive.status?.toLowerCase() === 'closed';
               const roleTitle = drive.job_title || drive.role || "Placement Drive Opportunity";
+              const rawPackage = drive.package_offered || drive.package || "As per industry";
+              const formattedPackage = !isNaN(Number(rawPackage)) ? `${rawPackage} LPA` : rawPackage;
 
               const actions: SwipeAction[] = [
                 {
@@ -255,6 +307,14 @@ export const StudentCampusDrivesScreen = () => {
                             <Text style={styles.companyName} numberOfLines={1}>
                               {drive.company || "Institution Partner"}
                             </Text>
+                            {drive.college && (
+                              <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4, gap: 4 }}>
+                                <Building2 size={12} color="#94A3B8" />
+                                <Text style={[styles.companyName, { color: '#94A3B8', fontSize: 11, marginTop: 0 }]} numberOfLines={1}>
+                                  {drive.college}
+                                </Text>
+                              </View>
+                            )}
                           </View>
                         </View>
                       </View>
@@ -269,7 +329,7 @@ export const StudentCampusDrivesScreen = () => {
                         {hasApplied && (
                           <View style={[styles.statusTag, { backgroundColor: '#E8F5E9', borderColor: '#C8E6C9' }]}>
                             <Text style={[styles.statusTagTextActive, { color: '#2E7D32' }]}>
-                              Applied
+                              {drive.applied_status}
                             </Text>
                           </View>
                         )}
@@ -280,7 +340,7 @@ export const StudentCampusDrivesScreen = () => {
                         <View style={[styles.infoBadge, { backgroundColor: '#F0FDF4', borderColor: '#DCFCE7' }]}>
                           <IndianRupee size={10} color="#16A34A" />
                           <Text style={[styles.badgeText, { color: '#16A34A', fontWeight: '700' }]}>
-                            {drive.package_offered || drive.package || "As per industry"}
+                            {formattedPackage}
                           </Text>
                         </View>
                         <View style={styles.infoBadge}>
@@ -296,11 +356,14 @@ export const StudentCampusDrivesScreen = () => {
                       {/* Required Skills tags */}
                       {drive.required_skill && (
                         <View style={styles.skillsRow}>
-                          {String(drive.required_skill).split(",").slice(0, 3).map((s: string, si: number) => (
-                            <View key={si} style={styles.skillChip}>
-                              <Text style={styles.skillChipText}>{s.trim()}</Text>
-                            </View>
-                          ))}
+                        {(Array.isArray(drive.required_skill)
+                          ? drive.required_skill.map((s: any) => (typeof s === 'string' ? s : s.skill)).filter(Boolean)
+                          : String(drive.required_skill).split(",")
+                        ).slice(0, 3).map((s: string, si: number) => (
+                          <View key={si} style={styles.skillChip}>
+                            <Text style={styles.skillChipText}>{s.trim()}</Text>
+                          </View>
+                        ))}
                         </View>
                       )}
 
@@ -386,7 +449,7 @@ export const StudentCampusDrivesScreen = () => {
                     </View>
                     <View>
                       <Text style={styles.metaLabelText}>PACKAGE OFFERED</Text>
-                      <Text style={styles.metaValText}>{selectedDrive.package_offered || selectedDrive.package || "As per industry"}</Text>
+                      <Text style={styles.metaValText}>{!isNaN(Number(selectedDrive.package_offered || selectedDrive.package)) ? `${selectedDrive.package_offered || selectedDrive.package} LPA` : (selectedDrive.package_offered || selectedDrive.package || "As per industry")}</Text>
                     </View>
                   </View>
 
@@ -434,7 +497,10 @@ export const StudentCampusDrivesScreen = () => {
                   <>
                     <Text style={styles.modalSectionLabel}>Required Skills</Text>
                     <View style={styles.skillsTagRow}>
-                      {String(selectedDrive.required_skill).split(",").map((s: string, si: number) => (
+                      {(Array.isArray(selectedDrive.required_skill)
+                        ? selectedDrive.required_skill.map((s: any) => (typeof s === 'string' ? s : s.skill)).filter(Boolean)
+                        : String(selectedDrive.required_skill).split(",")
+                      ).map((s: string, si: number) => (
                         <View key={si} style={styles.skillBadgeBox}>
                           <Text style={styles.skillBadgeText}>{s.trim()}</Text>
                         </View>

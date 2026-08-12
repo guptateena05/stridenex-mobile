@@ -257,6 +257,7 @@ export const applyOpportunity = async (data: {
   opportunity_type: string;
   opportunity_name: string;
   notes?: string;
+  expected_salary?: string;
 }) => {
   try {
     const response = await api.post(
@@ -1499,14 +1500,34 @@ export const getStudentPlaylists = async (studentEmail: string): Promise<any> =>
   }
 };
 
-export const getCampusDriveList = async () => {
+export const getCampusDriveList = async (params?: { college?: string, student?: string, required_skill?: string }) => {
   try {
+    const queryParams = new URLSearchParams();
+    if (params?.college) queryParams.append('college', params.college);
+    if (params?.student) queryParams.append('student', params.student);
+    if (params?.required_skill) queryParams.append('required_skill', params.required_skill);
+    
+    const queryString = queryParams.toString() ? `?${queryParams.toString()}` : "";
+    
     const response = await api.get(
-      "method/stridenex_app.stridenex_app.doctype.college_campus_drives.college_campus_drives.get_campus_drive_list"
+      `method/stridenex_app.stridenex_app.doctype.college_campus_drives.college_campus_drives.get_campus_drive_list${queryString}`
     );
     return response.data;
   } catch (error) {
     console.error("Error fetching campus drives:", error);
+    throw error;
+  }
+};
+
+export const applyCampusDrive = async (data: { student: string, drive: string, remarks?: string }) => {
+  try {
+    const response = await api.post(
+      "method/stridenex_app.stridenex_app.doctype.college_campus_drives.college_campus_drives.apply_campus_drive",
+      data
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error applying to campus drive:", error);
     throw error;
   }
 };

@@ -46,6 +46,7 @@ const pipelineColumns = [
   { id: "Interview Scheduled", title: "Interview Scheduled", color: '#F97316', icon: PhoneCall },
   { id: "Rejected", title: "Rejected", color: '#EF4444', icon: XCircle },
   { id: "Selected", title: "Selected", color: '#10B981', icon: CheckCircle2 },
+  { id: "Accepted", title: "Accepted", color: '#0D9488', icon: CheckCircle2 },
   { id: "Awarded", title: "Awarded", color: '#8B5CF6', icon: Trophy }
 ];
 
@@ -72,6 +73,7 @@ export const IndustryProjectPipelineScreen = ({ route, navigation }: any) => {
     "Interview Scheduled": [],
     "Rejected": [],
     "Selected": [],
+    "Accepted": [],
     "Awarded": []
   });
   const [loading, setLoading] = useState(true);
@@ -105,6 +107,7 @@ export const IndustryProjectPipelineScreen = ({ route, navigation }: any) => {
           "Interview Scheduled": [],
           "Rejected": [],
           "Selected": [],
+          "Accepted": [],
           "Awarded": []
         };
 
@@ -145,6 +148,7 @@ export const IndustryProjectPipelineScreen = ({ route, navigation }: any) => {
           "Interview Scheduled": [],
           "Rejected": [],
           "Selected": [],
+          "Accepted": [],
           "Awarded": []
         });
       } else {

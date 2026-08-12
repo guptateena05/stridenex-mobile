@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { 
   View, 
   Text, 
@@ -31,6 +32,7 @@ import Animated, { FadeInUp, FadeInRight } from 'react-native-reanimated';
 import { StatsCard } from '@/components/dashboard/StatsCard';
 import { useAuth } from '@/context/AuthContext';
 import { SwipeableRow, SwipeAction } from '@/components/Shared/SwipeableRow';
+import { OfferLetterModal } from '@/components/Shared/OfferLetterModal';
 import { 
   getStudentProjectList, 
   applyOpportunity, 
@@ -53,9 +55,15 @@ export const StudentProjectsScreen = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [applying, setApplying] = useState<string | null>(null);
   
-  // Details Modal
   const [selectedProject, setSelectedProject] = useState<any>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
+
+  // Offer Letter Modal State
+  const [showOfferModal, setShowOfferModal] = useState(false);
+  const [offerPdfUrl, setOfferPdfUrl] = useState<string | null>(null);
+  const [loadingOffer, setLoadingOffer] = useState(false);
+  const [selectedOfferApp, setSelectedOfferApp] = useState<{item: any, type: string} | null>(null);
+  const [rejectingOffer, setRejectingOffer] = useState<string | null>(null);
   
   // Cached student profile info
   const [studentProfile, setStudentProfile] = useState<any>(null);
@@ -105,6 +113,7 @@ export const StudentProjectsScreen = () => {
               Alert.alert("Error", err.message || "Failed to accept the offer. Please try again.");
             } finally {
               setAcceptingOffer(null);
+              setShowOfferModal(false);
             }
           }
         }
@@ -112,6 +121,83 @@ export const StudentProjectsScreen = () => {
     );
   };
 
+  const handleRejectOffer = async (item: any, type: string) => {
+    const appName = getApplicationName(item, type);
+    if (!appName) return;
+    
+    Alert.alert(
+      "Reject Offer",
+      "Are you sure you want to reject this offer? This action cannot be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        { 
+          text: "Reject",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              setRejectingOffer(item.name);
+              await updateApplicationStatus(appName, "Rejected");
+              Alert.alert("Success", "You have rejected the offer.");
+              fetchProjectsData();
+            } catch (err: any) {
+              console.error("Error rejecting offer:", err);
+              Alert.alert("Error", err.message || "Failed to reject the offer.");
+            } finally {
+              setRejectingOffer(null);
+              setShowOfferModal(false);
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const handleViewOfferLetter = async (item: any, type: string) => {
+    setSelectedOfferApp({ item, type });
+    setShowOfferModal(true);
+    setLoadingOffer(true);
+    setOfferPdfUrl(null);
+    
+    try {
+      const queryParams = new URLSearchParams({
+        student: userName || "",
+        name: item.name || "",
+        offer_type: type || "",
+        template: type || ""
+      }).toString();
+      
+      const storedToken = await AsyncStorage.getItem("token");
+      const token = storedToken ? storedToken.trim() : null;
+      const authHeader: Record<string, string> = token ? { "Authorization": `token ${token}` } : {};
+
+      const response = await fetch(`https://devstridenex.quantcloud.in/api/method/stridenex_app.api_stridenex_app.app.get_offer_letter?${queryParams}`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          ...authHeader
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error("Failed to load offer letter");
+      }
+      
+      const blob = await response.blob();
+      const reader = new FileReader();
+      reader.readAsDataURL(blob);
+      reader.onloadend = () => {
+        const base64data = reader.result as string;
+        setOfferPdfUrl(base64data);
+        setLoadingOffer(false);
+      };
+      
+    } catch (err: any) {
+      console.error(err);
+      Alert.alert("Error", "Could not load the offer letter.");
+      setShowOfferModal(false);
+      setLoadingOffer(false);
+    }
+  };
   const getProjectStatusConfig = (status: string) => {
     const s = status?.toLowerCase();
     switch (s) {
@@ -150,17 +236,6 @@ export const StudentProjectsScreen = () => {
   const fetchProjectsData = useCallback(async (profileData?: any, searchVal?: string) => {
     try {
       const profile = profileData || studentProfile || {};
-      let appsList: any[] = [];
-      if (userName) {
-        try {
-          const resApps = await getStudentApplications({ student: userName, opportunity_type: "Project" });
-          appsList = resApps?.data?.data || resApps?.message?.data || resApps?.data || resApps?.message || [];
-          setStudentApplications(Array.isArray(appsList) ? appsList : []);
-        } catch (err) {
-          console.error("Error fetching student applications list:", err);
-        }
-      }
-
       const response = await getStudentProjectList(
         userName || undefined,
         profile.course || null,
@@ -169,15 +244,7 @@ export const StudentProjectsScreen = () => {
         searchVal !== undefined ? searchVal : search
       );
       const dataContainer = (response?.data && typeof response.data === 'object' && !Array.isArray(response.data)) ? response : (response?.message && typeof response.message === 'object' ? response.message : response);
-      const data = dataContainer?.data?.projects || dataContainer?.projects || [];
-      
-      const mappedProjects = (Array.isArray(data) ? data : []).map((item: any) => {
-        const match = appsList.find(app => app.project === item.name);
-        if (match) {
-          return { ...item, applied_status: match.status };
-        }
-        return item;
-      });
+      const mappedProjects = dataContainer?.data?.projects || dataContainer?.projects || [];
 
       const stats = dataContainer?.data?.statistics || dataContainer?.statistics || {};
       const pag = dataContainer?.data?.pagination || dataContainer?.pagination || null;
@@ -252,8 +319,8 @@ export const StudentProjectsScreen = () => {
       const response = await applyOpportunity(payload);
 
       if (response && (response.status === 200 || response.status === "200" || response.message?.status === 200 || response.message?.message?.includes("success"))) {
+        setProjects(prev => prev.map(p => p.name === project.name ? { ...p, applied_status: "Applied" } : p));
         Alert.alert("Success", `Successfully applied/enrolled in ${project.project_name || 'the project'}!`);
-        loadData(false);
       } else {
         const errMsg = response && typeof response.message === 'object' 
           ? response.message.message 
@@ -385,11 +452,11 @@ export const StudentProjectsScreen = () => {
 
                 if (project.applied_status?.toLowerCase() === "selected" || project.applied_status?.toLowerCase() === "awarded") {
                   actions.push({
-                    label: 'Accept Offer',
+                    label: 'View Offer',
                     icon: CheckCircle2,
                     color: '#059669',
                     bgColor: '#ECFDF5',
-                    onPress: () => handleAcceptOffer(project, "Project")
+                    onPress: () => handleViewOfferLetter(project, "Project")
                   });
                 }
               }
@@ -615,17 +682,13 @@ export const StudentProjectsScreen = () => {
               
               {selectedProject?.applied_status?.toLowerCase() === 'selected' || selectedProject?.applied_status?.toLowerCase() === 'awarded' ? (
                 <TouchableOpacity 
-                  activeOpacity={0.7}
-                  disabled={acceptingOffer === selectedProject?.name}
+                  style={[styles.modalApplyBtn, { backgroundColor: colors.success }]}
                   onPress={() => {
-                    handleAcceptOffer(selectedProject, "Project");
+                    handleViewOfferLetter(selectedProject, "Project");
                     setShowDetailsModal(false);
                   }}
-                  style={[styles.modalApplyBtn, { backgroundColor: '#10B981' }]}
                 >
-                  <Text style={[styles.modalApplyBtnText, { color: '#FFFFFF' }]}>
-                    {acceptingOffer === selectedProject?.name ? "Accepting..." : "Accept Offer"}
-                  </Text>
+                  <Text style={[styles.modalApplyBtnText, { color: '#FFFFFF' }]}>View Offer Letter</Text>
                 </TouchableOpacity>
               ) : (
                 <TouchableOpacity 
@@ -646,7 +709,7 @@ export const StudentProjectsScreen = () => {
                     (selectedProject?.status?.toLowerCase() === 'disabled' || selectedProject?.status?.toLowerCase() === 'disable') && { color: '#94A3B8' },
                     (selectedProject?.applied_status && selectedProject.applied_status !== "Not Applied") && { color: '#2563EB' }
                   ]}>
-                    {selectedProject?.applied_status && selectedProject.applied_status !== "Not Applied" ? 'Applied' : (selectedProject?.status?.toLowerCase() === 'disabled' || selectedProject?.status?.toLowerCase() === 'disable' ? 'Disabled' : 'Apply Now')}
+                    {selectedProject?.applied_status && selectedProject.applied_status !== "Not Applied" ? String(selectedProject.applied_status) : (selectedProject?.status?.toLowerCase() === 'disabled' || selectedProject?.status?.toLowerCase() === 'disable' ? 'Disabled' : 'Apply Now')}
                   </Text>
                 </TouchableOpacity>
               )}
@@ -654,6 +717,18 @@ export const StudentProjectsScreen = () => {
           </View>
         </SafeAreaView>
       </Modal>
+      {/* Offer Letter Modal */}
+      <OfferLetterModal 
+        visible={showOfferModal}
+        onClose={() => setShowOfferModal(false)}
+        pdfUrl={offerPdfUrl}
+        isLoading={loadingOffer}
+        title="Project Offer Letter"
+        isAccepting={!!(selectedOfferApp && acceptingOffer === selectedOfferApp.item.name)}
+        isRejecting={!!(selectedOfferApp && rejectingOffer === selectedOfferApp.item.name)}
+        onAccept={() => selectedOfferApp && handleAcceptOffer(selectedOfferApp.item, selectedOfferApp.type)}
+        onReject={() => selectedOfferApp && handleRejectOffer(selectedOfferApp.item, selectedOfferApp.type)}
+      />
     </SafeAreaView>
   );
 };

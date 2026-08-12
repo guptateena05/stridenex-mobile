@@ -24,9 +24,10 @@ import {
   FileText
 } from 'lucide-react-native';
 import Animated, { FadeInUp, FadeInRight } from 'react-native-reanimated';
-import { getJobProfiles, applyForJob, getStudentApplications, updateApplicationStatus } from '@/api/student.services';
+import { getJobProfiles, applyOpportunity, getStudentApplications, updateApplicationStatus } from '@/api/student.services';
 import { StatsCard } from '@/components/dashboard/StatsCard';
 import { SwipeableRow, SwipeAction } from '@/components/Shared/SwipeableRow';
+import { OfferLetterModal } from '@/components/Shared/OfferLetterModal';
 import * as DocumentPicker from '@react-native-documents/picker';
 
 export const StudentJobsScreen = () => {
@@ -41,6 +42,13 @@ export const StudentJobsScreen = () => {
   const [successfullyApplied, setSuccessfullyApplied] = useState<string[]>([]);
   const [selectedJob, setSelectedJob] = useState<any>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
+
+  // Offer Letter Modal State
+  const [showOfferModal, setShowOfferModal] = useState(false);
+  const [offerPdfUrl, setOfferPdfUrl] = useState<string | null>(null);
+  const [loadingOffer, setLoadingOffer] = useState(false);
+  const [selectedOfferApp, setSelectedOfferApp] = useState<{item: any, type: string} | null>(null);
+  const [rejectingOffer, setRejectingOffer] = useState<string | null>(null);
 
   const getApplicationName = (item: any, type: string) => {
     if (item.application) return item.application;
@@ -87,11 +95,90 @@ export const StudentJobsScreen = () => {
               Alert.alert("Error", err.message || "Failed to accept the offer. Please try again.");
             } finally {
               setAcceptingOffer(null);
+              setShowOfferModal(false);
             }
           }
         }
       ]
     );
+  };
+
+  const handleRejectOffer = async (item: any, type: string) => {
+    const appName = getApplicationName(item, type);
+    if (!appName) return;
+    
+    Alert.alert(
+      "Reject Offer",
+      "Are you sure you want to reject this offer? This action cannot be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        { 
+          text: "Reject",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              setRejectingOffer(item.name);
+              await updateApplicationStatus(appName, "Rejected");
+              Alert.alert("Success", "You have rejected the offer.");
+              fetchJobsData();
+            } catch (err: any) {
+              console.error("Error rejecting offer:", err);
+              Alert.alert("Error", err.message || "Failed to reject the offer.");
+            } finally {
+              setRejectingOffer(null);
+              setShowOfferModal(false);
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const handleViewOfferLetter = async (item: any, type: string) => {
+    setSelectedOfferApp({ item, type });
+    setShowOfferModal(true);
+    setLoadingOffer(true);
+    setOfferPdfUrl(null);
+    
+    try {
+      const queryParams = new URLSearchParams({
+        student: userName || "",
+        name: item.name || "",
+        offer_type: type || "",
+        template: type || ""
+      }).toString();
+      
+      const storedToken = await AsyncStorage.getItem("token");
+      const token = storedToken ? storedToken.trim() : null;
+      const authHeader: Record<string, string> = token ? { "Authorization": `token ${token}` } : {};
+
+      const response = await fetch(`https://devstridenex.quantcloud.in/api/method/stridenex_app.api_stridenex_app.app.get_offer_letter?${queryParams}`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          ...authHeader
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error("Failed to load offer letter");
+      }
+      
+      const blob = await response.blob();
+      const reader = new FileReader();
+      reader.readAsDataURL(blob);
+      reader.onloadend = () => {
+        const base64data = reader.result as string;
+        setOfferPdfUrl(base64data);
+        setLoadingOffer(false);
+      };
+      
+    } catch (err: any) {
+      console.error(err);
+      Alert.alert("Error", "Could not load the offer letter.");
+      setShowOfferModal(false);
+      setLoadingOffer(false);
+    }
   };
 
   const getJobStatusConfig = (status: string) => {
@@ -117,9 +204,7 @@ export const StudentJobsScreen = () => {
   };
   const [showApplyModal, setShowApplyModal] = useState(false);
   const [expectedSalary, setExpectedSalary] = useState("");
-  const [availableFrom, setAvailableFrom] = useState("");
   const [coverLetter, setCoverLetter] = useState("I am interested in this position.");
-  const [resumeFile, setResumeFile] = useState<any>(null);
   const [applyModalLoading, setApplyModalLoading] = useState(false);
 
   const fetchJobsData = useCallback(async () => {
@@ -175,69 +260,31 @@ export const StudentJobsScreen = () => {
   const handleApplyJob = (job: any) => {
     if (!userName) {
       Alert.alert("Authentication Required", "Please log in to apply.");
-      return;
     }
     setSelectedJob(job);
     setExpectedSalary("");
-    setAvailableFrom("");
     setCoverLetter("I am interested in this position.");
-    setResumeFile(null);
     setShowApplyModal(true);
   };
 
-  const handleResumePick = async () => {
-    try {
-      const result = await DocumentPicker.pick({
-        type: [DocumentPicker.types.pdf, DocumentPicker.types.docx, DocumentPicker.types.doc, DocumentPicker.types.allFiles],
-        allowMultiSelection: false,
-      });
 
-      if (result) {
-        const file = Array.isArray(result) ? result[0] : result;
-        if (file.size && file.size > 10 * 1024 * 1024) {
-          Alert.alert('File Size Error', 'File size should be less than 10MB');
-          return;
-        }
-        setResumeFile(file);
-      }
-    } catch (err: any) {
-      if (err.code === 'DOCUMENT_PICKER_CANCELED' || err.code === 'CANCELED') {
-        console.log("User cancelled file selection");
-      } else {
-        console.error("Resume file pick error:", err);
-      }
-    }
-  };
 
   const handleSubmitApplication = async () => {
     if (!expectedSalary) {
       Alert.alert("Error", "Expected salary is required.");
       return;
     }
-    if (!availableFrom) {
-      Alert.alert("Error", "Available from date is required.");
-      return;
-    }
-    if (!resumeFile) {
-      Alert.alert("Error", "Resume is required.");
-      return;
-    }
 
     try {
       setApplyModalLoading(true);
-      const fd = new FormData();
-      fd.append("student", userName || "");
-      fd.append("job_profile", selectedJob.name);
-      fd.append("cover_letter", coverLetter);
-      fd.append("expected_salary", expectedSalary);
-      fd.append("available_from", availableFrom);
-      fd.append("resume", {
-        uri: resumeFile.uri,
-        type: resumeFile.type || 'application/pdf',
-        name: resumeFile.name || 'resume.pdf'
-      } as any);
-
-      await applyForJob(fd);
+      
+      await applyOpportunity({
+        student: userName || "",
+        opportunity_type: "Job",
+        opportunity_name: selectedJob.name,
+        notes: coverLetter,
+        expected_salary: expectedSalary
+      });
 
       const updatedApplied = [...successfullyApplied, selectedJob.name];
       setSuccessfullyApplied(updatedApplied);
@@ -382,11 +429,11 @@ export const StudentJobsScreen = () => {
 
                 if (job.applied_status?.toLowerCase() === "selected") {
                   actions.push({
-                    label: 'Accept Offer',
+                    label: 'View Offer',
                     icon: CheckCircle2,
                     color: '#059669',
                     bgColor: '#ECFDF5',
-                    onPress: () => handleAcceptOffer(job, "Job")
+                    onPress: () => handleViewOfferLetter(job, "Job")
                   });
                 }
               }
@@ -651,17 +698,13 @@ export const StudentJobsScreen = () => {
               
               {selectedJob?.applied_status?.toLowerCase() === 'selected' ? (
                 <TouchableOpacity 
-                  activeOpacity={0.7}
-                  disabled={acceptingOffer === selectedJob?.name}
+                  style={[styles.confirmBtn, { backgroundColor: colors.success }]}
                   onPress={() => {
-                    handleAcceptOffer(selectedJob, "Job");
+                    handleViewOfferLetter(selectedJob, "Job");
                     setShowDetailsModal(false);
                   }}
-                  style={[styles.confirmBtn, { backgroundColor: '#10B981' }]}
                 >
-                  <Text style={[styles.confirmBtnText, { color: '#FFFFFF' }]}>
-                    {acceptingOffer === selectedJob?.name ? "Accepting..." : "Accept Offer"}
-                  </Text>
+                  <Text style={[styles.confirmBtnText, { color: '#FFFFFF' }]}>View Offer Letter</Text>
                 </TouchableOpacity>
               ) : (
                 <TouchableOpacity
@@ -741,18 +784,6 @@ export const StudentJobsScreen = () => {
                   />
                 </View>
 
-                {/* Available From */}
-                <View style={{ gap: 6 }}>
-                  <Text style={styles.inputLabel}>Available From <Text style={{ color: '#EF4444' }}>*</Text></Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="YYYY-MM-DD"
-                    placeholderTextColor="#94A3B8"
-                    value={availableFrom}
-                    onChangeText={setAvailableFrom}
-                  />
-                </View>
-
                 {/* Cover Letter */}
                 <View style={{ gap: 6 }}>
                   <Text style={styles.inputLabel}>Cover Letter</Text>
@@ -764,22 +795,6 @@ export const StudentJobsScreen = () => {
                     value={coverLetter}
                     onChangeText={setCoverLetter}
                   />
-                </View>
-
-                {/* Resume Upload */}
-                <View style={{ gap: 6 }}>
-                  <Text style={styles.inputLabel}>Resume (PDF / DOC / DOCX) <Text style={{ color: '#EF4444' }}>*</Text></Text>
-                  <TouchableOpacity
-                    activeOpacity={0.7}
-                    onPress={handleResumePick}
-                    style={styles.uploadBox}
-                  >
-                    <FileText size={24} color="#94A3B8" />
-                    <Text style={styles.uploadText} numberOfLines={1}>
-                      {resumeFile ? resumeFile.name : "Select Resume File"}
-                    </Text>
-                    <Text style={styles.uploadSubtext}>Supports PDF, DOC, DOCX up to 10MB</Text>
-                  </TouchableOpacity>
                 </View>
 
               </View>
@@ -806,6 +821,18 @@ export const StudentJobsScreen = () => {
           </View>
         </SafeAreaView>
       </Modal>
+      {/* Offer Letter Modal */}
+      <OfferLetterModal 
+        visible={showOfferModal}
+        onClose={() => setShowOfferModal(false)}
+        pdfUrl={offerPdfUrl}
+        isLoading={loadingOffer}
+        title="Job Offer Letter"
+        isAccepting={!!(selectedOfferApp && acceptingOffer === selectedOfferApp.item.name)}
+        isRejecting={!!(selectedOfferApp && rejectingOffer === selectedOfferApp.item.name)}
+        onAccept={() => selectedOfferApp && handleAcceptOffer(selectedOfferApp.item, selectedOfferApp.type)}
+        onReject={() => selectedOfferApp && handleRejectOffer(selectedOfferApp.item, selectedOfferApp.type)}
+      />
     </SafeAreaView>
   );
 };

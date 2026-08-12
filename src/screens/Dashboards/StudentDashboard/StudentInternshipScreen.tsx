@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { 
   View, 
   Text, 
@@ -34,8 +35,9 @@ import {
 } from 'lucide-react-native';
 import Animated, { FadeInUp, FadeInRight } from 'react-native-reanimated';
 import { StatsCard } from '@/components/dashboard/StatsCard';
-import { useAuth } from '@/context/AuthContext';
 import { SwipeableRow, SwipeAction } from '@/components/Shared/SwipeableRow';
+import { OfferLetterModal } from '@/components/Shared/OfferLetterModal';
+import { useAuth } from '@/context/AuthContext';
 import { 
   getStudentInternshipList, 
   applyOpportunity, 
@@ -61,6 +63,13 @@ export const StudentInternshipScreen = () => {
   // Details Modal
   const [selectedInternship, setSelectedInternship] = useState<any>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
+
+  // Offer Letter Modal State
+  const [showOfferModal, setShowOfferModal] = useState(false);
+  const [offerPdfUrl, setOfferPdfUrl] = useState<string | null>(null);
+  const [loadingOffer, setLoadingOffer] = useState(false);
+  const [selectedOfferApp, setSelectedOfferApp] = useState<{item: any, type: string} | null>(null);
+  const [rejectingOffer, setRejectingOffer] = useState<string | null>(null);
   
   // Cached student profile info
   const [studentProfile, setStudentProfile] = useState<any>(null);
@@ -110,11 +119,90 @@ export const StudentInternshipScreen = () => {
               Alert.alert("Error", err.message || "Failed to accept the offer. Please try again.");
             } finally {
               setAcceptingOffer(null);
+              setShowOfferModal(false);
             }
           }
         }
       ]
     );
+  };
+
+  const handleRejectOffer = async (item: any, type: string) => {
+    const appName = getApplicationName(item, type);
+    if (!appName) return;
+    
+    Alert.alert(
+      "Reject Offer",
+      "Are you sure you want to reject this offer? This action cannot be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        { 
+          text: "Reject",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              setRejectingOffer(item.name);
+              await updateApplicationStatus(appName, "Rejected");
+              Alert.alert("Success", "You have rejected the offer.");
+              fetchInternshipsData();
+            } catch (err: any) {
+              console.error("Error rejecting offer:", err);
+              Alert.alert("Error", err.message || "Failed to reject the offer.");
+            } finally {
+              setRejectingOffer(null);
+              setShowOfferModal(false);
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const handleViewOfferLetter = async (item: any, type: string) => {
+    setSelectedOfferApp({ item, type });
+    setShowOfferModal(true);
+    setLoadingOffer(true);
+    setOfferPdfUrl(null);
+    
+    try {
+      const queryParams = new URLSearchParams({
+        student: userName || "", // Use the user identifier
+        name: item.name || "",
+        offer_type: type || "",
+        template: type || ""
+      }).toString();
+      
+      const storedToken = await AsyncStorage.getItem("token");
+      const token = storedToken ? storedToken.trim() : null;
+      const authHeader: Record<string, string> = token ? { "Authorization": `token ${token}` } : {};
+
+      const response = await fetch(`https://devstridenex.quantcloud.in/api/method/stridenex_app.api_stridenex_app.app.get_offer_letter?${queryParams}`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          ...authHeader
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error("Failed to load offer letter");
+      }
+      
+      const blob = await response.blob();
+      const reader = new FileReader();
+      reader.readAsDataURL(blob);
+      reader.onloadend = () => {
+        const base64data = reader.result as string;
+        setOfferPdfUrl(base64data);
+        setLoadingOffer(false);
+      };
+      
+    } catch (err: any) {
+      console.error(err);
+      Alert.alert("Error", "Could not load the offer letter.");
+      setShowOfferModal(false);
+      setLoadingOffer(false);
+    }
   };
 
   // Fetch student profile details (course, department, etc.) to use as query filters
@@ -389,11 +477,11 @@ export const StudentInternshipScreen = () => {
                 
                 if (internship.applied_status?.toLowerCase() === "selected") {
                   actions.push({
-                    label: 'Accept Offer',
+                    label: 'View Offer',
                     icon: CheckCircle2,
                     color: '#059669',
                     bgColor: '#ECFDF5',
-                    onPress: () => handleAcceptOffer(internship, "Internship")
+                    onPress: () => handleViewOfferLetter(internship, "Internship")
                   });
                 }
               }
@@ -628,17 +716,13 @@ export const StudentInternshipScreen = () => {
               
               {selectedInternship?.applied_status?.toLowerCase() === 'selected' ? (
                 <TouchableOpacity 
-                  activeOpacity={0.7}
-                  disabled={acceptingOffer === selectedInternship?.name}
+                  style={[styles.modalApplyBtn, { backgroundColor: colors.success }]}
                   onPress={() => {
-                    handleAcceptOffer(selectedInternship, "Internship");
+                    handleViewOfferLetter(selectedInternship, "Internship");
                     setShowDetailsModal(false);
                   }}
-                  style={[styles.modalApplyBtn, { backgroundColor: '#10B981' }]}
                 >
-                  <Text style={[styles.modalApplyBtnText, { color: '#FFFFFF' }]}>
-                    {acceptingOffer === selectedInternship?.name ? "Accepting..." : "Accept Offer"}
-                  </Text>
+                  <Text style={[styles.modalApplyBtnText, { color: '#FFFFFF' }]}>View Offer Letter</Text>
                 </TouchableOpacity>
               ) : (
                 <TouchableOpacity 
@@ -667,6 +751,19 @@ export const StudentInternshipScreen = () => {
           </View>
         </SafeAreaView>
       </Modal>
+      {/* Offer Letter Modal */}
+      <OfferLetterModal 
+        visible={showOfferModal}
+        onClose={() => setShowOfferModal(false)}
+        pdfUrl={offerPdfUrl}
+        isLoading={loadingOffer}
+        title="Internship Offer Letter"
+        isAccepting={!!(selectedOfferApp && acceptingOffer === selectedOfferApp.item.name)}
+        isRejecting={!!(selectedOfferApp && rejectingOffer === selectedOfferApp.item.name)}
+        onAccept={() => selectedOfferApp && handleAcceptOffer(selectedOfferApp.item, selectedOfferApp.type)}
+        onReject={() => selectedOfferApp && handleRejectOffer(selectedOfferApp.item, selectedOfferApp.type)}
+      />
+
     </SafeAreaView>
   );
 };

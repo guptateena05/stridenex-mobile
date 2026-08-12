@@ -82,6 +82,7 @@ export const IndustryPipelineScreen = ({ route }: any) => {
     "HR": [],
     "Rejected": [],
     "Selected": [],
+    "Accepted": [],
     "Interview Scheduled": [],
     "Awarded": []
   });
@@ -93,6 +94,7 @@ export const IndustryPipelineScreen = ({ route }: any) => {
     "HR": 0,
     "Rejected": 0,
     "Selected": 0,
+    "Accepted": 0,
     "Interview Scheduled": 0,
     "Awarded": 0
   });
@@ -128,16 +130,18 @@ export const IndustryPipelineScreen = ({ route }: any) => {
         { id: "Interview Scheduled", title: "Interview Scheduled", color: '#F97316', icon: PhoneCall },
         { id: "Rejected", title: "Rejected", color: '#EF4444', icon: XCircle },
         { id: "Selected", title: "Selected", color: '#10B981', icon: CheckCircle2 },
+        { id: "Accepted", title: "Accepted", color: '#0D9488', icon: CheckCircle2 },
         { id: "Awarded", title: "Awarded", color: '#8B5CF6', icon: Trophy }
       ];
     } else {
       return [
-        { id: "Applied", title: "Applied", color: '#1E293B', icon: Mail },
+        { id: "Applied", title: "Applied", color: '#1E293B', icon: FileText },
         { id: "Shortlisted", title: "Shortlisted", color: '#3B82F6', icon: UserCheck },
         { id: "Tech Interview", title: "Tech Interview", color: '#F97316', icon: PhoneCall },
         { id: "HR", title: "HR", color: '#8B5CF6', icon: PhoneCall },
         { id: "Rejected", title: "Rejected", color: '#EF4444', icon: XCircle },
-        { id: "Selected", title: "Selected", color: '#10B981', icon: CheckCircle2 }
+        { id: "Selected", title: "Selected", color: '#10B981', icon: CheckCircle2 },
+        { id: "Accepted", title: "Accepted", color: '#0D9488', icon: CheckCircle2 }
       ];
     }
   }, [opportunityType]);
@@ -256,6 +260,7 @@ export const IndustryPipelineScreen = ({ route }: any) => {
         "HR": countData.HR || 0,
         "Rejected": countData.Rejected || 0,
         "Selected": countData.Selected || 0,
+        "Accepted": countData.Accepted || 0,
         "Interview Scheduled": countData["Interview Scheduled"] || 0,
         "Awarded": countData.Awarded || 0
       });
