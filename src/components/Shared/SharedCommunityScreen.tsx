@@ -40,23 +40,20 @@ export const SharedCommunityScreen = ({ userType }: SharedCommunityScreenProps) 
   const fetchCommunities = async () => {
     setIsLoading(true);
     try {
-      const email = await AsyncStorage.getItem('userEmail') || '';
+      const email = await AsyncStorage.getItem('userEmail') || await AsyncStorage.getItem('userName') || await AsyncStorage.getItem('currentUser') || '';
+      const capitalizedUserType = userType.charAt(0).toUpperCase() + userType.slice(1);
       const response = await api.post('method/stridenex_app.stridenex_app.doctype.community.community.get_communities', {
         user: email,
-        user_type: userType
+        user_type: capitalizedUserType
       });
       if (response.data) {
-        if (Array.isArray(response.data.message)) {
-          setCommunities(response.data.message);
-        } else if (Array.isArray(response.data.data)) {
-          setCommunities(response.data.data);
-        } else if (response.data.message && Array.isArray(response.data.message.communities)) {
-          setCommunities(response.data.message.communities);
-        } else if (response.data.data && Array.isArray(response.data.data.communities)) {
-          setCommunities(response.data.data.communities);
-        } else {
-          setCommunities([]);
+        let communitiesArray = response.data?.message?.data || response.data?.data?.data || response.data?.data || response.data?.message || [];
+        if (!Array.isArray(communitiesArray)) {
+          if (Array.isArray(response.data?.message?.communities)) communitiesArray = response.data.message.communities;
+          else if (Array.isArray(response.data?.data?.communities)) communitiesArray = response.data.data.communities;
+          else communitiesArray = [];
         }
+        setCommunities(Array.isArray(communitiesArray) ? communitiesArray : []);
       }
     } catch (error) {
       console.error("Error fetching communities:", error);
@@ -73,19 +70,23 @@ export const SharedCommunityScreen = ({ userType }: SharedCommunityScreenProps) 
     
     setIsSubmitting(true);
     try {
-      const email = await AsyncStorage.getItem('userEmail') || '';
-      await api.post('method/stridenex_app.stridenex_app.doctype.community.community.create_community', {
+      const email = await AsyncStorage.getItem('userEmail') || await AsyncStorage.getItem('userName') || await AsyncStorage.getItem('currentUser') || '';
+      const capitalizedUserType = userType.charAt(0).toUpperCase() + userType.slice(1);
+      const response = await api.post('method/stridenex_app.stridenex_app.doctype.community.community.create_community', {
         ...formData,
-        user_type: userType,
+        user_type: capitalizedUserType,
         community_owner: email
       });
-      Alert.alert('Success', 'Community created successfully!');
+      
+      const successMsg = response.data?.message?.message || response.data?.message || "Community created successfully!";
+      Alert.alert('Success', typeof successMsg === 'string' ? successMsg : "Community created successfully!");
       setIsModalVisible(false);
       setFormData({ community_name: '', description: '', community_type: 'Public' });
       fetchCommunities();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error creating community:", error);
-      Alert.alert('Error', 'Failed to create community.');
+      const errMsg = error?.response?.data?.message?.message || error?.response?.data?.message || error.message || 'Failed to create community.';
+      Alert.alert('Error', typeof errMsg === 'string' ? errMsg : 'Failed to create community.');
     } finally {
       setIsSubmitting(false);
     }
@@ -110,18 +111,18 @@ export const SharedCommunityScreen = ({ userType }: SharedCommunityScreenProps) 
       </View>
 
       <View style={styles.searchContainer}>
-        <Search size={20} color={colors.text.tertiary} style={styles.searchIcon} />
+        <Search size={20} color={colors.text.secondary} style={styles.searchIcon} />
         <TextInput
           style={styles.searchInput}
           placeholder="Search communities..."
-          placeholderTextColor={colors.text.tertiary}
+          placeholderTextColor={colors.text.secondary}
           value={searchQuery}
           onChangeText={setSearchQuery}
         />
       </View>
 
       {isLoading ? (
-        <ActivityIndicator size="large" color={colors.primary.main} style={{ marginTop: 40 }} />
+        <ActivityIndicator size="large" color={colors.primary.DEFAULT} style={{ marginTop: 40 }} />
       ) : filteredCommunities.length > 0 ? (
         <ScrollView contentContainerStyle={styles.listContainer}>
           {filteredCommunities.map((community, index) => (
@@ -129,9 +130,9 @@ export const SharedCommunityScreen = ({ userType }: SharedCommunityScreenProps) 
               <View style={styles.cardHeader}>
                 <View style={styles.iconContainer}>
                   {community.community_type === 'Private' ? (
-                    <Lock size={20} color={colors.primary.main} />
+                    <Lock size={20} color={colors.primary.DEFAULT} />
                   ) : (
-                    <Globe size={20} color={colors.primary.main} />
+                    <Globe size={20} color={colors.primary.DEFAULT} />
                   )}
                 </View>
                 <View style={styles.badge}>
@@ -151,7 +152,7 @@ export const SharedCommunityScreen = ({ userType }: SharedCommunityScreenProps) 
         </ScrollView>
       ) : (
         <View style={styles.emptyContainer}>
-          <Users size={48} color={colors.text.tertiary} />
+          <Users size={48} color={colors.text.secondary} />
           <Text style={styles.emptyTitle}>No communities found</Text>
           <Text style={styles.emptySubtitle}>
             {searchQuery ? 'Try adjusting your search terms.' : "You haven't created or joined any communities yet."}
@@ -196,14 +197,14 @@ export const SharedCommunityScreen = ({ userType }: SharedCommunityScreenProps) 
                   style={[styles.typeButton, formData.community_type === 'Public' && styles.typeButtonActive]}
                   onPress={() => setFormData({...formData, community_type: 'Public'})}
                 >
-                  <Globe size={16} color={formData.community_type === 'Public' ? colors.primary.main : colors.text.secondary} />
+                  <Globe size={16} color={formData.community_type === 'Public' ? colors.primary.DEFAULT : colors.text.secondary} />
                   <Text style={[styles.typeButtonText, formData.community_type === 'Public' && styles.typeButtonTextActive]}>Public</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.typeButton, formData.community_type === 'Private' && styles.typeButtonActive]}
                   onPress={() => setFormData({...formData, community_type: 'Private'})}
                 >
-                  <Lock size={16} color={formData.community_type === 'Private' ? colors.primary.main : colors.text.secondary} />
+                  <Lock size={16} color={formData.community_type === 'Private' ? colors.primary.DEFAULT : colors.text.secondary} />
                   <Text style={[styles.typeButtonText, formData.community_type === 'Private' && styles.typeButtonTextActive]}>Private</Text>
                 </TouchableOpacity>
               </View>
@@ -239,7 +240,7 @@ export const SharedCommunityScreen = ({ userType }: SharedCommunityScreenProps) 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background.main,
+    backgroundColor: colors.background.light,
   },
   header: {
     flexDirection: 'row',
@@ -253,19 +254,19 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 24,
-    fontFamily: typography.bold,
+    fontWeight: typography.fontWeight.bold,
     color: colors.text.primary,
   },
   subtitle: {
     fontSize: 14,
-    fontFamily: typography.medium,
+    fontWeight: typography.fontWeight.medium,
     color: colors.text.secondary,
     marginTop: 4,
   },
   createButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.primary.main,
+    backgroundColor: colors.primary.DEFAULT,
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 12,
@@ -273,7 +274,7 @@ const styles = StyleSheet.create({
   },
   createButtonText: {
     color: '#FFF',
-    fontFamily: typography.semiBold,
+    fontWeight: typography.fontWeight.semibold,
     fontSize: 14,
   },
   searchContainer: {
@@ -293,7 +294,7 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     height: 48,
-    fontFamily: typography.medium,
+    fontWeight: typography.fontWeight.medium,
     fontSize: 14,
     color: colors.text.primary,
   },
@@ -323,25 +324,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   badge: {
-    backgroundColor: colors.background.secondary,
+    backgroundColor: colors.border,
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
   },
   badgeText: {
     fontSize: 12,
-    fontFamily: typography.semiBold,
+    fontWeight: typography.fontWeight.semibold,
     color: colors.text.secondary,
   },
   cardTitle: {
     fontSize: 18,
-    fontFamily: typography.bold,
+    fontWeight: typography.fontWeight.bold,
     color: colors.text.primary,
     marginBottom: 6,
   },
   cardDescription: {
     fontSize: 14,
-    fontFamily: typography.regular,
+    fontWeight: typography.fontWeight.normal,
     color: colors.text.secondary,
     marginBottom: 16,
   },
@@ -355,7 +356,7 @@ const styles = StyleSheet.create({
   },
   memberText: {
     fontSize: 13,
-    fontFamily: typography.medium,
+    fontWeight: typography.fontWeight.medium,
     color: colors.text.secondary,
   },
   emptyContainer: {
@@ -366,14 +367,14 @@ const styles = StyleSheet.create({
   },
   emptyTitle: {
     fontSize: 18,
-    fontFamily: typography.bold,
+    fontWeight: typography.fontWeight.bold,
     color: colors.text.primary,
     marginTop: 16,
     marginBottom: 8,
   },
   emptySubtitle: {
     fontSize: 14,
-    fontFamily: typography.regular,
+    fontWeight: typography.fontWeight.normal,
     color: colors.text.secondary,
     textAlign: 'center',
   },
@@ -398,7 +399,7 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     fontSize: 18,
-    fontFamily: typography.bold,
+    fontWeight: typography.fontWeight.bold,
     color: colors.text.primary,
   },
   closeButton: {
@@ -409,19 +410,19 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 14,
-    fontFamily: typography.medium,
+    fontWeight: typography.fontWeight.medium,
     color: colors.text.primary,
     marginBottom: 8,
     marginTop: 16,
   },
   input: {
-    backgroundColor: colors.background.secondary,
+    backgroundColor: colors.border,
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: 12,
     padding: 14,
     fontSize: 14,
-    fontFamily: typography.medium,
+    fontWeight: typography.fontWeight.medium,
     color: colors.text.primary,
   },
   textArea: {
@@ -445,22 +446,22 @@ const styles = StyleSheet.create({
   },
   typeButtonActive: {
     backgroundColor: 'rgba(76, 29, 149, 0.05)',
-    borderColor: colors.primary.main,
+    borderColor: colors.primary.DEFAULT,
   },
   typeButtonText: {
     fontSize: 14,
-    fontFamily: typography.semiBold,
+    fontWeight: typography.fontWeight.semibold,
     color: colors.text.secondary,
   },
   typeButtonTextActive: {
-    color: colors.primary.main,
+    color: colors.primary.DEFAULT,
   },
   modalFooter: {
     flexDirection: 'row',
     padding: 20,
     borderTopWidth: 1,
     borderTopColor: colors.border,
-    backgroundColor: colors.background.secondary,
+    backgroundColor: colors.border,
     gap: 12,
   },
   cancelButton: {
@@ -472,14 +473,14 @@ const styles = StyleSheet.create({
   },
   cancelButtonText: {
     fontSize: 16,
-    fontFamily: typography.bold,
+    fontWeight: typography.fontWeight.bold,
     color: colors.text.secondary,
   },
   submitButton: {
     flex: 1,
     padding: 14,
     borderRadius: 12,
-    backgroundColor: colors.primary.main,
+    backgroundColor: colors.primary.DEFAULT,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -488,7 +489,7 @@ const styles = StyleSheet.create({
   },
   submitButtonText: {
     fontSize: 16,
-    fontFamily: typography.bold,
+    fontWeight: typography.fontWeight.bold,
     color: '#FFF',
   },
 });
