@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, Modal, TextInput, ScrollView, ActivityIndicator, StyleSheet } from 'react-native';
-import { Search, ChevronDown, Check } from 'lucide-react-native';
+import { Search, ChevronDown, Check, X } from 'lucide-react-native';
 import { colors } from '@/theme/colors';
 
 interface MasterDropdownModalProps {

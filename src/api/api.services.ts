@@ -167,3 +167,13 @@ export const fetchBackgroundImage = async () => {
     throw new Error("Failed to fetch background image");
   }
 };
+
+export const getSkillScore = async (data: { student: string }) => {
+  try {
+    const response = await api.post("method/nexedu.skill_ledger.doctype.student_skill.student_skill.get_skill_score", data);
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching skill score:", error);
+    throw error;
+  }
+};

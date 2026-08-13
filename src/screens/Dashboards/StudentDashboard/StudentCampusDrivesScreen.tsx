@@ -619,6 +619,15 @@ const styles = StyleSheet.create({
   listContainer: {
     gap: 12,
   },
+  filterSection: {
+    paddingHorizontal: 20,
+    marginBottom: 16,
+    zIndex: 10,
+  },
+  filtersRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
   emptyContainer: {
     alignItems: 'center',
     justifyContent: 'center',

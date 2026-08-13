@@ -41,6 +41,7 @@ import {
   getSkillTestQuestions,
   submitSkillTest
 } from '@/api/student.services';
+import { getSkillScore } from '@/api/api.services';
 import DynamicForm from '@/components/forms/DynamicForm';
 import { FormField } from '@/components/forms/DynamicField';
 
@@ -81,7 +82,7 @@ export const StudentSkillsScreen = () => {
     try {
       const [ledgerRes, scoreRes] = await Promise.all([
         getSkillLedger(userName),
-        getEmployabilityScore(userName)
+        getSkillScore({ student: userName })
       ]);
 
       if (ledgerRes?.message) {

@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Modal, Alert } from 'react-native';
-import { Users, Search, Plus, X, Globe, Lock } from 'lucide-react-native';
+import { Users, Search, Plus, X, Globe, Lock, ArrowLeft, Folder, Tag, TrendingUp, MessageSquare } from 'lucide-react-native';
 import { colors } from '@/theme/colors';
 import { typography } from '@/theme/typography';
 import { api } from '@/api/api.services';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface Community {
@@ -24,6 +25,13 @@ export const SharedCommunityScreen = ({ userType }: SharedCommunityScreenProps) 
   const [communities, setCommunities] = useState<Community[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  
+  const [selectedChannel, setSelectedChannel] = useState<Community | null>(null);
+  const [channelDetails, setChannelDetails] = useState<any>(null);
+  const [isFetchingDetails, setIsFetchingDetails] = useState(false);
+  const [isCategoriesExpanded, setIsCategoriesExpanded] = useState(true);
+  const [isTagsExpanded, setIsTagsExpanded] = useState(true);
+  const [isMembersExpanded, setIsMembersExpanded] = useState(true);
   
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -62,6 +70,30 @@ export const SharedCommunityScreen = ({ userType }: SharedCommunityScreenProps) 
     }
   };
 
+  const handleCommunityClick = async (community: Community) => {
+    setSelectedChannel(community);
+    setIsFetchingDetails(true);
+    try {
+      const email = await AsyncStorage.getItem('userEmail') || await AsyncStorage.getItem('userName') || await AsyncStorage.getItem('currentUser') || '';
+      const response = await api.post('method/stridenex_app.stridenex_app.doctype.community.community.get_community', {
+        community: community.name
+      });
+      if (response.data) {
+        const data = response.data?.message?.data || response.data?.data?.data || response.data?.message;
+        if (data) {
+          setChannelDetails(data);
+        } else {
+          setChannelDetails(community);
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching community details:", error);
+      setChannelDetails(community); // Fallback
+    } finally {
+      setIsFetchingDetails(false);
+    }
+  };
+
   const handleCreateCommunity = async () => {
     if (!formData.community_name || !formData.description) {
       Alert.alert('Error', 'Please fill in all required fields.');
@@ -92,10 +124,179 @@ export const SharedCommunityScreen = ({ userType }: SharedCommunityScreenProps) 
     }
   };
 
-  const filteredCommunities = (Array.isArray(communities) ? communities : []).filter(c => 
+  const filteredCommunities: Community[] = (communities || []).filter(c => 
     c.community_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     c.description?.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  if (selectedChannel) {
+    return (
+      <SafeAreaView style={styles.forumContainer} edges={['top', 'bottom']}>
+        {/* Forum Header */}
+        <View style={styles.forumHeader}>
+          <TouchableOpacity 
+            onPress={() => {
+              setSelectedChannel(null);
+              setChannelDetails(null);
+            }} 
+            style={styles.forumBackBtn}
+          >
+            <ArrowLeft size={20} color="#94A3B8" />
+            <Text style={styles.forumBackTxt}>Back</Text>
+          </TouchableOpacity>
+          <View style={styles.forumTitleGroup}>
+            <Text style={styles.forumTitle} numberOfLines={1}>
+              {selectedChannel.community_name || selectedChannel.name}
+            </Text>
+          </View>
+          <View style={{ width: 40 }} />
+        </View>
+
+        <ScrollView style={styles.forumBody} contentContainerStyle={{ paddingBottom: 32 }}>
+          {/* Header Greeting Banner */}
+          <View style={styles.forumGreetingCard}>
+            <Text style={styles.forumGreetingTitle}>Welcome to discussions!</Text>
+            <Text style={styles.forumGreetingSub}>
+              {channelDetails?.description || selectedChannel.description || 'A space to collaborate, support each other, and grow.'}
+            </Text>
+          </View>
+
+          {/* Categories Accordion */}
+          <View style={styles.accordionContainer}>
+            <TouchableOpacity 
+              activeOpacity={0.7}
+              onPress={() => setIsCategoriesExpanded(!isCategoriesExpanded)}
+              style={styles.accordionHeader}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Folder size={16} color="#FF6B00" />
+                <Text style={styles.accordionTitle}>Categories</Text>
+              </View>
+              <Text style={styles.accordionArrow}>{isCategoriesExpanded ? "▼" : "▶"}</Text>
+            </TouchableOpacity>
+            
+            {isCategoriesExpanded && (
+              <View style={styles.accordionContent}>
+                {!channelDetails ? (
+                  <ActivityIndicator size="small" color="#FF6B00" style={{ marginVertical: 12 }} />
+                ) : (channelDetails.categories && channelDetails.categories.length > 0) ? (
+                  channelDetails.categories.map((cat: any, idx: number) => (
+                    <View key={cat.name || idx} style={styles.accordionItem}>
+                      <View style={styles.accordionBullet} />
+                      <Text style={styles.accordionItemText}>{cat.category_name || cat.name}</Text>
+                    </View>
+                  ))
+                ) : (
+                  <Text style={styles.noCategoriesText}>No categories defined</Text>
+                )}
+              </View>
+            )}
+          </View>
+
+          {/* Tags Accordion */}
+          <View style={styles.accordionContainer}>
+            <TouchableOpacity 
+              activeOpacity={0.7}
+              onPress={() => setIsTagsExpanded(!isTagsExpanded)}
+              style={[styles.accordionHeader, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
+                <Tag size={16} color="#FF6B00" />
+                <Text style={styles.accordionTitle}>Tags</Text>
+              </View>
+              <Text style={styles.accordionArrow}>{isTagsExpanded ? "▼" : "▶"}</Text>
+            </TouchableOpacity>
+            
+            {isTagsExpanded && (
+              <View style={[styles.accordionContent, { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingTop: 8 }]}>
+                {!channelDetails ? (
+                  <ActivityIndicator size="small" color="#FF6B00" />
+                ) : (channelDetails.tags && channelDetails.tags.length > 0) ? (
+                  channelDetails.tags.map((tag: any, idx: number) => (
+                    <View key={tag.name || idx} style={styles.tagBadge}>
+                      <Text style={styles.tagBadgeText}>#{tag.title || tag.name}</Text>
+                    </View>
+                  ))
+                ) : (
+                  <Text style={{ color: '#64748B', fontSize: 12 }}>No tags defined</Text>
+                )}
+              </View>
+            )}
+          </View>
+          
+           {/* Members Info */}
+           <View style={styles.accordionContainer}>
+             <View style={styles.accordionHeader}>
+               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                 <Users size={16} color="#FF6B00" />
+                 <Text style={styles.accordionTitle}>Community Info</Text>
+               </View>
+             </View>
+             <View style={styles.accordionContent}>
+                <Text style={{ color: '#94A3B8', fontSize: 14 }}>
+                   Members: <Text style={{ color: '#FFFFFF', fontWeight: 'bold' }}>{channelDetails?.member_count || selectedChannel.member_count || 1}</Text>
+                </Text>
+                <Text style={{ color: '#94A3B8', fontSize: 14, marginTop: 6 }}>
+                   Type: <Text style={{ color: '#FFFFFF', fontWeight: 'bold' }}>{channelDetails?.community_type || selectedChannel.community_type || 'Public'}</Text>
+                </Text>
+                <Text style={{ color: '#94A3B8', fontSize: 14, marginTop: 6 }}>
+                   Owner: <Text style={{ color: '#FFFFFF', fontWeight: 'bold' }}>{channelDetails?.community_owner || selectedChannel.community_owner}</Text>
+                </Text>
+             </View>
+           </View>
+
+           {/* Members List Accordion */}
+           <View style={styles.accordionContainer}>
+             <TouchableOpacity 
+               activeOpacity={0.7}
+               onPress={() => setIsMembersExpanded(!isMembersExpanded)}
+               style={styles.accordionHeader}
+             >
+               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                 <Users size={16} color="#FF6B00" />
+                 <Text style={styles.accordionTitle}>Members ({channelDetails?.members?.length || 0})</Text>
+               </View>
+               <Text style={styles.accordionArrow}>{isMembersExpanded ? "▼" : "▶"}</Text>
+             </TouchableOpacity>
+             
+             {isMembersExpanded && (
+               <View style={styles.accordionContent}>
+                 {!channelDetails ? (
+                   <ActivityIndicator size="small" color="#FF6B00" style={{ marginVertical: 12 }} />
+                 ) : (channelDetails.members && channelDetails.members.length > 0) ? (
+                   channelDetails.members.map((member: any, idx: number) => (
+                     <View key={idx} style={[styles.accordionItem, { borderBottomWidth: idx < channelDetails.members.length - 1 ? 1 : 0, borderBottomColor: '#1F2023', paddingVertical: 12 }]}>
+                       <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#1F2023', borderColor: '#334155', borderWidth: 1, alignItems: 'center', justifyContent: 'center' }}>
+                         <Text style={{ color: '#FFFFFF', fontWeight: 'bold' }}>{(member.member || "G")[0].toUpperCase()}</Text>
+                       </View>
+                       <View style={{ flex: 1, marginLeft: 12 }}>
+                         <Text style={{ color: '#FFFFFF', fontWeight: 'bold', fontSize: 14 }}>{member.member}</Text>
+                         <Text style={{ color: '#94A3B8', fontSize: 12, marginTop: 2 }}>Joined: {new Date(member.joined_on).toLocaleDateString()}</Text>
+                       </View>
+                       <View style={{ alignItems: 'flex-end', gap: 4 }}>
+                         <View style={{ backgroundColor: member.role === 'Admin' ? 'rgba(59, 130, 246, 0.2)' : 'rgba(148, 163, 184, 0.2)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                           <Text style={{ color: member.role === 'Admin' ? '#60A5FA' : '#94A3B8', fontSize: 10, fontWeight: 'bold', textTransform: 'uppercase' }}>
+                             {member.role || "Member"}
+                           </Text>
+                         </View>
+                         <View style={{ backgroundColor: member.status === 'Approved' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(234, 179, 8, 0.2)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                           <Text style={{ color: member.status === 'Approved' ? '#34D399' : '#FBBF24', fontSize: 10, fontWeight: 'bold', textTransform: 'uppercase' }}>
+                             {member.status || "Pending"}
+                           </Text>
+                         </View>
+                       </View>
+                     </View>
+                   ))
+                 ) : (
+                   <Text style={styles.noCategoriesText}>No members found</Text>
+                 )}
+               </View>
+             )}
+           </View>
+         </ScrollView>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -125,10 +326,17 @@ export const SharedCommunityScreen = ({ userType }: SharedCommunityScreenProps) 
         <ActivityIndicator size="large" color={colors.primary.DEFAULT} style={{ marginTop: 40 }} />
       ) : filteredCommunities.length > 0 ? (
         <ScrollView contentContainerStyle={styles.listContainer}>
-          {filteredCommunities.map((community, index) => (
-            <View key={community.name || index} style={styles.card}>
-              <View style={styles.cardHeader}>
-                <View style={styles.iconContainer}>
+            {filteredCommunities.map((community: any, index: number) => (
+              <TouchableOpacity key={community.name || index} style={styles.card} onPress={() => handleCommunityClick(community)}>
+                {isFetchingDetails && (selectedChannel as any)?.name === community.name && (
+                  <View style={StyleSheet.absoluteFillObject}>
+                    <View style={{ flex: 1, backgroundColor: 'rgba(255,255,255,0.7)', borderRadius: 16, alignItems: 'center', justifyContent: 'center' }}>
+                      <ActivityIndicator size="large" color={colors.primary.DEFAULT} />
+                    </View>
+                  </View>
+                )}
+                <View style={styles.cardHeader}>
+                  <View style={styles.iconContainer}>
                   {community.community_type === 'Private' ? (
                     <Lock size={20} color={colors.primary.DEFAULT} />
                   ) : (
@@ -147,7 +355,7 @@ export const SharedCommunityScreen = ({ userType }: SharedCommunityScreenProps) 
                 <Users size={14} color={colors.text.secondary} />
                 <Text style={styles.memberText}>{community.member_count || 1} members</Text>
               </View>
-            </View>
+            </TouchableOpacity>
           ))}
         </ScrollView>
       ) : (
@@ -491,5 +699,125 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: typography.fontWeight.bold,
     color: '#FFF',
+  },
+  forumContainer: {
+    flex: 1,
+    backgroundColor: '#0E0F10',
+  },
+  forumHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#1F2023',
+    backgroundColor: '#121315',
+  },
+  forumBackBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  forumBackTxt: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#94A3B8',
+  },
+  forumTitleGroup: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  forumTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    maxWidth: 160,
+  },
+  forumBody: {
+    flex: 1,
+    padding: 16,
+  },
+  forumGreetingCard: {
+    backgroundColor: 'rgba(255, 107, 0, 0.05)',
+    borderRadius: 20,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 107, 0, 0.1)',
+    marginBottom: 20,
+  },
+  forumGreetingTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    marginBottom: 6,
+  },
+  forumGreetingSub: {
+    fontSize: 13,
+    color: '#94A3B8',
+    lineHeight: 20,
+  },
+  accordionContainer: {
+    backgroundColor: '#121315',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#1F2023',
+    marginBottom: 12,
+    overflow: 'hidden',
+  },
+  accordionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+    backgroundColor: '#16171A',
+  },
+  accordionTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  accordionArrow: {
+    fontSize: 10,
+    color: '#64748B',
+  },
+  accordionContent: {
+    padding: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#1F2023',
+  },
+  accordionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 10,
+  },
+  accordionBullet: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#3B82F6',
+  },
+  accordionItemText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#E2E8F0',
+  },
+  noCategoriesText: {
+    fontSize: 12,
+    color: '#64748B',
+    fontStyle: 'italic',
+  },
+  tagBadge: {
+    backgroundColor: '#1E293B',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  tagBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#94A3B8',
   },
 });
