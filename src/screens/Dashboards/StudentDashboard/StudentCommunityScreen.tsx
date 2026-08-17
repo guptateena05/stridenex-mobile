@@ -1018,12 +1018,6 @@ export const StudentCommunityScreen = ({ navigation }: any) => {
                   <Text style={styles.accordionTitle}>Tags</Text>
                 </TouchableOpacity>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                  <TouchableOpacity 
-                    onPress={() => setShowCreateTagModal(true)}
-                    style={{ padding: 4 }}
-                  >
-                    <Plus size={16} color="#94A3B8" />
-                  </TouchableOpacity>
                   <TouchableOpacity onPress={() => setIsTagsExpanded(!isTagsExpanded)}>
                     <Text style={styles.accordionArrow}>{isTagsExpanded ? "▼" : "▶"}</Text>
                   </TouchableOpacity>
@@ -1063,20 +1057,20 @@ export const StudentCommunityScreen = ({ navigation }: any) => {
 
             {/* Sub-navigation tabs */}
             <View style={styles.forumSubTabs}>
-              {(["categories", "discussions"] as const).map((tab) => (
+              {(["categories"] as const).map((tab) => (
                 <TouchableOpacity 
                   key={tab}
                   onPress={() => setActiveSubTab(tab)}
                   style={[styles.forumSubTabButton, activeSubTab === tab && styles.forumSubTabButtonActive]}
                 >
                   <Text style={[styles.forumSubTabButtonText, activeSubTab === tab && styles.forumSubTabButtonTextActive]}>
-                    {tab === "discussions" ? "Discussions Feed" : "Categories"}
+                    Categories
                   </Text>
                 </TouchableOpacity>
               ))}
             </View>
 
-            {activeSubTab === "categories" && !forumSearch ? (
+            {!forumSearch ? (
               /* Categories Board view matching edX */
               <View style={{ gap: 14, paddingHorizontal: 16 }}>
                 {Object.values(forumCategories).map((cat: any) => (
@@ -1098,23 +1092,6 @@ export const StudentCommunityScreen = ({ navigation }: any) => {
                           <View key={sub} style={styles.forumSubtagBadge}>
                             <Text style={styles.forumSubtagText}>{sub}</Text>
                           </View>
-                        ))}
-                      </View>
-
-                      {/* Latest Topics inside Category */}
-                      <View style={styles.categoryLatestHeader}>
-                        <Text style={styles.categoryLatestLabel}>Latest Topics ({cat.topicsPerMonth})</Text>
-                      </View>
-                      <View style={{ gap: 8, marginTop: 4 }}>
-                        {cat.posts.map((post: any) => (
-                          <TouchableOpacity 
-                            key={post.id}
-                            onPress={() => handleSelectPost(post)}
-                            style={styles.catPostRow}
-                          >
-                            <Text style={styles.catPostTitle} numberOfLines={1}>• {post.title}</Text>
-                            <Text style={styles.catPostTime}>{post.timeAgo}</Text>
-                          </TouchableOpacity>
                         ))}
                       </View>
                     </View>
@@ -1375,53 +1352,7 @@ export const StudentCommunityScreen = ({ navigation }: any) => {
           </ScrollView>
         )}
 
-        {/* Community Feed Section */}
-        <View style={[styles.sectionHeader, { marginTop: 32 }]}>
-           <Text style={styles.sectionTitleSimple}>Community Feed</Text>
-        </View>
 
-        <View style={styles.feedContainer}>
-           {feedPosts.map((post, index) => (
-             <Animated.View 
-               key={post.id} 
-               entering={FadeInUp.delay(300 + index * 100)}
-               style={styles.postCard}
-             >
-                <View style={styles.postHeader}>
-                   <View style={styles.authorInfo}>
-                      <View style={styles.avatar}>
-                         <Text style={styles.avatarText}>{post.initials}</Text>
-                      </View>
-                      <View>
-                         <Text style={styles.authorName}>{post.author}</Text>
-                         <Text style={styles.postMeta}>{post.community} • {post.timestamp}</Text>
-                      </View>
-                   </View>
-                   <TouchableOpacity>
-                      <MoreHorizontal size={18} color="#94A3B8" />
-                   </TouchableOpacity>
-                </View>
-                
-                <Text style={styles.postContent}>{post.content}</Text>
-                
-                <View style={styles.postActions}>
-                   <View style={styles.postActionLeft}>
-                      <TouchableOpacity style={styles.actionItem}>
-                         <Heart size={18} color="#64748B" />
-                         <Text style={styles.actionText}>{post.likes}</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity style={styles.actionItem}>
-                         <MessageSquare size={18} color="#64748B" />
-                         <Text style={styles.actionText}>{post.comments}</Text>
-                      </TouchableOpacity>
-                   </View>
-                   <TouchableOpacity style={styles.actionItem}>
-                      <Share2 size={18} color="#64748B" />
-                   </TouchableOpacity>
-                </View>
-             </Animated.View>
-           ))}
-        </View>
 
         <View style={styles.footerSpacer} />
       </ScrollView>

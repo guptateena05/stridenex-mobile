@@ -177,3 +177,93 @@ export const getSkillScore = async (data: { student: string }) => {
     throw error;
   }
 };
+
+export const createCategory = async (data: { category_name: string, description: string, parent_category: string }) => {
+  try {
+    const response = await api.post("method/stridenex_app.stridenex_app.doctype.community.community.create_category", data);
+    return response.data;
+  } catch (error) {
+    console.error("Error creating category:", error);
+    throw error;
+  }
+};
+
+export const createPost = async (data: { community: string, user: string, content: string, post_type: string, category: string }) => {
+  try {
+    const response = await api.post("method/stridenex_app.stridenex_app.doctype.community.community.create_post", data);
+    return response.data;
+  } catch (error) {
+    console.error("Error creating post:", error);
+    throw error;
+  }
+};
+
+export const getPosts = async (data: { community: string, category: string }) => {
+  try {
+    const response = await api.post("method/stridenex_app.stridenex_app.doctype.community.community.get_posts", data);
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching posts:", error);
+    throw error;
+  }
+};
+
+export const getPostDetail = async (data: { post: string }) => {
+  try {
+    const response = await api.post("method/stridenex_app.stridenex_app.doctype.community.community.get_post_detail", data);
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching post details:", error);
+    throw error;
+  }
+};
+
+export const postComment = async (data: { post: string, comment: string, parent_comment: string, student: string }) => {
+  try {
+    const response = await api.post("method/stridenex_app.stridenex_app.doctype.community.community.post_comment", data);
+    return response.data;
+  } catch (error) {
+    console.error("Error posting comment:", error);
+    throw error;
+  }
+};
+
+export const toggleCommentLike = async (data: { comment: string }) => {
+  try {
+    const response = await api.post("method/stridenex_app.stridenex_app.doctype.community.community.toggle_comment_like", data);
+    return response.data;
+  } catch (error) {
+    console.error("Error toggling comment like:", error);
+    throw error;
+  }
+};
+
+export const getCommunities = async (data: { user: string, user_type?: string }) => {
+  try {
+    const response = await api.post("method/stridenex_app.stridenex_app.doctype.community.community.get_communities", data);
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching communities:", error);
+    throw error;
+  }
+};
+
+export const joinCommunity = async (data: { community: string, student: string }) => {
+  try {
+    const response = await api.post("method/stridenex_app.stridenex_app.doctype.community.community.join_community", data);
+    return response.data;
+  } catch (error) {
+    console.error("Error joining community:", error);
+    throw error;
+  }
+};
+
+export const leaveCommunity = async (data: { community: string, student: string }) => {
+  try {
+    const response = await api.post("method/stridenex_app.stridenex_app.doctype.community.community.leave_community", data);
+    return response.data;
+  } catch (error) {
+    console.error("Error leaving community:", error);
+    throw error;
+  }
+};

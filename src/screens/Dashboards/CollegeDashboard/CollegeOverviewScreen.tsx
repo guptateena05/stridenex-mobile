@@ -455,14 +455,20 @@ export const CollegeOverviewScreen = () => {
   }, [displaySkillGaps]);
 
   const displayMonthlyData = useMemo(() => {
-    if (!onboardingGrowth || !onboardingGrowth.monthly || onboardingGrowth.monthly.length === 0) {
-      return [];
-    }
-    const maxVal = Math.max(...onboardingGrowth.monthly.map((m: any) => {
+    if (!onboardingGrowth) return [];
+    
+    // Support both the old format (object with .monthly) and new format (direct array)
+    const dataArray = Array.isArray(onboardingGrowth) 
+      ? onboardingGrowth 
+      : (onboardingGrowth.monthly || []);
+      
+    if (dataArray.length === 0) return [];
+    
+    const maxVal = Math.max(...dataArray.map((m: any) => {
       return m.value !== undefined ? Number(m.value) : (m.count !== undefined ? Number(m.count) : 0);
     }), 1);
     
-    return onboardingGrowth.monthly.map((m: any) => {
+    return dataArray.map((m: any) => {
       const value = m.value !== undefined ? Number(m.value) : (m.count !== undefined ? Number(m.count) : 0);
       const valPercent = Math.round((value / maxVal) * 100);
       return {
@@ -865,7 +871,6 @@ export const CollegeOverviewScreen = () => {
                 <Activity size={18} color="#3B82F6" />
                 <Text style={styles.sectionTitle}>Student Onboarding Growth</Text>
              </View>
-             <Text style={styles.viewDetailsText}>Details ›</Text>
           </View>
           {displayMonthlyData.length === 0 ? (
             <View style={styles.emptyStateContainer}>
