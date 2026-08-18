@@ -1,4 +1,5 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '@/context/AuthContext';
 import { getStudentByEmail, updateStudent } from '@/api/student.services';
@@ -13,7 +14,8 @@ import {
   KeyboardAvoidingView, 
   Platform,
   ActivityIndicator,
-  Linking
+  Linking,
+  RefreshControl
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { 
@@ -37,6 +39,25 @@ import { typography } from '@/theme/typography';
 import { spacing } from '@/theme/spacing';
 import DynamicForm from '@/components/forms/DynamicForm';
 import { FormField } from '@/components/forms/DynamicField';
+
+// Helper empty state component
+const EmptyState = ({ section, label, onAdd }: { section: 'education' | 'certificate' | 'internship' | 'project'; label: string; onAdd: (section: 'education' | 'certificate' | 'internship' | 'project') => void }) => (
+  <View style={styles.emptyCard}>
+    <View style={styles.emptyIconBg}>
+      <FileText size={24} color="#64748B" />
+    </View>
+    <Text style={styles.emptyTitle}>No Data Available</Text>
+    <Text style={styles.emptySubtitle}>Tap the button below to add your {label.toLowerCase()} details.</Text>
+    <TouchableOpacity 
+      style={styles.addButton}
+      onPress={() => onAdd(section)}
+      activeOpacity={0.8}
+    >
+      <Plus size={16} color="#FFF" style={{ marginRight: 4 }} />
+      <Text style={styles.addButtonText}>Add {label}</Text>
+    </TouchableOpacity>
+  </View>
+);
 
 // Interfaces
 interface Education {
@@ -64,6 +85,7 @@ interface Internship {
   location: string;
   start_date: string;
   end_date: string;
+  mode: string;
   technologies_used: string;
 }
 
@@ -86,43 +108,61 @@ export const StudentResumeScreen = () => {
   const [projectList, setProjectList] = useState<Project[]>([]);
 
   // Fetch student details & prefill sections
-  useEffect(() => {
-    const fetchData = async () => {
-      if (!userName) {
-        setLoading(false);
-        return;
-      }
-      try {
-        setLoading(true);
-        const res = await getStudentByEmail(userName);
-        const data = res?.data || res?.message?.data || res?.message;
-        if (data && typeof data === 'object') {
-          const educationData = data.resume_details || data.table_apwt;
-          if (educationData && Array.isArray(educationData)) {
-            setEducationList(educationData);
-          }
-          if (data.certificates && Array.isArray(data.certificates)) {
-            setCertificatesList(data.certificates);
-          }
-          if (data.internship && Array.isArray(data.internship)) {
-            const mappedInternships = data.internship.map((item: any) => ({
-              ...item,
-              technologies_used: item.technologies || item.technologies_used || ""
-            }));
-            setInternshipList(mappedInternships);
-          }
-          if (data.project && Array.isArray(data.project)) {
-            setProjectList(data.project);
-          }
+  const fetchData = useCallback(async () => {
+    if (!userName) {
+      setLoading(false);
+      return;
+    }
+    try {
+      const res = await getStudentByEmail(userName);
+      const data = res?.data || res?.message?.data || res?.message;
+      if (data && typeof data === 'object') {
+        const educationData = data.resume_details || data.table_apwt;
+        if (educationData && Array.isArray(educationData)) {
+          setEducationList(educationData);
         }
-      } catch (err) {
-        console.log("Error fetching dynamic resume data on mobile:", err);
-      } finally {
-        setLoading(false);
+        if (data.certificates && Array.isArray(data.certificates)) {
+          console.log("MOBILE FETCHED CERTIFICATES:", JSON.stringify(data.certificates, null, 2));
+          setCertificatesList(data.certificates);
+        }
+        if (data.internship && Array.isArray(data.internship)) {
+          const mappedInternships = data.internship.map((item: any) => ({
+            ...item,
+            technologies_used: item.technologies || item.technologies_used || ""
+          }));
+          setInternshipList(mappedInternships);
+        }
+        if (data.project && Array.isArray(data.project)) {
+          setProjectList(data.project);
+        }
       }
-    };
-    fetchData();
+    } catch (err) {
+      console.log("Error fetching dynamic resume data on mobile:", err);
+    }
   }, [userName]);
+
+  useFocusEffect(
+    useCallback(() => {
+      let isActive = true;
+      const initFetch = async () => {
+        setLoading(true);
+        await fetchData();
+        if (isActive) {
+          setLoading(false);
+        }
+      };
+      initFetch();
+      return () => {
+        isActive = false;
+      };
+    }, [fetchData])
+  );
+
+  const onRefresh = async () => {
+    setLoading(true);
+    await fetchData();
+    setLoading(false);
+  };
 
   const saveResumeToServer = async (
     updatedEducation: Education[],
@@ -152,6 +192,7 @@ export const StudentResumeScreen = () => {
           location: item.location,
           start_date: item.start_date,
           end_date: item.end_date,
+          mode: item.mode,
           technologies: item.technologies_used || (item as any).technologies || ""
         })),
         project: updatedProjects
@@ -252,7 +293,7 @@ export const StudentResumeScreen = () => {
     },
     {
       fieldname: 'issue_date',
-      label: 'Issue Date',
+      label: 'Start Date',
       fieldtype: 'Date',
       required: true,
       layout: 'full',
@@ -261,7 +302,7 @@ export const StudentResumeScreen = () => {
     },
     {
       fieldname: 'expiry_date',
-      label: 'Expiry Date',
+      label: 'End Date',
       fieldtype: 'Date',
       required: false,
       layout: 'full',
@@ -304,10 +345,18 @@ export const StudentResumeScreen = () => {
       layout: 'full',
     },
     {
+      fieldname: 'mode',
+      label: 'Mode of Attendance',
+      fieldtype: 'Select',
+      options: ['Remote', 'Hybrid', 'Onsite'],
+      required: true,
+      layout: 'full',
+    },
+    {
       fieldname: 'location',
       label: 'Location',
       fieldtype: 'Data',
-      placeholder: 'e.g. Remote / Mumbai',
+      placeholder: 'e.g. Mumbai',
       required: true,
       layout: 'full',
     },
@@ -492,6 +541,7 @@ export const StudentResumeScreen = () => {
         location: data.location,
         start_date: data.start_date,
         end_date: data.end_date,
+        mode: data.mode,
         technologies_used: data.technologies_used
       };
       if (editingIndex !== null) {
@@ -546,25 +596,6 @@ export const StudentResumeScreen = () => {
     }
   }, [modalSection, editingIndex, educationFields, certificateFields, internshipFields, projectFields]);
 
-  // Helper empty state component
-  const EmptyState = ({ section, label }: { section: typeof modalSection; label: string }) => (
-    <View style={styles.emptyCard}>
-      <View style={styles.emptyIconBg}>
-        <FileText size={24} color="#64748B" />
-      </View>
-      <Text style={styles.emptyTitle}>No Data Available</Text>
-      <Text style={styles.emptySubtitle}>Tap the button below to add your {label.toLowerCase()} details.</Text>
-      <TouchableOpacity 
-        style={styles.addButton}
-        onPress={() => handleOpenAdd(section)}
-        activeOpacity={0.8}
-      >
-        <Plus size={16} color="#FFF" style={{ marginRight: 4 }} />
-        <Text style={styles.addButtonText}>Add {label}</Text>
-      </TouchableOpacity>
-    </View>
-  );
-
   if (loading) {
     return (
       <SafeAreaView style={[styles.safeArea, { justifyContent: 'center', alignItems: 'center' }]}>
@@ -603,7 +634,14 @@ export const StudentResumeScreen = () => {
         </View>
       </View>
 
-      <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        style={styles.container} 
+        contentContainerStyle={styles.scrollContent} 
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={loading} onRefresh={onRefresh} colors={['#F97316']} />
+        }
+      >
         <View style={styles.tabContentContainer}>
             
             {/* 1. Education Details */}
@@ -622,7 +660,7 @@ export const StudentResumeScreen = () => {
               </View>
 
               {educationList.length === 0 ? (
-                <EmptyState section="education" label="Education" />
+                <EmptyState section="education" label="Education" onAdd={handleOpenAdd} />
               ) : (
                 <View style={styles.itemList}>
                   {educationList.map((item, index) => (
@@ -666,7 +704,7 @@ export const StudentResumeScreen = () => {
               </View>
 
               {certificatesList.length === 0 ? (
-                <EmptyState section="certificate" label="Certificate" />
+                <EmptyState section="certificate" label="Certificate" onAdd={handleOpenAdd} />
               ) : (
                 <View style={styles.itemList}>
                   {certificatesList.map((item, index) => (
@@ -674,9 +712,11 @@ export const StudentResumeScreen = () => {
                       <View style={{ flex: 1 }}>
                         <Text style={styles.itemMainTitle}>{item.certificate_name}</Text>
                         <Text style={styles.itemSubtitle}>{item.issuing_organization}</Text>
-                        <Text style={styles.itemMeta}>Issued: {item.issue_date} {item.expiry_date ? `• Expiry: ${item.expiry_date}` : ''}</Text>
+                        <Text style={styles.itemMeta}>Start Date: {item.issue_date} {item.expiry_date ? `• End Date: ${item.expiry_date}` : ''}</Text>
                         {item.certificate_file ? (
-                          <Text style={[styles.badgeText, { color: colors.accent.DEFAULT, marginTop: 4 }]}>Credential Attached</Text>
+                          <TouchableOpacity onPress={() => Linking.openURL(item.certificate_file)}>
+                            <Text style={[styles.badgeText, { color: colors.accent.DEFAULT, marginTop: 4, textDecorationLine: 'underline' }]}>Credential Link</Text>
+                          </TouchableOpacity>
                         ) : null}
                       </View>
                       <View style={styles.actionCol}>
@@ -709,7 +749,7 @@ export const StudentResumeScreen = () => {
               </View>
 
               {internshipList.length === 0 ? (
-                <EmptyState section="internship" label="Internship" />
+                <EmptyState section="internship" label="Internship" onAdd={handleOpenAdd} />
               ) : (
                 <View style={styles.itemList}>
                   {internshipList.map((item, index) => (
@@ -717,7 +757,7 @@ export const StudentResumeScreen = () => {
                       <View style={{ flex: 1 }}>
                         <Text style={styles.itemMainTitle}>{item.job_title}</Text>
                         <Text style={styles.itemSubtitle}>{item.company_name} • {item.employment_type}</Text>
-                        <Text style={styles.itemMeta}>{item.location} • {item.start_date} to {item.end_date}</Text>
+                        <Text style={styles.itemMeta}>{item.location} ({item.mode}) • {item.start_date} to {item.end_date}</Text>
                         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 4 }}>
                           {item.technologies_used.split(',').map((tech, idx) => (
                             <View key={idx} style={styles.techTag}>
@@ -756,7 +796,7 @@ export const StudentResumeScreen = () => {
               </View>
 
               {projectList.length === 0 ? (
-                <EmptyState section="project" label="Project" />
+                <EmptyState section="project" label="Project" onAdd={handleOpenAdd} />
               ) : (
                 <View style={styles.itemList}>
                   {projectList.map((item, index) => (

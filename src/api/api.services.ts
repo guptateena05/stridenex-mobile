@@ -56,6 +56,14 @@ api.interceptors.response.use(
       response.status
     );
 
+    if (response.data?.message?.success === false || response.data?.success === false) {
+      const errorMessage = response.data?.message?.message || response.data?.message || "Operation failed";
+      const customError = new Error(typeof errorMessage === 'string' ? errorMessage : JSON.stringify(errorMessage));
+      (customError as any).status = 400; // Mock status
+      (customError as any).response = { data: response.data };
+      return Promise.reject(customError);
+    }
+
     return response;
   },
   (error) => {
@@ -96,7 +104,11 @@ api.interceptors.response.use(
       }
 
       if (!serverMessage) {
-        serverMessage = data.message || (data.exc && typeof data.exc === 'string' && !data.exc.includes("Traceback") ? data.exc : null);
+        if (data.message && data.message.success === false && data.message.message) {
+          serverMessage = data.message.message;
+        } else {
+          serverMessage = data.message || (data.exc && typeof data.exc === 'string' && !data.exc.includes("Traceback") ? data.exc : null);
+        }
       }
 
       // Strip HTML tags from message
@@ -122,7 +134,7 @@ api.interceptors.response.use(
         }
       }
 
-      if (serverMessage) {
+      if (serverMessage && typeof serverMessage === 'string') {
         error.message = serverMessage;
       }
     }

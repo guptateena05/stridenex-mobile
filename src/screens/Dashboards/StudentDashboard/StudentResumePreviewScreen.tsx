@@ -18,6 +18,8 @@ import { useAuth } from '@/context/AuthContext';
 import { colors } from '@/theme/colors';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as DocumentPicker from '@react-native-documents/picker';
+import { BASE_URL } from '@/api/api.services';
+import { Dirs, FileSystem } from 'react-native-file-access';
 
 const templates = [
   { value: "classic_resume", label: "Classic" },
@@ -32,19 +34,53 @@ export const StudentResumePreviewScreen = () => {
   const { userName } = useAuth();
   const [selectedTemplate, setSelectedTemplate] = useState("professional_resume");
   const [webViewLoading, setWebViewLoading] = useState(true);
-
+  const [base64Pdf, setBase64Pdf] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
 
-  const directPdfUrl = `https://devstridenex.quantcloud.in/api/method/stridenex_app.api_stridenex_app.student.student.get_student_resume?student=${encodeURIComponent(userName || "")}&template=${selectedTemplate}`;
-  
-  // Android webview cannot preview PDFs natively, so we load them via Google Docs Viewer
-  const webViewUri = Platform.OS === 'ios' 
-    ? directPdfUrl 
-    : `https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(directPdfUrl)}`;
+  const directPdfUrl = `${BASE_URL}method/stridenex_app.api_stridenex_app.student.student.get_student_resume?student=${encodeURIComponent(userName || "")}&template=${selectedTemplate}`;
 
   useEffect(() => {
-    setWebViewLoading(true);
-  }, [selectedTemplate]);
+    let isActive = true;
+    const fetchPdf = async () => {
+      setWebViewLoading(true);
+      setErrorMsg(null);
+      setBase64Pdf(null);
+      try {
+        const storedToken = await AsyncStorage.getItem("token");
+        const token = storedToken ? storedToken.trim() : null;
+        
+        const localPath = `${Dirs.CacheDir}/resume_preview.pdf`;
+        const headers: any = {};
+        if (token) {
+          headers["Authorization"] = `token ${token}`;
+        }
+        
+        const res = await FileSystem.fetch(directPdfUrl, {
+          method: 'GET',
+          headers,
+          path: localPath
+        });
+        
+        if (res.ok) {
+          const b64 = await FileSystem.readFile(localPath, 'base64');
+          if (isActive) {
+             setBase64Pdf(b64);
+          }
+        } else {
+          if (isActive) {
+             setErrorMsg(`Error loading preview: ${res.status}`);
+          }
+        }
+      } catch (err: any) {
+         if (isActive) setErrorMsg(err?.message || "Failed to fetch PDF");
+      } finally {
+         if (isActive) setWebViewLoading(false);
+      }
+    };
+    fetchPdf();
+    return () => { isActive = false; };
+  }, [selectedTemplate, directPdfUrl, userName]);
 
   const handleDownload = () => {
     Linking.openURL(directPdfUrl).catch(err => {
@@ -89,7 +125,7 @@ export const StudentResumePreviewScreen = () => {
           headers["Authorization"] = `token ${token}`;
         }
 
-        const response = await fetch(`https://devstridenex.quantcloud.in/api/method/stridenex_app.api_stridenex_app.app.upload_file_api`, {
+        const response = await fetch(`${BASE_URL}method/stridenex_app.api_stridenex_app.app.upload_file_api`, {
           method: "POST",
           headers,
           body: fd
@@ -122,7 +158,7 @@ export const StudentResumePreviewScreen = () => {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
+    <SafeAreaView style={styles.safeArea} edges={['bottom', 'left', 'right']}>
       {/* Header bar */}
       <View style={styles.header}>
         <TouchableOpacity 
@@ -179,12 +215,88 @@ export const StudentResumePreviewScreen = () => {
             <Text style={styles.loadingText}>Rendering Resume Preview...</Text>
           </View>
         )}
-        <WebView
-          key={selectedTemplate}
-          source={{ uri: webViewUri }}
-          style={styles.webView}
-          onLoadEnd={() => setWebViewLoading(false)}
-        />
+        {errorMsg ? (
+          <View style={styles.errorOverlay}>
+            <Text style={styles.errorText}>{errorMsg}</Text>
+          </View>
+        ) : base64Pdf ? (
+          <WebView
+            key={selectedTemplate}
+            originWhitelist={['*']}
+            source={{ html: `
+              <!DOCTYPE html>
+              <html>
+              <head>
+              <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes" />
+              <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+              <style>
+                body { margin:0; padding:0; background-color: #f8fafc; text-align: center; }
+                canvas { width: 100%; height: auto; margin: 0 auto 16px auto; display: block; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); background-color: white; }
+                #loading { font-family: sans-serif; color: #64748b; font-size: 14px; margin-top: 50px; }
+              </style>
+              </head>
+              <body>
+              <div id="pdf-container"></div>
+              <script>
+                try {
+                  const pdfData = atob("${base64Pdf}");
+                  const uint8Array = new Uint8Array(pdfData.length);
+                  for (let i = 0; i < pdfData.length; i++) {
+                    uint8Array[i] = pdfData.charCodeAt(i);
+                  }
+                  
+                  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+                  
+                  pdfjsLib.getDocument({data: uint8Array}).promise.then(pdf => {
+                    const container = document.getElementById('pdf-container');
+                    
+                    const renderPage = (pageNum) => {
+                      pdf.getPage(pageNum).then(page => {
+                        const scale = window.devicePixelRatio || 1;
+                        const viewport = page.getViewport({scale: 1.5});
+                        
+                        const canvas = document.createElement('canvas');
+                        const ctx = canvas.getContext('2d');
+                        
+                        canvas.height = viewport.height * scale;
+                        canvas.width = viewport.width * scale;
+                        canvas.style.height = viewport.height + 'px';
+                        canvas.style.width = viewport.width + 'px';
+                        ctx.scale(scale, scale);
+                        
+                        container.appendChild(canvas);
+                        page.render({canvasContext: ctx, viewport: viewport}).promise.then(() => {
+                          if(pageNum < pdf.numPages) {
+                            renderPage(pageNum + 1);
+                          } else {
+                             window.ReactNativeWebView.postMessage('loaded');
+                          }
+                        });
+                      });
+                    };
+                    
+                    if(pdf.numPages > 0) renderPage(1);
+                  }).catch(err => {
+                    window.ReactNativeWebView.postMessage('error:' + err.message);
+                  });
+                } catch(e) {
+                  window.ReactNativeWebView.postMessage('error:' + e.message);
+                }
+              </script>
+              </body>
+              </html>
+            ` }}
+            style={styles.webView}
+            onMessage={(event) => {
+              if (event.nativeEvent.data === 'loaded') {
+                setWebViewLoading(false);
+              } else if (event.nativeEvent.data.startsWith('error:')) {
+                setWebViewLoading(false);
+                setErrorMsg(event.nativeEvent.data);
+              }
+            }}
+          />
+        ) : null}
       </View>
 
       {/* Action Bar */}
@@ -235,15 +347,16 @@ const styles = StyleSheet.create({
   backBtn: {
     width: 40,
     height: 40,
-    borderRadius: 20,
-    backgroundColor: '#F8FAFC',
     alignItems: 'center',
     justifyContent: 'center',
+    marginRight: 8,
   },
   headerTitle: {
+    flex: 1,
     fontSize: 16,
     fontWeight: '800',
     color: '#0F172A',
+    textAlign: 'center',
   },
   selectorContainer: {
     paddingVertical: 12,
@@ -268,24 +381,29 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   templateTab: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 12,
-    backgroundColor: '#F8FAFC',
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: '#E2E8F0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
   activeTemplateTab: {
-    backgroundColor: '#FFF7ED',
+    backgroundColor: '#FF6B00',
     borderColor: '#FF6B00',
   },
   templateTabTxt: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '700',
     color: '#64748B',
   },
   activeTemplateTabTxt: {
-    color: '#FF6B00',
+    color: '#FFFFFF',
   },
   previewContainer: {
     flex: 1,
@@ -307,6 +425,20 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: '#64748B',
+  },
+  errorOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 10,
+    backgroundColor: '#F8FAFC',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  errorText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#EF4444',
+    textAlign: 'center',
   },
   footer: {
     flexDirection: 'row',
