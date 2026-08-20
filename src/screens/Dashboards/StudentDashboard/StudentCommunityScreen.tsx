@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Users, MessageSquare, Heart, Search, ArrowLeft, Folder, Tag, Plus, Send, X, ChevronRight } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { getCommunities, joinCommunity, leaveCommunity, getPosts, getPostDetail, postComment, createPost, createCategory, createTag, getCommunityDetail } from '@/api/api.services';
+import { getCommunities, joinCommunity, leaveCommunity, getPosts, getPostDetail, postComment, createPost, createCategory, createTag, getCommunityDetail, toggleCommentLike } from '@/api/api.services';
 import * as DocumentPicker from '@react-native-documents/picker';
 
 const formatChannelNameStr = (name: string): string => {
@@ -218,6 +218,18 @@ export const StudentCommunityScreen = ({ navigation }: any) => {
     }
   };
 
+  const handleToggleCommentLike = async (commentId: string) => {
+    try {
+      await toggleCommentLike({ comment: commentId });
+      if (selectedPost) {
+        const res = await getPostDetail({ post: selectedPost.name });
+        setPostDetails(res?.message?.data || res?.data?.data || null);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   const handleCreateTopic = async () => {
     if (!newTopicContent.trim()) return;
     try {
@@ -287,10 +299,10 @@ export const StudentCommunityScreen = ({ navigation }: any) => {
             <>
               <View style={styles.postDetailCard}>
                 <View style={styles.postHeaderRow}>
-                  <View style={styles.postAvatar}>
-                    <Text style={styles.postAvatarTxt}>{((postDetails?.author || selectedPost?.author) || '?').substring(0, 1).toUpperCase()}</Text>
+                  <View style={[styles.postAvatar, { width: 48, height: 48, borderRadius: 24 }]}>
+                    <Text style={[styles.postAvatarTxt, { fontSize: 18 }]}>{((postDetails?.author || selectedPost?.author) || '?').substring(0, 1).toUpperCase()}</Text>
                   </View>
-                  <View>
+                  <View style={{ flex: 1 }}>
                     <Text style={styles.postDetailAuthor}>{postDetails?.author || selectedPost?.author}</Text>
                     <Text style={styles.postDetailTime}>{(postDetails?.posted_on || selectedPost?.posted_on)?.replace('T', ' ').substring(0, 19)}</Text>
                   </View>
@@ -301,16 +313,25 @@ export const StudentCommunityScreen = ({ navigation }: any) => {
               <Text style={styles.repliesTitle}>Replies</Text>
               {postDetails?.comments?.map((comment: any, idx: number) => (
                 <View key={idx} style={styles.replyCard}>
-                  <View style={styles.postHeaderRow}>
-                    <View style={[styles.postAvatar, { width: 32, height: 32, borderRadius: 16 }]}>
+                  <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
+                    <View style={[styles.postAvatar, { width: 36, height: 36, borderRadius: 18, marginTop: 4 }]}>
                       <Text style={[styles.postAvatarTxt, { fontSize: 14 }]}>{(comment.comment_by || '?').substring(0, 1).toUpperCase()}</Text>
                     </View>
-                    <View>
-                      <Text style={styles.postDetailAuthor}>{comment.comment_by}</Text>
-                      <Text style={styles.postDetailTime}>{comment.posted_on?.replace('T', ' ').substring(0, 19)}</Text>
+                    <View style={{ flex: 1 }}>
+                      <View style={styles.replyBubble}>
+                        <Text style={styles.postDetailAuthor}>{comment.comment_by}</Text>
+                        <Text style={styles.replyContentText}>{comment.content}</Text>
+                      </View>
+                      
+                      <View style={styles.replyFooter}>
+                        <Text style={styles.replyTime}>{comment.posted_on?.replace('T', ' ').substring(0, 19)}</Text>
+                        <TouchableOpacity onPress={() => handleToggleCommentLike(comment.name)} style={styles.replyLikeBtn}>
+                          <Heart size={14} color={comment.is_liked_by_user ? "#EF4444" : "#64748B"} fill={comment.is_liked_by_user ? "#EF4444" : "none"} />
+                          <Text style={[styles.replyLikeTxt, comment.is_liked_by_user && { color: "#EF4444" }]}>{comment.like_count || 0}</Text>
+                        </TouchableOpacity>
+                      </View>
                     </View>
                   </View>
-                  <Text style={styles.replyContent}>{comment.content}</Text>
                 </View>
               ))}
             </>
@@ -347,25 +368,30 @@ export const StudentCommunityScreen = ({ navigation }: any) => {
           {postsLoading ? <ActivityIndicator size="small" color="#FF6B00" style={{ marginTop: 20 }} /> : (
             posts.length > 0 ? posts.map((post, idx) => (
               <TouchableOpacity key={idx} style={styles.postCard} onPress={() => handlePostClick(post)}>
-                <View style={styles.postHeaderRow}>
-                  <View style={styles.postAvatar}>
-                    <Text style={styles.postAvatarTxt}>{(post.author || '?').substring(0, 1).toUpperCase()}</Text>
+                <View style={styles.postCardInner}>
+                  <View style={styles.postHeaderRow}>
+                    <View style={styles.postAvatar}>
+                      <Text style={styles.postAvatarTxt}>{(post.author || '?').substring(0, 1).toUpperCase()}</Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.postCardAuthor} numberOfLines={1}>{post.author}</Text>
+                      <Text style={styles.postCardTime}>{post.posted_on?.replace('T', ' ').substring(0, 19)}</Text>
+                    </View>
+                    <ChevronRight size={20} color="#CBD5E1" />
                   </View>
-                  <View>
-                    <Text style={styles.postCardAuthor}>{post.author}</Text>
-                    <Text style={styles.postCardTime}>{post.posted_on?.replace('T', ' ').substring(0, 19)}</Text>
-                  </View>
-                </View>
-                <Text style={styles.postCardContent}>{post.content}</Text>
-                
-                <View style={styles.postCardActions}>
-                  <View style={styles.postAction}>
-                    <Heart size={14} color="#64748B" />
-                    <Text style={styles.postActionTxt}>{post.like_count || 0}</Text>
-                  </View>
-                  <View style={styles.postAction}>
-                    <MessageSquare size={14} color="#64748B" />
-                    <Text style={styles.postActionTxt}>{post.comment_count || 0}</Text>
+                  <Text style={styles.postCardContent} numberOfLines={3}>{post.content}</Text>
+                  
+                  <View style={styles.postDivider} />
+                  
+                  <View style={styles.postCardActions}>
+                    <View style={styles.postActionBadge}>
+                      <Heart size={14} color="#64748B" />
+                      <Text style={styles.postActionTxt}>{post.like_count || 0}</Text>
+                    </View>
+                    <View style={styles.postActionBadge}>
+                      <MessageSquare size={14} color="#64748B" />
+                      <Text style={styles.postActionTxt}>{post.comment_count || 0}</Text>
+                    </View>
                   </View>
                 </View>
               </TouchableOpacity>
@@ -407,50 +433,33 @@ export const StudentCommunityScreen = ({ navigation }: any) => {
           </TouchableOpacity>
         </View>
 
-        <View style={styles.tabsWrapper}>
-          <TouchableOpacity style={[styles.tabBtn, activeSubTab === 'categories' && styles.tabBtnActive]} onPress={() => setActiveSubTab('categories')}>
-            <Text style={[styles.tabBtnText, activeSubTab === 'categories' && styles.tabBtnTextActive]}>Categories</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.tabBtn, activeSubTab === 'discussions' && styles.tabBtnActive]} onPress={() => setActiveSubTab('discussions')}>
-            <Text style={[styles.tabBtnText, activeSubTab === 'discussions' && styles.tabBtnTextActive]}>Discussions</Text>
-          </TouchableOpacity>
-        </View>
-
         <ScrollView style={styles.body}>
-          {activeSubTab === 'categories' && (
-            <View>
-              <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>Categories</Text>
-              </View>
-              {categories.map((cat: any, idx: number) => (
-                <TouchableOpacity key={idx} style={styles.categoryCard} onPress={() => setSelectedCategory(cat)}>
-                  <Folder size={20} color="#FF6B00" />
-                  <View style={{ flex: 1, marginLeft: 12 }}>
-                    <Text style={styles.categoryName}>{cat.category_name || cat.name}</Text>
-                    <Text style={styles.categoryDesc}>{cat.description || "Discussion category"}</Text>
-                  </View>
-                  <ChevronRight size={18} color="#94A3B8" />
-                </TouchableOpacity>
+          <View>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Categories</Text>
+            </View>
+            {categories.map((cat: any, idx: number) => (
+              <TouchableOpacity key={idx} style={styles.categoryCard} onPress={() => setSelectedCategory(cat)}>
+                <Folder size={20} color="#FF6B00" />
+                <View style={{ flex: 1, marginLeft: 12 }}>
+                  <Text style={styles.categoryName}>{cat.category_name || cat.name}</Text>
+                  <Text style={styles.categoryDesc}>{cat.description || "Discussion category"}</Text>
+                </View>
+                <ChevronRight size={18} color="#94A3B8" />
+              </TouchableOpacity>
+            ))}
+
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Tags</Text>
+            </View>
+            <View style={styles.tagsContainer}>
+              {tags.map((tag: any, idx: number) => (
+                <View key={idx} style={styles.tagBadge}>
+                  <Text style={styles.tagText}>#{tag.title || tag.name}</Text>
+                </View>
               ))}
-
-              <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>Tags</Text>
-              </View>
-              <View style={styles.tagsContainer}>
-                {tags.map((tag: any, idx: number) => (
-                  <View key={idx} style={styles.tagBadge}>
-                    <Text style={styles.tagText}>#{tag.title || tag.name}</Text>
-                  </View>
-                ))}
-              </View>
             </View>
-          )}
-
-          {activeSubTab === 'discussions' && (
-            <View style={{ alignItems: 'center', marginTop: 40 }}>
-              <Text style={styles.emptyText}>Please select a category to view discussions.</Text>
-            </View>
-          )}
+          </View>
         </ScrollView>
 
         {/* Modals */}
@@ -489,8 +498,12 @@ export const StudentCommunityScreen = ({ navigation }: any) => {
   return (
     <View style={styles.container}>
       <View style={styles.listHeader}>
-        <Text style={styles.listTitle}>Student Communities</Text>
-        <Text style={styles.listSubtitle}>Join peer groups, share knowledge, and grow together</Text>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.listTitle}>Communities</Text>
+            <Text style={styles.listSubtitle}>Join peer groups, share knowledge, and grow together</Text>
+          </View>
+        </View>
       </View>
       <View style={{ paddingHorizontal: 16, marginBottom: 12 }}>
         <View style={styles.searchBox}>
@@ -577,16 +590,18 @@ const styles = StyleSheet.create({
   tagsContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   tagBadge: { backgroundColor: '#F0F9FF', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 24, borderWidth: 1, borderColor: '#BAE6FD' },
   tagText: { fontSize: 13, fontWeight: '700', color: '#0369A1' },
-  postCard: { backgroundColor: '#FFFFFF', padding: 16, borderRadius: 16, marginBottom: 12, shadowColor: '#94A3B8', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.08, shadowRadius: 16, elevation: 3, borderWidth: 1, borderColor: '#F8FAFC' },
+  postCard: { backgroundColor: '#FFFFFF', borderRadius: 16, marginBottom: 16, borderWidth: 1, borderColor: '#E2E8F0', shadowColor: '#64748B', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.08, shadowRadius: 12, elevation: 4, overflow: 'hidden' },
+  postCardInner: { padding: 16, borderLeftWidth: 4, borderLeftColor: '#FF6B00' },
   postHeaderRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
-  postAvatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#F0F9FF', alignItems: 'center', justifyContent: 'center', marginRight: 12 },
-  postAvatarTxt: { fontSize: 18, fontWeight: '700', color: '#0369A1' },
-  postCardAuthor: { fontSize: 15, fontWeight: '700', color: '#0F172A' },
-  postCardTime: { fontSize: 12, color: '#94A3B8', marginTop: 2 },
-  postCardContent: { fontSize: 15, color: '#334155', lineHeight: 22, marginBottom: 16 },
-  postCardActions: { flexDirection: 'row', alignItems: 'center', gap: 24 },
-  postAction: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  postActionTxt: { fontSize: 13, color: '#64748B', fontWeight: '600' },
+  postAvatar: { width: 42, height: 42, borderRadius: 21, backgroundColor: '#FFF7ED', alignItems: 'center', justifyContent: 'center', marginRight: 12, borderWidth: 1, borderColor: '#FFEDD5' },
+  postAvatarTxt: { fontSize: 16, fontWeight: '800', color: '#FF6B00' },
+  postCardAuthor: { fontSize: 16, fontWeight: '700', color: '#0F172A' },
+  postCardTime: { fontSize: 12, color: '#94A3B8', marginTop: 2, fontWeight: '500' },
+  postCardContent: { fontSize: 15, color: '#334155', lineHeight: 24, marginBottom: 16 },
+  postDivider: { height: 1, backgroundColor: '#F1F5F9', marginBottom: 12 },
+  postCardActions: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  postActionBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8FAFC', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, gap: 6, borderWidth: 1, borderColor: '#F1F5F9' },
+  postActionTxt: { fontSize: 13, color: '#64748B', fontWeight: '700' },
   emptyText: { fontSize: 14, color: '#64748B', textAlign: 'center', marginTop: 20 },
   modalBg: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center', padding: 20 },
   modalContent: { width: '100%', backgroundColor: '#FFFFFF', borderRadius: 16, padding: 20 },
@@ -596,14 +611,19 @@ const styles = StyleSheet.create({
   modalCancel: { fontSize: 14, fontWeight: '600', color: '#64748B', padding: 10 },
   modalSubmit: { backgroundColor: '#FF6B00', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 8 },
   modalSubmitText: { fontSize: 14, fontWeight: '600', color: '#FFFFFF' },
-  postDetailCard: { backgroundColor: '#FFFFFF', padding: 16, borderRadius: 16, borderWidth: 1, borderColor: '#F8FAFC', marginBottom: 20, shadowColor: '#94A3B8', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.08, shadowRadius: 16, elevation: 3 },
+  postDetailCard: { backgroundColor: '#FFFFFF', padding: 20, borderRadius: 16, marginBottom: 24, shadowColor: '#FF6B00', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 12, elevation: 3, borderTopWidth: 4, borderTopColor: '#FF6B00' },
   postDetailHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 },
-  postDetailAuthor: { fontSize: 15, fontWeight: '700', color: '#0F172A' },
-  postDetailTime: { fontSize: 12, color: '#94A3B8', marginTop: 2 },
-  postDetailContent: { fontSize: 15, color: '#334155', lineHeight: 24, paddingLeft: 4 },
-  repliesTitle: { fontSize: 16, fontWeight: '800', color: '#0F172A', marginBottom: 12, marginLeft: 4 },
-  replyCard: { backgroundColor: '#FFFFFF', padding: 16, borderRadius: 16, borderWidth: 1, borderColor: '#F8FAFC', marginBottom: 12, shadowColor: '#94A3B8', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.04, shadowRadius: 8, elevation: 1 },
-  replyContent: { fontSize: 14, color: '#334155', marginTop: 4, paddingLeft: 44 },
+  postDetailAuthor: { fontSize: 16, fontWeight: '700', color: '#0F172A' },
+  postDetailTime: { fontSize: 13, color: '#94A3B8', marginTop: 2 },
+  postDetailContent: { fontSize: 16, color: '#334155', lineHeight: 26 },
+  repliesTitle: { fontSize: 18, fontWeight: '800', color: '#0F172A', marginBottom: 16, marginLeft: 4 },
+  replyCard: { marginBottom: 16 },
+  replyBubble: { backgroundColor: '#F1F5F9', padding: 16, borderRadius: 16, borderTopLeftRadius: 4, marginLeft: 12 },
+  replyContentText: { fontSize: 15, color: '#334155', marginTop: 4, lineHeight: 22 },
+  replyFooter: { flexDirection: 'row', alignItems: 'center', marginTop: 8, paddingLeft: 16, gap: 16 },
+  replyTime: { fontSize: 12, color: '#94A3B8', fontWeight: '500' },
+  replyLikeBtn: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  replyLikeTxt: { fontSize: 13, color: '#64748B', fontWeight: '700' },
   replyInputWrapper: { flexDirection: 'row', alignItems: 'center', padding: 16, paddingBottom: 24, backgroundColor: '#FFFFFF', borderTopWidth: 1, borderTopColor: '#F1F5F9' },
   replyInput: { flex: 1, backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 24, paddingHorizontal: 20, paddingTop: 12, paddingBottom: 12, maxHeight: 120, fontSize: 15, color: '#0F172A', marginRight: 12 },
   sendButton: { width: 48, height: 48, borderRadius: 24, backgroundColor: '#FF6B00', alignItems: 'center', justifyContent: 'center', shadowColor: '#FF6B00', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 }

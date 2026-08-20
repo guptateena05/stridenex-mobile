@@ -1,987 +1,656 @@
-import * as React from 'react';
-import { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Modal, Alert } from 'react-native';
-import { Users, User, Search, Plus, X, Globe, Lock, ArrowLeft, Folder, Tag, TrendingUp, MessageSquare } from 'lucide-react-native';
-import { colors } from '@/theme/colors';
-import { typography } from '@/theme/typography';
-import { api, createCategory, createPost, getPosts, getPostDetail, postComment, joinCommunity, leaveCommunity } from '@/api/api.services';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, RefreshControl, Modal, BackHandler, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Users, MessageSquare, Heart, Search, ArrowLeft, Folder, Tag, Plus, Send, X, ChevronRight, Check } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { getCommunities, joinCommunity, leaveCommunity, getPosts, getPostDetail, postComment, createPost, createCategory, createTag, getCommunityDetail, api, toggleCommentLike } from '@/api/api.services';
 
-interface Community {
-  name: string;
-  community_name: string;
-  description: string;
-  community_type: string;
-  user_type: string;
-  community_owner: string;
-  member_count?: number;
-}
+const formatChannelNameStr = (name: string): string => {
+  if (!name) return "";
+  return name.split(/[._-]/).map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(" ");
+};
+
+const getFallbackIcon = (name: string, type: string) => {
+  const lower = name.toLowerCase();
+  if (lower.includes("code") || lower.includes("python") || lower.includes("dsa") || lower.includes("dev")) return "💻";
+  if (lower.includes("design") || lower.includes("ux") || lower.includes("ui") || lower.includes("art")) return "🎨";
+  if (lower.includes("startup") || lower.includes("founder") || lower.includes("entrepreneur")) return "🚀";
+  if (lower.includes("research") || lower.includes("ml") || lower.includes("ai")) return "🧠";
+  if (lower.includes("placement") || lower.includes("job") || lower.includes("career")) return "💼";
+  if (type === "Private") return "🔒";
+  return "🌐";
+};
 
 interface SharedCommunityScreenProps {
   userType: 'mentor' | 'college' | 'industry';
 }
 
 export const SharedCommunityScreen = ({ userType }: SharedCommunityScreenProps) => {
-  const [communities, setCommunities] = useState<Community[]>([]);
+  const insets = useSafeAreaInsets();
+  const [communities, setCommunities] = useState<any[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [refreshing, setRefreshing] = useState<boolean>(false);
   const [joinedChannels, setJoinedChannels] = useState<string[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
-  
-  const [selectedChannel, setSelectedChannel] = useState<Community | null>(null);
-  const [channelDetails, setChannelDetails] = useState<any>(null);
-  const [isFetchingDetails, setIsFetchingDetails] = useState(false);
-  const [isCategoriesExpanded, setIsCategoriesExpanded] = useState(true);
-  const [isTagsExpanded, setIsTagsExpanded] = useState(true);
-  const [isMembersExpanded, setIsMembersExpanded] = useState(true);
-  
-  const [isModalVisible, setIsModalVisible] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [formData, setFormData] = useState({
-    community_name: '',
-    description: '',
-    community_type: 'Public',
-  });
+  const [search, setSearch] = useState<string>('');
+  const [selectedChannel, setSelectedChannel] = useState<any | null>(null);
 
-  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
-  const [isSubmittingCategory, setIsSubmittingCategory] = useState(false);
-  const [formDataCategory, setFormDataCategory] = useState({ category_name: '', description: '' });
+  // Tabs
+  const [activeSubTab, setActiveSubTab] = useState<"categories" | "members">("categories");
+  const [selectedCategory, setSelectedCategory] = useState<any | null>(null);
 
-  const [isTagModalOpen, setIsTagModalOpen] = useState(false);
-  const [isSubmittingTag, setIsSubmittingTag] = useState(false);
-  const [newTagTitle, setNewTagTitle] = useState("");
-
-  // Post Thread State
-  const [selectedCategory, setSelectedCategory] = useState<any>(null);
+  // Post/Thread state
   const [posts, setPosts] = useState<any[]>([]);
-  const [isFetchingPosts, setIsFetchingPosts] = useState(false);
-  const [newPostContent, setNewPostContent] = useState("");
-  const [isSubmittingPost, setIsSubmittingPost] = useState(false);
-  const [selectedPost, setSelectedPost] = useState<any>(null);
+  const [postsLoading, setPostsLoading] = useState<boolean>(false);
+  const [selectedPost, setSelectedPost] = useState<any | null>(null);
   const [postDetails, setPostDetails] = useState<any>(null);
-  const [isFetchingPostDetails, setIsFetchingPostDetails] = useState(false);
+  const [repliesLoading, setRepliesLoading] = useState<boolean>(false);
 
-  const [newComment, setNewComment] = useState("");
-  const [replyingToCommentId, setReplyingToCommentId] = useState("");
-  const [isSubmittingComment, setIsSubmittingComment] = useState(false);
+  // Modals
+  const [showCreateCommunityModal, setShowCreateCommunityModal] = useState(false);
+  const [showCreateCategoryModal, setShowCreateCategoryModal] = useState(false);
+  const [showCreateTagModal, setShowCreateTagModal] = useState(false);
+
+  // Form Data
+  const [newCommName, setNewCommName] = useState("");
+  const [newCommDesc, setNewCommDesc] = useState("");
+  const [newCommType, setNewCommType] = useState("Public");
+  
+  const [newCatName, setNewCatName] = useState("");
+  const [newCatDesc, setNewCatDesc] = useState("");
+  const [newTagTitle, setNewTagTitle] = useState("");
+  const [newTopicContent, setNewTopicContent] = useState("");
+
+  const [userEmail, setUserEmail] = useState("");
 
   useEffect(() => {
-    fetchCommunities();
-  }, [userType]);
+    const fetchEmail = async () => {
+      const email = await AsyncStorage.getItem("userEmail") || await AsyncStorage.getItem("currentUser") || await AsyncStorage.getItem("userName") || "";
+      setUserEmail(email);
+    };
+    fetchEmail();
+  }, []);
 
-  const fetchCommunities = async () => {
-    setIsLoading(true);
+  const loadCommunities = async (showIndicator = true) => {
+    if (showIndicator) setLoading(true);
     try {
-      const email = await AsyncStorage.getItem('userEmail') || await AsyncStorage.getItem('userName') || await AsyncStorage.getItem('currentUser') || '';
+      const email = await AsyncStorage.getItem("userEmail") || await AsyncStorage.getItem("currentUser") || await AsyncStorage.getItem("userName") || "";
       const capitalizedUserType = userType.charAt(0).toUpperCase() + userType.slice(1);
-      const response = await api.post('method/stridenex_app.stridenex_app.doctype.community.community.get_communities', {
+      
+      const res = await api.post('method/stridenex_app.stridenex_app.doctype.community.community.get_communities', {
         user: email,
         user_type: capitalizedUserType
       });
-      if (response.data) {
-        let communitiesArray = response.data?.message?.data || response.data?.data?.data || response.data?.data || response.data?.message || [];
-        if (!Array.isArray(communitiesArray)) {
-          if (Array.isArray(response.data?.message?.communities)) communitiesArray = response.data.message.communities;
-          else if (Array.isArray(response.data?.data?.communities)) communitiesArray = response.data.data.communities;
-          else communitiesArray = [];
-        }
-        setCommunities(Array.isArray(communitiesArray) ? communitiesArray : []);
+      
+      const list = res?.data?.message?.data || res?.data?.data?.data || res?.data?.data || res?.data?.message || [];
+      if (Array.isArray(list)) {
+        const mapped = list.map((c: any) => ({
+          ...c,
+          id: c.name,
+          prettyName: formatChannelNameStr(c.community_name || c.name),
+          icon: getFallbackIcon(c.community_name || c.name, c.community_type),
+          category: c.community_type || "Public",
+        }));
+        setCommunities(mapped);
       }
-    } catch (error) {
-      console.error("Error fetching communities:", error);
+    } catch (err) {
+      console.error(err);
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
-  const handleCommunityClick = async (community: Community) => {
-    setSelectedChannel(community);
-    setIsFetchingDetails(true);
-    try {
-      const email = await AsyncStorage.getItem('userEmail') || await AsyncStorage.getItem('userName') || await AsyncStorage.getItem('currentUser') || '';
-      const response = await api.post('method/stridenex_app.stridenex_app.doctype.community.community.get_community', {
-        community: community.name
-      });
-      if (response.data) {
-        const data = response.data?.message?.data || response.data?.data?.data || response.data?.message;
-        if (data) {
-          setChannelDetails(data);
-        } else {
-          setChannelDetails(community);
-        }
-      }
-    } catch (error) {
-      console.error("Error fetching community details:", error);
-      setChannelDetails(community); // Fallback
-    } finally {
-      setIsFetchingDetails(false);
-    }
+  useEffect(() => {
+    loadCommunities();
+  }, [userType]);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadCommunities(false);
+    setRefreshing(false);
   };
 
-  const handleJoinChannel = async (community: any) => {
-    const isAlreadyJoined = joinedChannels.includes(community.name) || community?.action === 'leave';
+  useEffect(() => {
+    const handleBackPress = () => {
+      if (selectedPost) {
+        setSelectedPost(null);
+        return true;
+      }
+      if (selectedCategory) {
+        setSelectedCategory(null);
+        return true;
+      }
+      if (selectedChannel) {
+        setSelectedChannel(null);
+        return true;
+      }
+      return false;
+    };
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', handleBackPress);
+    return () => backHandler.remove();
+  }, [selectedPost, selectedCategory, selectedChannel]);
+
+  const [channelDetailsLoading, setChannelDetailsLoading] = useState(false);
+
+  const handleJoinChannel = async (channelId: string) => {
+    const commObj = communities.find(c => c.id === channelId);
+    const isMember = commObj?.action === "leave" || joinedChannels.includes(channelId) || commObj?.is_member === 1 || commObj?.is_member === true;
+
     try {
-      if (isAlreadyJoined) {
-        handleCommunityClick(community);
+      if (!isMember) {
+        await joinCommunity({ community: channelId, student: userEmail });
+        setJoinedChannels(prev => [...prev, channelId]);
+        loadCommunities(false);
+      }
+      
+      setChannelDetailsLoading(true);
+      const detailRes = await getCommunityDetail({ community: channelId });
+      const channelDetails = detailRes?.message?.data || detailRes?.data || detailRes?.data?.message?.data || null;
+
+      if (channelDetails) {
+        setSelectedChannel({
+          ...commObj,
+          ...channelDetails,
+          prettyName: formatChannelNameStr(channelDetails.community_name || channelDetails.name),
+        });
       } else {
-        const email = await AsyncStorage.getItem('userEmail') || await AsyncStorage.getItem('userName') || await AsyncStorage.getItem('currentUser') || '';
-        await joinCommunity({
-          community: community.name,
-          student: email
-        });
-        setJoinedChannels((prev) => [...prev, community.name]);
-        fetchCommunities();
-        handleCommunityClick(community);
+        setSelectedChannel(commObj);
       }
-    } catch (error) {
-      console.error("Error toggling channel membership:", error);
+    } catch (err) {
+      Alert.alert("Error", "Could not process action");
+    } finally {
+      setChannelDetailsLoading(false);
     }
   };
 
-
-
-  const handleCreateCommunity = async () => {
-    if (!formData.community_name || !formData.description) {
-      Alert.alert('Error', 'Please fill in all required fields.');
-      return;
-    }
-    
-    setIsSubmitting(true);
+  const handleLeaveChannel = async () => {
+    if (!selectedChannel) return;
     try {
-      const email = await AsyncStorage.getItem('userEmail') || await AsyncStorage.getItem('userName') || await AsyncStorage.getItem('currentUser') || '';
-      const capitalizedUserType = userType.charAt(0).toUpperCase() + userType.slice(1);
-      const response = await api.post('method/stridenex_app.stridenex_app.doctype.community.community.create_community', {
-        ...formData,
-        user_type: capitalizedUserType,
-        community_owner: email
-      });
-      
-      const successMsg = response.data?.message?.message || response.data?.message || "Community created successfully!";
-      Alert.alert('Success', typeof successMsg === 'string' ? successMsg : "Community created successfully!");
-      setIsModalVisible(false);
-      setFormData({ community_name: '', description: '', community_type: 'Public' });
-      fetchCommunities();
-    } catch (error: any) {
-      console.error("Error creating community:", error);
-      const errMsg = error?.response?.data?.message?.message || error?.response?.data?.message || error.message || 'Failed to create community.';
-      Alert.alert('Error', typeof errMsg === 'string' ? errMsg : 'Failed to create community.');
-    } finally {
-      setIsSubmitting(false);
+      await leaveCommunity({ community: selectedChannel.id, student: userEmail });
+      setJoinedChannels(prev => prev.filter(id => id !== selectedChannel.id));
+      setSelectedChannel(null);
+      loadCommunities(false);
+    } catch (err) {
+      Alert.alert("Error", "Could not leave community");
     }
   };
 
-  const handleCreateCategory = async () => {
-    if (!formDataCategory.category_name || !formDataCategory.description) {
-      Alert.alert('Error', 'Please fill in all required fields.');
-      return;
-    }
-    setIsSubmittingCategory(true);
+  const loadPosts = async (categoryName: string) => {
     try {
-      const response = await api.post('method/stridenex_app.stridenex_app.doctype.community.community.create_category', {
-        ...formDataCategory,
-        parent_category: selectedChannel?.name
-      });
-
-      if (response.data?.message?.success === false || response.data?.success === false) {
-        throw new Error(response.data?.message?.message || response.data?.message || "Failed to create category");
-      }
-
-      const successMsg = response.data?.message?.message || response.data?.message || "Category created successfully!";
-      Alert.alert('Success', typeof successMsg === 'string' ? successMsg : "Category created successfully!");
-      setIsCategoryModalOpen(false);
-      setFormDataCategory({ category_name: '', description: '' });
-      fetchCommunities();
-      if (selectedChannel) {
-        const res = await api.post('method/stridenex_app.stridenex_app.doctype.community.community.get_community', {
-          community: selectedChannel.name
-        });
-        if (res.data) {
-          const data = res.data?.message?.data || res.data?.data?.data || res.data?.message;
-          if (data) setChannelDetails(data);
-        }
-      }
-    } catch (error: any) {
-      console.error("Error creating category:", error);
-      const errMsg = error?.response?.data?.message?.message || error?.response?.data?.message || error.message || 'Failed to create category.';
-      Alert.alert('Error', typeof errMsg === 'string' ? errMsg : 'Failed to create category.');
+      setPostsLoading(true);
+      const res = await getPosts({ community: selectedChannel?.id, category: categoryName });
+      const list = res?.message?.data || res?.data || [];
+      setPosts(Array.isArray(list) ? list : []);
+    } catch (err) {
+      console.error(err);
     } finally {
-      setIsSubmittingCategory(false);
-    }
-  };
-
-  const handleCreateTag = async () => {
-    if (!newTagTitle.trim()) return;
-    try {
-      setIsSubmittingTag(true);
-      const response = await api.post(
-        "method/stridenex_app.stridenex_app.doctype.community.community.create_tag",
-        { title: newTagTitle.trim() }
-      );
-      
-      if (response?.data?.message?.success === false || response?.data?.success === false) {
-        throw new Error(response?.data?.message?.message || response?.data?.message || "Failed to create tag");
-      }
-
-      const successMsg = response?.data?.message?.message || response?.data?.message || "Tag created successfully!";
-      Alert.alert("Success", typeof successMsg === 'string' ? successMsg : "Tag created successfully!");
-      setIsTagModalOpen(false);
-      setNewTagTitle("");
-      
-      fetchCommunities();
-      // refresh channel details
-      if (selectedChannel) {
-        handleCommunityClick(selectedChannel);
-      }
-    } catch (error: any) {
-      const errMsg = error?.response?.data?.message?.message || error?.response?.data?.message || error.message || "Failed to create tag";
-      Alert.alert("Error", typeof errMsg === 'string' ? errMsg : "Failed to create tag");
-    } finally {
-      setIsSubmittingTag(false);
-    }
-  };
-
-  const fetchPosts = async (catName: string) => {
-    try {
-      setIsFetchingPosts(true);
-      const response = await getPosts({
-        community: selectedChannel?.name || '',
-        category: catName
-      });
-      if (response?.message?.success === false || response?.success === false) {
-        throw new Error(response?.message?.message || response?.message || "Failed to fetch posts");
-      }
-      if (response?.data) {
-        setPosts(response.data);
-      } else if (response?.message?.data) {
-        setPosts(response.message.data);
-      }
-    } catch (error: any) {
-      console.error("Error fetching posts:", error);
-      const errMsg = error?.response?.data?.message?.message || error?.response?.data?.message || error.message || 'Failed to fetch posts.';
-      Alert.alert('Error', typeof errMsg === 'string' ? errMsg : 'Failed to fetch posts.');
-    } finally {
-      setIsFetchingPosts(false);
+      setPostsLoading(false);
     }
   };
 
   useEffect(() => {
     if (selectedCategory) {
-      fetchPosts(selectedCategory.category_name || selectedCategory.name);
+      loadPosts(selectedCategory.category_name || selectedCategory.name);
     }
   }, [selectedCategory]);
 
   const handlePostClick = async (post: any) => {
     setSelectedPost(post);
-    setPostDetails(null);
-    setIsFetchingPostDetails(true);
-    setNewComment("");
-    setReplyingToCommentId("");
     try {
-      const response = await getPostDetail({ post: post.name });
-      if (response?.message?.data) {
-        setPostDetails(response.message.data);
-      } else if (response?.data?.data) {
-        setPostDetails(response.data.data);
-      }
-    } catch (error: any) {
-      console.error("Error fetching post details:", error);
-      Alert.alert('Error', 'Failed to load post details.');
+      setRepliesLoading(true);
+      const res = await getPostDetail({ post: post.name });
+      const details = res?.message?.data || res?.data?.data || null;
+      setPostDetails(details);
+    } catch (err) {
+      console.error(err);
     } finally {
-      setIsFetchingPostDetails(false);
+      setRepliesLoading(false);
     }
   };
 
-  const handlePostComment = async () => {
-    if (!newComment.trim()) {
-      Alert.alert('Error', 'Comment cannot be empty');
-      return;
-    }
+  const handleCreateTopic = async () => {
+    if (!newTopicContent.trim()) return;
     try {
-      setIsSubmittingComment(true);
-      const studentEmail = await AsyncStorage.getItem("userEmail") || "";
-      
-      const response = await postComment({
-        post: selectedPost.name,
-        comment: newComment,
-        parent_comment: replyingToCommentId,
-        student: studentEmail
-      });
-
-      if (response?.message?.success === false || response?.success === false) {
-        throw new Error(response?.message?.message || response?.message || "Failed to post comment");
-      }
-
-      setNewComment("");
-      setReplyingToCommentId("");
-      
-      // Refresh post details
-      const detailResponse = await getPostDetail({ post: selectedPost.name });
-      if (detailResponse?.message?.data) {
-        setPostDetails(detailResponse.message.data);
-      } else if (detailResponse?.data?.data) {
-        setPostDetails(detailResponse.data.data);
-      }
-    } catch (error: any) {
-      console.error("Error posting comment:", error);
-      Alert.alert('Error', error.message || 'Failed to post comment.');
-    } finally {
-      setIsSubmittingComment(false);
-    }
-  };
-
-  const handleCreatePost = async () => {
-    if (!newPostContent.trim()) {
-      Alert.alert('Error', 'Post content cannot be empty');
-      return;
-    }
-    try {
-      setIsSubmittingPost(true);
-      let email = await AsyncStorage.getItem('currentUser') || await AsyncStorage.getItem('userEmail') || await AsyncStorage.getItem('userName') || '';
-      
-      if (!email) {
-        Alert.alert('Error', 'User not found. Please log in again.');
-        setIsSubmittingPost(false);
-        return;
-      }
-
-      const response = await createPost({
-        community: selectedChannel?.name || '',
-        user: email,
-        content: newPostContent,
+      await createPost({
+        community: selectedChannel?.id,
+        user: userEmail,
+        content: newTopicContent,
         post_type: "Text",
-        category: selectedCategory.category_name || selectedCategory.name
+        category: selectedCategory?.category_name || selectedCategory?.name || "General"
       });
-      
-      if (response?.message?.success === false || response?.success === false) {
-        throw new Error(response?.message?.message || response?.message || "Failed to create post");
+      setNewTopicContent("");
+      if (selectedCategory) {
+        loadPosts(selectedCategory.category_name || selectedCategory.name);
       }
-
-      const successMsg = response?.message?.message || response?.data?.message || "Post created successfully!";
-      Alert.alert('Success', typeof successMsg === 'string' ? successMsg : "Post created successfully!");
-      setNewPostContent("");
-      // Refresh posts
-      fetchPosts(selectedCategory.category_name || selectedCategory.name);
-    } catch (error: any) {
-      console.error("Error creating post:", error);
-      const errMsg = error?.response?.data?.message?.message || error?.response?.data?.message || error.message || 'Failed to create post.';
-      Alert.alert('Error', typeof errMsg === 'string' ? errMsg : 'Failed to create post.');
-    } finally {
-      setIsSubmittingPost(false);
+    } catch (err) {
+      Alert.alert("Error", "Failed to create post");
     }
   };
 
-  const filteredCommunities: Community[] = (communities || []).filter(c => 
-    c.community_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    c.description?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const handleToggleCommentLike = async (commentId: string) => {
+    try {
+      await toggleCommentLike({ comment: commentId });
+      if (selectedPost) {
+        const res = await getPostDetail({ post: selectedPost.name });
+        setPostDetails(res?.message?.data || res?.data?.data || null);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleCreateCommunity = async () => {
+    if (!newCommName.trim() || !newCommDesc.trim()) {
+      Alert.alert("Error", "Please fill all fields");
+      return;
+    }
+    try {
+      const capitalizedUserType = userType.charAt(0).toUpperCase() + userType.slice(1);
+      await api.post('method/stridenex_app.stridenex_app.doctype.community.community.create_community', {
+        community_name: newCommName,
+        description: newCommDesc,
+        community_type: newCommType,
+        user_type: capitalizedUserType,
+        community_owner: userEmail
+      });
+      setShowCreateCommunityModal(false);
+      setNewCommName("");
+      setNewCommDesc("");
+      loadCommunities(false);
+    } catch (err) {
+      Alert.alert("Error", "Failed to create community");
+    }
+  };
+
+  const handleCreateCategory = async () => {
+    if (!newCatName.trim()) return;
+    const exists = selectedChannel?.categories?.some((c: any) => (c.category_name || c.name)?.toLowerCase() === newCatName.trim().toLowerCase());
+    if (exists) {
+      Alert.alert("Already Present", "This category is already present.");
+      return;
+    }
+    
+    try {
+      await createCategory({
+        category_name: newCatName.trim(),
+        description: newCatDesc.trim(),
+        parent_category: selectedChannel?.id
+      });
+      setShowCreateCategoryModal(false);
+      setNewCatName("");
+      setNewCatDesc("");
+      
+      const detailRes = await getCommunityDetail({ community: selectedChannel?.id });
+      const channelDetails = detailRes?.message?.data || detailRes?.data || null;
+      if (channelDetails) {
+        setSelectedChannel({ ...selectedChannel, ...channelDetails });
+      }
+    } catch (err: any) {
+      const errStr = typeof err?.response?.data === 'string' ? err.response.data : JSON.stringify(err?.response?.data || err?.message || "").toLowerCase();
+      if (errStr.includes("duplicate") || errStr.includes("exist") || errStr.includes("present") || errStr.includes("unique")) {
+        Alert.alert("Already Present", "This category is already present.");
+      } else {
+        Alert.alert("Error", "Failed to create category");
+      }
+    }
+  };
+
+  const handleCreateTag = async () => {
+    if (!newTagTitle.trim()) return;
+    const exists = selectedChannel?.tags?.some((t: any) => (t.title || t.name)?.toLowerCase() === newTagTitle.trim().toLowerCase());
+    if (exists) {
+      Alert.alert("Already Present", "This tag is already present.");
+      return;
+    }
+    
+    try {
+      await createTag({ title: newTagTitle.trim() });
+      setShowCreateTagModal(false);
+      setNewTagTitle("");
+      
+      const detailRes = await getCommunityDetail({ community: selectedChannel?.id });
+      const channelDetails = detailRes?.message?.data || detailRes?.data || null;
+      if (channelDetails) {
+        setSelectedChannel({ ...selectedChannel, ...channelDetails });
+      }
+    } catch (err: any) {
+      const errStr = typeof err?.response?.data === 'string' ? err.response.data : JSON.stringify(err?.response?.data || err?.message || "").toLowerCase();
+      if (errStr.includes("duplicate") || errStr.includes("exist") || errStr.includes("present") || errStr.includes("unique")) {
+        Alert.alert("Already Present", "This tag is already present.");
+      } else {
+        Alert.alert("Error", "Failed to create tag");
+      }
+    }
+  };
+
+  const filteredCommunities = communities.filter(c => c.prettyName?.toLowerCase().includes(search.toLowerCase()) || c.category?.toLowerCase().includes(search.toLowerCase()));
+
+  // ============================================
+  // VIEWS
+  // ============================================
 
   if (selectedPost) {
     return (
-      <SafeAreaView style={styles.forumContainer} edges={['top', 'bottom']}>
-        <View style={styles.forumHeader}>
-          <TouchableOpacity 
-            onPress={() => setSelectedPost(null)} 
-            style={styles.forumBackBtn}
-          >
-            <ArrowLeft size={20} color="#94A3B8" />
-            <Text style={styles.forumBackTxt}>Back</Text>
+      <View style={[styles.container]}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => setSelectedPost(null)} style={styles.headerBack}>
+            <ArrowLeft size={20} color="#334155" />
+            <Text style={styles.headerBackText}>Back</Text>
           </TouchableOpacity>
-          <View style={styles.forumTitleGroup}>
-            <Text style={styles.forumTitle} numberOfLines={1}>
-              Post Detail
-            </Text>
-          </View>
-          <View style={{ width: 40 }} />
+          <Text style={styles.headerTitle} numberOfLines={1}>Discussion</Text>
         </View>
-        
-        <ScrollView style={{ flex: 1, padding: 16 }}>
-          {isFetchingPostDetails ? (
-            <ActivityIndicator size="large" color="#FF6B00" style={{ marginTop: 40 }} />
-          ) : postDetails ? (
-            <View style={{ paddingBottom: 24 }}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8, alignItems: 'center' }}>
-                <Text style={{ color: '#FFF', fontWeight: 'bold', fontSize: 16 }}>{postDetails.author}</Text>
-                <Text style={{ color: '#94A3B8', fontSize: 12 }}>{new Date(postDetails.posted_on).toLocaleString()}</Text>
-              </View>
-              
-              <Text style={{ color: '#E2E8F0', lineHeight: 22, fontSize: 15, marginBottom: 16 }}>
-                {postDetails.content}
-              </Text>
-              
-              <View style={{ flexDirection: 'row', gap: 24, paddingVertical: 12, borderTopWidth: 1, borderBottomWidth: 1, borderColor: '#1F2023', marginBottom: 16 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <Text style={{ color: postDetails.is_liked ? '#FF6B00' : '#64748B', fontSize: 18 }}>♥</Text>
-                  <Text style={{ color: '#94A3B8', fontWeight: '600' }}>{postDetails.like_count} Likes</Text>
-                </View>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <MessageSquare size={16} color="#64748B" />
-                  <Text style={{ color: '#94A3B8', fontWeight: '600' }}>{postDetails.comment_count} Comments</Text>
-                </View>
-              </View>
-              
-              <Text style={{ color: '#FFF', fontWeight: 'bold', fontSize: 16, marginBottom: 12 }}>Comments</Text>
-              {postDetails.comments && postDetails.comments.length > 0 ? (
-                postDetails.comments.map((comment: any, idx: number) => (
-                  <View key={idx} style={{ backgroundColor: '#1F2023', padding: 12, borderRadius: 12, marginBottom: 10 }}>
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
-                      <Text style={{ color: '#FFF', fontWeight: '600', fontSize: 13 }}>{comment.comment_by || comment.student || "Anonymous"}</Text>
-                      <Text style={{ color: '#94A3B8', fontSize: 10 }}>{new Date(comment.posted_on || comment.creation).toLocaleDateString()}</Text>
-                    </View>
-                    <Text style={{ color: '#CBD5E1', fontSize: 14, marginBottom: 8 }}>{comment.content}</Text>
+        <ScrollView style={styles.body} contentContainerStyle={{ paddingBottom: 20 }}>
+          {repliesLoading ? <ActivityIndicator size="small" color="#FF6B00" style={{ marginTop: 20 }} /> : (
+            <>
+              <View style={styles.postDetailCard}>
+                <View style={styles.postHeaderRow}>
+                  <View style={[styles.postAvatar, { width: 48, height: 48, borderRadius: 24 }]}>
+                    <Text style={[styles.postAvatarTxt, { fontSize: 18 }]}>{((postDetails?.author || selectedPost?.author) || '?').substring(0, 1).toUpperCase()}</Text>
                   </View>
-                ))
-              ) : (
-                <Text style={{ color: '#64748B', fontStyle: 'italic', textAlign: 'center', marginTop: 12 }}>No comments yet.</Text>
-              )}
-            </View>
-          ) : (
-            <Text style={{ color: '#94A3B8', textAlign: 'center', marginTop: 40 }}>Failed to load post details.</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.postDetailAuthor}>{postDetails?.author || selectedPost?.author}</Text>
+                    <Text style={styles.postDetailTime}>{(postDetails?.posted_on || selectedPost?.posted_on)?.replace('T', ' ').substring(0, 19)}</Text>
+                  </View>
+                </View>
+                <Text style={styles.postDetailContent}>{postDetails?.content || selectedPost?.content}</Text>
+              </View>
+
+              <Text style={styles.repliesTitle}>Replies</Text>
+              {postDetails?.comments?.map((comment: any, idx: number) => (
+                <View key={idx} style={styles.replyCard}>
+                  <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
+                    <View style={[styles.postAvatar, { width: 36, height: 36, borderRadius: 18, marginTop: 4 }]}>
+                      <Text style={[styles.postAvatarTxt, { fontSize: 14 }]}>{(comment.comment_by || '?').substring(0, 1).toUpperCase()}</Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <View style={styles.replyBubble}>
+                        <Text style={styles.postDetailAuthor}>{comment.comment_by}</Text>
+                        <Text style={styles.replyContentText}>{comment.content}</Text>
+                      </View>
+                      
+                      <View style={styles.replyFooter}>
+                        <Text style={styles.replyTime}>{comment.posted_on?.replace('T', ' ').substring(0, 19)}</Text>
+                        <TouchableOpacity onPress={() => handleToggleCommentLike(comment.name)} style={styles.replyLikeBtn}>
+                          <Heart size={14} color={comment.is_liked_by_user ? "#EF4444" : "#64748B"} fill={comment.is_liked_by_user ? "#EF4444" : "none"} />
+                          <Text style={[styles.replyLikeTxt, comment.is_liked_by_user && { color: "#EF4444" }]}>{comment.like_count || 0}</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  </View>
+                </View>
+              ))}
+            </>
           )}
         </ScrollView>
-      </SafeAreaView>
+      </View>
     );
   }
 
   if (selectedCategory) {
     return (
-      <SafeAreaView style={styles.forumContainer} edges={['top', 'bottom']}>
-        {/* Thread Header */}
-        <View style={styles.forumHeader}>
-          <TouchableOpacity 
-            onPress={() => setSelectedCategory(null)} 
-            style={styles.forumBackBtn}
-          >
-            <ArrowLeft size={20} color="#94A3B8" />
-            <Text style={styles.forumBackTxt}>Back</Text>
+      <View style={[styles.container]}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => setSelectedCategory(null)} style={styles.headerBack}>
+            <ArrowLeft size={20} color="#334155" />
+            <Text style={styles.headerBackText}>Back</Text>
           </TouchableOpacity>
-          <View style={styles.forumTitleGroup}>
-            <Text style={styles.forumTitle} numberOfLines={1}>
-              {selectedCategory.category_name || selectedCategory.name}
-            </Text>
-          </View>
-          <View style={{ width: 40 }} />
+          <Text style={styles.headerTitle} numberOfLines={1}>{selectedCategory.category_name || selectedCategory.name}</Text>
         </View>
-
-        <ScrollView style={styles.forumBody} contentContainerStyle={{ paddingBottom: 32 }}>
-          {isFetchingPosts ? (
-            <ActivityIndicator size="large" color="#FF6B00" style={{ marginTop: 40 }} />
-          ) : posts.length > 0 ? (
-            posts.map((post: any, idx: number) => (
-              <TouchableOpacity 
-                key={idx} 
-                style={{ backgroundColor: '#121315', padding: 16, borderRadius: 12, marginBottom: 12, borderWidth: 1, borderColor: '#1F2023', marginHorizontal: 16, marginTop: idx === 0 ? 16 : 0 }}
-                onPress={() => handlePostClick(post)}
-              >
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8, alignItems: 'center' }}>
-                  <Text style={{ color: '#FFF', fontWeight: 'bold' }}>{post.author || post.user || "User"}</Text>
-                  <Text style={{ color: '#94A3B8', fontSize: 12 }}>{new Date(post.posted_on || post.creation || Date.now()).toLocaleDateString()}</Text>
-                </View>
-                <Text style={{ color: '#E2E8F0', lineHeight: 20 }}>{post.content}</Text>
-                <View style={{ flexDirection: 'row', gap: 16, marginTop: 12, alignItems: 'center' }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                    <Text style={{ color: post.is_liked ? '#FF6B00' : '#64748B', fontSize: 16 }}>♥</Text>
-                    <Text style={{ color: '#94A3B8', fontSize: 12, fontWeight: '600' }}>{post.like_count || 0}</Text>
+        <ScrollView style={styles.body}>
+          {postsLoading ? <ActivityIndicator size="small" color="#FF6B00" style={{ marginTop: 20 }} /> : (
+            posts.length > 0 ? posts.map((post, idx) => (
+              <TouchableOpacity key={idx} style={styles.postCard} onPress={() => handlePostClick(post)}>
+                <View style={styles.postCardInner}>
+                  <View style={styles.postHeaderRow}>
+                    <View style={styles.postAvatar}>
+                      <Text style={styles.postAvatarTxt}>{(post.author || '?').substring(0, 1).toUpperCase()}</Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.postCardAuthor} numberOfLines={1}>{post.author}</Text>
+                      <Text style={styles.postCardTime}>{post.posted_on?.replace('T', ' ').substring(0, 19)}</Text>
+                    </View>
+                    <ChevronRight size={20} color="#CBD5E1" />
                   </View>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                    <MessageSquare size={14} color="#64748B" />
-                    <Text style={{ color: '#94A3B8', fontSize: 12, fontWeight: '600' }}>{post.comment_count || 0}</Text>
+                  <Text style={styles.postCardContent} numberOfLines={3}>{post.content}</Text>
+                  
+                  <View style={styles.postDivider} />
+                  
+                  <View style={styles.postCardActions}>
+                    <View style={styles.postActionBadge}>
+                      <Heart size={14} color="#64748B" />
+                      <Text style={styles.postActionTxt}>{post.like_count || 0}</Text>
+                    </View>
+                    <View style={styles.postActionBadge}>
+                      <MessageSquare size={14} color="#64748B" />
+                      <Text style={styles.postActionTxt}>{post.comment_count || 0}</Text>
+                    </View>
                   </View>
                 </View>
               </TouchableOpacity>
-            ))
-          ) : (
-            <View style={{ alignItems: 'center', marginTop: 40, padding: 24, borderWidth: 1, borderColor: '#1F2023', borderRadius: 12, borderStyle: 'dashed', marginHorizontal: 16 }}>
-              <MessageSquare size={32} color="#475569" style={{ marginBottom: 12 }} />
-              <Text style={{ color: '#FFF', fontWeight: 'bold', fontSize: 16, marginBottom: 8 }}>No posts yet</Text>
-              <Text style={{ color: '#94A3B8', textAlign: 'center' }}>Be the first to start the discussion in this category!</Text>
-            </View>
+            )) : <Text style={styles.emptyText}>No posts found in this category.</Text>
           )}
         </ScrollView>
 
-        {/* Create Post Input Layer */}
-        <View style={{ padding: 16, borderTopWidth: 1, borderTopColor: '#1F2023', backgroundColor: '#121315', flexDirection: 'row', alignItems: 'center' }}>
-          <TextInput 
-            value={newPostContent}
-            onChangeText={setNewPostContent}
-            placeholder={`Post in ${selectedCategory.category_name || selectedCategory.name}...`}
-            placeholderTextColor="#475569"
-            style={{ flex: 1, backgroundColor: '#0E0F10', borderWidth: 1, borderColor: '#1F2023', borderRadius: 24, paddingHorizontal: 16, height: 48, color: '#FFF' }}
+        <View style={styles.replyInputWrapper}>
+          <TextInput
+            style={styles.replyInput}
+            placeholder={`Post something in ${selectedCategory.category_name || selectedCategory.name}...`}
+            placeholderTextColor="#94A3B8"
+            value={newTopicContent}
+            onChangeText={setNewTopicContent}
+            multiline
           />
-          <TouchableOpacity 
-            onPress={handleCreatePost}
-            disabled={isSubmittingPost || !newPostContent.trim()}
-            style={{ marginLeft: 12, height: 48, paddingHorizontal: 20, borderRadius: 24, backgroundColor: (!newPostContent.trim() || isSubmittingPost) ? '#334155' : '#FF6B00', alignItems: 'center', justifyContent: 'center' }}
-          >
-            {isSubmittingPost ? (
-              <ActivityIndicator size="small" color="#FFF" />
-            ) : (
-              <Text style={{ color: '#FFF', fontWeight: 'bold', fontSize: 14 }}>Post</Text>
-            )}
+          <TouchableOpacity style={styles.sendButton} onPress={handleCreateTopic}>
+            <Send size={18} color="#FFFFFF" />
           </TouchableOpacity>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   if (selectedChannel) {
-    return (
-      <SafeAreaView style={styles.forumContainer} edges={['top', 'bottom']}>
-        {/* Forum Header */}
-        <View style={styles.forumHeader}>
-          <TouchableOpacity 
-            onPress={() => {
-              setSelectedChannel(null);
-              setChannelDetails(null);
-            }} 
-            style={styles.forumBackBtn}
-          >
-            <ArrowLeft size={20} color="#94A3B8" />
-            <Text style={styles.forumBackTxt}>Back</Text>
-          </TouchableOpacity>
-          <View style={styles.forumTitleGroup}>
-            <Text style={styles.forumTitle} numberOfLines={1}>
-              {selectedChannel.community_name || selectedChannel.name}
-            </Text>
-          </View>
+    const categories = selectedChannel.categories || [];
+    const tags = selectedChannel.tags || [];
 
+    return (
+      <View style={[styles.container]}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => setSelectedChannel(null)} style={styles.headerBack}>
+            <ArrowLeft size={20} color="#334155" />
+            <Text style={styles.headerBackText}>Back</Text>
+          </TouchableOpacity>
+          <Text style={styles.headerTitle} numberOfLines={1}>{selectedChannel.prettyName}</Text>
+          {/* Leave button removed for admin roles */}
         </View>
 
-        <ScrollView style={styles.forumBody} contentContainerStyle={{ paddingBottom: 32 }}>
-          {/* Header Greeting Banner */}
-          <View style={styles.forumGreetingCard}>
-            <Text style={styles.forumGreetingTitle}>Welcome to discussions!</Text>
-            <Text style={styles.forumGreetingSub}>
-              {channelDetails?.description || selectedChannel.description || 'A space to collaborate, support each other, and grow.'}
-            </Text>
-          </View>
+        <View style={styles.tabsWrapper}>
+          <TouchableOpacity style={[styles.tabBtn, activeSubTab === 'categories' && styles.tabBtnActive]} onPress={() => setActiveSubTab('categories')}>
+            <Text style={[styles.tabBtnText, activeSubTab === 'categories' && styles.tabBtnTextActive]}>Categories</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.tabBtn, activeSubTab === 'members' && styles.tabBtnActive]} onPress={() => setActiveSubTab('members')}>
+            <Text style={[styles.tabBtnText, activeSubTab === 'members' && styles.tabBtnTextActive]}>Members</Text>
+          </TouchableOpacity>
+        </View>
 
-          {/* Categories Accordion */}
-          <View style={styles.accordionContainer}>
-            <TouchableOpacity 
-              activeOpacity={0.7}
-              onPress={() => setIsCategoriesExpanded(!isCategoriesExpanded)}
-              style={[styles.accordionHeader, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]}
-            >
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
-                <Folder size={16} color="#FF6B00" />
-                <Text style={styles.accordionTitle}>Categories</Text>
-              </View>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
-                <TouchableOpacity onPress={() => setIsCategoryModalOpen(true)}>
-                  <Plus size={16} color="#94A3B8" />
+        <ScrollView style={styles.body}>
+          {activeSubTab === 'categories' && (
+            <View>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>Categories</Text>
+                <TouchableOpacity style={styles.addBtn} onPress={() => setShowCreateCategoryModal(true)}>
+                  <Plus size={14} color="#FF6B00" />
+                  <Text style={styles.addBtnText}>Add</Text>
                 </TouchableOpacity>
-                <Text style={styles.accordionArrow}>{isCategoriesExpanded ? "▼" : "▶"}</Text>
               </View>
-            </TouchableOpacity>
-            
-              {isCategoriesExpanded && (
-                <View style={styles.accordionContent}>
-                  {!channelDetails ? (
-                    <ActivityIndicator size="small" color="#FF6B00" style={{ marginVertical: 12 }} />
-                  ) : (channelDetails.categories && channelDetails.categories.length > 0) ? (
-                    channelDetails.categories.map((cat: any, idx: number) => (
-                      <TouchableOpacity key={cat.name || idx} onPress={() => setSelectedCategory(cat)} style={[styles.accordionItem, { paddingVertical: 12 }]}>
-                        <View style={[styles.accordionBullet, { backgroundColor: '#FF6B00' }]} />
-                        <Text style={[styles.accordionItemText, { color: '#FFF', fontWeight: '500' }]}>{cat.category_name || cat.name}</Text>
-                      </TouchableOpacity>
-                    ))
-                  ) : (
-                    <Text style={styles.noCategoriesText}>No categories defined</Text>
-                  )}
+              {categories.map((cat: any, idx: number) => (
+                <TouchableOpacity key={idx} style={styles.categoryCard} onPress={() => setSelectedCategory(cat)}>
+                  <Folder size={20} color="#FF6B00" />
+                  <View style={{ flex: 1, marginLeft: 12 }}>
+                    <Text style={styles.categoryName}>{cat.category_name || cat.name}</Text>
+                    <Text style={styles.categoryDesc}>{cat.description || "Discussion category"}</Text>
+                  </View>
+                  <ChevronRight size={18} color="#94A3B8" />
+                </TouchableOpacity>
+              ))}
+
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>Tags</Text>
+                <TouchableOpacity style={styles.addBtn} onPress={() => setShowCreateTagModal(true)}>
+                  <Plus size={14} color="#FF6B00" />
+                  <Text style={styles.addBtnText}>Add</Text>
+                </TouchableOpacity>
+              </View>
+              <View style={styles.tagsContainer}>
+                {tags.map((tag: any, idx: number) => (
+                  <View key={idx} style={styles.tagBadge}>
+                    <Text style={styles.tagText}>#{tag.title || tag.name}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          )}
+
+          {activeSubTab === 'members' && (
+            <View>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>Members ({selectedChannel?.members?.length || 0})</Text>
+              </View>
+              {selectedChannel?.members?.map((member: any, idx: number) => (
+                <View key={idx} style={styles.memberCard}>
+                  <View style={styles.memberAvatar}>
+                    <Text style={styles.memberAvatarTxt}>{(member.member || member.name || '?').substring(0, 1).toUpperCase()}</Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.memberName}>{member.member || member.name}</Text>
+                    <Text style={styles.memberRole}>{member.role || 'Member'} • Joined {member.joined_on?.substring(0, 10)}</Text>
+                  </View>
+                  <View style={[styles.statusBadge, { backgroundColor: member.status === 'Approved' ? '#ECFDF5' : '#FFFBEB' }]}>
+                    <Text style={[styles.statusTxt, { color: member.status === 'Approved' ? '#059669' : '#D97706' }]}>{member.status || 'Pending'}</Text>
+                  </View>
                 </View>
-              )}
-          </View>
+              ))}
+            </View>
+          )}
+        </ScrollView>
 
-          {/* Tags Accordion */}
-          <View style={styles.accordionContainer}>
-            <TouchableOpacity 
-              activeOpacity={0.7}
-              onPress={() => setIsTagsExpanded(!isTagsExpanded)}
-              style={[styles.accordionHeader, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]}
-            >
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
-                <Tag size={16} color="#FF6B00" />
-                <Text style={styles.accordionTitle}>Tags</Text>
-              </View>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
-                <TouchableOpacity onPress={() => setIsTagModalOpen(true)}>
-                  <Plus size={16} color="#94A3B8" />
-                </TouchableOpacity>
-                <Text style={styles.accordionArrow}>{isTagsExpanded ? "▼" : "▶"}</Text>
-              </View>
-            </TouchableOpacity>
-            
-            {isTagsExpanded && (
-              <View style={[styles.accordionContent, { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingTop: 8 }]}>
-                {!channelDetails ? (
-                  <ActivityIndicator size="small" color="#FF6B00" />
-                ) : (channelDetails.tags && channelDetails.tags.length > 0) ? (
-                  channelDetails.tags.map((tag: any, idx: number) => (
-                    <View key={tag.name || idx} style={styles.tagBadge}>
-                      <Text style={styles.tagBadgeText}>#{tag.title || tag.name}</Text>
-                    </View>
-                  ))
-                ) : (
-                  <Text style={{ color: '#64748B', fontSize: 12 }}>No tags defined</Text>
-                )}
-              </View>
-            )}
-          </View>
-          
-           {/* Members Info */}
-           <View style={styles.accordionContainer}>
-             <View style={styles.accordionHeader}>
-               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                 <Users size={16} color="#FF6B00" />
-                 <Text style={styles.accordionTitle}>Community Info</Text>
-               </View>
-             </View>
-             <View style={styles.accordionContent}>
-                <Text style={{ color: '#94A3B8', fontSize: 14 }}>
-                   Members: <Text style={{ color: '#FFFFFF', fontWeight: 'bold' }}>{channelDetails?.member_count || selectedChannel.member_count || 1}</Text>
-                </Text>
-                <Text style={{ color: '#94A3B8', fontSize: 14, marginTop: 6 }}>
-                   Type: <Text style={{ color: '#FFFFFF', fontWeight: 'bold' }}>{channelDetails?.community_type || selectedChannel.community_type || 'Public'}</Text>
-                </Text>
-                <Text style={{ color: '#94A3B8', fontSize: 14, marginTop: 6 }}>
-                   Owner: <Text style={{ color: '#FFFFFF', fontWeight: 'bold' }}>{channelDetails?.community_owner || selectedChannel.community_owner}</Text>
-                </Text>
-             </View>
-           </View>
-
-           {/* Members List Accordion */}
-           <View style={styles.accordionContainer}>
-             <TouchableOpacity 
-               activeOpacity={0.7}
-               onPress={() => setIsMembersExpanded(!isMembersExpanded)}
-               style={styles.accordionHeader}
-             >
-               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                 <Users size={16} color="#FF6B00" />
-                 <Text style={styles.accordionTitle}>Members ({channelDetails?.members?.length || 0})</Text>
-               </View>
-               <Text style={styles.accordionArrow}>{isMembersExpanded ? "▼" : "▶"}</Text>
-             </TouchableOpacity>
-             
-             {isMembersExpanded && (
-               <View style={styles.accordionContent}>
-                 {!channelDetails ? (
-                   <ActivityIndicator size="small" color="#FF6B00" style={{ marginVertical: 12 }} />
-                 ) : (channelDetails.members && channelDetails.members.length > 0) ? (
-                   channelDetails.members.map((member: any, idx: number) => (
-                      <React.Fragment key={member.name || idx}>
-                        <View style={{ 
-                          flexDirection: 'row', 
-                          alignItems: 'center', 
-                          gap: 12,
-                          paddingVertical: 12,
-                          borderBottomWidth: idx < channelDetails.members.length - 1 ? 1 : 0,
-                          borderBottomColor: '#1F2023'
-                        }}>
-                          <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#334155', alignItems: 'center', justifyContent: 'center' }}>
-                            <User size={18} color="#94A3B8" />
-                          </View>
-                          <View style={{ flex: 1 }}>
-                            <Text style={{ color: '#FFF', fontSize: 14, fontWeight: '600' }}>{member.member || member.name}</Text>
-                            <Text style={{ color: '#94A3B8', fontSize: 12 }}>Joined {member.joined_on || 'Recently'}</Text>
-                          </View>
-                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                            <View style={{ backgroundColor: member.role === 'Admin' ? 'rgba(59, 130, 246, 0.2)' : 'rgba(148, 163, 184, 0.2)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
-                              <Text style={{ color: member.role === 'Admin' ? '#60A5FA' : '#94A3B8', fontSize: 10, fontWeight: 'bold', textTransform: 'uppercase' }}>
-                                {member.role || "Member"}
-                              </Text>
-                            </View>
-                            <View style={{ backgroundColor: member.status === 'Approved' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(234, 179, 8, 0.2)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
-                              <Text style={{ color: member.status === 'Approved' ? '#34D399' : '#FBBF24', fontSize: 10, fontWeight: 'bold', textTransform: 'uppercase' }}>
-                                {member.status || "Pending"}
-                              </Text>
-                            </View>
-                          </View>
-                        </View>
-                      </React.Fragment>
-                   ))
-                 ) : (
-                   <Text style={styles.noCategoriesText}>No members found</Text>
-                 )}
-               </View>
-             )}
-           </View>
-         </ScrollView>
-        {/* Create Tag Modal */}
-        <Modal 
-          visible={isTagModalOpen} 
-          transparent 
-          animationType="fade" 
-          onRequestClose={() => {
-            setIsTagModalOpen(false);
-            setNewTagTitle("");
-          }}
-        >
-          <View style={styles.modalOverlay}>
+        {/* Modals */}
+        <Modal visible={showCreateCategoryModal} transparent animationType="fade">
+          <View style={styles.modalBg}>
             <View style={styles.modalContent}>
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Create New Tag</Text>
-                <TouchableOpacity onPress={() => setIsTagModalOpen(false)} style={styles.closeButton}>
-                  <X size={24} color={colors.text.secondary} />
-                </TouchableOpacity>
-              </View>
-              
-              <View style={styles.formContainer}>
-                <Text style={styles.label}>Tag Title *</Text>
-                <TextInput 
-                  style={styles.input}
-                  placeholder="e.g. react, help, bug"
-                  placeholderTextColor="#64748B"
-                  value={newTagTitle}
-                  onChangeText={setNewTagTitle}
-                />
-              </View>
-
-              <View style={styles.modalFooter}>
-                <TouchableOpacity 
-                  onPress={() => {
-                    setIsTagModalOpen(false);
-                    setNewTagTitle("");
-                  }} 
-                  style={styles.cancelButton}
-                  disabled={isSubmittingTag}
-                >
-                  <Text style={styles.cancelButtonText}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity 
-                  onPress={handleCreateTag} 
-                  style={[styles.submitButton, isSubmittingTag && styles.submitButtonDisabled]}
-                  disabled={isSubmittingTag}
-                >
-                  {isSubmittingTag ? (
-                    <ActivityIndicator size="small" color="#FFF" />
-                  ) : (
-                    <Text style={styles.submitButtonText}>Create</Text>
-                  )}
-                </TouchableOpacity>
+              <Text style={styles.modalTitle}>New Category</Text>
+              <TextInput style={styles.modalInput} placeholder="Category Name" placeholderTextColor="#94A3B8" value={newCatName} onChangeText={setNewCatName} />
+              <TextInput style={[styles.modalInput, { height: 60 }]} placeholder="Description" placeholderTextColor="#94A3B8" value={newCatDesc} onChangeText={setNewCatDesc} multiline />
+              <View style={styles.modalActions}>
+                <TouchableOpacity onPress={() => setShowCreateCategoryModal(false)}><Text style={styles.modalCancel}>Cancel</Text></TouchableOpacity>
+                <TouchableOpacity onPress={handleCreateCategory} style={styles.modalSubmit}><Text style={styles.modalSubmitText}>Create</Text></TouchableOpacity>
               </View>
             </View>
           </View>
         </Modal>
-      </SafeAreaView>
+
+        <Modal visible={showCreateTagModal} transparent animationType="fade">
+          <View style={styles.modalBg}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>New Tag</Text>
+              <TextInput style={styles.modalInput} placeholder="Tag Title" placeholderTextColor="#94A3B8" value={newTagTitle} onChangeText={setNewTagTitle} />
+              <View style={styles.modalActions}>
+                <TouchableOpacity onPress={() => setShowCreateTagModal(false)}><Text style={styles.modalCancel}>Cancel</Text></TouchableOpacity>
+                <TouchableOpacity onPress={handleCreateTag} style={styles.modalSubmit}><Text style={styles.modalSubmitText}>Create</Text></TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+
+      </View>
     );
   }
 
+  // LIST VIEW
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <View style={styles.headerTextContainer}>
-          <Text style={styles.title}>Communities</Text>
-          <Text style={styles.subtitle}>Connect and collaborate with peers.</Text>
-        </View>
-        <TouchableOpacity style={styles.createButton} onPress={() => setIsModalVisible(true)}>
-          <Plus size={20} color="#FFF" />
-          <Text style={styles.createButtonText}>Create</Text>
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.searchContainer}>
-        <Search size={20} color={colors.text.secondary} style={styles.searchIcon} />
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search communities..."
-          placeholderTextColor={colors.text.secondary}
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-        />
-      </View>
-
-      {isLoading ? (
-        <ActivityIndicator size="large" color={"#3B82F6"} style={{ marginTop: 40 }} />
-      ) : filteredCommunities.length > 0 ? (
-        <ScrollView contentContainerStyle={styles.listContainer}>
-            {filteredCommunities.map((community: any, index: number) => (
-              <TouchableOpacity key={community.name || index} style={styles.card} onPress={() => handleCommunityClick(community)}>
-                {isFetchingDetails && (selectedChannel as any)?.name === community.name && (
-                  <View style={StyleSheet.absoluteFillObject}>
-                    <View style={{ flex: 1, backgroundColor: 'rgba(255,255,255,0.7)', borderRadius: 16, alignItems: 'center', justifyContent: 'center' }}>
-                      <ActivityIndicator size="large" color={"#3B82F6"} />
-                    </View>
-                  </View>
-                )}
-                <View style={styles.cardHeader}>
-                  <View style={styles.iconContainer}>
-                  {community.community_type === 'Private' ? (
-                    <Lock size={20} color={"#3B82F6"} />
-                  ) : (
-                    <Globe size={20} color={"#3B82F6"} />
-                  )}
-                </View>
-                <View style={styles.badge}>
-                  <Text style={styles.badgeText}>{community.community_type || 'Public'}</Text>
-                </View>
-              </View>
-              <Text style={styles.cardTitle} numberOfLines={1}>{community.community_name}</Text>
-              <Text style={styles.cardDescription} numberOfLines={2}>
-                {community.description || "No description provided."}
-              </Text>
-              <View style={styles.cardFooter}>
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <Users size={14} color={colors.text.secondary} />
-                  <Text style={styles.memberText}>{community.member_count || 1} members</Text>
-                </View>
-                <TouchableOpacity 
-                   onPress={() => handleJoinChannel(community)}
-                   style={[
-                     { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
-                     { backgroundColor: (joinedChannels.includes(community.name) || community.action === 'leave') ? "#3B82F6" : 'transparent', borderWidth: 1, borderColor: "#3B82F6" }
-                   ]}
-                 >
-                   <Text 
-                     style={[
-                       { fontSize: 12, fontWeight: 'bold' },
-                       { color: (joinedChannels.includes(community.name) || community.action === 'leave') ? '#FFFFFF' : "#3B82F6" }
-                     ]}
-                   >
-                     {community.action === 'leave' || joinedChannels.includes(community.name) ? 'Joined' : 'Join'}
-                   </Text>
-                </TouchableOpacity>
-              </View>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      ) : (
-        <View style={styles.emptyContainer}>
-          <Users size={48} color={colors.text.secondary} />
-          <Text style={styles.emptyTitle}>No communities found</Text>
-          <Text style={styles.emptySubtitle}>
-            {searchQuery ? 'Try adjusting your search terms.' : "You haven't created or joined any communities yet."}
-          </Text>
-        </View>
-      )}
-
-      {/* Create Modal */}
-      <Modal visible={isModalVisible} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Create Community</Text>
-              <TouchableOpacity onPress={() => !isSubmitting && setIsModalVisible(false)} style={styles.closeButton}>
-                <X size={24} color={colors.text.secondary} />
-              </TouchableOpacity>
-            </View>
-            
-            <View style={styles.formContainer}>
-              <Text style={styles.label}>Community Name *</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="e.g. React Developers"
-                value={formData.community_name}
-                onChangeText={(text) => setFormData({...formData, community_name: text})}
-              />
-              
-              <Text style={styles.label}>Description *</Text>
-              <TextInput
-                style={[styles.input, styles.textArea]}
-                placeholder="What is this community about?"
-                multiline
-                numberOfLines={3}
-                value={formData.description}
-                onChangeText={(text) => setFormData({...formData, description: text})}
-                textAlignVertical="top"
-              />
-              
-              <Text style={styles.label}>Privacy Type</Text>
-              <View style={styles.typeButtonsRow}>
-                <TouchableOpacity
-                  style={[styles.typeButton, formData.community_type === 'Public' && styles.typeButtonActive]}
-                  onPress={() => setFormData({...formData, community_type: 'Public'})}
-                >
-                  <Globe size={16} color={formData.community_type === 'Public' ? "#3B82F6" : colors.text.secondary} />
-                  <Text style={[styles.typeButtonText, formData.community_type === 'Public' && styles.typeButtonTextActive]}>Public</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.typeButton, formData.community_type === 'Private' && styles.typeButtonActive]}
-                  onPress={() => setFormData({...formData, community_type: 'Private'})}
-                >
-                  <Lock size={16} color={formData.community_type === 'Private' ? "#3B82F6" : colors.text.secondary} />
-                  <Text style={[styles.typeButtonText, formData.community_type === 'Private' && styles.typeButtonTextActive]}>Private</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-            
-            <View style={styles.modalFooter}>
-              <TouchableOpacity 
-                style={styles.cancelButton} 
-                onPress={() => setIsModalVisible(false)}
-                disabled={isSubmitting}
-              >
-                <Text style={styles.cancelButtonText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]} 
-                onPress={handleCreateCommunity}
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? (
-                  <ActivityIndicator size="small" color="#FFF" />
-                ) : (
-                  <Text style={styles.submitButtonText}>Create</Text>
-                )}
-              </TouchableOpacity>
-            </View>
+      <View style={styles.listHeader}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.listTitle}>Communities</Text>
+            <Text style={styles.listSubtitle}>Join peer groups, share knowledge, and grow together</Text>
           </View>
+          <TouchableOpacity style={styles.createCommBtn} onPress={() => setShowCreateCommunityModal(true)}>
+            <Plus size={16} color="#FFFFFF" />
+          </TouchableOpacity>
         </View>
-      </Modal>
+      </View>
+      <View style={{ paddingHorizontal: 16, marginBottom: 12 }}>
+        <View style={styles.searchBox}>
+          <Search size={18} color="#94A3B8" style={{ marginLeft: 12 }} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search communities..."
+            placeholderTextColor="#94A3B8"
+            value={search}
+            onChangeText={setSearch}
+          />
+        </View>
+      </View>
+      <ScrollView refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#FF6B00']} />} contentContainerStyle={{ padding: 16 }}>
+        {loading ? <ActivityIndicator size="large" color="#FF6B00" style={{ marginTop: 40 }} /> : (
+          filteredCommunities.map((community, idx) => {
+            const isJoined = joinedChannels.includes(community.id) || community.is_member === 1 || community.is_member === true || community.action === 'leave';
+            return (
+              <TouchableOpacity key={idx} style={styles.communityCard} onPress={() => isJoined ? handleJoinChannel(community.id) : null}>
+                <View style={styles.communityIconWrapper}>
+                  <Text style={styles.communityIconTxt}>{community.icon}</Text>
+                </View>
+                <View style={styles.communityInfo}>
+                  <Text style={styles.communityName} numberOfLines={1}>{community.prettyName}</Text>
+                  <Text style={styles.communityDesc} numberOfLines={2}>{community.description || "A community space to collaborate."}</Text>
+                  <View style={styles.communityMeta}>
+                    <View style={styles.metaBadge}><Users size={12} color="#64748B" /><Text style={styles.metaTxt}>{community.member_count || 0}</Text></View>
+                    <View style={styles.metaBadge}><Tag size={12} color="#64748B" /><Text style={styles.metaTxt}>{community.category}</Text></View>
+                  </View>
+                </View>
+                <TouchableOpacity
+                  style={[styles.joinBtn, isJoined && styles.joinBtnActive]}
+                  onPress={() => handleJoinChannel(community.id)}
+                >
+                  <Text style={[styles.joinBtnText, isJoined && styles.joinBtnTextActive]}>{isJoined ? "View" : "Join"}</Text>
+                </TouchableOpacity>
+              </TouchableOpacity>
+            )
+          })
+        )}
+      </ScrollView>
 
-      {/* Create Category Modal */}
-      <Modal visible={isCategoryModalOpen} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
+      {/* Create Community Modal */}
+      <Modal visible={showCreateCommunityModal} transparent animationType="fade">
+        <View style={styles.modalBg}>
           <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Create Category</Text>
-              <TouchableOpacity onPress={() => !isSubmittingCategory && setIsCategoryModalOpen(false)} style={styles.closeButton}>
-                <X size={24} color={colors.text.secondary} />
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <Text style={styles.modalTitle}>Create Community</Text>
+              <TouchableOpacity onPress={() => setShowCreateCommunityModal(false)}>
+                <X size={20} color="#94A3B8" />
               </TouchableOpacity>
             </View>
+            <TextInput style={styles.modalInput} placeholder="Community Name" placeholderTextColor="#94A3B8" value={newCommName} onChangeText={setNewCommName} />
+            <TextInput style={[styles.modalInput, { height: 80 }]} placeholder="Description" placeholderTextColor="#94A3B8" value={newCommDesc} onChangeText={setNewCommDesc} multiline />
             
-            <View style={styles.formContainer}>
-              <Text style={styles.label}>Category Name *</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="e.g. Technology"
-                value={formDataCategory.category_name}
-                onChangeText={(text) => setFormDataCategory({...formDataCategory, category_name: text})}
-                placeholderTextColor={colors.text.secondary}
-              />
-              
-              <Text style={styles.label}>Description *</Text>
-              <TextInput
-                style={[styles.input, styles.textArea]}
-                placeholder="What is this category about?"
-                value={formDataCategory.description}
-                onChangeText={(text) => setFormDataCategory({...formDataCategory, description: text})}
-                multiline
-                numberOfLines={3}
-                textAlignVertical="top"
-                placeholderTextColor={colors.text.secondary}
-              />
+            <View style={{ flexDirection: 'row', gap: 12, marginBottom: 20 }}>
+              <TouchableOpacity 
+                style={[styles.typeBtn, newCommType === 'Public' && styles.typeBtnActive]} 
+                onPress={() => setNewCommType('Public')}
+              >
+                <Text style={[styles.typeBtnTxt, newCommType === 'Public' && styles.typeBtnTxtActive]}>Public</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.typeBtn, newCommType === 'Private' && styles.typeBtnActive]} 
+                onPress={() => setNewCommType('Private')}
+              >
+                <Text style={[styles.typeBtnTxt, newCommType === 'Private' && styles.typeBtnTxtActive]}>Private</Text>
+              </TouchableOpacity>
             </View>
-            
-            <View style={styles.modalFooter}>
-              <TouchableOpacity 
-                style={styles.cancelButton} 
-                onPress={() => setIsCategoryModalOpen(false)}
-                disabled={isSubmittingCategory}
-              >
-                <Text style={styles.cancelButtonText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={[styles.submitButton, isSubmittingCategory && styles.submitButtonDisabled]} 
-                onPress={handleCreateCategory}
-                disabled={isSubmittingCategory}
-              >
-                {isSubmittingCategory ? (
-                  <ActivityIndicator size="small" color="#FFF" />
-                ) : (
-                  <Text style={styles.submitButtonText}>Create</Text>
-                )}
-              </TouchableOpacity>
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity onPress={() => setShowCreateCommunityModal(false)}><Text style={styles.modalCancel}>Cancel</Text></TouchableOpacity>
+              <TouchableOpacity onPress={handleCreateCommunity} style={styles.modalSubmit}><Text style={styles.modalSubmitText}>Create</Text></TouchableOpacity>
             </View>
           </View>
         </View>
@@ -991,378 +660,95 @@ export const SharedCommunityScreen = ({ userType }: SharedCommunityScreenProps) 
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background.light,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 16,
-    backgroundColor: '#FFF',
-  },
-  headerTextContainer: {
-    flex: 1,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: typography.fontWeight.bold,
-    color: colors.text.primary,
-  },
-  subtitle: {
-    fontSize: 14,
-    fontWeight: typography.fontWeight.medium,
-    color: colors.text.secondary,
-    marginTop: 4,
-  },
-  createButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: "#3B82F6",
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 12,
-    gap: 6,
-  },
-  createButtonText: {
-    color: '#FFF',
-    fontWeight: typography.fontWeight.semibold,
-    fontSize: 14,
-  },
-  searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFF',
-    marginHorizontal: 16,
-    marginTop: 12,
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  searchIcon: {
-    marginRight: 8,
-  },
-  searchInput: {
-    flex: 1,
-    height: 48,
-    fontWeight: typography.fontWeight.medium,
-    fontSize: 14,
-    color: colors.text.primary,
-  },
-  listContainer: {
-    padding: 16,
-    gap: 16,
-  },
-  card: {
-    backgroundColor: '#FFF',
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  iconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    backgroundColor: 'rgba(76, 29, 149, 0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  badge: {
-    backgroundColor: colors.border,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  badgeText: {
-    fontSize: 12,
-    fontWeight: typography.fontWeight.semibold,
-    color: colors.text.secondary,
-  },
-  cardTitle: {
-    fontSize: 18,
-    fontWeight: typography.fontWeight.bold,
-    color: colors.text.primary,
-    marginBottom: 6,
-  },
-  cardDescription: {
-    fontSize: 14,
-    fontWeight: typography.fontWeight.normal,
-    color: colors.text.secondary,
-    marginBottom: 16,
-  },
-  cardFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    gap: 6,
-  },
-  memberText: {
-    fontSize: 13,
-    fontWeight: typography.fontWeight.medium,
-    color: colors.text.secondary,
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: typography.fontWeight.bold,
-    color: colors.text.primary,
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  emptySubtitle: {
-    fontSize: 14,
-    fontWeight: typography.fontWeight.normal,
-    color: colors.text.secondary,
-    textAlign: 'center',
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    backgroundColor: '#FFF',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    maxHeight: '90%',
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: typography.fontWeight.bold,
-    color: colors.text.primary,
-  },
-  closeButton: {
-    padding: 4,
-  },
-  formContainer: {
-    padding: 20,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: typography.fontWeight.medium,
-    color: colors.text.primary,
-    marginBottom: 8,
-    marginTop: 16,
-  },
-  input: {
-    backgroundColor: colors.border,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 12,
-    padding: 14,
-    fontSize: 14,
-    fontWeight: typography.fontWeight.medium,
-    color: colors.text.primary,
-  },
-  textArea: {
-    height: 100,
-  },
-  typeButtonsRow: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  typeButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 14,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: '#FFF',
-    gap: 8,
-  },
-  typeButtonActive: {
-    backgroundColor: 'rgba(76, 29, 149, 0.05)',
-    borderColor: "#3B82F6",
-  },
-  typeButtonText: {
-    fontSize: 14,
-    fontWeight: typography.fontWeight.semibold,
-    color: colors.text.secondary,
-  },
-  typeButtonTextActive: {
-    color: "#3B82F6",
-  },
-  modalFooter: {
-    flexDirection: 'row',
-    padding: 20,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    backgroundColor: colors.border,
-    gap: 12,
-  },
-  cancelButton: {
-    flex: 1,
-    padding: 14,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  cancelButtonText: {
-    fontSize: 16,
-    fontWeight: typography.fontWeight.bold,
-    color: colors.text.secondary,
-  },
-  submitButton: {
-    flex: 1,
-    padding: 14,
-    borderRadius: 12,
-    backgroundColor: "#3B82F6",
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  submitButtonDisabled: {
-    opacity: 0.7,
-  },
-  submitButtonText: {
-    fontSize: 16,
-    fontWeight: typography.fontWeight.bold,
-    color: '#FFF',
-  },
-  forumContainer: {
-    flex: 1,
-    backgroundColor: '#0E0F10',
-  },
-  forumHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: '#1F2023',
-    backgroundColor: '#121315',
-  },
-  forumBackBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  forumBackTxt: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#94A3B8',
-  },
-  forumTitleGroup: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  forumTitle: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    maxWidth: 160,
-  },
-  forumBody: {
-    flex: 1,
-    padding: 16,
-  },
-  forumGreetingCard: {
-    backgroundColor: 'rgba(255, 107, 0, 0.05)',
-    borderRadius: 20,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 107, 0, 0.1)',
-    marginBottom: 20,
-  },
-  forumGreetingTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    marginBottom: 6,
-  },
-  forumGreetingSub: {
-    fontSize: 13,
-    color: '#94A3B8',
-    lineHeight: 20,
-  },
-  accordionContainer: {
-    backgroundColor: '#121315',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#1F2023',
-    marginBottom: 12,
-    overflow: 'hidden',
-  },
-  accordionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 16,
-    backgroundColor: '#16171A',
-  },
-  accordionTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  accordionArrow: {
-    fontSize: 10,
-    color: '#64748B',
-  },
-  accordionContent: {
-    padding: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#1F2023',
-  },
-  accordionItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingVertical: 10,
-  },
-  accordionBullet: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#3B82F6',
-  },
-  accordionItemText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#E2E8F0',
-  },
-  noCategoriesText: {
-    fontSize: 12,
-    color: '#64748B',
-    fontStyle: 'italic',
-  },
-  tagBadge: {
-    backgroundColor: '#1E293B',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#334155',
-  },
-  tagBadgeText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#94A3B8',
-  },
+  container: { flex: 1, backgroundColor: '#F8FAFC' },
+  header: { flexDirection: 'row', alignItems: 'center', padding: 16, backgroundColor: '#FFFFFF', borderBottomWidth: 1, borderBottomColor: '#E2E8F0', justifyContent: 'space-between' },
+  headerBack: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  headerBackText: { fontSize: 14, fontWeight: '600', color: '#334155' },
+  headerTitle: { fontSize: 16, fontWeight: '700', color: '#0F172A', flex: 1, textAlign: 'center', marginHorizontal: 12 },
+  headerBtn: { backgroundColor: '#FF6B00', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, gap: 4 },
+  headerBtnText: { color: '#FFFFFF', fontSize: 12, fontWeight: '700' },
+  body: { flex: 1, padding: 16 },
+  listHeader: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8, backgroundColor: '#F8FAFC' },
+  listTitle: { fontSize: 24, fontWeight: '800', color: '#0F172A' },
+  listSubtitle: { fontSize: 14, color: '#475569', marginTop: 4, paddingRight: 40 },
+  createCommBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#FF6B00', alignItems: 'center', justifyContent: 'center', shadowColor: '#FF6B00', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 },
+  searchBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 16, borderWidth: 1, borderColor: '#E2E8F0', height: 48, shadowColor: '#94A3B8', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 },
+  searchInput: { flex: 1, paddingHorizontal: 12, fontSize: 15, color: '#0F172A' },
+  communityCard: { flexDirection: 'row', backgroundColor: '#FFFFFF', borderRadius: 16, padding: 20, marginBottom: 16, shadowColor: '#94A3B8', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.08, shadowRadius: 16, elevation: 3, alignItems: 'center', borderLeftWidth: 4, borderLeftColor: '#FF6B00' },
+  communityIconWrapper: { width: 56, height: 56, borderRadius: 28, backgroundColor: '#F0F9FF', alignItems: 'center', justifyContent: 'center', marginRight: 16 },
+  communityIconTxt: { fontSize: 26 },
+  communityInfo: { flex: 1 },
+  communityName: { fontSize: 17, fontWeight: '700', color: '#0F172A', marginBottom: 6 },
+  communityDesc: { fontSize: 13, color: '#64748B', marginBottom: 10, lineHeight: 18 },
+  communityMeta: { flexDirection: 'row', gap: 10 },
+  metaBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8FAFC', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, gap: 6 },
+  metaTxt: { fontSize: 12, color: '#475569', fontWeight: '600' },
+  joinBtn: { backgroundColor: '#FF6B00', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 24, marginLeft: 12, shadowColor: '#FF6B00', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 2 },
+  joinBtnActive: { backgroundColor: '#F1F5F9', shadowOpacity: 0, elevation: 0 },
+  joinBtnText: { color: '#FFFFFF', fontSize: 13, fontWeight: '700' },
+  joinBtnTextActive: { color: '#475569' },
+  tabsWrapper: { flexDirection: 'row', padding: 12, backgroundColor: '#FFFFFF', borderBottomWidth: 1, borderBottomColor: '#F1F5F9', gap: 8 },
+  tabBtn: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12 },
+  tabBtnActive: { backgroundColor: '#FFF7ED' },
+  tabBtnText: { fontSize: 14, fontWeight: '600', color: '#64748B' },
+  tabBtnTextActive: { color: '#FF6B00' },
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, marginTop: 24 },
+  sectionTitle: { fontSize: 18, fontWeight: '800', color: '#0F172A' },
+  addBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF7ED', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 24, gap: 4 },
+  addBtnText: { fontSize: 12, fontWeight: '700', color: '#FF6B00' },
+  actionText: { fontSize: 13, fontWeight: '600', color: '#FF6B00' },
+  categoryCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', padding: 18, borderRadius: 16, marginBottom: 12, shadowColor: '#94A3B8', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.08, shadowRadius: 12, elevation: 2, borderLeftWidth: 4, borderLeftColor: '#FF6B00' },
+  categoryName: { fontSize: 17, fontWeight: '700', color: '#0F172A' },
+  categoryDesc: { fontSize: 14, color: '#64748B', marginTop: 4, lineHeight: 20 },
+  tagsContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  tagBadge: { backgroundColor: '#F0F9FF', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 24, borderWidth: 1, borderColor: '#BAE6FD' },
+  tagText: { fontSize: 13, fontWeight: '700' },
+  postCard: { backgroundColor: '#FFFFFF', borderRadius: 16, marginBottom: 16, borderWidth: 1, borderColor: '#E2E8F0', shadowColor: '#64748B', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.08, shadowRadius: 12, elevation: 4, overflow: 'hidden' },
+  postCardInner: { padding: 16, borderLeftWidth: 4, borderLeftColor: '#FF6B00' },
+  postHeaderRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
+  postAvatar: { width: 42, height: 42, borderRadius: 21, backgroundColor: '#FFF7ED', alignItems: 'center', justifyContent: 'center', marginRight: 12, borderWidth: 1, borderColor: '#FFEDD5' },
+  postAvatarTxt: { fontSize: 16, fontWeight: '800', color: '#FF6B00' },
+  postCardAuthor: { fontSize: 16, fontWeight: '700', color: '#0F172A' },
+  postCardTime: { fontSize: 12, color: '#94A3B8', marginTop: 2, fontWeight: '500' },
+  postCardContent: { fontSize: 15, color: '#334155', lineHeight: 24, marginBottom: 16 },
+  postDivider: { height: 1, backgroundColor: '#F1F5F9', marginBottom: 12 },
+  postCardActions: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  postActionBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8FAFC', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, gap: 6, borderWidth: 1, borderColor: '#F1F5F9' },
+  postActionTxt: { fontSize: 13, color: '#64748B', fontWeight: '700' },
+  emptyText: { fontSize: 14, color: '#64748B', textAlign: 'center', marginTop: 20 },
+  modalBg: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center', padding: 20 },
+  modalContent: { width: '100%', backgroundColor: '#FFFFFF', borderRadius: 16, padding: 20 },
+  modalTitle: { fontSize: 18, fontWeight: '700', color: '#0F172A', marginBottom: 16 },
+  modalInput: { backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 8, padding: 12, fontSize: 15, color: '#0F172A', marginBottom: 12 },
+  typeBtn: { flex: 1, paddingVertical: 12, alignItems: 'center', borderRadius: 12, borderWidth: 1, borderColor: '#E2E8F0', backgroundColor: '#FFFFFF' },
+  typeBtnActive: { backgroundColor: '#FFF7ED', borderColor: '#FF6B00' },
+  typeBtnTxt: { fontSize: 14, fontWeight: '600', color: '#64748B' },
+  typeBtnTxtActive: { color: '#FF6B00' },
+  modalActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 12, marginTop: 8 },
+  modalCancel: { fontSize: 15, fontWeight: '600', color: '#64748B', padding: 12 },
+  modalSubmit: { backgroundColor: '#FF6B00', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12 },
+  modalSubmitText: { fontSize: 15, fontWeight: '700', color: '#FFFFFF' },
+  postDetailCard: { backgroundColor: '#FFFFFF', padding: 20, borderRadius: 16, marginBottom: 24, shadowColor: '#FF6B00', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 12, elevation: 3, borderTopWidth: 4, borderTopColor: '#FF6B00' },
+  postDetailHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 },
+  postDetailAuthor: { fontSize: 16, fontWeight: '700', color: '#0F172A' },
+  postDetailTime: { fontSize: 13, color: '#94A3B8', marginTop: 2 },
+  postDetailContent: { fontSize: 16, color: '#334155', lineHeight: 26 },
+  repliesTitle: { fontSize: 18, fontWeight: '800', color: '#0F172A', marginBottom: 16, marginLeft: 4 },
+  replyCard: { marginBottom: 16 },
+  replyBubble: { backgroundColor: '#F1F5F9', padding: 16, borderRadius: 16, borderTopLeftRadius: 4, marginLeft: 12 },
+  replyContentText: { fontSize: 15, color: '#334155', marginTop: 4, lineHeight: 22 },
+  replyFooter: { flexDirection: 'row', alignItems: 'center', marginTop: 8, paddingLeft: 16, gap: 16 },
+  replyTime: { fontSize: 12, color: '#94A3B8', fontWeight: '500' },
+  replyLikeBtn: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  replyLikeTxt: { fontSize: 13, color: '#64748B', fontWeight: '700' },
+  replyInputWrapper: { flexDirection: 'row', alignItems: 'center', padding: 16, paddingBottom: 24, backgroundColor: '#FFFFFF', borderTopWidth: 1, borderTopColor: '#F1F5F9' },
+  replyInput: { flex: 1, backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 24, paddingHorizontal: 20, paddingTop: 12, paddingBottom: 12, maxHeight: 120, fontSize: 15, color: '#0F172A', marginRight: 12 },
+  sendButton: { width: 48, height: 48, borderRadius: 24, backgroundColor: '#FF6B00', alignItems: 'center', justifyContent: 'center', shadowColor: '#FF6B00', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 },
+  memberCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', padding: 16, borderRadius: 16, marginBottom: 12, shadowColor: '#94A3B8', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 1, borderWidth: 1, borderColor: '#F8FAFC' },
+  memberAvatar: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#F0F9FF', alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+  memberAvatarTxt: { fontSize: 16, fontWeight: '700', color: '#0369A1' },
+  memberName: { fontSize: 15, fontWeight: '700', color: '#0F172A' },
+  memberRole: { fontSize: 12, color: '#64748B', marginTop: 2 },
+  statusBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
+  statusTxt: { fontSize: 11, fontWeight: '700' }
 });
