@@ -279,3 +279,23 @@ export const leaveCommunity = async (data: { community: string, student: string 
     throw error;
   }
 };
+
+export const createTag = async (data: { title: string }) => {
+  try {
+    const response = await api.post("method/stridenex_app.stridenex_app.doctype.community.community.create_tag", data);
+    return response.data;
+  } catch (error) {
+    console.error("Error creating tag:", error);
+    throw error;
+  }
+};
+
+export const getCommunityDetail = async (data: { community: string }) => {
+  try {
+    const response = await api.post("method/stridenex_app.stridenex_app.doctype.community.community.get_community", data);
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching community details:", error);
+    throw error;
+  }
+};
