@@ -200,6 +200,12 @@ export const IndustryDashboardScreen = () => {
                 </View>
                 <Text style={styles.actionBtnText}>Post Live Project</Text>
               </TouchableOpacity>
+              <TouchableOpacity style={styles.actionBtn} onPress={() => navigation.navigate('Job Profiles', { openForm: true })}>
+                <View style={[styles.actionIconBox, { backgroundColor: 'rgba(249, 115, 22, 0.1)' }]}>
+                  <Briefcase size={16} color="#F97316" />
+                </View>
+                <Text style={styles.actionBtnText}>Post Job Profile</Text>
+              </TouchableOpacity>
             </View>
           </Animated.View>
         </View>

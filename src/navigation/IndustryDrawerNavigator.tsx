@@ -102,13 +102,13 @@ export const IndustryDrawerNavigator = () => {
           drawerIcon: ({ color, size }) => <UserCheck color={color} size={size} />
         }}
       />
-      {/* <Drawer.Screen
+      <Drawer.Screen
         name="Job Profiles"
         component={IndustryJobsScreen}
         options={{
           drawerIcon: ({ color, size }) => <Briefcase color={color} size={size} />
         }}
-      /> */}
+      />
       {/* <Drawer.Screen
         name="Feedback"
         component={IndustryFeedbackScreen}

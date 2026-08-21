@@ -18,8 +18,7 @@ import {
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import { SkeletonLoader } from '@/components/Shared/SkeletonLoader';
 import { SwipeableRow } from '@/components/Shared/SwipeableRow';
-import { useNavigation, useRoute } from '@react-navigation/native';
-import { StatsCard } from '@/components/dashboard/StatsCard';
+import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import { useIndustry } from '@/context/IndustryContext';
 import {
   getJobProfiles,
@@ -88,9 +87,21 @@ export const IndustryJobsScreen = () => {
     }
   }, [companyName]);
 
-  useEffect(() => {
-    fetchJobsData();
-  }, [fetchJobsData]);
+  useFocusEffect(
+    useCallback(() => {
+      fetchJobsData();
+
+      if (route.params?.openForm) {
+        setEditingJob(null);
+        setFormValues({ status: 'Open', industry: companyName, experience: 'Fresher', employment_type: 'Full Time' });
+        setIsModalVisible(true);
+      }
+
+      return () => {
+        navigation.setParams({ openForm: undefined });
+      };
+    }, [fetchJobsData, route.params?.openForm, navigation, companyName])
+  );
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -348,11 +359,6 @@ export const IndustryJobsScreen = () => {
     return `₹${formatVal(from)}-${formatVal(to)} LPA`;
   };
 
-  const statsCards = [
-    { label: "TOTAL JOB OPENINGS", value: String(stats.total), icon: Briefcase, color: "#0A8099" },
-    { label: "APPLIED JOBS", value: "0", icon: Target, color: "#16A34A" },
-  ];
-
   return (
     <SafeAreaView style={styles.safeArea} edges={['bottom']}>
       <ScrollView
@@ -370,12 +376,6 @@ export const IndustryJobsScreen = () => {
             </View>
           </View>
           <Text style={styles.subtitle}>Manage active and draft job postings</Text>
-        </Animated.View>
-
-        <Animated.View entering={FadeInUp.delay(100)} style={styles.statsRow}>
-          {statsCards.map((card, idx) => (
-            <StatsCard key={idx} title={card.label} value={card.value} icon={card.icon} color={card.color} />
-          ))}
         </Animated.View>
 
         <Animated.View entering={FadeInUp.delay(150)} style={{ marginBottom: 24 }}>
@@ -545,8 +545,6 @@ const styles = StyleSheet.create({
   headerBadgeText: { fontSize: 8, fontWeight: '800', color: colors.purple[600], letterSpacing: 0.5 },
   title: { fontSize: 22, fontWeight: '800', color: '#0F172A', fontFamily: typography.fontFamily.display, letterSpacing: -0.5 },
   subtitle: { fontSize: 12, color: '#64748B', fontWeight: '500' },
-
-  statsRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4, marginBottom: 24, flexWrap: 'wrap' },
 
   postBtn: { backgroundColor: colors.purple[600], flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14, borderRadius: 12, shadowColor: colors.purple[600], shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8 },
   postBtnText: { color: '#FFF', fontSize: 14, fontWeight: '800' },
