@@ -149,10 +149,11 @@ export const IndustryPipelineScreen = ({ route }: any) => {
   const fetchApplications = useCallback(async (
     compName: string,
     type: string,
-    subFilter: string
+    subFilter: string,
+    isRefresh = false
   ) => {
     try {
-      if (!refreshing) setLoading(true);
+      if (!isRefresh) setLoading(true);
       const params: any = {
         opportunity_type: type,
         industry: compName
@@ -177,7 +178,12 @@ export const IndustryPipelineScreen = ({ route }: any) => {
         })
       ]);
 
-      const apiData = response?.data || response?.message?.data || response || [];
+      const apiData =
+        response?.data?.data ||
+        response?.message?.data ||
+        (Array.isArray(response?.data) ? response.data : []) ||
+        (Array.isArray(response?.message) ? response.message : []) ||
+        (Array.isArray(response) ? response : []);
 
       if (Array.isArray(apiData)) {
         const newCandidates: Record<string, Candidate[]> = {
@@ -187,6 +193,7 @@ export const IndustryPipelineScreen = ({ route }: any) => {
           "HR": [],
           "Rejected": [],
           "Selected": [],
+          "Accepted": [],
           "Interview Scheduled": [],
           "Awarded": []
         };
@@ -283,7 +290,7 @@ export const IndustryPipelineScreen = ({ route }: any) => {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [refreshing]);
+  }, []);
 
   useEffect(() => {
     if (companyName) {
@@ -338,7 +345,7 @@ export const IndustryPipelineScreen = ({ route }: any) => {
         console.error("Error loading options:", err);
         setSubFilterOptions([]);
       } finally {
-        loadSubOptions();
+        setLoadingOptions(false);
       }
     };
 
@@ -363,7 +370,7 @@ export const IndustryPipelineScreen = ({ route }: any) => {
 
   const onRefresh = () => {
     setRefreshing(true);
-    fetchApplications(companyName, opportunityType, selectedSubFilter);
+    fetchApplications(companyName, opportunityType, selectedSubFilter, true);
   };
 
   const handleCardClick = async (candidate: Candidate) => {
