@@ -13,6 +13,7 @@ import {
   Linking
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import { colors } from '@/theme/colors';
 import { typography } from '@/theme/typography';
 import { SkeletonLoader } from '@/components/Shared/SkeletonLoader';
@@ -70,9 +71,9 @@ interface DropdownOption {
   title: string;
 }
 
-export const IndustryPipelineScreen = ({ route }: any) => {
+export const IndustryPipelineScreen = ({ route, navigation }: any) => {
   const { industryData } = useIndustry();
-  const routeParams = route?.params;
+  const companyName = industryData?.company_name || industryData?.name || "";
 
   const [activeTab, setActiveTab] = useState("Applied");
   const [candidates, setCandidates] = useState<Record<string, Candidate[]>>({
@@ -119,31 +120,18 @@ export const IndustryPipelineScreen = ({ route }: any) => {
   const [updateStatusLoading, setUpdateStatusLoading] = useState(false);
   const [isStatusPickerOpen, setIsStatusPickerOpen] = useState(false);
 
-  const companyName = industryData?.company_name || industryData?.name || "";
   const tabScrollRef = useRef<ScrollView>(null);
 
   const currentColumns = useMemo(() => {
-    if (opportunityType === "Project") {
-      return [
-        { id: "Applied", title: "Applied", color: '#1E293B', icon: FileText },
-        { id: "Shortlisted", title: "Shortlisted", color: '#3B82F6', icon: UserCheck },
-        { id: "Interview Scheduled", title: "Interview Scheduled", color: '#F97316', icon: PhoneCall },
-        { id: "Rejected", title: "Rejected", color: '#EF4444', icon: XCircle },
-        { id: "Selected", title: "Selected", color: '#10B981', icon: CheckCircle2 },
-        { id: "Accepted", title: "Accepted", color: '#0D9488', icon: CheckCircle2 },
-        { id: "Awarded", title: "Awarded", color: '#8B5CF6', icon: Trophy }
-      ];
-    } else {
-      return [
-        { id: "Applied", title: "Applied", color: '#1E293B', icon: FileText },
-        { id: "Shortlisted", title: "Shortlisted", color: '#3B82F6', icon: UserCheck },
-        { id: "Tech Interview", title: "Tech Interview", color: '#F97316', icon: PhoneCall },
-        { id: "HR", title: "HR", color: '#8B5CF6', icon: PhoneCall },
-        { id: "Rejected", title: "Rejected", color: '#EF4444', icon: XCircle },
-        { id: "Selected", title: "Selected", color: '#10B981', icon: CheckCircle2 },
-        { id: "Accepted", title: "Accepted", color: '#0D9488', icon: CheckCircle2 }
-      ];
-    }
+    return [
+      { id: "Applied", title: "Applied", color: '#1E293B', icon: FileText },
+      { id: "Shortlisted", title: "Shortlisted", color: '#3B82F6', icon: UserCheck },
+      { id: "Tech Interview", title: "Tech Interview", color: '#F97316', icon: PhoneCall },
+      { id: "HR", title: "HR", color: '#8B5CF6', icon: PhoneCall },
+      { id: "Rejected", title: "Rejected", color: '#EF4444', icon: XCircle },
+      { id: "Selected", title: "Selected", color: '#10B981', icon: CheckCircle2 },
+      { id: "Accepted", title: "Accepted", color: '#0D9488', icon: CheckCircle2 }
+    ];
   }, [opportunityType]);
 
   const fetchApplications = useCallback(async (
@@ -193,9 +181,7 @@ export const IndustryPipelineScreen = ({ route }: any) => {
           "HR": [],
           "Rejected": [],
           "Selected": [],
-          "Accepted": [],
-          "Interview Scheduled": [],
-          "Awarded": []
+          "Accepted": []
         };
 
         apiData.forEach((app: any) => {
@@ -267,9 +253,7 @@ export const IndustryPipelineScreen = ({ route }: any) => {
         "HR": countData.HR || 0,
         "Rejected": countData.Rejected || 0,
         "Selected": countData.Selected || 0,
-        "Accepted": countData.Accepted || 0,
-        "Interview Scheduled": countData["Interview Scheduled"] || 0,
-        "Awarded": countData.Awarded || 0
+        "Accepted": countData.Accepted || 0
       });
 
     } catch (err: any) {
@@ -292,36 +276,56 @@ export const IndustryPipelineScreen = ({ route }: any) => {
     }
   }, []);
 
-  useEffect(() => {
-    if (companyName) {
-      const typeParam = routeParams?.type;
-      const projectParam = routeParams?.project;
-      const internshipParam = routeParams?.internship;
-      const jobParam = routeParams?.job_profile;
+  useFocusEffect(
+    useCallback(() => {
+      if (companyName) {
+        const typeParam = route?.params?.type;
+        const projectParam = route?.params?.project;
+        const internshipParam = route?.params?.internship;
+        const jobParam = route?.params?.job_profile;
 
-      let resolvedType = "Internship";
-      let resolvedSubFilter = "All";
+        let resolvedType = "Internship";
+        let resolvedSubFilter = "All";
 
-      if (typeParam) {
-        const typeLower = typeParam.toLowerCase();
-        if (typeLower === "project") resolvedType = "Project";
-        else if (typeLower === "internship" || typeLower === "internships") resolvedType = "Internship";
-        else if (typeLower === "job" || typeLower === "job_profile") resolvedType = "Job";
+        if (typeParam) {
+          const typeLower = typeParam.toLowerCase();
+          if (typeLower === "project") resolvedType = "Project";
+          else if (typeLower === "internship" || typeLower === "internships") resolvedType = "Internship";
+          else if (typeLower === "job" || typeLower === "job_profile") resolvedType = "Job";
+        }
+        if (resolvedType === "Project" && projectParam) {
+          resolvedSubFilter = projectParam;
+        } else if (resolvedType === "Internship" && internshipParam) {
+          resolvedSubFilter = internshipParam;
+        } else if (resolvedType === "Job" && jobParam) {
+          resolvedSubFilter = jobParam;
+        }
+
+        setOpportunityType(resolvedType);
+        setSelectedSubFilter(resolvedSubFilter);
+        setActiveTab("Applied");
+        fetchApplications(companyName, resolvedType, resolvedSubFilter, true);
       }
-      if (resolvedType === "Project" && projectParam) {
-        resolvedSubFilter = projectParam;
-      } else if (resolvedType === "Internship" && internshipParam) {
-        resolvedSubFilter = internshipParam;
-      } else if (resolvedType === "Job" && jobParam) {
-        resolvedSubFilter = jobParam;
-      }
 
-      setOpportunityType(resolvedType);
-      setSelectedSubFilter(resolvedSubFilter);
-      setActiveTab("Applied");
-      fetchApplications(companyName, resolvedType, resolvedSubFilter);
-    }
-  }, [companyName, routeParams, fetchApplications]);
+      return () => {
+        // Clear params on blur so it opens fresh next time
+        navigation.setParams({
+          type: undefined,
+          project: undefined,
+          internship: undefined,
+          job_profile: undefined
+        });
+      };
+    }, [
+      companyName, 
+      route?.params?.type, 
+      route?.params?.project, 
+      route?.params?.internship, 
+      route?.params?.job_profile, 
+      fetchApplications, 
+      navigation
+    ])
+  );
 
   // Load sub-filter options when type or companyName changes
   useEffect(() => {
