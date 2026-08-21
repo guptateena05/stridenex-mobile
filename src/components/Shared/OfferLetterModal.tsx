@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, Modal, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, Modal, TouchableOpacity, StyleSheet, ActivityIndicator, Platform, SafeAreaView } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { X, Check, XCircle } from 'lucide-react-native';
 
@@ -26,6 +26,83 @@ export const OfferLetterModal: React.FC<OfferLetterModalProps> = ({
   isAccepting,
   isRejecting
 }) => {
+  const getWebViewSource = () => {
+    if (!pdfUrl) return { html: '' };
+
+    if (Platform.OS === 'android') {
+      if (pdfUrl.includes('base64,')) {
+        const base64Data = pdfUrl.split('base64,')[1];
+        const html = `
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no" />
+              <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+              <style>
+                body { margin: 0; padding: 0; background-color: #f1f5f9; display: flex; flex-direction: column; align-items: center; }
+                canvas { max-width: 100%; margin-bottom: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+                #error-container { width: 100%; padding: 20px; color: #ef4444; font-family: sans-serif; word-wrap: break-word; }
+              </style>
+            </head>
+            <body>
+              <div id="pdf-container"></div>
+              <div id="error-container"></div>
+              <script>
+                function showError(msg) {
+                  document.getElementById('error-container').innerHTML += "<p>" + msg + "</p>";
+                }
+                window.onerror = function(message, source, lineno, colno, error) {
+                  showError(message + " at line " + lineno);
+                };
+
+                try {
+                  var rawBase64 = '${base64Data.replace(/[\r\n]+/g, "")}';
+                  if (!rawBase64 || rawBase64.length < 50) {
+                     showError("Base64 data seems empty or too short. Length: " + rawBase64.length);
+                  } else {
+                    var pdfData = atob(rawBase64);
+                    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+                    
+                    var loadingTask = pdfjsLib.getDocument({data: pdfData});
+                    loadingTask.promise.then(function(pdf) {
+                      var container = document.getElementById('pdf-container');
+                      for (var pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+                        pdf.getPage(pageNum).then(function(page) {
+                          var scale = 1.5;
+                          var viewport = page.getViewport({scale: scale});
+                          var canvas = document.createElement('canvas');
+                          var context = canvas.getContext('2d');
+                          canvas.height = viewport.height;
+                          canvas.width = viewport.width;
+                          container.appendChild(canvas);
+                          
+                          var renderContext = { canvasContext: context, viewport: viewport };
+                          page.render(renderContext);
+                        }).catch(function(err) {
+                           showError("Page Render Error: " + err.message);
+                        });
+                      }
+                    }).catch(function(err) {
+                      showError("PDF Parse Error: " + err.message);
+                    });
+                  }
+                } catch(e) {
+                  showError("Script Error: " + e.message);
+                }
+              </script>
+            </body>
+          </html>
+        `;
+        return { html, baseUrl: 'https://cdnjs.cloudflare.com' };
+      } else if (pdfUrl.toLowerCase().endsWith('.pdf')) {
+        return { uri: `https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(pdfUrl)}` };
+      }
+    }
+    
+    // Default for iOS or non-PDF Android links
+    return { uri: pdfUrl };
+  };
+
   return (
     <Modal visible={visible} animationType="slide" transparent={true}>
       <View style={styles.container}>
@@ -50,10 +127,14 @@ export const OfferLetterModal: React.FC<OfferLetterModalProps> = ({
               </View>
             ) : pdfUrl ? (
               <WebView 
-                source={{ uri: pdfUrl }}
+                source={getWebViewSource()}
                 style={styles.webview}
                 originWhitelist={['*']}
                 useWebKit={true}
+                scalesPageToFit={true}
+                javaScriptEnabled={true}
+                domStorageEnabled={true}
+                mixedContentMode="always"
               />
             ) : (
               <View style={styles.loadingContainer}>
@@ -91,15 +172,11 @@ export const OfferLetterModal: React.FC<OfferLetterModalProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    padding: 16,
+    backgroundColor: '#ffffff',
   },
   modalContent: {
+    flex: 1,
     backgroundColor: '#ffffff',
-    borderRadius: 16,
-    overflow: 'hidden',
-    height: '85%',
   },
   header: {
     flexDirection: 'row',

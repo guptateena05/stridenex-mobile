@@ -210,13 +210,15 @@ export const StudentJobsScreen = () => {
   const fetchJobsData = useCallback(async () => {
     try {
       setLoading(true);
+      let appsList: any[] = [];
       if (userName) {
-        getStudentApplications({ student: userName, opportunity_type: "Job" })
-          .then(res => {
-            const list = res?.data?.data || res?.message?.data || res?.data || res?.message || [];
-            setStudentApplications(Array.isArray(list) ? list : []);
-          })
-          .catch(err => console.error("Error fetching student applications list:", err));
+        try {
+          const res = await getStudentApplications({ student: userName, opportunity_type: "Job" });
+          appsList = res?.data?.data || res?.message?.data || res?.data || res?.message || [];
+          setStudentApplications(Array.isArray(appsList) ? appsList : []);
+        } catch(err) {
+          console.error("Error fetching student applications list:", err);
+        }
       }
 
       const response = await getJobProfiles(userName || undefined);
@@ -227,7 +229,16 @@ export const StudentJobsScreen = () => {
       } else if (dataObj && typeof dataObj === 'object' && Array.isArray(dataObj.data)) {
         list = dataObj.data;
       }
-      setJobs(list);
+
+      const mappedJobs = list.map((item: any) => {
+        const match = appsList.find((app: any) => app.job_profile === item.name);
+        if (match) {
+          return { ...item, applied_status: match.status };
+        }
+        return { ...item, applied_status: item.status || null };
+      });
+
+      setJobs(mappedJobs);
     } catch (err) {
       console.error("Error fetching jobs for student:", err);
     } finally {
