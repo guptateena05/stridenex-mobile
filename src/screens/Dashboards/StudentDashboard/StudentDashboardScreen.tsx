@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, Modal, KeyboardAvoidingView, Platform, Alert, TouchableOpacity, ActivityIndicator, Linking } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Modal, KeyboardAvoidingView, Platform, Alert, TouchableOpacity, ActivityIndicator, Linking, Dimensions } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '@/theme/colors';
@@ -18,10 +18,13 @@ import Animated, { FadeInUp, FadeInRight } from 'react-native-reanimated';
 import { getStudentByEmail, updateStudent, mapYearToWord, getSkillLedger, getDashboardStats, getStudentInternshipList, getLearningActivity, getTodaysOpportunityAlerts } from '@/api/student.services';
 import DynamicForm from '@/components/forms/DynamicForm';
 import { FormField } from '@/components/forms/DynamicField';
+import ProfileImageUploader from '@/components/profile/ProfileImageUploader';
+
+const { width } = Dimensions.get('window');
 
 export const StudentDashboardScreen = () => {
   const navigation = useNavigation<any>();
-  const { userName, userFullName, role } = useAuth();
+  const { userName, userFullName, userImage, role } = useAuth();
   const [studentData, setStudentData] = useState<any>(null);
   const [loadingDetails, setLoadingDetails] = useState(true);
   const [updateLoading, setUpdateLoading] = useState(false);
@@ -494,6 +497,7 @@ export const StudentDashboardScreen = () => {
             fullName={bannerTitle} 
             date={new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })}
             role={role || 'Student'}
+            imageUrl={userImage}
             progress={statsData?.profile_completeness !== undefined && statsData?.profile_completeness !== null ? Number(statsData.profile_completeness) : 78}
             title={bannerTitle}
             subtitle={bannerSubtitle}
@@ -645,6 +649,11 @@ export const StudentDashboardScreen = () => {
             </View>
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.modalScroll}>
                <View style={{ padding: 20 }}>
+                 <ProfileImageUploader
+                   currentImageUrl={userImage}
+                   initials={profileFormValues.full_name?.charAt(0) || userFullName?.charAt(0) || "U"}
+                   size="lg"
+                 />
                  <DynamicForm
                    fields={editFields}
                    onSubmit={handleUpdateProfile}

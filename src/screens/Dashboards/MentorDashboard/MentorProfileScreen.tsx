@@ -35,10 +35,11 @@ import Animated, { FadeInUp } from 'react-native-reanimated';
 import { useAuth } from '@/context/AuthContext';
 import { getMentorByEmail, updateMentor } from '@/api/mentor.services';
 import DynamicForm from '@/components/forms/DynamicForm';
+import ProfileImageUploader from '@/components/profile/ProfileImageUploader';
 import { FormField } from '@/components/forms/DynamicField';
 
 export const MentorProfileScreen = () => {
-  const { userName } = useAuth();
+  const { userName, userImage, userFullName } = useAuth();
 
   // State variables
   const [mentorData, setMentorData] = useState<any>(null);
@@ -572,6 +573,11 @@ export const MentorProfileScreen = () => {
               </TouchableOpacity>
             </View>
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.modalScroll}>
+               <ProfileImageUploader
+                 currentImageUrl={userImage}
+                 initials={profileFormValues.first_name?.charAt(0) || userFullName?.charAt(0) || "M"}
+                 size="lg"
+               />
                <DynamicForm
                  fields={editFields}
                  onSubmit={handleUpdateProfile}

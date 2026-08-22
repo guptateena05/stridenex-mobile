@@ -36,6 +36,7 @@ import {
 } from '@/api/college.services';
 import DynamicForm from '@/components/forms/DynamicForm';
 import { FormField } from '@/components/forms/DynamicField';
+import ProfileImageUploader from '@/components/profile/ProfileImageUploader';
 import {
   Users,
   TrendingUp,
@@ -81,7 +82,7 @@ const empDistribution = [
 
 export const CollegeOverviewScreen = () => {
   const insets = useSafeAreaInsets();
-  const { userName } = useAuth();
+  const { userName, userImage, userFullName } = useAuth();
   const navigation = useNavigation<any>();
   const [collegeData, setCollegeData] = useState<any>(null);
   const collegeDataRef = useRef<any>(null);
@@ -688,6 +689,7 @@ export const CollegeOverviewScreen = () => {
             role="College Administrator"
             fullName={collegeData?.college_name || "Mohan Kumar"} 
             theme="college"
+            imageUrl={userImage}
             date={new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })} 
             progress={75}
             title={collegeData?.college_name || "College Admin"}
@@ -901,6 +903,11 @@ export const CollegeOverviewScreen = () => {
             </View>
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.modalScroll}>
                <View style={{ padding: 20 }}>
+                 <ProfileImageUploader
+                   currentImageUrl={userImage}
+                   initials={profileFormValues.college_name?.charAt(0) || userFullName?.charAt(0) || "C"}
+                   size="lg"
+                 />
                  <DynamicForm
                    fields={editFields}
                    onSubmit={handleUpdateProfile}

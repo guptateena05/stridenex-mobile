@@ -46,7 +46,7 @@ import {
 } from '@/api/mentor.services';
 
 export const MentorDashboardScreen = () => {
-  const { userFullName, userName } = useAuth();
+  const { userFullName, userName, userImage } = useAuth();
   const navigation = useNavigation<any>();
 
   // Overview data states
@@ -380,6 +380,8 @@ export const MentorDashboardScreen = () => {
               fullName={mentorData ? `${mentorData.first_name || ""} ${mentorData.last_name || ""}`.trim() : (userFullName || 'Mentorship Team')}
               date={getFormattedDate()}
               role={mentorData?.role || 'Verified Mentor'}
+              imageUrl={userImage}
+              onEditPress={() => navigation.navigate('My Profile')}
               progress={100}
               theme="mentor"
               metrics={[

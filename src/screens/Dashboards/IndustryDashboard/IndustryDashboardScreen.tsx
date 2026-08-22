@@ -49,7 +49,7 @@ const initialPipelineStages = [
 
 export const IndustryDashboardScreen = () => {
   const navigation = useNavigation<any>();
-  const { userFullName } = useAuth();
+  const { userFullName, userImage } = useAuth();
   const { industryData, refreshIndustryData } = useIndustry();
   const [pipelineData, setPipelineData] = React.useState(initialPipelineStages);
   const [appliedCount, setAppliedCount] = React.useState(0);
@@ -131,6 +131,8 @@ export const IndustryDashboardScreen = () => {
               fullName={userFullName || 'HR Team'} 
               date={new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })}
               role="Industry Dashboard"
+              imageUrl={userImage}
+              onEditPress={() => navigation.navigate('Company Profile')}
               progress={100}
               theme="purple"
             />

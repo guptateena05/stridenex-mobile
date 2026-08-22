@@ -299,3 +299,71 @@ export const getCommunityDetail = async (data: { community: string }) => {
     throw error;
   }
 };
+
+export const buildProfileImageUrl = (url?: string | null): string | null => {
+  if (!url) return null;
+  if (url.startsWith("http")) return url;
+  const baseDomain = BASE_URL.replace(/\/api\/?$/, "");
+  return `${baseDomain}${url}`;
+};
+
+export const uploadProfilePicture = async (file: any): Promise<{ file_url: string; file_name: string }> => {
+  const token = await AsyncStorage.getItem("token");
+
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const response = await fetch(
+    `${BASE_URL}method/stridenex_app.api_stridenex_app.app.upload_profile_picture`,
+    {
+      method: "POST",
+      headers: {
+        ...(token && token !== 'dummy-token' ? { Authorization: `token ${token}` } : {}),
+      },
+      body: formData,
+    }
+  );
+
+  const data = await response.json();
+
+  if (!response.ok || data?.http_status_code >= 400) {
+    const msg = data?.message || data?.exception || `Upload failed (HTTP ${response.status})`;
+    throw new Error(typeof msg === "string" ? msg : JSON.stringify(msg));
+  }
+
+  const payload = data?.data ?? data?.message ?? data;
+  if (!payload?.file_url) {
+    // If it's a string, maybe it's just the URL directly?
+    if (typeof payload === 'string') {
+      return { file_url: payload, file_name: payload };
+    }
+    throw new Error("Upload succeeded but no file URL was returned");
+  }
+
+  return { file_url: payload.file_url, file_name: payload.file_name };
+};
+
+export const getProfilePicture = async (): Promise<string | null> => {
+  const token = await AsyncStorage.getItem("token");
+  if (!token || token === 'dummy-token') return null;
+
+  try {
+    const response = await fetch(
+      `${BASE_URL}method/stridenex_app.api_stridenex_app.app.get_profile_picture`,
+      {
+        method: "GET",
+        headers: {
+          Authorization: `token ${token}`,
+          Accept: "application/json",
+        },
+      }
+    );
+
+    if (!response.ok) return null;
+    const data = await response.json();
+    return data?.data?.user_image ?? data?.message?.user_image ?? null;
+  } catch (error) {
+    console.error("Error fetching profile picture:", error);
+    return null;
+  }
+};

@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Modal } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Modal, Image } from 'react-native';
 import { User, ShieldCheck, Calendar, Users, Award, Briefcase, Target, Pen, FileText, Eye, X } from 'lucide-react-native';
 import { Svg, Defs, LinearGradient as SvgGradient, Stop, Rect, Circle } from 'react-native-svg';
+import { buildProfileImageUrl } from '@/api/api.services';
 
 interface RoleBannerWidgetProps {
   fullName: string;
@@ -15,9 +16,10 @@ interface RoleBannerWidgetProps {
   onEditPress?: () => void;
   onCreateResumePress?: () => void;
   onPreviewResumePress?: () => void;
+  imageUrl?: string | null;
 }
 
-export const RoleBannerWidget = ({ fullName, date, role, progress, theme = 'orange', metrics, title, subtitle, onEditPress, onCreateResumePress, onPreviewResumePress }: RoleBannerWidgetProps) => {
+export const RoleBannerWidget = ({ fullName, date, role, progress, theme = 'orange', metrics, title, subtitle, onEditPress, onCreateResumePress, onPreviewResumePress, imageUrl }: RoleBannerWidgetProps) => {
   const isPurple = theme === 'purple';
   const isMentor = theme === 'mentor';
   const isCollege = theme === 'college' || role?.toLowerCase() === 'college';
@@ -56,6 +58,7 @@ export const RoleBannerWidget = ({ fullName, date, role, progress, theme = 'oran
   };
 
   const displayGreetingName = fullName ? (fullName.split(' ')[0] || 'User') : 'User';
+  const displayImageUrl = buildProfileImageUrl(imageUrl);
 
   return (
     <View style={[styles.container, { backgroundColor: gradStart, shadowColor }]}>
@@ -116,12 +119,27 @@ export const RoleBannerWidget = ({ fullName, date, role, progress, theme = 'oran
             )}
           </View>
           {onEditPress ? (
-            <TouchableOpacity style={styles.avatar} onPress={onEditPress}>
-              <Pen color={iconColor} size={20} />
+            <TouchableOpacity style={styles.avatarContainer} onPress={onEditPress}>
+              <View style={styles.avatar}>
+                {displayImageUrl ? (
+                  <Image source={{ uri: displayImageUrl }} style={styles.avatarImage} />
+                ) : (
+                  <User color={iconColor} size={32} />
+                )}
+              </View>
+              <View style={styles.editBadge}>
+                <Pen color={iconColor} size={16} />
+              </View>
             </TouchableOpacity>
           ) : (
-            <View style={styles.avatar}>
-              <User color={iconColor} size={24} />
+            <View style={styles.avatarContainer}>
+              <View style={styles.avatar}>
+                {displayImageUrl ? (
+                  <Image source={{ uri: displayImageUrl }} style={styles.avatarImage} />
+                ) : (
+                  <User color={iconColor} size={32} />
+                )}
+              </View>
             </View>
           )}
         </View>
@@ -194,17 +212,45 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: 'rgba(255, 255, 255, 0.9)',
   },
+  avatarContainer: {
+    position: 'relative',
+  },
   avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     backgroundColor: '#fff',
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.15,
     shadowRadius: 10,
+    elevation: 5,
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 32,
+    resizeMode: 'cover',
+  },
+  editBadge: {
+    position: 'absolute',
+    bottom: -4,
+    right: -4,
+    backgroundColor: '#fff',
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
+    borderWidth: 1.5,
+    borderColor: '#f8fafc',
   },
   bottomCard: {
     backgroundColor: 'rgba(255, 255, 255, 0.2)',

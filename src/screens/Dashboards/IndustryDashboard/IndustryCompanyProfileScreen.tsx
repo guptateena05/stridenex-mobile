@@ -48,6 +48,8 @@ import {
   getApplicationStatusCount
 } from '@/api/industry.services';
 import DynamicForm from '@/components/forms/DynamicForm';
+import ProfileImageUploader from '@/components/profile/ProfileImageUploader';
+import { useAuth } from '@/context/AuthContext';
 import { LocationPicker, LocationData } from '../../../components/maps/LocationPicker';
 import { FormField } from '@/components/forms/DynamicField';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
@@ -57,6 +59,7 @@ import { GOOGLE_MAPS_API_KEY } from '../../../config/maps';
 const { width } = Dimensions.get('window');
 
 export const IndustryCompanyProfileScreen = () => {
+  const { userImage, userFullName } = useAuth();
   const { industryData, loading, error, refreshIndustryData } = useIndustry();
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
   const [isMapModalVisible, setIsMapModalVisible] = useState(false);
@@ -840,15 +843,11 @@ export const IndustryCompanyProfileScreen = () => {
               showsVerticalScrollIndicator={false}
               contentContainerStyle={styles.modalScrollContent}
             >
-              <View style={styles.companyHeaderBox}>
-                <View style={styles.companyIconPlaceholder}>
-                  <Building2 size={24} color="#FFF" />
-                </View>
-                <View>
-                  <Text style={styles.companyModalTitle}>{industryData?.company_name}</Text>
-                  <Text style={styles.companyModalSubtitle}>{industryData?.business_type}</Text>
-                </View>
-              </View>
+              <ProfileImageUploader
+                currentImageUrl={userImage}
+                initials={profileFormValues.company_name?.charAt(0) || userFullName?.charAt(0) || "I"}
+                size="lg"
+              />
 
               <DynamicForm
                 fields={editFields}
