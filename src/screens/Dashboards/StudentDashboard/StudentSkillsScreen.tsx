@@ -30,7 +30,8 @@ import {
   Zap, 
   ChevronRight, 
   X, 
-  Plus 
+  Plus,
+  Check
 } from 'lucide-react-native';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import { 
@@ -74,6 +75,7 @@ export const StudentSkillsScreen = () => {
   const [userAnswers, setUserAnswers] = useState<Record<number, string>>({});
   const [isSubmittingTest, setIsSubmittingTest] = useState(false);
   const [testResult, setTestResult] = useState<any>(null);
+  const [showTestIntro, setShowTestIntro] = useState(false);
 
   // Fetch skill data from API
   const fetchSkillStats = async (showLoadingSpinner = true) => {
@@ -236,6 +238,7 @@ export const StudentSkillsScreen = () => {
         setUserAnswers({});
         setCurrentQuestionIndex(0);
         setTestResult(null);
+        setShowTestIntro(true);
 
         setIsSkillModalVisible(false);
         setIsTestModalOpen(true);
@@ -265,6 +268,7 @@ export const StudentSkillsScreen = () => {
         setUserAnswers({});
         setCurrentQuestionIndex(0);
         setTestResult(null);
+        setShowTestIntro(true);
 
         setIsSkillModalVisible(false);
         setIsTestModalOpen(true);
@@ -597,7 +601,75 @@ export const StudentSkillsScreen = () => {
             </View>
 
             {/* Body content */}
-            {!testResult ? (
+            {showTestIntro ? (
+              <View style={styles.testBody}>
+                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.testIntroScrollContent}>
+                  <View style={styles.introHighlightBox}>
+                    <View style={styles.introIconContainer}>
+                      <Zap size={24} color="#FFF" />
+                    </View>
+                    <Text style={styles.introHighlightTitle}>Ready to verify your skill?</Text>
+                    <Text style={styles.introHighlightText}>
+                      This is a quick assessment to verify your proficiency in <Text style={{fontWeight: '700', color: colors.accent.DEFAULT}}>{testSkill}</Text> at the <Text style={{fontWeight: '700', color: colors.accent.DEFAULT}}>{testLevel}</Text> level.
+                    </Text>
+                  </View>
+
+                  <View style={styles.introRow}>
+                    <View style={styles.introCard}>
+                      <View style={styles.introCardHeader}>
+                         <FileText size={16} color="#F97316" />
+                         <Text style={styles.introCardTitle}>WHAT TO EXPECT</Text>
+                      </View>
+                      <View style={styles.introBullet}>
+                        <View style={styles.introBulletDot} />
+                        <Text style={styles.introBulletText}><Text style={{fontWeight: '700'}}>{testQuestions.length} Questions</Text> focused on core concepts.</Text>
+                      </View>
+                      <View style={styles.introBullet}>
+                        <View style={styles.introBulletDot} />
+                        <Text style={styles.introBulletText}>Multiple Choice Questions (MCQs) to evaluate knowledge.</Text>
+                      </View>
+                      <View style={styles.introBullet}>
+                        <View style={styles.introBulletDot} />
+                        <Text style={styles.introBulletText}>No strict time limit, take your time to answer carefully.</Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.introCard}>
+                      <View style={styles.introCardHeader}>
+                         <Award size={16} color="#F97316" />
+                         <Text style={styles.introCardTitle}>CRITERIA & BADGES</Text>
+                      </View>
+                      <View style={styles.introBullet}>
+                        <View style={styles.introBulletDot} />
+                        <Text style={styles.introBulletText}>Score <Text style={{fontWeight: '700'}}>70% or higher</Text> to pass the verification.</Text>
+                      </View>
+                      <View style={styles.introBullet}>
+                        <Check size={14} color="#10B981" style={{marginRight: 6}} />
+                        <Text style={styles.introBulletText}>Passing grants you the <Text style={{fontWeight: '700', color: '#10B981'}}>AI Verified Badge</Text> 🏆 on your profile.</Text>
+                      </View>
+                      <View style={styles.introBullet}>
+                        <View style={styles.introBulletDot} />
+                        <Text style={styles.introBulletText}>If you fail, you can always practice and try again later. Your skill status remains unchanged.</Text>
+                      </View>
+                    </View>
+                  </View>
+                </ScrollView>
+                <View style={styles.testFooter}>
+                  <TouchableOpacity
+                    onPress={() => setIsTestModalOpen(false)}
+                    style={styles.testIntroCancelBtn}
+                  >
+                    <Text style={styles.testIntroCancelBtnText}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => setShowTestIntro(false)}
+                    style={styles.testIntroStartBtn}
+                  >
+                    <Text style={styles.testIntroStartBtnText}>Start Verification Test <ChevronRight size={16} color="#FFF" /></Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : !testResult ? (
               // Test Questions View
               <View style={styles.testBody}>
                 {/* Progress Indicator */}
@@ -1400,6 +1472,113 @@ const styles = StyleSheet.create({
   },
   disabledBtn: {
     opacity: 0.6,
+  },
+  testIntroScrollContent: {
+    padding: 20,
+    paddingBottom: 40,
+  },
+  introHighlightBox: {
+    backgroundColor: '#FFF7ED',
+    borderRadius: 20,
+    padding: 24,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#FFEDD5',
+  },
+  introIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    backgroundColor: colors.accent.DEFAULT,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  introHighlightTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#0F172A',
+    marginBottom: 8,
+  },
+  introHighlightText: {
+    fontSize: 14,
+    color: '#475569',
+    lineHeight: 22,
+    fontWeight: '500',
+  },
+  introRow: {
+    flexDirection: 'column', // Or row if landscape
+    gap: 16,
+  },
+  introCard: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 16,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+    flex: 1,
+  },
+  introCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 16,
+  },
+  introCardTitle: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#1E293B',
+    letterSpacing: 1,
+  },
+  introBullet: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  introBulletDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#F97316',
+    marginTop: 6,
+    marginRight: 10,
+  },
+  introBulletText: {
+    fontSize: 13,
+    color: '#475569',
+    lineHeight: 18,
+    flex: 1,
+    fontWeight: '500',
+  },
+  testIntroCancelBtn: {
+    flex: 1,
+    height: 50,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+  },
+  testIntroCancelBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  testIntroStartBtn: {
+    flex: 2,
+    height: 50,
+    borderRadius: 16,
+    backgroundColor: colors.accent.DEFAULT,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 8,
+  },
+  testIntroStartBtnText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#FFFFFF',
   },
   resultScrollContent: {
     padding: 20,
