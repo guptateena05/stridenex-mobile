@@ -720,7 +720,9 @@ export const enrollStudentPath = async (studentEmail: string, careerPath: string
       "method/nexedu.path_finder.api.path_enrollment.enroll_student",
       {
         student: studentEmail,
-        career_path: careerPath
+        career_path: careerPath,
+        path_generation_mode: "AI",
+        roadmap_source: "AI"
       }
     );
     return response.data;
@@ -1383,6 +1385,127 @@ export const getNewGroupWorkshopOfferings = async (params: {
     return response.data;
   } catch (error) {
     console.error('Error fetching group/workshop offerings:', error);
+    throw error;
+  }
+};
+
+export const getAllCareerPaths = async (searchQuery?: string, page: number = 1, pageLength: number = 20) => {
+  try {
+    const response = await api.get(
+      "method/nexedu.path_finder.app_api.get_all_career_paths",
+      {
+        params: {
+          search_query: searchQuery || "",
+          page,
+          page_length: pageLength
+        }
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching all career paths:", error);
+    throw error;
+  }
+};
+
+export const getCareerPathDetail = async (pathName: string, studentEmail: string) => {
+  try {
+    const response = await api.get(
+      "method/nexedu.path_finder.api.path_enrollment.get_career_path_detail",
+      { params: { career_path: pathName, student: studentEmail } }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching career path detail:", error);
+    throw error;
+  }
+};
+
+export const getCareerRecommendations = async (params: any) => {
+  try {
+    const response = await api.post(
+      "method/job_search_ai.api.career_trends.get_career_trends",
+      params
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching career recommendations:", error);
+    throw error;
+  }
+};
+
+export const getHierarchySkillsForPath = async (pathName: string) => {
+  try {
+    const response = await api.get(
+      "method/nexedu.path_finder.api.path_enrollment.get_hierarchy_skills_for_path",
+      { params: { career_path: pathName } }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching hierarchy skills for path:", error);
+    throw error;
+  }
+};
+
+export const deleteStudentEnrollment = async (enrollmentName: string) => {
+  try {
+    const response = await api.post(
+      "method/nexedu.path_finder.api.path_enrollment.delete_student_enrollment",
+      { enrollment_name: enrollmentName }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error deleting student enrollment:", error);
+    throw error;
+  }
+};
+
+export const logMilestoneProgress = async (studentEmail: string, milestoneIdx: number, stepIdx: number) => {
+  try {
+    const response = await api.post(
+      "method/nexedu.path_finder.api.milestone_tracking.log_milestone_progress",
+      {
+        student: studentEmail,
+        milestone_idx: milestoneIdx,
+        step_idx: stepIdx
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error logging milestone progress:", error);
+    throw error;
+  }
+};
+
+export const completeMilestonePoint = async (data: {
+  enrollment: string;
+  milestone_title: string;
+  point_title: string;
+  completed: boolean;
+}) => {
+  try {
+    const response = await api.post(
+      "method/nexedu.path_finder.api.path_enrollment.complete_milestone_point",
+      data
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error completing milestone point:", error);
+    throw error;
+  }
+};
+
+export const getSkillTestResult = async (student: string, testName: string) => {
+  try {
+    const response = await api.get(
+      "method/nexedu.api.skill_assessment_ai.get_skill_test_result",
+      {
+        params: { student, test_name: testName }
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching skill test result:", error);
     throw error;
   }
 };
