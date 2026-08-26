@@ -98,10 +98,10 @@ export const StudentDrawerNavigator = () => {
         }}
       />
       <Drawer.Screen
-        name="Community"
-        component={StudentCommunityScreen}
+        name="Habits"
+        component={StudentHabitsScreen}
         options={{
-          drawerIcon: ({ color, size }) => <Users color={color} size={size} />
+          drawerIcon: ({ color, size }) => <PieChart color={color} size={size} />
         }}
       />
       <Drawer.Screen
@@ -133,17 +133,25 @@ export const StudentDrawerNavigator = () => {
         }}
       />
       <Drawer.Screen
-        name="Habits"
-        component={StudentHabitsScreen}
-        options={{
-          drawerIcon: ({ color, size }) => <PieChart color={color} size={size} />
-        }}
-      />
-      <Drawer.Screen
         name="Mentors"
         component={StudentMentorsScreen}
         options={{
           drawerIcon: ({ color, size }) => <UserSquare2 color={color} size={size} />,
+        }}
+      />
+      <Drawer.Screen
+        name="Shorts"
+        component={StudentShortsScreen}
+        options={{
+          drawerIcon: ({ color, size }) => <Video color={color} size={size} />,
+          headerShown: false,
+        }}
+      />
+      <Drawer.Screen
+        name="Community"
+        component={StudentCommunityScreen}
+        options={{
+          drawerIcon: ({ color, size }) => <Users color={color} size={size} />
         }}
       />
       <Drawer.Screen
@@ -158,14 +166,6 @@ export const StudentDrawerNavigator = () => {
         component={StudentStoriesScreen}
         options={{
           drawerIcon: ({ color, size }) => <History color={color} size={size} />
-        }}
-      />
-      <Drawer.Screen
-        name="Shorts"
-        component={StudentShortsScreen}
-        options={{
-          drawerIcon: ({ color, size }) => <Video color={color} size={size} />,
-          headerShown: false,
         }}
       />
       <Drawer.Screen

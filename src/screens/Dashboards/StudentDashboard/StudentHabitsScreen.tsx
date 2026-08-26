@@ -28,12 +28,21 @@ import {
   Trash2,
   Calendar,
   Zap,
-  X
+  X,
+  Trophy,
+  Medal,
+  Award,
+  Shield,
+  Sparkles,
+  Diamond,
+  Edit2,
+  ChevronDown
 } from 'lucide-react-native';
 import Animated, { FadeInUp, FadeInRight } from 'react-native-reanimated';
 import { useAuth } from '@/context/AuthContext';
 import { SwipeableRow } from '@/components/Shared/SwipeableRow';
 import { SkeletonLoader } from '@/components/Shared/SkeletonLoader';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   getStudentDashboardHabits,
   getTodaysPendingHabits,
@@ -42,7 +51,8 @@ import {
   logDailyHabits,
   completeHabitPlanStatus,
   deleteHabitPlan,
-  createHabitPlan
+  createHabitPlan,
+  getStudentBadges
 } from '@/api/student.services';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 
@@ -63,8 +73,24 @@ interface StatsData {
     total: number;
     days: {
       day: string;
-      status: 'done' | 'partial' | 'missed';
+      status: 'done' | 'partial' | 'missed' | 'future';
     }[];
+  };
+}
+
+interface BadgeItem {
+  badge_id: string;
+  badge_name: string;
+  streak_count: number;
+  description: string;
+  badge_icon: string | null;
+  color_theme: 'Bronze' | 'Silver' | 'Gold' | 'Platinum' | 'Diamond';
+  is_earned: boolean;
+  earned_date: string | null;
+  progress: {
+      current: number;
+      target: number;
+      percentage: number;
   };
 }
 
@@ -73,7 +99,8 @@ const weekDays = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 const statusConfig = {
   done: { icon: CheckCircle2, color: "#10B981", bgColor: "rgba(16, 185, 129, 0.1)", borderColor: "rgba(16, 185, 129, 0.2)", indicator: "✓" },
   partial: { icon: Circle, color: colors.accent.DEFAULT, bgColor: "rgba(255, 107, 0, 0.1)", borderColor: "rgba(255, 107, 0, 0.2)", indicator: "○" },
-  missed: { icon: Circle, color: "#94A3B8", bgColor: "#F1F5F9", borderColor: "#E2E8F0", indicator: "−" }
+  missed: { icon: Circle, color: "#94A3B8", bgColor: "#F1F5F9", borderColor: "#E2E8F0", indicator: "−" },
+  future: { icon: Circle, color: "#CBD5E1", bgColor: "rgba(241, 245, 249, 0.2)", borderColor: "rgba(226, 232, 240, 0.6)", indicator: "" }
 };
 
 const formatDateToDDMMYYYY = (date: Date): string => {
@@ -94,6 +121,10 @@ export const StudentHabitsScreen = () => {
   const [habitPlans, setHabitPlans] = useState<any[]>([]);
   const [pendingHabits, setPendingHabits] = useState<any[]>([]);
   const [suggestedHabit, setSuggestedHabit] = useState<any | null>(null);
+  
+  const [badges, setBadges] = useState<BadgeItem[]>([]);
+  const [newlyUnlockedBadge, setNewlyUnlockedBadge] = useState<BadgeItem | null>(null);
+  const [selectedBadge, setSelectedBadge] = useState<BadgeItem | null>(null);
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -103,12 +134,16 @@ export const StudentHabitsScreen = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalLoading, setModalLoading] = useState(false);
 
+  const [habitToEdit, setHabitToEdit] = useState<any | null>(null);
+
   // Form fields
   const [planName, setPlanName] = useState('');
   const [startDate, setStartDate] = useState(formatDateToDDMMYYYY(new Date()));
   const [endDate, setEndDate] = useState('');
   const [linkedPath, setLinkedPath] = useState('');
-  const [habitsList, setHabitsList] = useState<string[]>(['']);
+  const [habitsList, setHabitsList] = useState<{habit_name: string, habit_type: string}[]>([
+    { habit_name: '', habit_type: 'Learning' }
+  ]);
   const [aiGenerated, setAiGenerated] = useState(false);
 
   // Date Picker triggers
@@ -178,11 +213,12 @@ export const StudentHabitsScreen = () => {
     if (showLoader) setLoading(true);
 
     try {
-      const [dashboardRes, pendingRes, plansRes, streaksRes] = await Promise.allSettled([
+      const [dashboardRes, pendingRes, plansRes, streaksRes, badgesRes] = await Promise.allSettled([
         getStudentDashboardHabits(userName),
         getTodaysPendingHabits(userName),
-        getStudentPlans(userName, "Active"),
-        getHabitStreaks(userName)
+        getStudentPlans(userName),
+        getHabitStreaks(userName),
+        getStudentBadges(userName)
       ]);
 
       let finalStats = {
@@ -270,7 +306,8 @@ export const StudentHabitsScreen = () => {
                 planStatus: plan.status,
                 startDate: plan.start_date,
                 endDate: plan.end_date,
-                aiGenerated: plan.ai_generated
+                aiGenerated: plan.ai_generated,
+                rawPlan: plan
               };
             });
           }
@@ -285,6 +322,50 @@ export const StudentHabitsScreen = () => {
         setSuggestedHabit(generateSuggestedHabit(categories));
       } else {
         setSuggestedHabit(generateSuggestedHabit([]));
+      }
+
+      // Process badges
+      if (badgesRes.status === "fulfilled" && badgesRes.value?.message) {
+        const badgesData = badgesRes.value.message;
+        if (badgesData && Array.isArray(badgesData.badges)) {
+          const celebratedStr = await AsyncStorage.getItem("celebrated_badges") || "[]";
+          let celebratedIds: string[] = [];
+          try {
+            celebratedIds = JSON.parse(celebratedStr);
+          } catch (e) {
+            celebratedIds = [];
+          }
+          const celebratedSet = new Set(celebratedIds);
+
+          const localToday = new Date();
+          const year = localToday.getFullYear();
+          const month = String(localToday.getMonth() + 1).padStart(2, '0');
+          const day = String(localToday.getDate()).padStart(2, '0');
+          const todayStr = `${year}-${month}-${day}`;
+
+          let newlyEarned = null;
+
+          setBadges(prevBadges => {
+            if (prevBadges && prevBadges.length > 0) {
+              const prevEarnedIds = new Set(prevBadges.filter(b => b.is_earned).map(b => b.badge_id));
+              newlyEarned = badgesData.badges.find(
+                (b: any) => b.is_earned && !prevEarnedIds.has(b.badge_id)
+              );
+            } else {
+              newlyEarned = badgesData.badges.find(
+                (b: any) => b.is_earned && b.earned_date === todayStr && !celebratedSet.has(b.badge_id)
+              );
+            }
+
+            if (newlyEarned) {
+              setNewlyUnlockedBadge(newlyEarned);
+              celebratedSet.add(newlyEarned.badge_id);
+              AsyncStorage.setItem("celebrated_badges", JSON.stringify(Array.from(celebratedSet)));
+            }
+
+            return badgesData.badges;
+          });
+        }
       }
 
     } catch (err) {
@@ -367,6 +448,40 @@ export const StudentHabitsScreen = () => {
     );
   };
 
+  const handleManageHabit = (rawPlan: any) => {
+    setHabitToEdit(rawPlan);
+    setPlanName(rawPlan?.plan_name || '');
+    // Ensure date formats match DD/MM/YYYY
+    const sDate = rawPlan?.start_date ? rawPlan.start_date.split('-').reverse().join('/') : formatDateToDDMMYYYY(new Date());
+    const eDate = rawPlan?.end_date ? rawPlan.end_date.split('-').reverse().join('/') : '';
+    setStartDate(sDate);
+    setEndDate(eDate);
+    setLinkedPath(rawPlan?.linked_path || '');
+    
+    if (rawPlan?.habits && Array.isArray(rawPlan.habits) && rawPlan.habits.length > 0) {
+      setHabitsList(rawPlan.habits.map((h: any) => ({
+        habit_name: h.habit_name || h.title || '',
+        habit_type: h.habit_type || 'Learning'
+      })));
+    } else {
+      setHabitsList([{ habit_name: '', habit_type: 'Learning' }]);
+    }
+    
+    setAiGenerated(rawPlan?.ai_generated === 1);
+    setIsModalOpen(true);
+  };
+
+  const handleOpenNewHabit = () => {
+    setHabitToEdit(null);
+    setPlanName('');
+    setStartDate(formatDateToDDMMYYYY(new Date()));
+    setEndDate('');
+    setLinkedPath('');
+    setHabitsList([{ habit_name: '', habit_type: 'Learning' }]);
+    setAiGenerated(false);
+    setIsModalOpen(true);
+  };
+
   const handleCreateHabit = async () => {
     if (!userName) return;
     if (!planName.trim()) {
@@ -374,7 +489,7 @@ export const StudentHabitsScreen = () => {
       return;
     }
 
-    const validHabits = habitsList.filter(h => h.trim() !== '');
+    const validHabits = habitsList.filter(h => h.habit_name.trim() !== '');
     if (validHabits.length === 0) {
       Alert.alert("Required Field", "Please add at least one habit.");
       return;
@@ -383,35 +498,41 @@ export const StudentHabitsScreen = () => {
     try {
       setModalLoading(true);
 
-      const payload = {
+      const payload: any = {
         student: userName,
         plan_name: planName,
-        start_date: startDate,
-        end_date: endDate || null,
+        start_date: startDate ? startDate.split('/').reverse().join('-') : null,
+        end_date: endDate ? endDate.split('/').reverse().join('-') : null,
         linked_path: linkedPath || null,
         habits: validHabits.map(h => ({
-          habit_name: h,
+          habit_name: h.habit_name,
+          habit_type: h.habit_type,
           doctype: "Habit Plan Item"
         })),
         ai_generated: aiGenerated ? 1 : 0
       };
 
+      if (habitToEdit) {
+        payload.plan_id = habitToEdit.name;
+      }
+
       await createHabitPlan(payload);
 
       setIsModalOpen(false);
       // Reset form
+      setHabitToEdit(null);
       setPlanName('');
       setStartDate(formatDateToDDMMYYYY(new Date()));
       setEndDate('');
       setLinkedPath('');
-      setHabitsList(['']);
+      setHabitsList([{ habit_name: '', habit_type: 'Learning' }]);
       setAiGenerated(false);
 
-      Alert.alert("Success", "Habit plan created successfully!");
+      Alert.alert("Success", habitToEdit ? "Habit plan updated successfully!" : "Habit plan created successfully!");
       fetchData(false);
     } catch (err: any) {
-      console.error("Error creating habit plan:", err);
-      Alert.alert("Error", err?.message || "Failed to create habit plan.");
+      console.error("Error saving habit plan:", err);
+      Alert.alert("Error", err?.message || "Failed to save habit plan.");
     } finally {
       setModalLoading(false);
     }
@@ -540,57 +661,21 @@ export const StudentHabitsScreen = () => {
           )}
         </Animated.View>
 
-        {/* Today's Pending Habits */}
-        {pendingHabits.length > 0 && (
-          <View style={styles.sectionContainer}>
-            <Text style={styles.sectionTitleSimple}>Today's Pending Tasks</Text>
-            <View style={styles.pendingList}>
-              {pendingHabits.map((habit, index) => {
-                const CategoryIcon = getIconForCategory(habit.habit_type);
-                const categoryColor = getColorForCategory(habit.habit_type);
-                const categoryBg = getBgColorForCategory(habit.habit_type);
-                const isLogging = completingHabit === habit.id;
-
-                return (
-                  <View key={`${habit.id}-${index}`} style={styles.pendingCard}>
-                    <View style={styles.pendingLeft}>
-                      <View style={[styles.habitIconContainer, { backgroundColor: categoryBg }]}>
-                        <CategoryIcon size={18} color={categoryColor} />
-                      </View>
-                      <View style={styles.pendingTextInfo}>
-                        <Text style={styles.pendingTitle}>{habit.habit_name}</Text>
-                        <Text style={styles.pendingSubtitle}>{habit.habit_type}</Text>
-                      </View>
-                    </View>
-                    <TouchableOpacity
-                      style={styles.completeButton}
-                      disabled={isLogging}
-                      activeOpacity={0.7}
-                      onPress={() => handleLogHabit(habit.id, habit.target_value, habit.plan_name)}
-                    >
-                      {isLogging ? (
-                        <ActivityIndicator size="small" color="#FFF" />
-                      ) : (
-                        <Text style={styles.completeButtonText}>Complete</Text>
-                      )}
-                    </TouchableOpacity>
-                  </View>
-                );
-              })}
+        {/* My Habit Plans */}
+        <View style={[styles.sectionHeader, { marginTop: 12 }]}>
+          <View style={{flexDirection: 'row', alignItems: 'center', gap: 8}}>
+            <Text style={styles.sectionTitleSimple}>My Habit Plans</Text>
+            <View style={{backgroundColor: '#ECFDF5', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12, borderWidth: 1, borderColor: '#D1FAE5'}}>
+              <Text style={{fontSize: 10, fontWeight: '700', color: '#10B981'}}>{habitPlans.length} / 20</Text>
             </View>
           </View>
-        )}
-
-        {/* My Habit Plans */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitleSimple}>My Habit Plans</Text>
           <TouchableOpacity
-            style={styles.newHabitButton}
+            style={[styles.newHabitButton, { backgroundColor: '#FF6B00', borderColor: '#FF6B00' }]}
             activeOpacity={0.7}
-            onPress={() => setIsModalOpen(true)}
+            onPress={handleOpenNewHabit}
           >
-            <Plus size={12} color="#64748B" />
-            <Text style={styles.newHabitText}>New Habit</Text>
+            <Plus size={14} color="#FFF" />
+            <Text style={[styles.newHabitText, { color: '#FFF' }]}>New Habit</Text>
           </TouchableOpacity>
         </View>
 
@@ -629,57 +714,241 @@ export const StudentHabitsScreen = () => {
                   onDelete={() => handleDeleteHabit(habit)}
                 >
                   <View
-                    style={[styles.habitCard, { borderLeftWidth: 4, borderLeftColor, marginBottom: 0 }]}
+                    style={[styles.habitCard, { borderLeftWidth: 0, paddingHorizontal: 16, paddingVertical: 12, marginBottom: 0 }]}
                   >
-                    <View style={styles.habitMainInfo}>
-                      <View style={[styles.habitIconContainer, { backgroundColor: getBgColorForCategory(habit.category) }]}>
+                    <View style={[styles.habitMainInfo, { marginBottom: 12 }]}>
+                      <View style={[styles.habitIconContainer, { backgroundColor: '#FFF7ED', width: 36, height: 36, borderRadius: 10, borderWidth: 1, borderColor: '#FFEDD5' }]}>
                         {(() => {
                           const CategoryIcon = getIconForCategory(habit.category);
-                          return <CategoryIcon size={20} color={getColorForCategory(habit.category)} />;
+                          return <CategoryIcon size={16} color={colors.accent.DEFAULT} />;
                         })()}
                       </View>
-                      <View style={styles.habitTextInfo}>
-                        <Text style={styles.habitTitle}>{habit.title}</Text>
-                        <View style={styles.habitTagsRow}>
-                          <View style={styles.categoryBadge}>
-                            <Text style={styles.categoryBadgeText}>{habit.category}</Text>
+                      <View style={[styles.habitTextInfo, {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between'}]}>
+                        <View>
+                          <Text style={[styles.habitTitle, {fontSize: 13, marginBottom: 2}]}>{habit.title}</Text>
+                          <View style={{backgroundColor: '#ECFDF5', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, alignSelf: 'flex-start'}}>
+                            <Text style={{fontSize: 8, fontWeight: '800', color: '#10B981'}}>ACTIVE</Text>
                           </View>
-                          <View style={styles.streakBadge}>
-                            <Flame size={10} color={colors.accent.DEFAULT} />
-                            <Text style={styles.streakBadgeText}>{habit.streak} days</Text>
+                        </View>
+                        <View style={{flexDirection: 'row', alignItems: 'center', gap: 6}}>
+                          <View style={{flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1, borderColor: '#F1F5F9', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6}}>
+                            <Calendar size={12} color="#64748B" />
+                            <Text style={{fontSize: 9, fontWeight: '600', color: '#475569'}}>{habit.startDate} - {habit.endDate || 'Ongoing'}</Text>
                           </View>
+                          <TouchableOpacity 
+                            style={{padding: 6, backgroundColor: '#F8FAFC', borderRadius: 6, borderWidth: 1, borderColor: '#F1F5F9'}}
+                            onPress={() => handleManageHabit(habit.rawPlan)}
+                          >
+                            <Edit2 size={12} color="#64748B" />
+                          </TouchableOpacity>
                         </View>
                       </View>
                     </View>
 
-                    {/* Mini Tracker & Progress */}
-                    <View style={styles.habitBottomHalf}>
-                      <View style={styles.miniWeekRow}>
-                        {habit.weeklyData.map((done: boolean, dIdx: number) => (
-                          <View
-                            key={dIdx}
-                            style={[
-                              styles.miniDayNode,
-                              done ? styles.miniDayNodeActive : styles.miniDayNodeInactive
-                            ]}
-                          >
-                            <Text style={[
-                              styles.miniDayText,
-                              done ? styles.miniDayTextActive : styles.miniDayTextInactive
-                            ]}>{weekDays[dIdx]}</Text>
-                          </View>
-                        ))}
+                    {/* Mobile-Friendly Item row */}
+                    <View style={{marginTop: 12}}>
+                      <View style={{flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12}}>
+                        <Target size={14} color="#64748B" />
+                        <Text style={{fontSize: 14, fontWeight: '700', color: '#1E293B'}} numberOfLines={1}>{habit.title}</Text>
                       </View>
-                      <View style={styles.miniProgressBox}>
-                        <Text style={styles.miniProgressText}>{habit.progress}%</Text>
+                      
+                      <View style={{flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16}}>
+                        <View>
+                          <Text style={{fontSize: 9, fontWeight: '700', color: '#94A3B8', letterSpacing: 0.5, marginBottom: 4}}>CATEGORY</Text>
+                          <View style={[styles.categoryBadge, {alignSelf: 'flex-start'}]}>
+                            <Text style={styles.categoryBadgeText}>{habit.category}</Text>
+                          </View>
+                        </View>
+                        
+                        <View>
+                          <Text style={{fontSize: 9, fontWeight: '700', color: '#94A3B8', letterSpacing: 0.5, marginBottom: 4}}>STREAK</Text>
+                          <View style={{flexDirection: 'row', alignItems: 'center', gap: 3}}>
+                            <Flame size={12} color={colors.accent.DEFAULT} />
+                            <Text style={{fontSize: 12, fontWeight: '700', color: '#334155'}}>{habit.streak} <Text style={{fontWeight: '400', color: '#94A3B8'}}>days</Text></Text>
+                          </View>
+                        </View>
+                        
+                        <View style={{width: 80}}>
+                          <Text style={{fontSize: 9, fontWeight: '700', color: '#94A3B8', letterSpacing: 0.5, marginBottom: 4}}>PROGRESS</Text>
+                          <View style={{flexDirection: 'row', alignItems: 'center', gap: 6}}>
+                            <Text style={{fontSize: 12, fontWeight: '800', color: '#1E293B'}}>{habit.progress}%</Text>
+                            <View style={{flex: 1, height: 4, backgroundColor: '#F1F5F9', borderRadius: 2}}>
+                              <View style={{height: '100%', width: `${habit.progress}%`, backgroundColor: colors.accent.DEFAULT, borderRadius: 2}} />
+                            </View>
+                          </View>
+                        </View>
+                      </View>
+
+                      <View>
+                        <Text style={{fontSize: 9, fontWeight: '700', color: '#94A3B8', letterSpacing: 0.5, marginBottom: 6}}>THIS WEEK</Text>
+                        <View style={styles.miniWeekRow}>
+                          {habit.weeklyData.map((done: boolean, dIdx: number) => (
+                            <View
+                              key={dIdx}
+                              style={[
+                                styles.miniDayNode,
+                                {width: 20, height: 20, borderRadius: 4},
+                                done ? styles.miniDayNodeActive : styles.miniDayNodeInactive
+                              ]}
+                            >
+                              <Text style={[
+                                styles.miniDayText,
+                                {fontSize: 8},
+                                done ? styles.miniDayTextActive : styles.miniDayTextInactive
+                              ]}>{weekDays[dIdx]}</Text>
+                            </View>
+                          ))}
+                        </View>
                       </View>
                     </View>
+
                   </View>
                 </SwipeableRow>
               );
             })
           )}
         </View>
+
+        {/* Achievements & Badges */}
+        {badges && badges.length > 0 && (
+          <View style={[styles.badgesSectionContainer, { marginTop: 24 }]}>
+            <View style={styles.sectionHeader}>
+              <View>
+                <View style={{flexDirection: 'row', alignItems: 'center', gap: 6}}>
+                  <Trophy size={16} color={colors.accent.DEFAULT} />
+                  <Text style={styles.sectionTitleSimple}>My Achievements</Text>
+                </View>
+                <Text style={{fontSize: 11, color: '#64748B', marginTop: 2}}>Track your consistency milestones</Text>
+              </View>
+              <View style={{flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#F8FAFC', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 16, borderWidth: 1, borderColor: '#F1F5F9'}}>
+                <View style={{width: 6, height: 6, borderRadius: 3, backgroundColor: '#10B981'}} />
+                <Text style={{fontSize: 10, fontWeight: '700', color: '#334155'}}>{badges.filter(b => b.is_earned).length} / {badges.length} Badges Earned</Text>
+              </View>
+            </View>
+
+            <View style={{flexDirection: 'column', gap: 16}}>
+              {/* Earned Badges Scroll */}
+              <View>
+                <Text style={{fontSize: 10, fontWeight: '800', color: '#94A3B8', letterSpacing: 0.5, marginBottom: 8}}>EARNED BADGES</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
+                  {badges.filter(b => b.is_earned).map((badge, idx) => {
+                    const IconComponent = badge.streak_count >= 100 ? Diamond : badge.streak_count >= 50 ? Trophy : badge.streak_count >= 21 ? Medal : badge.streak_count >= 7 ? Award : Shield;
+                    const themeColors = {
+                      'Bronze': { bg: '#FFFBEB', border: '#FDE68A', text: '#B45309', icon: '#D97706', shadow: '#D97706' },
+                      'Silver': { bg: '#F8FAFC', border: '#E2E8F0', text: '#475569', icon: '#64748B', shadow: '#94A3B8' },
+                      'Gold': { bg: '#FEFCE8', border: '#FEF08A', text: '#A16207', icon: '#EAB308', shadow: '#EAB308' },
+                      'Platinum': { bg: '#F0F9FF', border: '#BAE6FD', text: '#0369A1', icon: '#0EA5E9', shadow: '#0EA5E9' },
+                      'Diamond': { bg: '#ECFEFF', border: '#A5F3FC', text: '#0F766E', icon: '#06B6D4', shadow: '#06B6D4' }
+                    };
+                    const theme = themeColors[badge.color_theme] || themeColors['Bronze'];
+
+                    return (
+                      <TouchableOpacity 
+                        key={idx} 
+                        style={[styles.badgeCard, { width: 100, padding: 12, backgroundColor: '#FFF' }]}
+                        onPress={() => setSelectedBadge(badge)}
+                      >
+                        <View style={[styles.badgeIconBox, { backgroundColor: theme.bg, shadowColor: theme.shadow, shadowOpacity: 0.3, shadowRadius: 8, elevation: 5 }]}>
+                          <IconComponent color={theme.icon} size={24} />
+                        </View>
+                        <Text style={[styles.badgeName, { fontSize: 10, color: '#1E293B' }]} numberOfLines={1}>{badge.badge_name}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+
+              {/* Next Milestone */}
+              {(() => {
+                const nextBadge = badges.find(b => !b.is_earned);
+                if (!nextBadge) return null;
+                
+                const IconComponent = nextBadge.streak_count >= 100 ? Diamond : nextBadge.streak_count >= 50 ? Trophy : nextBadge.streak_count >= 21 ? Medal : nextBadge.streak_count >= 7 ? Award : Shield;
+                const themeColors = {
+                  'Bronze': { bg: '#FFFBEB', border: '#FDE68A', text: '#B45309', icon: '#D97706' },
+                  'Silver': { bg: '#F8FAFC', border: '#E2E8F0', text: '#475569', icon: '#64748B' },
+                  'Gold': { bg: '#FEFCE8', border: '#FEF08A', text: '#A16207', icon: '#EAB308' },
+                  'Platinum': { bg: '#F0F9FF', border: '#BAE6FD', text: '#0369A1', icon: '#0EA5E9' },
+                  'Diamond': { bg: '#ECFEFF', border: '#A5F3FC', text: '#0F766E', icon: '#06B6D4' }
+                };
+                const theme = themeColors[nextBadge.color_theme] || themeColors['Bronze'];
+                
+                return (
+                  <View>
+                    <Text style={{fontSize: 10, fontWeight: '800', color: '#94A3B8', letterSpacing: 0.5, marginBottom: 8}}>NEXT MILESTONE</Text>
+                    <View style={[styles.badgeCard, {width: '100%', alignItems: 'stretch', padding: 16, backgroundColor: '#FAFAFA'}]}>
+                      <View style={{flexDirection: 'row', gap: 12, alignItems: 'center', marginBottom: 12}}>
+                        <View style={[styles.badgeIconBoxUnearned, {width: 40, height: 40, marginBottom: 0, backgroundColor: theme.bg}]}>
+                          <IconComponent color={theme.icon} size={20} />
+                        </View>
+                        <View style={{flex: 1}}>
+                          <Text style={{fontSize: 12, fontWeight: '800', color: '#1E293B'}}>{nextBadge.badge_name}</Text>
+                          <Text style={{fontSize: 10, color: '#64748B'}}>Reach {nextBadge.streak_count}-day streak</Text>
+                        </View>
+                      </View>
+                      <View style={{flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6}}>
+                        <Text style={{fontSize: 10, fontWeight: '700', color: '#334155'}}>Current Streak: {nextBadge.progress?.current || 0}d</Text>
+                        <Text style={{fontSize: 10, fontWeight: '700', color: '#334155'}}>Target: {nextBadge.streak_count}d</Text>
+                      </View>
+                      <View style={styles.badgeProgressBg}>
+                        <View style={[styles.badgeProgressFill, { width: `${nextBadge.progress?.percentage || 0}%`, backgroundColor: theme.icon }]} />
+                      </View>
+                    </View>
+                  </View>
+                );
+              })()}
+            </View>
+          </View>
+        )}
+
+        {/* Today's Pending Habits */}
+        {pendingHabits.length > 0 && (
+          <View style={[styles.sectionContainer, {marginTop: 24}]}>
+            <View style={styles.sectionHeader}>
+              <View style={{flexDirection: 'row', alignItems: 'center', gap: 6}}>
+                <CheckCircle2 size={16} color="#10B981" />
+                <Text style={styles.sectionTitleSimple}>Today's Pending Habits</Text>
+              </View>
+              <View style={{backgroundColor: '#FEF2F2', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12}}>
+                <Text style={{fontSize: 10, fontWeight: '700', color: '#EF4444'}}>{pendingHabits.length} remaining</Text>
+              </View>
+            </View>
+            <View style={styles.pendingList}>
+              {pendingHabits.map((habit, index) => {
+                const CategoryIcon = getIconForCategory(habit.habit_type);
+                const categoryColor = getColorForCategory(habit.habit_type);
+                const categoryBg = getBgColorForCategory(habit.habit_type);
+                const isLogging = completingHabit === habit.id;
+
+                return (
+                  <View key={`${habit.id}-${index}`} style={[styles.pendingCard, {borderRadius: 12, paddingVertical: 14}]}>
+                    <View style={styles.pendingLeft}>
+                      <View style={[styles.habitIconContainer, { backgroundColor: '#F8FAFC' }]}>
+                        <CategoryIcon size={18} color="#64748B" />
+                      </View>
+                      <View style={styles.pendingTextInfo}>
+                        <Text style={[styles.pendingTitle, {fontSize: 14}]}>{habit.habit_name}</Text>
+                        <Text style={[styles.pendingSubtitle, {fontSize: 11}]}>Daily {habit.habit_type} • {habit.plan_name}</Text>
+                      </View>
+                    </View>
+                    <TouchableOpacity
+                      style={[styles.completeButton, {backgroundColor: '#10B981', paddingHorizontal: 16, paddingVertical: 8}]}
+                      disabled={isLogging}
+                      activeOpacity={0.7}
+                      onPress={() => handleLogHabit(habit.id, habit.target_value, habit.plan_name)}
+                    >
+                      {isLogging ? (
+                        <ActivityIndicator size="small" color="#FFF" />
+                      ) : (
+                        <Text style={[styles.completeButtonText, {fontSize: 12}]}>Complete</Text>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                );
+              })}
+            </View>
+          </View>
+        )}
 
         {/* Suggested Habit Section */}
         {suggestedHabit && (
@@ -712,151 +981,243 @@ export const StudentHabitsScreen = () => {
         onRequestClose={() => setIsModalOpen(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+          <View style={[styles.modalContent, { borderRadius: 16, padding: 0 }]}>
             {/* Modal Header */}
-            <View style={styles.modalHeader}>
-              <View style={styles.modalHeaderLeft}>
-                <View style={styles.modalHeaderIconBox}>
-                  <Target size={20} color="#FFF" />
+            <View style={{ flexDirection: 'row', alignItems: 'flex-start', padding: 20, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, gap: 12 }}>
+                <View style={{ backgroundColor: '#FFEDD5', padding: 10, borderRadius: 12 }}>
+                  <Target size={20} color="#FF6B00" />
                 </View>
                 <View>
-                  <Text style={styles.modalMainTitle}>Create Habit Plan</Text>
-                  <Text style={styles.modalSubtitle}>Set up a new habit to track your progress</Text>
+                  <Text style={{ fontSize: 16, fontWeight: '700', color: '#1E293B' }}>{habitToEdit ? "Edit Habit Plan" : "Create New Habit Plan"}</Text>
+                  <Text style={{ fontSize: 12, color: '#64748B', marginTop: 2 }}>Set up a new habit to track your progress</Text>
                 </View>
               </View>
-              <TouchableOpacity onPress={() => setIsModalOpen(false)} style={styles.modalCloseBtn}>
-                <X size={20} color="#64748B" />
+              <TouchableOpacity onPress={() => setIsModalOpen(false)} style={{ padding: 6, backgroundColor: '#F8FAFC', borderRadius: 20, borderWidth: 1, borderColor: '#F1F5F9' }}>
+                <X size={16} color="#94A3B8" />
               </TouchableOpacity>
             </View>
 
             {/* Modal Form Scroll */}
-            <ScrollView style={styles.modalForm} showsVerticalScrollIndicator={false}>
+            <ScrollView style={{ padding: 20 }} showsVerticalScrollIndicator={false}>
               {/* Plan Name */}
-              <View style={styles.formGroup}>
-                <Text style={styles.fieldLabel}>Plan Name *</Text>
-                <TextInput
-                  style={styles.textInput}
-                  value={planName}
-                  onChangeText={setPlanName}
-                  placeholder="e.g., Daily Coding Challenge"
-                  placeholderTextColor="#94A3B8"
-                />
+              <View style={{ marginBottom: 20 }}>
+                <Text style={{ fontSize: 9, fontWeight: '800', color: '#64748B', letterSpacing: 0.5, marginBottom: 8, textTransform: 'uppercase' }}>PLAN NAME *</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, paddingHorizontal: 12, backgroundColor: '#FFF' }}>
+                  <Target size={16} color="#94A3B8" style={{ marginRight: 8 }} />
+                  <TextInput
+                    style={{ flex: 1, paddingVertical: 12, fontSize: 14, color: '#1E293B' }}
+                    value={planName}
+                    onChangeText={setPlanName}
+                    placeholder="e.g., Daily Coding Challenge"
+                    placeholderTextColor="#94A3B8"
+                  />
+                </View>
               </View>
 
               {/* Dates Row */}
-              <View style={styles.formRow}>
-                <View style={[styles.formGroup, { flex: 1 }]}>
-                  <Text style={styles.fieldLabel}>Start Date *</Text>
+              <View style={{ flexDirection: 'row', gap: 16, marginBottom: 20 }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 9, fontWeight: '800', color: '#64748B', letterSpacing: 0.5, marginBottom: 8, textTransform: 'uppercase' }}>START DATE *</Text>
                   <TouchableOpacity
-                    style={styles.dateSelector}
+                    style={{ flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 12, backgroundColor: '#FFF' }}
                     onPress={() => setActiveDatePicker('start')}
                   >
-                    <Calendar size={16} color="#64748B" />
-                    <Text style={styles.dateText}>{startDate}</Text>
+                    <Calendar size={16} color="#94A3B8" style={{ marginRight: 8 }} />
+                    <Text style={{ fontSize: 14, color: '#1E293B', flex: 1 }}>{startDate}</Text>
+                    <Calendar size={14} color="#64748B" />
                   </TouchableOpacity>
                 </View>
-                <View style={[styles.formGroup, { flex: 1, marginLeft: 12 }]}>
-                  <Text style={styles.fieldLabel}>End Date (Optional)</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 9, fontWeight: '800', color: '#64748B', letterSpacing: 0.5, marginBottom: 8, textTransform: 'uppercase' }}>END DATE</Text>
                   <TouchableOpacity
-                    style={styles.dateSelector}
+                    style={{ flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 12, backgroundColor: '#FFF' }}
                     onPress={() => setActiveDatePicker('end')}
                   >
-                    <Calendar size={16} color="#64748B" />
-                    <Text style={styles.dateText}>{endDate || 'Select End Date'}</Text>
+                    <Calendar size={16} color="#94A3B8" style={{ marginRight: 8 }} />
+                    <Text style={{ fontSize: 14, color: endDate ? '#1E293B' : '#94A3B8', flex: 1 }}>{endDate || 'DD/MM/YYYY'}</Text>
+                    <Calendar size={14} color="#64748B" />
                   </TouchableOpacity>
                 </View>
-              </View>
-
-              {/* Linked Path */}
-              <View style={styles.formGroup}>
-                <Text style={styles.fieldLabel}>Linked Path (Optional)</Text>
-                <TextInput
-                  style={styles.textInput}
-                  value={linkedPath}
-                  onChangeText={setLinkedPath}
-                  placeholder="e.g., /career/software-engineering"
-                  placeholderTextColor="#94A3B8"
-                  autoCapitalize="none"
-                />
               </View>
 
               {/* Dynamic Habits list */}
-              <View style={styles.formGroup}>
-                <Text style={styles.fieldLabel}>Habits *</Text>
+              <View style={{ marginBottom: 24 }}>
+                <Text style={{ fontSize: 9, fontWeight: '800', color: '#64748B', letterSpacing: 0.5, marginBottom: 8, textTransform: 'uppercase' }}>HABITS *</Text>
                 {habitsList.map((habit, index) => (
-                  <View key={index} style={styles.habitInputRow}>
-                    <Target size={16} color="#94A3B8" style={{ marginRight: 8 }} />
-                    <TextInput
-                      style={[styles.textInput, { flex: 1, marginVertical: 4 }]}
-                      value={habit}
-                      onChangeText={(val) => {
-                        const newHabits = [...habitsList];
-                        newHabits[index] = val;
-                        setHabitsList(newHabits);
-                      }}
-                      placeholder="Enter habit name"
-                      placeholderTextColor="#94A3B8"
-                    />
+                  <View key={index} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                    <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 8, backgroundColor: '#FFF' }}>
+                      <View style={{ paddingLeft: 12 }}>
+                        <Target size={16} color="#94A3B8" />
+                      </View>
+                      <TextInput
+                        style={{ flex: 1, paddingVertical: 10, paddingHorizontal: 8, fontSize: 13, color: '#1E293B' }}
+                        value={habit.habit_name}
+                        onChangeText={(val) => {
+                          const newHabits = [...habitsList];
+                          newHabits[index].habit_name = val;
+                          setHabitsList(newHabits);
+                        }}
+                        placeholder="Enter habit name"
+                        placeholderTextColor="#94A3B8"
+                      />
+                      <View style={{ width: 1, height: 20, backgroundColor: '#E2E8F0' }} />
+                      
+                      {/* Simple mock dropdown for Category */}
+                      <TouchableOpacity 
+                        style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, gap: 6 }}
+                        onPress={() => {
+                          // Toggle between valid types for simplicity
+                          const types = ["Learning", "Physical", "Mindfulness", "Networking", "Building"];
+                          const curIdx = types.indexOf(habit.habit_type);
+                          const nextType = types[(curIdx + 1) % types.length];
+                          const newHabits = [...habitsList];
+                          newHabits[index].habit_type = nextType;
+                          setHabitsList(newHabits);
+                        }}
+                      >
+                        <Text style={{ fontSize: 12, color: '#475569' }} numberOfLines={1}>{habit.habit_type}</Text>
+                        <ChevronDown size={14} color="#94A3B8" />
+                      </TouchableOpacity>
+                    </View>
+                    
                     {habitsList.length > 1 && (
                       <TouchableOpacity
-                        style={styles.removeHabitBtn}
+                        style={{ padding: 10 }}
                         onPress={() => {
                           const newHabits = habitsList.filter((_, i) => i !== index);
                           setHabitsList(newHabits);
                         }}
                       >
-                        <Trash2 size={16} color="#EF4444" />
+                        <Trash2 size={18} color="#EF4444" />
                       </TouchableOpacity>
                     )}
                   </View>
                 ))}
 
                 <TouchableOpacity
-                  style={styles.addHabitBtn}
-                  onPress={() => setHabitsList([...habitsList, ''])}
+                  style={{ flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', backgroundColor: '#FF6B00', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, marginTop: 4 }}
+                  onPress={() => setHabitsList([...habitsList, { habit_name: '', habit_type: 'Learning' }])}
                 >
-                  <Plus size={14} color="#64748B" />
-                  <Text style={styles.addHabitBtnText}>Add Habit</Text>
+                  <Plus size={14} color="#FFF" style={{ marginRight: 6 }} />
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#FFF' }}>Add Habit</Text>
                 </TouchableOpacity>
               </View>
-
-              {/* AI Generated Toggle */}
-              <View style={styles.aiToggleRow}>
-                <View style={styles.aiToggleLabelBox}>
-                  <Zap size={16} color={colors.accent.DEFAULT} />
-                  <Text style={styles.aiToggleLabel}>AI Generated</Text>
-                </View>
-                <Switch
-                  value={aiGenerated}
-                  onValueChange={setAiGenerated}
-                  trackColor={{ false: "#E2E8F0", true: "rgba(255, 107, 0, 0.3)" }}
-                  thumbColor={aiGenerated ? colors.accent.DEFAULT : "#94A3B8"}
-                />
-              </View>
-
-              <View style={styles.modalButtonsRow}>
-                <TouchableOpacity
-                  style={styles.modalCancelBtn}
-                  onPress={() => setIsModalOpen(false)}
-                  disabled={modalLoading}
-                >
-                  <Text style={styles.modalCancelBtnText}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.modalSubmitBtn}
-                  onPress={handleCreateHabit}
-                  disabled={modalLoading}
-                >
-                  {modalLoading ? (
-                    <ActivityIndicator size="small" color="#FFF" />
-                  ) : (
-                    <Text style={styles.modalSubmitBtnText}>Create Plan</Text>
-                  )}
-                </TouchableOpacity>
-              </View>
-
-              <View style={{ height: 40 }} />
+              
+              <View style={{height: 40}} />
             </ScrollView>
+
+            <View style={{ flexDirection: 'row', gap: 12, padding: 20, borderTopWidth: 1, borderTopColor: '#F1F5F9' }}>
+              <TouchableOpacity
+                style={{ flex: 1, paddingVertical: 14, alignItems: 'center', borderRadius: 12, borderWidth: 1, borderColor: '#E2E8F0', backgroundColor: '#FFF' }}
+                onPress={() => setIsModalOpen(false)}
+                disabled={modalLoading}
+              >
+                <Text style={{ fontSize: 14, fontWeight: '700', color: '#475569' }}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{ flex: 1, paddingVertical: 14, alignItems: 'center', borderRadius: 12, backgroundColor: '#0F172A' }}
+                onPress={handleCreateHabit}
+                disabled={modalLoading}
+              >
+                {modalLoading ? (
+                  <ActivityIndicator size="small" color="#FFF" />
+                ) : (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <Edit2 size={16} color="#FFF" />
+                    <Text style={{ fontSize: 14, fontWeight: '700', color: '#FFF' }}>Save Changes</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Newly Unlocked Badge Modal */}
+      <Modal
+        visible={!!newlyUnlockedBadge}
+        transparent
+        animationType="fade"
+      >
+        <View style={styles.badgeModalOverlay}>
+          <View style={styles.badgeModalContent}>
+            {newlyUnlockedBadge && (
+              <>
+                <View style={[styles.badgeModalIconBox, { backgroundColor: '#FEFCE8', shadowColor: '#EAB308' }]}>
+                  {newlyUnlockedBadge.streak_count >= 100 ? <Diamond color="#06B6D4" size={48} /> : 
+                   newlyUnlockedBadge.streak_count >= 50 ? <Trophy color="#EAB308" size={48} /> : 
+                   newlyUnlockedBadge.streak_count >= 21 ? <Medal color="#64748B" size={48} /> : 
+                   newlyUnlockedBadge.streak_count >= 7 ? <Award color="#D97706" size={48} /> : 
+                   <Shield color="#0EA5E9" size={48} />}
+                </View>
+                <Text style={styles.badgeModalSubtitle}>NEW ACHIEVEMENT!</Text>
+                <Text style={styles.badgeModalTitle}>{newlyUnlockedBadge.badge_name}</Text>
+                <Text style={styles.badgeModalStreak}>{newlyUnlockedBadge.streak_count}-Day Streak Milestone</Text>
+                
+                <View style={styles.badgeModalDescBox}>
+                  <Text style={styles.badgeModalDesc}>"{newlyUnlockedBadge.description}"</Text>
+                </View>
+
+                <TouchableOpacity 
+                  style={styles.badgeModalBtn}
+                  onPress={() => setNewlyUnlockedBadge(null)}
+                >
+                  <Text style={styles.badgeModalBtnText}>Awesome! Keep it up</Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        </View>
+      </Modal>
+
+      {/* Selected Badge Detail Modal */}
+      <Modal
+        visible={!!selectedBadge}
+        transparent
+        animationType="slide"
+      >
+        <View style={styles.badgeModalOverlay}>
+          <View style={styles.badgeModalContent}>
+            <TouchableOpacity 
+              style={styles.badgeModalClose}
+              onPress={() => setSelectedBadge(null)}
+            >
+              <X size={20} color="#94A3B8" />
+            </TouchableOpacity>
+
+            {selectedBadge && (
+              <>
+                <View style={[styles.badgeModalIconBox, { backgroundColor: '#F8FAFC', shadowColor: '#64748B' }]}>
+                  {selectedBadge.streak_count >= 100 ? <Diamond color="#06B6D4" size={48} /> : 
+                   selectedBadge.streak_count >= 50 ? <Trophy color="#EAB308" size={48} /> : 
+                   selectedBadge.streak_count >= 21 ? <Medal color="#64748B" size={48} /> : 
+                   selectedBadge.streak_count >= 7 ? <Award color="#D97706" size={48} /> : 
+                   <Shield color="#0EA5E9" size={48} />}
+                </View>
+                <Text style={styles.badgeModalSubtitle}>EARNED BADGE</Text>
+                <Text style={styles.badgeModalTitle}>{selectedBadge.badge_name}</Text>
+                <Text style={styles.badgeModalStreak}>{selectedBadge.streak_count}-Day Streak Milestone</Text>
+                
+                <View style={styles.badgeModalDescBox}>
+                  <Text style={styles.badgeModalDesc}>"{selectedBadge.description}"</Text>
+                </View>
+
+                {selectedBadge.earned_date && (
+                  <View style={styles.badgeModalDateBox}>
+                    <Sparkles size={14} color="#059669" />
+                    <Text style={styles.badgeModalDateText}>Unlocked on {selectedBadge.earned_date}</Text>
+                  </View>
+                )}
+
+                <TouchableOpacity 
+                  style={[styles.badgeModalBtn, { backgroundColor: '#0F172A' }]}
+                  onPress={() => setSelectedBadge(null)}
+                >
+                  <Text style={styles.badgeModalBtnText}>Close View</Text>
+                </TouchableOpacity>
+              </>
+            )}
           </View>
         </View>
       </Modal>
@@ -1159,6 +1520,194 @@ const styles = StyleSheet.create({
     justifyContent: 'center'
   },
   modalSubmitBtnText: { color: '#FFFFFF', fontSize: 13, fontWeight: '700' },
+
+  badgesSectionContainer: {
+    marginBottom: 20,
+    marginTop: 10
+  },
+  badgeCard: {
+    width: 140,
+    padding: 14,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFF'
+  },
+  badgeCardUnearned: {
+    backgroundColor: '#F8FAFC',
+    borderColor: '#E2E8F0',
+    opacity: 0.8
+  },
+  badgeIconBox: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255,255,255,0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10
+  },
+  badgeIconBoxUnearned: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10
+  },
+  badgeName: {
+    fontSize: 12,
+    fontWeight: '800',
+    textAlign: 'center',
+    marginBottom: 8
+  },
+  badgeNameUnearned: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#94A3B8',
+    textAlign: 'center',
+    marginBottom: 8
+  },
+  badgeStreakBox: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6
+  },
+  badgeStreakText: {
+    fontSize: 10,
+    fontWeight: '800'
+  },
+  badgeTargetText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#64748B',
+    marginBottom: 4
+  },
+  badgeProgressBg: {
+    width: '100%',
+    height: 4,
+    backgroundColor: '#E2E8F0',
+    borderRadius: 2
+  },
+  badgeProgressFill: {
+    height: '100%',
+    backgroundColor: '#94A3B8',
+    borderRadius: 2
+  },
+
+  badgeModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20
+  },
+  badgeModalContent: {
+    backgroundColor: '#FFF',
+    width: '100%',
+    borderRadius: 24,
+    padding: 24,
+    alignItems: 'center',
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.2,
+    shadowRadius: 20,
+    elevation: 10
+  },
+  badgeModalClose: {
+    position: 'absolute',
+    top: 16,
+    right: 16,
+    padding: 8,
+    borderRadius: 20,
+    backgroundColor: '#F8FAFC'
+  },
+  badgeModalIconBox: {
+    width: 96,
+    height: 96,
+    borderRadius: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.3,
+    shadowRadius: 15,
+    elevation: 8,
+    transform: [{ rotate: '3deg' }]
+  },
+  badgeModalSubtitle: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#94A3B8',
+    letterSpacing: 1.5,
+    marginBottom: 4
+  },
+  badgeModalTitle: {
+    fontSize: 22,
+    fontWeight: '900',
+    color: '#0F172A',
+    textAlign: 'center',
+    marginBottom: 4
+  },
+  badgeModalStreak: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#64748B',
+    marginBottom: 16
+  },
+  badgeModalDescBox: {
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+    padding: 16,
+    borderRadius: 16,
+    width: '100%',
+    marginBottom: 20
+  },
+  badgeModalDesc: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#475569',
+    textAlign: 'center',
+    fontStyle: 'italic'
+  },
+  badgeModalDateBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#ECFDF5',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#D1FAE5',
+    marginBottom: 20
+  },
+  badgeModalDateText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#059669'
+  },
+  badgeModalBtn: {
+    width: '100%',
+    backgroundColor: colors.accent.DEFAULT,
+    paddingVertical: 14,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: colors.accent.DEFAULT,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4
+  },
+  badgeModalBtnText: {
+    color: '#FFF',
+    fontSize: 14,
+    fontWeight: '800'
+  },
 
   footerSpacer: { height: 40 }
 });

@@ -1460,6 +1460,19 @@ export const deleteStudentEnrollment = async (enrollmentName: string) => {
   }
 };
 
+export const getStudentBadges = async (studentEmail: string) => {
+  try {
+    const response = await api.get(
+      "method/nexedu.habits_builder.api.get_student_badges",
+      { params: { student: studentEmail } }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching student badges:", error);
+    throw error;
+  }
+};
+
 export const logMilestoneProgress = async (studentEmail: string, milestoneIdx: number, stepIdx: number) => {
   try {
     const response = await api.post(
