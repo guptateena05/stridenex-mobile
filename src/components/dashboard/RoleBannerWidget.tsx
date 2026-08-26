@@ -20,6 +20,8 @@ interface RoleBannerWidgetProps {
 }
 
 export const RoleBannerWidget = ({ fullName, date, role, progress, theme = 'orange', metrics, title, subtitle, onEditPress, onCreateResumePress, onPreviewResumePress, imageUrl }: RoleBannerWidgetProps) => {
+  const [containerHeight, setContainerHeight] = useState(200);
+
   const isPurple = theme === 'purple';
   const isMentor = theme === 'mentor';
   const isCollege = theme === 'college' || role?.toLowerCase() === 'college';
@@ -61,9 +63,12 @@ export const RoleBannerWidget = ({ fullName, date, role, progress, theme = 'oran
   const displayImageUrl = buildProfileImageUrl(imageUrl);
 
   return (
-    <View style={[styles.container, { backgroundColor: gradStart, shadowColor }]}>
+    <View 
+      style={[styles.container, { backgroundColor: gradStart, shadowColor }]}
+      onLayout={(e) => setContainerHeight(e.nativeEvent.layout.height)}
+    >
       <View style={[StyleSheet.absoluteFill, { zIndex: 1 }]}>
-        <Svg height="100%" width="100%">
+        <Svg height={containerHeight} width="100%">
           <Defs>
             <SvgGradient id="headerGrad" x1="0%" y1="0%" x2="100%" y2="100%">
               <Stop offset="0%" stopColor={gradStart} stopOpacity="1" />
@@ -174,7 +179,7 @@ export const RoleBannerWidget = ({ fullName, date, role, progress, theme = 'oran
 
 const styles = StyleSheet.create({
   container: {
-    height: 200,
+    minHeight: 200,
     borderRadius: 32,
     marginBottom: 28,
     overflow: 'hidden',
@@ -189,6 +194,7 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 24,
     justifyContent: 'space-between',
+    gap: 16,
   },
   topSection: {
     flexDirection: 'row',

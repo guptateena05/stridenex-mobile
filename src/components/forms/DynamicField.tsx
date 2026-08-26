@@ -949,15 +949,17 @@ export default function DynamicField({ field, value, onChange, onCreateCustomVal
 
   return (
     <View style={styles.container}>
-      <View style={styles.labelRow}>
-        <Text style={[styles.label, { color: textPrimary }]}>
-          {field.label}
-          {field.required && <Text style={[styles.requiredAsterisk, { color: errorColor }]}> *</Text>}
-        </Text>
-        {field.description && (
-          <Text style={[styles.description, { color: textSecondary }]}>{field.description}</Text>
-        )}
-      </View>
+      {field.label ? (
+        <View style={styles.labelRow}>
+          <Text style={[styles.label, { color: textPrimary }]}>
+            {field.label}
+            {field.required && <Text style={[styles.requiredAsterisk, { color: errorColor }]}> *</Text>}
+          </Text>
+          {field.description && (
+            <Text style={[styles.description, { color: textSecondary }]}>{field.description}</Text>
+          )}
+        </View>
+      ) : null}
 
       {renderField()}
 

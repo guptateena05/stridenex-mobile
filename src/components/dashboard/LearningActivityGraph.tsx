@@ -1,41 +1,71 @@
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import Svg, { Path, Defs, LinearGradient, Stop, Circle, Line, Text as SvgText } from 'react-native-svg';
 import { colors } from '@/theme/colors';
 import { typography } from '@/theme/typography';
-
-interface HeatmapData {
-  lessons: number;
-  problems: number;
-  studyTime: number;
-}
+import { BookOpen, Code, Clock } from 'lucide-react-native';
 
 interface LearningActivityGraphProps {
   data: any;
 }
 
+const staticDemoGraphData = [
+  { hours: 2.5, lessons: 1, problems: 3 },
+  { hours: 4.0, lessons: 2, problems: 5 },
+  { hours: 3.5, lessons: 1, problems: 4 },
+  { hours: 6.0, lessons: 3, problems: 8 },
+  { hours: 8.0, lessons: 4, problems: 10 },
+  { hours: 5.5, lessons: 2, problems: 7 },
+  { hours: 7.0, lessons: 3, problems: 9 },
+  { hours: 9.5, lessons: 5, problems: 12 },
+  { hours: 8.0, lessons: 4, problems: 10 },
+  { hours: 11.0, lessons: 6, problems: 15 }
+];
+
 export const LearningActivityGraph = ({ data }: LearningActivityGraphProps) => {
+  const [activeMetric, setActiveMetric] = useState<"hours" | "lessons" | "problems">("hours");
+
   // Parse dynamic data with fallbacks
   const totals = data?.totals || data?.message?.totals;
-  const lessons = totals?.lessons ?? 0;
-  const problems = totals?.problems ?? 0;
-  const studyTime = totals?.study_hours ?? 0;
-  const streak = data?.streak ?? data?.streak_count ?? 0;
+  const initialLessons = totals?.lessons ?? 0;
+  const initialProblems = totals?.problems ?? 0;
+  const initialStudyTime = totals?.study_hours ?? 0;
+  const initialStreak = data?.streak ?? data?.streak_count ?? 0;
+
+  const isDemoMode = initialLessons === 0 && initialProblems === 0 && initialStudyTime === 0;
+
+  const lessons = isDemoMode ? 31 : initialLessons;
+  const problems = isDemoMode ? 83 : initialProblems;
+  const studyTime = isDemoMode ? 65 : initialStudyTime;
+  const streak = isDemoMode ? 5 : initialStreak;
 
   const weeksData = data?.weeks || data?.message?.weeks;
-  let parsedChartData = Array.isArray(weeksData) && weeksData.length > 0
-    ? weeksData.map((weekObj: any) => {
-        let hours = 0;
-        if (weekObj.days && Array.isArray(weekObj.days)) {
-          weekObj.days.forEach((day: any) => {
-            hours += (day.study_minutes || 0) / 60;
-          });
-        }
-        return Number(hours.toFixed(1));
-      })
-    : [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+  
+  const parsedData = isDemoMode 
+    ? staticDemoGraphData
+    : (Array.isArray(weeksData) && weeksData.length > 0
+        ? weeksData.map((weekObj: any) => {
+            let hours = 0;
+            let weekLessons = 0;
+            let weekProblems = 0;
+            if (weekObj.days && Array.isArray(weekObj.days)) {
+              weekObj.days.forEach((day: any) => {
+                hours += (day.study_minutes || 0) / 60;
+                weekLessons += day.lessons || 0;
+                weekProblems += day.problems || 0;
+              });
+            }
+            return {
+              hours: Number(hours.toFixed(1)),
+              lessons: weekLessons,
+              problems: weekProblems
+            };
+          })
+        : new Array(10).fill({ hours: 0, lessons: 0, problems: 0 }));
 
-  // If the parsed array is too short to draw a graph (needs at least 2 points), pad it with zeros
+  let parsedChartData = parsedData.map(d => d[activeMetric]);
+
+  // If the parsed array is too short to draw a graph (needs at least 2 points), pad it
   if (parsedChartData.length === 0) {
     parsedChartData = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
   } else if (parsedChartData.length === 1) {
@@ -43,7 +73,7 @@ export const LearningActivityGraph = ({ data }: LearningActivityGraphProps) => {
   }
 
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct'];
-  const labels = Array.isArray(weeksData) && weeksData.length > 0
+  const labels = Array.isArray(weeksData) && weeksData.length > 0 && !isDemoMode
     ? weeksData.map((weekObj: any, idx: number) => {
         if (weekObj.week_start) {
           return weekObj.week_start.slice(5); // e.g. "06-13"
@@ -62,7 +92,7 @@ export const LearningActivityGraph = ({ data }: LearningActivityGraphProps) => {
   const chartWidth = width - paddingLeft - paddingRight;
   const chartHeight = height - paddingTop - paddingBottom;
   
-  const maxVal = Math.max(...parsedChartData, 100);
+  const maxVal = Math.max(...parsedChartData, 10);
 
   const points = parsedChartData.map((val, i) => {
     const x = paddingLeft + (i * chartWidth) / (parsedChartData.length - 1);
@@ -76,13 +106,61 @@ export const LearningActivityGraph = ({ data }: LearningActivityGraphProps) => {
   // Create path for the filled area under the line
   const areaPath = `${linePath} L ${points[points.length - 1].x} ${paddingTop + chartHeight} L ${points[0].x} ${paddingTop + chartHeight} Z`;
 
+  // Colors config based on metric
+  const metricColors = {
+    hours: { stroke: "#EA580C", bgLight: "rgba(234, 88, 12, 0.15)", iconColor: "#EA580C" },
+    lessons: { stroke: "#10b981", bgLight: "rgba(16, 185, 129, 0.15)", iconColor: "#10b981" },
+    problems: { stroke: "#eab308", bgLight: "rgba(234, 179, 8, 0.15)", iconColor: "#eab308" }
+  };
+  
+  const activeColor = metricColors[activeMetric].stroke;
+
   return (
     <View style={styles.card}>
       <View style={styles.header}>
-        <Text style={styles.title}>Learning Activity Graph</Text>
-        <View style={styles.badge}>
-          <Text style={styles.badgeText}>🔥 {streak} Day Streak!</Text>
+        <View style={styles.headerLeft}>
+          <Text style={styles.title}>📊 Learning Activity Graph</Text>
+          {isDemoMode ? (
+            <Text style={styles.demoSubText}>Sample course activity data</Text>
+          ) : (
+            <Text style={styles.subText}>Weekly progress details</Text>
+          )}
         </View>
+        <View style={styles.headerRight}>
+          {isDemoMode && (
+            <View style={styles.previewBadge}>
+              <Text style={styles.previewBadgeText}>PREVIEW MODE</Text>
+            </View>
+          )}
+          <View style={styles.badge}>
+            <Text style={styles.badgeText}>🔥 {streak} Day Streak!</Text>
+          </View>
+        </View>
+      </View>
+      
+      {/* Metric Selectors */}
+      <View style={styles.metricSelectors}>
+        {(['hours', 'lessons', 'problems'] as const).map((m) => {
+           const isActive = activeMetric === m;
+           return (
+             <TouchableOpacity 
+               key={m}
+               onPress={() => setActiveMetric(m)}
+               style={[
+                 styles.metricBtn,
+                 isActive && { backgroundColor: metricColors[m].bgLight, borderColor: metricColors[m].bgLight }
+               ]}
+               activeOpacity={0.7}
+             >
+               <Text style={[
+                 styles.metricBtnText, 
+                 isActive && { color: metricColors[m].stroke }
+               ]}>
+                 {m === 'hours' ? 'Hours' : m === 'lessons' ? 'Lessons' : 'Problems'}
+               </Text>
+             </TouchableOpacity>
+           )
+        })}
       </View>
 
       {/* Custom SVG Graph */}
@@ -90,8 +168,8 @@ export const LearningActivityGraph = ({ data }: LearningActivityGraphProps) => {
         <Svg width="100%" height={height} viewBox={`0 0 ${width} ${height}`}>
           <Defs>
             <LinearGradient id="grad" x1="0" y1="0" x2="0" y2="1">
-              <Stop offset="0%" stopColor={colors.accent?.DEFAULT || '#ff6b00'} stopOpacity={0.3} />
-              <Stop offset="100%" stopColor={colors.accent?.DEFAULT || '#ff6b00'} stopOpacity={0.0} />
+              <Stop offset="0%" stopColor={activeColor} stopOpacity={0.3} />
+              <Stop offset="100%" stopColor={activeColor} stopOpacity={0.0} />
             </LinearGradient>
           </Defs>
 
@@ -104,15 +182,13 @@ export const LearningActivityGraph = ({ data }: LearningActivityGraphProps) => {
           <Path d={areaPath} fill="url(#grad)" />
 
           {/* Line Path */}
-          <Path d={linePath} fill="none" stroke={colors.accent?.DEFAULT || '#ff6b00'} strokeWidth="3" strokeLinecap="round" />
+          <Path d={linePath} fill="none" stroke={activeColor} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
 
           {/* Data Points */}
           {points.map((p, i) => (
             <React.Fragment key={i}>
-              {/* Glow circle */}
-              <Circle cx={p.x} cy={p.y} r="6" fill={colors.accent?.DEFAULT || '#ff6b00'} fillOpacity="0.2" />
-              {/* Inner solid circle */}
-              <Circle cx={p.x} cy={p.y} r="3.5" fill="#FFF" stroke={colors.accent?.DEFAULT || '#ff6b00'} strokeWidth="2" />
+              <Circle cx={p.x} cy={p.y} r="6" fill={activeColor} fillOpacity="0.2" />
+              <Circle cx={p.x} cy={p.y} r="3.5" fill="#FFF" stroke={activeColor} strokeWidth="2" />
             </React.Fragment>
           ))}
 
@@ -137,18 +213,41 @@ export const LearningActivityGraph = ({ data }: LearningActivityGraphProps) => {
       </View>
 
       <View style={styles.statsRow}>
-        <View style={styles.statItem}>
-          <Text style={styles.statLabel}>LESSONS</Text>
+        <TouchableOpacity 
+          style={[styles.statItem, activeMetric === 'lessons' && styles.activeStatItem]} 
+          onPress={() => setActiveMetric('lessons')}
+          activeOpacity={0.7}
+        >
+          <View style={[styles.iconContainer, { backgroundColor: 'rgba(16, 185, 129, 0.1)' }]}>
+            <BookOpen size={16} color="#10b981" />
+          </View>
           <Text style={styles.statValue}>{lessons}</Text>
-        </View>
-        <View style={styles.statItem}>
-          <Text style={styles.statLabel}>PROBLEMS</Text>
+          <Text style={styles.statLabel}>LESSONS</Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
+          style={[styles.statItem, activeMetric === 'problems' && styles.activeStatItem]} 
+          onPress={() => setActiveMetric('problems')}
+          activeOpacity={0.7}
+        >
+          <View style={[styles.iconContainer, { backgroundColor: 'rgba(234, 179, 8, 0.1)' }]}>
+            <Code size={16} color="#eab308" />
+          </View>
           <Text style={styles.statValue}>{problems}</Text>
-        </View>
-        <View style={styles.statItem}>
-          <Text style={styles.statLabel}>TIME</Text>
+          <Text style={styles.statLabel}>PROBLEMS</Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
+          style={[styles.statItem, activeMetric === 'hours' && styles.activeStatItem]} 
+          onPress={() => setActiveMetric('hours')}
+          activeOpacity={0.7}
+        >
+          <View style={[styles.iconContainer, { backgroundColor: 'rgba(234, 88, 12, 0.1)' }]}>
+            <Clock size={16} color="#EA580C" />
+          </View>
           <Text style={styles.statValue}>{studyTime}h</Text>
-        </View>
+          <Text style={styles.statLabel}>TIME</Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -171,8 +270,15 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  headerLeft: {
+    flex: 1,
+  },
+  headerRight: {
+    alignItems: 'flex-end',
+    gap: 6,
   },
   title: {
     fontSize: 14,
@@ -180,18 +286,66 @@ const styles = StyleSheet.create({
     color: '#1E293B',
     fontFamily: typography.fontFamily.display,
   },
+  subText: {
+    fontSize: 10,
+    color: '#64748B',
+    marginTop: 2,
+    fontWeight: '600',
+  },
+  demoSubText: {
+    fontSize: 10,
+    color: '#EA580C',
+    marginTop: 2,
+    fontWeight: '600',
+  },
   badge: {
-    backgroundColor: 'rgba(255, 107, 0, 0.08)',
+    backgroundColor: 'rgba(234, 88, 12, 0.08)',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(255, 107, 0, 0.15)',
+    borderColor: 'rgba(234, 88, 12, 0.15)',
   },
   badgeText: {
     fontSize: 10,
     fontWeight: '600',
     color: '#EA580C',
+  },
+  previewBadge: {
+    backgroundColor: '#FFF7ED',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: '#FFEDD5',
+  },
+  previewBadgeText: {
+    fontSize: 8,
+    fontWeight: '800',
+    color: '#EA580C',
+  },
+  metricSelectors: {
+    flexDirection: 'row',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 8,
+    padding: 4,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+  },
+  metricBtn: {
+    flex: 1,
+    paddingVertical: 6,
+    alignItems: 'center',
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  metricBtnText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#64748B',
+    textTransform: 'uppercase',
   },
   chartContainer: {
     alignItems: 'center',
@@ -205,10 +359,24 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: '#F8FAFC',
+    gap: 8,
   },
   statItem: {
     flex: 1,
     alignItems: 'center',
+    paddingVertical: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  activeStatItem: {
+    backgroundColor: '#F8FAFC',
+    borderColor: '#F1F5F9',
+  },
+  iconContainer: {
+    padding: 6,
+    borderRadius: 8,
+    marginBottom: 6,
   },
   statLabel: {
     fontSize: 8,
@@ -221,5 +389,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: '#1E293B',
+    marginBottom: 2,
   },
 });

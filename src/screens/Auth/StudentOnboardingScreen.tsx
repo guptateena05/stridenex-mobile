@@ -540,7 +540,7 @@ const StudentOnboardingScreen = () => {
     },
     {
       fieldname: "hasReferral",
-      label: "Are you using any referral code?",
+      label: "",
       placeholder: "Are you using any referral code?",
       fieldtype: "Check",
       required: false,
@@ -714,22 +714,22 @@ const StudentOnboardingScreen = () => {
         setError(errorMsg);
       }
     } catch (err: any) {
-    console.error("Error submitting onboarding data:", err);
+      console.error("Error submitting onboarding data:", err);
 
-    if (err?.response?.status === 409) {
-      setError("This email is already registered. Please login instead.");
-      // Optional: Redirect to login after 2 seconds
-      setTimeout(() => {
-        navigation.navigate("Login");
-      }, 2000);
-    } else {
-      const errorMessage = err?.response?.data?.message ||
-        err?.response?.data?.error ||
-        err?.message ||
-        "An error occurred during registration";
-      setError(errorMessage);
-    }
-  }finally {
+      if (err?.response?.status === 409) {
+        setError("This email is already registered. Please login instead.");
+        // Optional: Redirect to login after 2 seconds
+        setTimeout(() => {
+          navigation.navigate("Login");
+        }, 2000);
+      } else {
+        const errorMessage = err?.response?.data?.message ||
+          err?.response?.data?.error ||
+          err?.message ||
+          "An error occurred during registration";
+        setError(errorMessage);
+      }
+    } finally {
       setLoading(false);
     }
   };

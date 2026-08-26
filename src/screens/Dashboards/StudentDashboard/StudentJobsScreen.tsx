@@ -335,9 +335,13 @@ export const StudentJobsScreen = () => {
     return `₹${formatVal(from)}-${formatVal(to)} LPA`;
   };
 
+  const appliedJobsCount = jobs.filter(job => 
+    successfullyApplied.includes(job.name) || job.applied === 1 || (job.applied_status && job.applied_status !== "Not Applied")
+  ).length;
+
   const statsCards = [
     { title: "TOTAL JOBS", value: filteredJobs.length, icon: Briefcase, color: "#0A8099" },
-    { title: "APPLIED JOBS", value: successfullyApplied.length, icon: CheckCircle2, color: "#16A34A" },
+    { title: "APPLIED JOBS", value: appliedJobsCount, icon: CheckCircle2, color: "#16A34A" },
   ];
 
   return (
@@ -405,7 +409,7 @@ export const StudentJobsScreen = () => {
             </View>
           ) : (
             filteredJobs.map((job, index) => {
-              const hasApplied = successfullyApplied.includes(job.name) || (job.applied_status && job.applied_status !== "Not Applied");
+              const hasApplied = successfullyApplied.includes(job.name) || job.applied === 1 || (job.applied_status && job.applied_status !== "Not Applied");
               const isClosed = job.status?.toLowerCase() === 'closed';
 
               const actions: SwipeAction[] = [
@@ -720,21 +724,21 @@ export const StudentJobsScreen = () => {
               ) : (
                 <TouchableOpacity
                   activeOpacity={0.8}
-                  disabled={(successfullyApplied.includes(selectedJob?.name) || (selectedJob?.applied_status && selectedJob.applied_status !== "Not Applied")) || applying === selectedJob?.name}
+                  disabled={(successfullyApplied.includes(selectedJob?.name) || selectedJob?.applied === 1 || (selectedJob?.applied_status && selectedJob.applied_status !== "Not Applied")) || applying === selectedJob?.name}
                   onPress={() => {
                     handleApplyJob(selectedJob);
                     setShowDetailsModal(false);
                   }}
                   style={[
                     styles.confirmBtn, 
-                    (successfullyApplied.includes(selectedJob?.name) || (selectedJob?.applied_status && selectedJob.applied_status !== "Not Applied")) && styles.appliedButton
+                    (successfullyApplied.includes(selectedJob?.name) || selectedJob?.applied === 1 || (selectedJob?.applied_status && selectedJob.applied_status !== "Not Applied")) && styles.appliedButton
                   ]}
                 >
                   <Text style={[
                     styles.confirmBtnText, 
-                    (successfullyApplied.includes(selectedJob?.name) || (selectedJob?.applied_status && selectedJob.applied_status !== "Not Applied")) && styles.appliedButtonText
+                    (successfullyApplied.includes(selectedJob?.name) || selectedJob?.applied === 1 || (selectedJob?.applied_status && selectedJob.applied_status !== "Not Applied")) && styles.appliedButtonText
                   ]}>
-                    {(successfullyApplied.includes(selectedJob?.name) || (selectedJob?.applied_status && selectedJob.applied_status !== "Not Applied")) 
+                    {(successfullyApplied.includes(selectedJob?.name) || selectedJob?.applied === 1 || (selectedJob?.applied_status && selectedJob.applied_status !== "Not Applied")) 
                       ? (selectedJob?.applied_status || 'Applied') 
                       : 'Apply Now'}
                   </Text>
