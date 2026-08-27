@@ -601,6 +601,59 @@ export const getBookedSessions = async (studentEmail: string) => {
 };
 
 /**
+ * Get session notes shared by the mentor
+ */
+export const getSessionNote = async (sessionName: string, studentEmail: string) => {
+  try {
+    const response = await api.get(
+      `method/stridenex_app.stridenex_app.doctype.mentor_session_booking.mentor_session_booking.get_session_note`,
+      { params: { session_name: sessionName, student: studentEmail } }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching session note:", error);
+    throw error;
+  }
+};
+
+/**
+ * Submit a rating and review for a completed mentor session booking.
+ */
+export const submitSessionReview = async (payload: {
+  booking_name: string;
+  rating: number;
+  review: string;
+  skill_highlights?: string;
+}) => {
+  try {
+    const response = await api.post(
+      `method/stridenex_app.stridenex_app.doctype.mentor_session_booking.mentor_session_booking.submit_review`,
+      payload
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error submitting session review:", error);
+    throw error;
+  }
+};
+
+/**
+ * Check if the current student has already reviewed a booking.
+ */
+export const getSessionReviewStatus = async (payload: { booking_name: string }) => {
+  try {
+    const response = await api.post(
+      `method/stridenex_app.stridenex_app.doctype.mentor_session_booking.mentor_session_booking.get_review_status`,
+      payload
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error getting session review status:", error);
+    throw error;
+  }
+};
+
+/**
  * Fetch mentor offerings list.
  */
 export const getMentorOfferings = async (mentorEmail: string) => {

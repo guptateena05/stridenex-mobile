@@ -47,7 +47,10 @@ import {
   getMentorOfferings,
   initiateSessionBooking,
   verifySessionPayment,
-  getNewGroupWorkshopOfferings
+  getNewGroupWorkshopOfferings,
+  getSessionNote,
+  submitSessionReview,
+  getSessionReviewStatus
 } from '@/api/student.services';
 import { WebView } from 'react-native-webview';
 
@@ -57,7 +60,7 @@ const AVATAR_COLORS = [
 
 export const StudentMentorsScreen = () => {
   const { userName } = useAuth();
-  const [activeTab, setActiveTab] = useState<'mentors' | 'sessions'>('mentors');
+  const [activeTab, setActiveTab] = useState<'group_sessions' | 'workshops' | 'booked_sessions' | 'mentors'>('group_sessions');
   const [mentors, setMentors] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -83,7 +86,6 @@ export const StudentMentorsScreen = () => {
   // Group Sessions & Workshops offerings
   const [groupOfferings, setGroupOfferings] = useState<any[]>([]);
   const [loadingGroupOfferings, setLoadingGroupOfferings] = useState(true);
-  const [groupOfferingType, setGroupOfferingType] = useState<'Group Session' | 'Workshop'>('Group Session');
   const [groupOfferingSearch, setGroupOfferingSearch] = useState('');
   const [selectedOffering, setSelectedOffering] = useState<any | null>(null);
   const [slotCalendar, setSlotCalendar] = useState<any>({});
@@ -95,6 +97,19 @@ export const StudentMentorsScreen = () => {
   const [groupSessionData, setGroupSessionData] = useState<any | null>(null);
   const [showPaymentWebView, setShowPaymentWebView] = useState(false);
   const [paymentData, setPaymentData] = useState<any | null>(null);
+
+  // Review & Note Modal State
+  const [reviewSession, setReviewSession] = useState<any | null>(null);
+  const [reviewRating, setReviewRating] = useState(0);
+  const [reviewText, setReviewText] = useState("");
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+  const [reviewError, setReviewError] = useState<string | null>(null);
+  const [reviewSuccess, setReviewSuccess] = useState(false);
+
+  const [viewingNoteSession, setViewingNoteSession] = useState<any | null>(null);
+  const [sessionNoteText, setSessionNoteText] = useState<string | null>(null);
+  const [isLoadingNote, setIsLoadingNote] = useState<boolean>(false);
+  const [noteError, setNoteError] = useState<string | null>(null);
 
   const getOfferingTypeBadgeStyle = (type: string) => {
     if (type === 'Group Session') {
@@ -210,8 +225,31 @@ export const StudentMentorsScreen = () => {
     try {
       setLoadingSessions(true);
       const res = await getBookedSessions(userName);
-      if (res && Array.isArray(res.message)) {
-        setBookedSessions(res.message);
+      const data = res?.message || res?.data || res;
+      if (data && Array.isArray(data)) {
+        const sessions = data;
+        const reviewChecks = await Promise.allSettled(
+          sessions
+            .filter(s => s.status === "Completed")
+            .map(async s => {
+              try {
+                const r = await getSessionReviewStatus({ booking_name: s.name });
+                return { name: s.name, already_reviewed: r?.message?.already_reviewed ?? false };
+              } catch {
+                return { name: s.name, already_reviewed: false };
+              }
+            })
+        );
+        const reviewMap: Record<string, boolean> = {};
+        reviewChecks.forEach(result => {
+          if (result.status === "fulfilled") {
+            reviewMap[result.value.name] = result.value.already_reviewed;
+          }
+        });
+        setBookedSessions(sessions.map(s => ({
+          ...s,
+          already_reviewed: reviewMap[s.name] ?? false,
+        })));
       } else {
         setBookedSessions([]);
       }
@@ -237,7 +275,7 @@ export const StudentMentorsScreen = () => {
     try {
       setLoadingGroupOfferings(true);
       const res = await getNewGroupWorkshopOfferings({ offering_type: type, search });
-      const data = res?.message?.data || res?.message || res?.data || [];
+      const data = res?.message?.data || res?.data || res?.message || (Array.isArray(res) ? res : []);
       setGroupOfferings(Array.isArray(data) ? data.filter(Boolean) : []);
     } catch (err) {
       console.error('Error fetching group offerings:', err);
@@ -248,8 +286,12 @@ export const StudentMentorsScreen = () => {
   }, []);
 
   useEffect(() => {
-    fetchGroupOfferings(groupOfferingType, groupOfferingSearch || undefined);
-  }, [groupOfferingType, fetchGroupOfferings]);
+    if (activeTab === 'group_sessions') {
+      fetchGroupOfferings('Group Session', groupOfferingSearch || undefined);
+    } else if (activeTab === 'workshops') {
+      fetchGroupOfferings('Workshop', groupOfferingSearch || undefined);
+    }
+  }, [activeTab, groupOfferingSearch, fetchGroupOfferings]);
 
   // Next slots prefetch
   useEffect(() => {
@@ -276,6 +318,59 @@ export const StudentMentorsScreen = () => {
       fetchSlots();
     }
   }, [mentors.length]);
+
+  const handleOpenReview = (session: any) => {
+    setReviewSession(session);
+    setReviewRating(0);
+    setReviewText("");
+    setReviewError(null);
+    setReviewSuccess(false);
+  };
+
+  const handleOpenNote = async (session: any) => {
+    setViewingNoteSession(session);
+    setIsLoadingNote(true);
+    setNoteError(null);
+    setSessionNoteText(null);
+    try {
+      const res = await getSessionNote(session.name, userName || "");
+      if (res?.message && res.message.status === "success") {
+        setSessionNoteText(res.message.data?.shared_with_student || "");
+      } else {
+        setNoteError(res?.message?.message || "Failed to load session note.");
+      }
+    } catch (err: any) {
+      setNoteError(err?.message || "Failed to load session note.");
+    } finally {
+      setIsLoadingNote(false);
+    }
+  };
+
+  const handleSubmitReview = async () => {
+    if (!reviewSession) return;
+    if (reviewRating < 1) {
+      setReviewError("Please select a star rating.");
+      return;
+    }
+    setIsSubmittingReview(true);
+    setReviewError(null);
+    try {
+      await submitSessionReview({
+        booking_name: reviewSession.name,
+        rating: reviewRating,
+        review: reviewText.trim() || "Great session!",
+      });
+      setReviewSuccess(true);
+      setBookedSessions(prev =>
+        prev.map(s => s.name === reviewSession.name ? { ...s, already_reviewed: true } : s)
+      );
+      setTimeout(() => setReviewSession(null), 1500);
+    } catch (err: any) {
+      setReviewError(err?.message || "Failed to submit review. Please try again.");
+    } finally {
+      setIsSubmittingReview(false);
+    }
+  };
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -891,55 +986,73 @@ export const StudentMentorsScreen = () => {
         </Animated.View>
 
         {/* Segmented Tab Switcher */}
-        <Animated.View entering={FadeInUp.delay(120)} style={styles.tabSwitcherContainer}>
-          <TouchableOpacity 
-            style={[styles.tabBtn, activeTab === 'mentors' && styles.activeTabBtn]}
-            onPress={() => setActiveTab('mentors')}
+        <Animated.View entering={FadeInUp.delay(120)}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.tabScrollContainer}
+            contentContainerStyle={styles.tabScrollContent}
           >
-            <Text style={[styles.tabBtnText, activeTab === 'mentors' && styles.activeTabBtnText]}>
-              Explore Mentors
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={[styles.tabBtn, activeTab === 'sessions' && styles.activeTabBtn]}
-            onPress={() => setActiveTab('sessions')}
-          >
-            <Text style={[styles.tabBtnText, activeTab === 'sessions' && styles.activeTabBtnText]}>
-              My Bookings ({bookedSessions.length})
-            </Text>
-          </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.tabBtn, activeTab === 'group_sessions' && styles.activeTabBtn]}
+              onPress={() => setActiveTab('group_sessions')}
+            >
+              <Text style={[styles.tabBtnText, activeTab === 'group_sessions' && styles.activeTabBtnText]}>
+                Group Sessions
+              </Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={[styles.tabBtn, activeTab === 'workshops' && styles.activeTabBtn]}
+              onPress={() => setActiveTab('workshops')}
+            >
+              <Text style={[styles.tabBtnText, activeTab === 'workshops' && styles.activeTabBtnText]}>
+                Workshops
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={[styles.tabBtn, activeTab === 'booked_sessions' && styles.activeTabBtn]}
+              onPress={() => setActiveTab('booked_sessions')}
+            >
+              <Text style={[styles.tabBtnText, activeTab === 'booked_sessions' && styles.activeTabBtnText]}>
+                Booked Sessions
+              </Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={[styles.tabBtn, activeTab === 'mentors' && styles.activeTabBtn]}
+              onPress={() => setActiveTab('mentors')}
+            >
+              <Text style={[styles.tabBtnText, activeTab === 'mentors' && styles.activeTabBtnText]}>
+                Mentors List
+              </Text>
+            </TouchableOpacity>
+          </ScrollView>
         </Animated.View>
 
-        {activeTab === 'mentors' ? (
+        {activeTab === 'group_sessions' || activeTab === 'workshops' ? (
           <View>
-            {/* ── Group Sessions & Workshops ── */}
             <Animated.View entering={FadeInUp.delay(130)} style={styles.offeringsSection}>
-              <Text style={styles.sectionTitle}>Sessions &amp; Workshops</Text>
-              <Text style={styles.sectionSubtitle}>Expert-led group sessions open to enroll</Text>
-
-              {/* Type tabs */}
-              <View style={styles.offeringTabRow}>
-                {(['Group Session', 'Workshop'] as const).map(type => (
-                  <TouchableOpacity
-                    key={type}
-                    onPress={() => setGroupOfferingType(type)}
-                    style={[styles.offeringTabBtn, groupOfferingType === type && styles.offeringTabBtnActive]}
-                  >
-                    <Text style={[styles.offeringTabText, groupOfferingType === type && styles.offeringTabTextActive]}>
-                      {type}s
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
+              <Text style={styles.sectionTitle}>
+                {activeTab === 'group_sessions' ? 'Group Sessions' : 'Workshops'}
+              </Text>
+              <Text style={styles.sectionSubtitle}>
+                Expert-led {activeTab === 'group_sessions' ? 'group sessions' : 'workshops'} open to enroll
+              </Text>
 
               {loadingGroupOfferings ? (
                 <View style={styles.offeringLoader}>
                   <ActivityIndicator size="small" color="#F97316" />
-                  <Text style={styles.offeringLoaderText}>Loading {groupOfferingType}s...</Text>
+                  <Text style={styles.offeringLoaderText}>
+                    Loading {activeTab === 'group_sessions' ? 'group sessions' : 'workshops'}...
+                  </Text>
                 </View>
               ) : groupOfferings.length === 0 ? (
                 <View style={styles.offeringEmpty}>
-                  <Text style={styles.offeringEmptyText}>No {groupOfferingType}s available right now.</Text>
+                  <Text style={styles.offeringEmptyText}>
+                    No {activeTab === 'group_sessions' ? 'group sessions' : 'workshops'} available right now.
+                  </Text>
                 </View>
               ) : (
                 <View style={styles.offeringList}>
@@ -1018,7 +1131,9 @@ export const StudentMentorsScreen = () => {
                 </View>
               )}
             </Animated.View>
-
+          </View>
+        ) : activeTab === 'mentors' ? (
+          <View>
             {/* Search Bar */}
             <Animated.View entering={FadeInUp.delay(150)} style={styles.searchContainer}>
               <Search size={18} color="#94A3B8" style={styles.searchIcon} />
@@ -1200,7 +1315,9 @@ export const StudentMentorsScreen = () => {
             ) : (
               <View style={{ gap: 12 }}>
                 {bookedSessions.map((session, idx) => {
-                  const dateFormatted = session.session_date ? new Date(session.session_date).toLocaleDateString() : "N/A";
+                  const dateFormatted = session.session_date ? new Date(session.session_date).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' }) : "N/A";
+                  const fromTimeStr = session.from_time ? session.from_time.slice(0, 5) : "TBD";
+                  const toTimeStr = session.to_time ? session.to_time.slice(0, 5) : "TBD";
                   const isHigh = session.priority === 'High';
                   const isMedium = session.priority === 'Medium';
                   
@@ -1255,7 +1372,7 @@ export const StudentMentorsScreen = () => {
                           </View>
                           <View style={styles.sessionInfoItem}>
                             <Clock size={12} color="#64748B" />
-                            <Text style={styles.sessionInfoVal}>{session.from_time} - {session.to_time}</Text>
+                            <Text style={styles.sessionInfoVal}>{fromTimeStr} - {toTimeStr}</Text>
                           </View>
                           <View style={styles.sessionInfoItem}>
                             <Target size={12} color="#64748B" />
@@ -1272,7 +1389,33 @@ export const StudentMentorsScreen = () => {
                               </Text>
                             </View>
                           </View>
-                          <Text style={styles.sessionFooterVal}>Duration: {session.duration || "N/A"}</Text>
+                          <Text style={styles.sessionFooterVal}>Duration: {session.duration ? `${session.duration} min` : "N/A"}</Text>
+                        </View>
+                        
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 12 }}>
+                          {session.status === 'Completed' && (
+                            session.already_reviewed ? (
+                              <View style={[styles.actionBtn, { backgroundColor: '#ECFDF5', borderColor: '#D1FAE5' }]}>
+                                <CheckCircle2 size={14} color="#10B981" />
+                                <Text style={[styles.actionBtnText, { color: '#059669' }]}>Reviewed</Text>
+                              </View>
+                            ) : (
+                              <TouchableOpacity
+                                onPress={() => handleOpenReview(session)}
+                                style={[styles.actionBtn, { backgroundColor: '#FFF7ED', borderColor: '#FFEDD5' }]}
+                              >
+                                <Star size={14} color="#F97316" fill="#F97316" />
+                                <Text style={[styles.actionBtnText, { color: '#EA580C' }]}>Rate Session</Text>
+                              </TouchableOpacity>
+                            )
+                          )}
+                          <TouchableOpacity
+                            onPress={() => handleOpenNote(session)}
+                            style={[styles.actionBtn, { backgroundColor: '#EFF6FF', borderColor: '#DBEAFE' }]}
+                          >
+                            <BookOpen size={14} color="#3B82F6" />
+                            <Text style={[styles.actionBtnText, { color: '#2563EB' }]}>View Note</Text>
+                          </TouchableOpacity>
                         </View>
                       </View>
                     </SwipeableRow>
@@ -1284,6 +1427,102 @@ export const StudentMentorsScreen = () => {
         )}
 
         {renderBookingModal()}
+
+        {reviewSession && (
+          <Modal visible animationType="fade" transparent onRequestClose={() => setReviewSession(null)}>
+            <View style={styles.modalBackdrop}>
+              <View style={styles.reviewModalContainer}>
+                <View style={styles.modalHeader}>
+                  <Text style={styles.modalTitle}>Rate this Session</Text>
+                  <TouchableOpacity onPress={() => setReviewSession(null)}><X size={20} color="#64748B" /></TouchableOpacity>
+                </View>
+                <View style={styles.reviewModalBody}>
+                  {reviewSuccess ? (
+                    <View style={{ alignItems: 'center', padding: 20 }}>
+                      <CheckCircle2 size={48} color="#10B981" />
+                      <Text style={{ marginTop: 12, fontSize: 16, fontWeight: '700', color: '#1E293B' }}>Review Submitted!</Text>
+                      <Text style={{ marginTop: 4, fontSize: 14, color: '#64748B' }}>Thank you for your feedback.</Text>
+                    </View>
+                  ) : (
+                    <>
+                      <Text style={{ fontSize: 13, fontWeight: '600', color: '#64748B', marginBottom: 12 }}>Your Rating <Text style={{ color: '#EF4444' }}>*</Text></Text>
+                      <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 12, marginBottom: 20 }}>
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <TouchableOpacity key={star} onPress={() => setReviewRating(star)}>
+                            <Star size={36} color={star <= reviewRating ? "#FBBF24" : "#E2E8F0"} fill={star <= reviewRating ? "#FBBF24" : "transparent"} />
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                      <Text style={{ fontSize: 13, fontWeight: '600', color: '#64748B', marginBottom: 8 }}>Your Review (optional)</Text>
+                      <TextInput
+                        value={reviewText}
+                        onChangeText={setReviewText}
+                        placeholder="Share your experience..."
+                        placeholderTextColor="#94A3B8"
+                        multiline
+                        numberOfLines={4}
+                        style={{ backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, padding: 12, height: 100, textAlignVertical: 'top' }}
+                      />
+                      {reviewError && (
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FEF2F2', padding: 12, borderRadius: 8, marginTop: 12 }}>
+                          <AlertCircle size={16} color="#EF4444" />
+                          <Text style={{ color: '#EF4444', fontSize: 12, flex: 1 }}>{reviewError}</Text>
+                        </View>
+                      )}
+                      <TouchableOpacity 
+                        onPress={handleSubmitReview}
+                        disabled={isSubmittingReview || reviewRating < 1}
+                        style={{ backgroundColor: '#F97316', paddingVertical: 14, borderRadius: 12, alignItems: 'center', marginTop: 24, opacity: (isSubmittingReview || reviewRating < 1) ? 0.5 : 1 }}
+                      >
+                        {isSubmittingReview ? (
+                          <ActivityIndicator color="#FFF" size="small" />
+                        ) : (
+                          <Text style={{ color: '#FFF', fontSize: 14, fontWeight: '700' }}>Submit Review</Text>
+                        )}
+                      </TouchableOpacity>
+                    </>
+                  )}
+                </View>
+              </View>
+            </View>
+          </Modal>
+        )}
+
+        {viewingNoteSession && (
+          <Modal visible animationType="fade" transparent onRequestClose={() => setViewingNoteSession(null)}>
+            <View style={styles.modalBackdrop}>
+              <View style={styles.reviewModalContainer}>
+                <View style={styles.modalHeader}>
+                  <Text style={styles.modalTitle}>Mentor's Shared Note</Text>
+                  <TouchableOpacity onPress={() => setViewingNoteSession(null)}><X size={20} color="#64748B" /></TouchableOpacity>
+                </View>
+                <View style={styles.reviewModalBody}>
+                  {isLoadingNote ? (
+                    <View style={{ alignItems: 'center', padding: 30 }}>
+                      <ActivityIndicator size="large" color="#3B82F6" />
+                      <Text style={{ marginTop: 12, color: '#64748B' }}>Fetching shared notes...</Text>
+                    </View>
+                  ) : noteError ? (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FEF2F2', padding: 16, borderRadius: 12 }}>
+                      <AlertCircle size={20} color="#EF4444" />
+                      <Text style={{ color: '#EF4444', flex: 1 }}>{noteError}</Text>
+                    </View>
+                  ) : sessionNoteText ? (
+                    <ScrollView style={{ backgroundColor: '#F8FAFC', padding: 16, borderRadius: 12, borderWidth: 1, borderColor: '#F1F5F9', maxHeight: 300 }}>
+                      <Text style={{ color: '#334155', fontSize: 14, lineHeight: 22 }}>{sessionNoteText}</Text>
+                    </ScrollView>
+                  ) : (
+                    <View style={{ alignItems: 'center', padding: 30, backgroundColor: '#F8FAFC', borderRadius: 12, borderWidth: 1, borderColor: '#F1F5F9', borderStyle: 'dashed' }}>
+                      <BookOpen size={36} color="#CBD5E1" />
+                      <Text style={{ marginTop: 12, fontSize: 14, fontWeight: '600', color: '#64748B' }}>No notes shared yet</Text>
+                      <Text style={{ marginTop: 4, fontSize: 12, color: '#94A3B8', textAlign: 'center' }}>The mentor has not shared any preparation or follow-up notes for this session.</Text>
+                    </View>
+                  )}
+                </View>
+              </View>
+            </View>
+          </Modal>
+        )}
 
         {/* Razorpay Checkout WebView Modal */}
         <Modal
@@ -1561,18 +1800,35 @@ const styles = StyleSheet.create({
   slotButtonSelected: { backgroundColor: 'rgba(16, 185, 129, 0.08)', borderColor: '#10B981', borderWidth: 1.5 },
   slotText: { fontSize: 11, fontWeight: '700', color: '#1E293B' },
   slotTextDisabled: { color: '#94A3B8' },
-  slotTextSelected: { color: '#047857' },
-  slotSubText: { fontSize: 9, fontWeight: '600', color: '#10B981', marginTop: 2 },
+  slotTextSelected: { color: colors.accent.DEFAULT },
+  slotSubText: { fontSize: 10, color: '#10B981', fontWeight: '600', marginTop: 2, textTransform: 'uppercase' },
+  slotSubTextSelected: { color: colors.accent.DEFAULT },
   slotSubTextDisabled: { color: '#94A3B8' },
-  slotSubTextSelected: { color: '#047857' },
 
-  topicConfirmContainer: { marginTop: 24, padding: 16, backgroundColor: '#FFFFFF', borderRadius: 16, borderWidth: 1.5, borderColor: '#F1F5F9' },
-  fieldLabel: { fontSize: 12, fontWeight: '700', color: '#64748B', marginBottom: 6 },
-  topicInput: { height: 44, borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 10, paddingHorizontal: 12, fontSize: 13, color: '#1E293B', fontWeight: '500', marginBottom: 14, backgroundColor: '#F8FAFC' },
-  confirmBtn: { backgroundColor: '#10B981', paddingVertical: 14, borderRadius: 12, alignItems: 'center', justifyContent: 'center', shadowColor: '#10B981', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 8, elevation: 2 },
-  confirmBtnText: { color: '#FFFFFF', fontSize: 14, fontWeight: '800' },
+  topicConfirmContainer: { marginTop: 24, borderTopWidth: 1.5, borderTopColor: '#F1F5F9', paddingTop: 20 },
+  fieldLabel: { fontSize: 11, fontWeight: '800', color: '#94A3B8', letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 8 },
+  topicInput: { backgroundColor: '#F8FAFC', borderWidth: 1.5, borderColor: '#F1F5F9', borderRadius: 12, paddingHorizontal: 16, height: 48, fontSize: 14, color: '#1E293B', marginBottom: 20 },
+  confirmBtn: { backgroundColor: colors.accent.DEFAULT, height: 52, borderRadius: 14, alignItems: 'center', justifyContent: 'center', shadowColor: colors.accent.DEFAULT, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 4 },
+  confirmBtnText: { color: '#FFFFFF', fontSize: 15, fontWeight: '800' },
+
+  modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 16 },
+  reviewModalContainer: { backgroundColor: '#FFF', borderRadius: 24, width: '100%', overflow: 'hidden' },
+  reviewModalBody: { padding: 24 },
+  actionBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, borderWidth: 1 },
+  actionBtnText: { fontSize: 11, fontWeight: '700' },
 
   // Tab Switcher Styles
+  tabScrollContainer: {
+    backgroundColor: '#F1F5F9',
+    borderRadius: 16,
+    padding: 4,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  tabScrollContent: {
+    gap: 4,
+  },
   tabSwitcherContainer: {
     flexDirection: 'row',
     backgroundColor: '#F1F5F9',
@@ -1583,7 +1839,7 @@ const styles = StyleSheet.create({
     borderColor: '#E2E8F0',
   },
   tabBtn: {
-    flex: 1,
+    paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 12,
     alignItems: 'center',
