@@ -264,6 +264,7 @@ export const IndustryJobsScreen = () => {
       label: 'Last Date to Apply',
       fieldtype: 'Date',
       required: true,
+      minDate: new Date(),
     },
     {
       fieldname: 'contact_person',

@@ -276,6 +276,7 @@ export const IndustryProjectsScreen = () => {
       label: 'Start Date',
       fieldtype: 'Date',
       required: true,
+      minDate: new Date(),
     },
     {
       fieldname: 'end_date',
@@ -289,6 +290,7 @@ export const IndustryProjectsScreen = () => {
       label: 'Application Deadline',
       fieldtype: 'Date',
       required: true,
+      maxDate: new Date(),
     },
     {
       fieldname: 'course',

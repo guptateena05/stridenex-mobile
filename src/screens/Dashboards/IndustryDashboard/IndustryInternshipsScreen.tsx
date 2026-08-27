@@ -311,6 +311,7 @@ export const IndustryInternshipsScreen = () => {
       label: 'Start Date',
       fieldtype: 'Date',
       required: true,
+      minDate: new Date(),
     },
     {
       fieldname: 'end_date',
@@ -323,6 +324,7 @@ export const IndustryInternshipsScreen = () => {
       label: 'Application Deadline',
       fieldtype: 'Date',
       required: true,
+      maxDate: new Date(),
     },
     {
       fieldname: 'no_of_openings',
