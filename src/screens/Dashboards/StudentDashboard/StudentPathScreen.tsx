@@ -63,6 +63,7 @@ import {
   getCareerPathDetail,
   createStudentSkill
 } from '@/api/student.services';
+import SkillVerificationModal from '@/components/SkillVerificationModal';
 
 // --- Helper UI Components for mobile ---
 
@@ -155,14 +156,8 @@ export const StudentPathScreen = () => {
 
   // Skill Verification States
   const [isTestModalOpen, setIsTestModalOpen] = useState(false);
-  const [showTestIntro, setShowTestIntro] = useState(false);
-  const [testMode, setTestMode] = useState<'intro'|'test'|'result'>('intro');
-  const [testQuestions, setTestQuestions] = useState<any[]>([]);
-  const [currentTestAnswers, setCurrentTestAnswers] = useState<Record<string, string>>({});
-  const [testLoading, setTestLoading] = useState(false);
   const [activeTestSkill, setActiveTestSkill] = useState("");
   const [activeTestLevel, setActiveTestLevel] = useState("Beginner");
-  const [testResult, setTestResult] = useState<any>(null);
   const [activeMilestoneForTest, setActiveMilestoneForTest] = useState<any>(null);
   
   // Active Journey Detailed States
@@ -446,75 +441,7 @@ export const StudentPathScreen = () => {
     setActiveMilestoneForTest(milestone);
     setActiveTestSkill(milestone.skill || milestone.milestone_title || "Unknown");
     setActiveTestLevel(milestone.required_skill_level || "Beginner");
-    setShowTestIntro(true);
-    setTestMode('intro');
     setIsTestModalOpen(true);
-  };
-
-  const handleBeginTest = async () => {
-    if (!userName || !activeTestSkill) return;
-    setTestLoading(true);
-    setTestMode('test');
-    try {
-      const res = await getSkillTestQuestions(userName, activeTestSkill, activeTestLevel);
-      if (res.message && res.message.questions) {
-         setTestQuestions(res.message.questions);
-         setCurrentTestAnswers({});
-      } else {
-         throw new Error("No questions returned");
-      }
-    } catch (err: any) {
-      console.error(err);
-      setIsTestModalOpen(false);
-      Alert.alert("Error", err?.message || "Could not generate test. Please try again later.");
-    } finally {
-      setTestLoading(false);
-    }
-  };
-
-  const submitTestAnswers = async () => {
-    if (!userName) return;
-    setTestLoading(true);
-    try {
-       await submitSkillTest({
-          student: userName,
-          skill: activeTestSkill,
-          level: activeTestLevel,
-          answers: currentTestAnswers
-       });
-       
-       let attempts = 0;
-       const pollInterval = setInterval(async () => {
-          attempts++;
-          try {
-             const result = await getSkillTestResult(userName, activeTestSkill);
-             if (result && result.message && result.message.status !== 'Evaluating') {
-                clearInterval(pollInterval);
-                setTestResult(result.message);
-                setTestMode('result');
-                setTestLoading(false);
-                
-                // If passed, auto-complete milestone
-                if (result.message.status === 'Passed' && activeMilestoneForTest) {
-                   fetchData();
-                }
-             }
-          } catch (e) {
-             console.error("Poll result error", e);
-          }
-          if (attempts > 15) {
-             clearInterval(pollInterval);
-             setTestLoading(false);
-             Alert.alert("Error", "Timeout waiting for evaluation. Please check your skill ledger later.");
-             setIsTestModalOpen(false);
-          }
-       }, 3000);
-
-    } catch (err: any) {
-       console.error(err);
-       Alert.alert("Error", "Failed to submit test.");
-       setTestLoading(false);
-    }
   };
 
   // --- Data Mapping Logic ---
@@ -546,6 +473,8 @@ export const StudentPathScreen = () => {
       };
     })
     : [];
+
+  const firstIncompleteIdx = roadmap.findIndex((m: any) => m.status !== 'Completed' && m.status !== 'completed');
 
   // --- Render logic ---
   if (loading && !isGenerating) {
@@ -1186,7 +1115,6 @@ export const StudentPathScreen = () => {
                 </View>
               )}
 
-              {/* Timeline Roadmap */}
               <View style={{ backgroundColor: 'white', borderRadius: 24, padding: 20, borderWidth: 1.5, borderColor: '#F1F5F9' }}>
                  <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#1E293B', marginBottom: 20 }}>Journey Milestones</Text>
                  
@@ -1195,9 +1123,11 @@ export const StudentPathScreen = () => {
                     const hasSkill = (Array.isArray(studentSkills) ? studentSkills : []).some((s: any) => s.skill_name?.toLowerCase() === m.skill?.toLowerCase() || s.name?.toLowerCase() === m.skill?.toLowerCase());
                     const showRevisionPrompt = hasSkill && !isCompleted && !revisedMilestones[`${activePath.id}_${idx}`];
                     const isExpanded = collapsedChecklists[`${activePath.id}_${idx}`] === true;
+                    const isLocked = firstIncompleteIdx !== -1 && idx > firstIncompleteIdx;
+                    const isAllPointsCompleted = !m.points || m.points.length === 0 || m.points.every((p: any) => p.status === 'Completed' || p.status === 'completed');
 
                     return (
-                      <View key={idx} style={{ flexDirection: 'row', marginBottom: 24 }}>
+                      <View key={idx} style={{ flexDirection: 'row', marginBottom: 24, opacity: isLocked ? 0.5 : 1 }} pointerEvents={isLocked ? 'none' : 'auto'}>
                          {/* Timeline Line & Dot */}
                          <View style={{ width: 24, alignItems: 'center', marginRight: 12 }}>
                             <View style={{ 
@@ -1315,13 +1245,13 @@ export const StudentPathScreen = () => {
                                      )}
                                   </View>
                                )}
-                               {!isCompleted && m.milestone_type === 'Skill Verification' && (
+                               {!isCompleted && isAllPointsCompleted && (
                                   <TouchableOpacity 
-                                     style={{ marginTop: 16, backgroundColor: '#2563EB', paddingVertical: 10, borderRadius: 8, alignItems: 'center', flexDirection: 'row', justifyContent: 'center' }}
+                                     style={{ marginTop: 16, backgroundColor: '#F97316', paddingVertical: 10, borderRadius: 8, alignItems: 'center', flexDirection: 'row', justifyContent: 'center' }}
                                      onPress={() => handleStartVerificationTest(m)}
                                   >
                                      <ShieldCheck size={16} color="white" style={{ marginRight: 8 }} />
-                                     <Text style={{ fontSize: 13, fontWeight: 'bold', color: 'white' }}>Take Verification Assessment</Text>
+                                     <Text style={{ fontSize: 13, fontWeight: 'bold', color: 'white' }}>Attempt Skill Assessment</Text>
                                   </TouchableOpacity>
                                )}
                             </View>
@@ -1367,96 +1297,19 @@ export const StudentPathScreen = () => {
         </View>
       </Modal>
 
-      {/* Skill Test Modal (Mirrored from Skills Screen) */}
-      <Modal visible={isTestModalOpen} animationType="slide" presentationStyle="pageSheet">
-        <SafeAreaView style={{ flex: 1, backgroundColor: '#F8FAFC' }}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', padding: 16, borderBottomWidth: 1, borderColor: '#E2E8F0' }}>
-            <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#1E293B' }}>Skill Assessment</Text>
-            <TouchableOpacity onPress={() => { setIsTestModalOpen(false); setShowTestIntro(false); }}>
-              <X size={24} color="#64748B" />
-            </TouchableOpacity>
-          </View>
-
-          {testMode === 'intro' && (
-            <ScrollView style={{ padding: 20 }}>
-              <View style={{ alignItems: 'center', marginBottom: 24 }}>
-                <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: '#EFF6FF', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
-                  <ShieldCheck size={32} color="#3B82F6" />
-                </View>
-                <Text style={{ fontSize: 20, fontWeight: 'bold', color: '#1E293B', textAlign: 'center' }}>
-                  {activeTestSkill} Verification
-                </Text>
-                <Text style={{ fontSize: 14, color: '#64748B', marginTop: 8, textAlign: 'center' }}>
-                  Level: <Text style={{ fontWeight: 'bold', color: '#0F172A' }}>{activeTestLevel}</Text>
-                </Text>
-              </View>
-              
-              <View style={{ backgroundColor: 'white', borderRadius: 12, padding: 16, marginBottom: 24, borderWidth: 1, borderColor: '#E2E8F0' }}>
-                <Text style={{ fontSize: 14, fontWeight: 'bold', color: '#1E293B', marginBottom: 12 }}>What to expect:</Text>
-                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-                  <Check size={16} color="#10B981" style={{ marginRight: 8 }} />
-                  <Text style={{ fontSize: 12, color: '#475569' }}>Multiple choice & scenario based questions</Text>
-                </View>
-                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-                  <Check size={16} color="#10B981" style={{ marginRight: 8 }} />
-                  <Text style={{ fontSize: 12, color: '#475569' }}>Completing this will check off your milestone</Text>
-                </View>
-              </View>
-
-              <TouchableOpacity style={styles.primaryBtn} onPress={handleBeginTest} disabled={testLoading}>
-                {testLoading ? <ActivityIndicator color="white" /> : <Text style={styles.primaryBtnText}>Start Assessment</Text>}
-              </TouchableOpacity>
-            </ScrollView>
-          )}
-
-          {testMode === 'test' && (
-             <ScrollView style={{ padding: 20 }}>
-               {testQuestions.map((q, qIdx) => (
-                  <View key={qIdx} style={{ backgroundColor: 'white', padding: 16, borderRadius: 12, marginBottom: 16, borderWidth: 1, borderColor: '#E2E8F0' }}>
-                    <Text style={{ fontSize: 14, fontWeight: 'bold', color: '#1E293B', marginBottom: 12 }}>{qIdx + 1}. {q.question}</Text>
-                    {q.options && Object.entries(q.options).map(([k, v]) => (
-                       <TouchableOpacity 
-                          key={k} 
-                          onPress={() => setCurrentTestAnswers(prev => ({...prev, [qIdx.toString()]: k}))}
-                          style={{
-                             padding: 12, borderRadius: 8, borderWidth: 1, marginBottom: 8,
-                             borderColor: currentTestAnswers[qIdx.toString()] === k ? '#3B82F6' : '#E2E8F0',
-                             backgroundColor: currentTestAnswers[qIdx.toString()] === k ? '#EFF6FF' : 'white'
-                          }}
-                       >
-                         <Text style={{ fontSize: 12, color: '#334155' }}>{k}. {String(v)}</Text>
-                       </TouchableOpacity>
-                    ))}
-                  </View>
-               ))}
-               <TouchableOpacity style={styles.primaryBtn} onPress={submitTestAnswers} disabled={testLoading}>
-                  {testLoading ? <ActivityIndicator color="white" /> : <Text style={styles.primaryBtnText}>Submit & Evaluate</Text>}
-               </TouchableOpacity>
-               <View style={{ height: 40 }} />
-             </ScrollView>
-          )}
-
-          {testMode === 'result' && testResult && (
-             <ScrollView style={{ padding: 20 }}>
-                <View style={{ alignItems: 'center', marginBottom: 24, padding: 20, backgroundColor: 'white', borderRadius: 16, borderWidth: 1, borderColor: '#E2E8F0' }}>
-                  {testResult.status === 'Passed' ? (
-                     <Award size={64} color="#10B981" style={{ marginBottom: 16 }} />
-                  ) : (
-                     <AlertCircle size={64} color="#EF4444" style={{ marginBottom: 16 }} />
-                  )}
-                  <Text style={{ fontSize: 24, fontWeight: 'bold', color: '#1E293B' }}>{testResult.status}</Text>
-                  <Text style={{ fontSize: 16, color: '#64748B', marginTop: 8 }}>Score: {testResult.score}%</Text>
-                  <Text style={{ fontSize: 14, color: '#64748B', marginTop: 12, textAlign: 'center' }}>
-                     {testResult.feedback}
-                  </Text>
-                </View>
-                <TouchableOpacity style={styles.primaryBtn} onPress={() => { setIsTestModalOpen(false); }}>
-                   <Text style={styles.primaryBtnText}>Close</Text>
-                </TouchableOpacity>
-             </ScrollView>
-          )}
-        </SafeAreaView>
-      </Modal>
+      <SkillVerificationModal
+        visible={isTestModalOpen}
+        userName={userName || ''}
+        skillName={activeTestSkill}
+        skillLevel={activeTestLevel}
+        onClose={() => setIsTestModalOpen(false)}
+        onSuccess={(result) => {
+          // If passed, auto-complete milestone
+          if (activeMilestoneForTest) {
+             fetchData();
+          }
+        }}
+      />
     </SafeAreaView>
   );
 };

@@ -1566,7 +1566,7 @@ export const getSkillTestResult = async (student: string, testName: string) => {
     const response = await api.get(
       "method/nexedu.api.skill_assessment_ai.get_skill_test_result",
       {
-        params: { student, test_name: testName }
+        params: { student, skill_test_name: testName }
       }
     );
     return response.data;

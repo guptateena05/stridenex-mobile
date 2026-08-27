@@ -39,9 +39,8 @@ import {
   getEmployabilityScore, 
   createStudentSkill, 
   addSkillEvidence,
-  getSkillTestQuestions,
-  submitSkillTest
 } from '@/api/student.services';
+import SkillVerificationModal from '@/components/SkillVerificationModal';
 import { getSkillScore } from '@/api/api.services';
 import DynamicForm from '@/components/forms/DynamicForm';
 import { FormField } from '@/components/forms/DynamicField';
@@ -67,15 +66,8 @@ export const StudentSkillsScreen = () => {
 
   // Skill Verification States
   const [isTestModalOpen, setIsTestModalOpen] = useState(false);
-  const [testSessionId, setTestSessionId] = useState<string>('');
-  const [testQuestions, setTestQuestions] = useState<any[]>([]);
   const [testSkill, setTestSkill] = useState<string>('');
   const [testLevel, setTestLevel] = useState<string>('');
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [userAnswers, setUserAnswers] = useState<Record<number, string>>({});
-  const [isSubmittingTest, setIsSubmittingTest] = useState(false);
-  const [testResult, setTestResult] = useState<any>(null);
-  const [showTestIntro, setShowTestIntro] = useState(false);
 
   // Fetch skill data from API
   const fetchSkillStats = async (showLoadingSpinner = true) => {
@@ -224,121 +216,17 @@ export const StudentSkillsScreen = () => {
 
   // Handle skill creation verify & test trigger
   const handleCreateSkill = async (formData: any) => {
-    if (!userName || submittingSkill) return;
-    setSubmittingSkill(true);
-    try {
-      const response = await getSkillTestQuestions(userName, formData.skill, formData.current_level);
-      const data = response?.message || response?.data || response;
-
-      if (data && data.questions && data.questions.length > 0) {
-        setTestQuestions(data.questions);
-        setTestSessionId(data.session_id);
-        setTestSkill(formData.skill);
-        setTestLevel(formData.current_level);
-        setUserAnswers({});
-        setCurrentQuestionIndex(0);
-        setTestResult(null);
-        setShowTestIntro(true);
-
-        setIsSkillModalVisible(false);
-        setIsTestModalOpen(true);
-      } else {
-        Alert.alert('Info', 'No test questions available for this skill and level.');
-      }
-    } catch (err: any) {
-      console.error('Error fetching skill questions:', err);
-      Alert.alert('Error', err?.message || 'Failed to load skill test questions');
-    } finally {
-      setSubmittingSkill(false);
-    }
+    setTestSkill(formData.skill);
+    setTestLevel(formData.current_level);
+    setIsSkillModalVisible(false);
+    setIsTestModalOpen(true);
   };
 
   const handleVerifySkillDirect = async (skillRow: SkillRow) => {
-    if (!userName || submittingSkill) return;
-    setSubmittingSkill(true);
-    try {
-      const response = await getSkillTestQuestions(userName, skillRow.name, skillRow.level);
-      const data = response?.message || response?.data || response;
-
-      if (data && data.questions && data.questions.length > 0) {
-        setTestQuestions(data.questions);
-        setTestSessionId(data.session_id);
-        setTestSkill(skillRow.name);
-        setTestLevel(skillRow.level);
-        setUserAnswers({});
-        setCurrentQuestionIndex(0);
-        setTestResult(null);
-        setShowTestIntro(true);
-
-        setIsSkillModalVisible(false);
-        setIsTestModalOpen(true);
-      } else {
-        Alert.alert("Notice", "No verification questions available for this skill/level.");
-      }
-    } catch (e: any) {
-      console.error(e);
-      Alert.alert("Error", e?.message || "Failed to load skill test questions");
-    } finally {
-      setSubmittingSkill(false);
-    }
-  };
-
-  const handleSubmitTest = async () => {
-    if (isSubmittingTest) return;
-    const unansweredCount = testQuestions.length - Object.keys(userAnswers).length;
-    if (unansweredCount > 0) {
-      Alert.alert('Incomplete', `Please answer all questions before submitting. (${unansweredCount} remaining)`);
-      return;
-    }
-
-    try {
-      setIsSubmittingTest(true);
-      
-      const answersPayload: Record<string, string> = {};
-      testQuestions.forEach((q, idx) => {
-        const questionText = q.question;
-        const answerText = userAnswers[idx] || "";
-        answersPayload[questionText] = answerText;
-      });
-
-      const response = await submitSkillTest({
-        student: userName || "",
-        skill: testSkill,
-        level: testLevel,
-        answers: answersPayload
-      });
-      const data = response?.message || response?.data || response;
-
-      if (data) {
-        setTestResult(data);
-
-        // If passed, create student skill in DB
-        if (data.passed) {
-          try {
-            await createStudentSkill({
-              student: userName || "",
-              skill: testSkill,
-              current_level: testLevel,
-              ai_verified: 1
-            });
-            Alert.alert('Success', 'Skill verified and added successfully!');
-          } catch (createErr) {
-            console.error('Error saving verified skill to DB:', createErr);
-          }
-        } else {
-          Alert.alert('Verification Failed', `Skill test failed. Score: ${data.score || 0}%`);
-        }
-
-        fetchSkillStats(false);
-      } else {
-        Alert.alert('Error', 'Failed to retrieve test result.');
-      }
-    } catch (err: any) {
-      console.error('Error submitting test:', err);
-      Alert.alert('Error', err?.message || 'Failed to submit skill test');
-    } finally {
-      setIsSubmittingTest(false);
-    }
+    setTestSkill(skillRow.name);
+    setTestLevel(skillRow.level);
+    setIsSkillModalVisible(false);
+    setIsTestModalOpen(true);
   };
 
   // Handle evidence creation submit
@@ -572,371 +460,27 @@ export const StudentSkillsScreen = () => {
         </KeyboardAvoidingView>
       </Modal>
 
-      {/* Skill Verification Test Modal */}
-      <Modal animationType="slide" transparent={true} visible={isTestModalOpen} onRequestClose={() => setIsTestModalOpen(false)}>
-        <SafeAreaView style={styles.testModalOverlay}>
-          <View style={styles.testModalContainer}>
-            {/* Header */}
-            <View style={styles.testModalHeader}>
-              <View style={styles.testHeaderInfo}>
-                <View style={styles.testIconContainer}>
-                  {testResult ? (
-                    <ShieldCheck size={20} color="#fff" />
-                  ) : (
-                    <Award size={20} color="#fff" />
-                  )}
-                </View>
-                <View>
-                  <Text style={styles.testHeaderTitle}>
-                    {testResult ? 'Verification Result' : 'Skill Assessment'}
-                  </Text>
-                  <Text style={styles.testHeaderSubtitle}>
-                    {testSkill} • {testLevel}
-                  </Text>
-                </View>
-              </View>
-              <TouchableOpacity onPress={() => setIsTestModalOpen(false)} style={styles.testCloseBtn}>
-                <X size={20} color="#000" />
-              </TouchableOpacity>
-            </View>
-
-            {/* Body content */}
-            {showTestIntro ? (
-              <View style={styles.testBody}>
-                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.testIntroScrollContent}>
-                  <View style={styles.introHighlightBox}>
-                    <View style={styles.introIconContainer}>
-                      <Zap size={24} color="#FFF" />
-                    </View>
-                    <Text style={styles.introHighlightTitle}>Ready to verify your skill?</Text>
-                    <Text style={styles.introHighlightText}>
-                      This is a quick assessment to verify your proficiency in <Text style={{fontWeight: '700', color: colors.accent.DEFAULT}}>{testSkill}</Text> at the <Text style={{fontWeight: '700', color: colors.accent.DEFAULT}}>{testLevel}</Text> level.
-                    </Text>
-                  </View>
-
-                  <View style={styles.introRow}>
-                    <View style={styles.introCard}>
-                      <View style={styles.introCardHeader}>
-                         <FileText size={16} color="#F97316" />
-                         <Text style={styles.introCardTitle}>WHAT TO EXPECT</Text>
-                      </View>
-                      <View style={styles.introBullet}>
-                        <View style={styles.introBulletDot} />
-                        <Text style={styles.introBulletText}><Text style={{fontWeight: '700'}}>{testQuestions.length} Questions</Text> focused on core concepts.</Text>
-                      </View>
-                      <View style={styles.introBullet}>
-                        <View style={styles.introBulletDot} />
-                        <Text style={styles.introBulletText}>Multiple Choice Questions (MCQs) to evaluate knowledge.</Text>
-                      </View>
-                      <View style={styles.introBullet}>
-                        <View style={styles.introBulletDot} />
-                        <Text style={styles.introBulletText}>No strict time limit, take your time to answer carefully.</Text>
-                      </View>
-                    </View>
-
-                    <View style={styles.introCard}>
-                      <View style={styles.introCardHeader}>
-                         <Award size={16} color="#F97316" />
-                         <Text style={styles.introCardTitle}>CRITERIA & BADGES</Text>
-                      </View>
-                      <View style={styles.introBullet}>
-                        <View style={styles.introBulletDot} />
-                        <Text style={styles.introBulletText}>Score <Text style={{fontWeight: '700'}}>70% or higher</Text> to pass the verification.</Text>
-                      </View>
-                      <View style={styles.introBullet}>
-                        <Check size={14} color="#10B981" style={{marginRight: 6}} />
-                        <Text style={styles.introBulletText}>Passing grants you the <Text style={{fontWeight: '700', color: '#10B981'}}>AI Verified Badge</Text> 🏆 on your profile.</Text>
-                      </View>
-                      <View style={styles.introBullet}>
-                        <View style={styles.introBulletDot} />
-                        <Text style={styles.introBulletText}>If you fail, you can always practice and try again later. Your skill status remains unchanged.</Text>
-                      </View>
-                    </View>
-                  </View>
-                </ScrollView>
-                <View style={styles.testFooter}>
-                  <TouchableOpacity
-                    onPress={() => setIsTestModalOpen(false)}
-                    style={styles.testIntroCancelBtn}
-                  >
-                    <Text style={styles.testIntroCancelBtnText}>Cancel</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={() => setShowTestIntro(false)}
-                    style={styles.testIntroStartBtn}
-                  >
-                    <Text style={styles.testIntroStartBtnText}>Start Verification Test <ChevronRight size={16} color="#FFF" /></Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            ) : !testResult ? (
-              // Test Questions View
-              <View style={styles.testBody}>
-                {/* Progress Indicator */}
-                <View style={styles.progressBarBg}>
-                  <View 
-                    style={[
-                      styles.progressBarFill, 
-                      { width: `${((currentQuestionIndex + 1) / testQuestions.length) * 100}%` }
-                    ]} 
-                  />
-                </View>
-                <View style={styles.progressTextRow}>
-                  <Text style={styles.progressText}>PROGRESS</Text>
-                  <Text style={styles.progressText}>
-                    QUESTION {currentQuestionIndex + 1} OF {testQuestions.length}
-                  </Text>
-                </View>
-
-                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.testScrollContent}>
-                  {/* Question Card */}
-                  <View style={styles.questionCard}>
-                    <View style={styles.difficultyBadge}>
-                      <Text style={styles.difficultyText}>
-                        {testQuestions[currentQuestionIndex]?.difficulty?.toUpperCase() || 'MEDIUM'}
-                      </Text>
-                    </View>
-                    <Text style={styles.questionText}>
-                      {testQuestions[currentQuestionIndex]?.question}
-                    </Text>
-                  </View>
-
-                  {/* Options / Text Box */}
-                  <View style={styles.optionsContainer}>
-                    {testQuestions[currentQuestionIndex]?.type === 'mcq' ? (
-                      testQuestions[currentQuestionIndex]?.options?.map((option: string, oIdx: number) => {
-                        const isSelected = userAnswers[currentQuestionIndex] === option;
-                        return (
-                          <TouchableOpacity
-                            key={oIdx}
-                            onPress={() => {
-                              setUserAnswers(prev => ({
-                                ...prev,
-                                [currentQuestionIndex]: option
-                              }));
-                            }}
-                            activeOpacity={0.7}
-                            style={[
-                              styles.optionButton,
-                              isSelected && styles.optionButtonSelected
-                            ]}
-                          >
-                            <View style={[
-                              styles.optionRadio,
-                              isSelected && styles.optionRadioSelected
-                            ]}>
-                              {isSelected && <View style={styles.optionRadioDot} />}
-                            </View>
-                            <Text style={[
-                              styles.optionText,
-                              isSelected && styles.optionTextSelected
-                            ]}>
-                              {option}
-                            </Text>
-                          </TouchableOpacity>
-                        );
-                      })
-                    ) : (
-                      <TextInput
-                        value={userAnswers[currentQuestionIndex] || ''}
-                        onChangeText={(text) => {
-                          setUserAnswers(prev => ({
-                            ...prev,
-                            [currentQuestionIndex]: text
-                          }));
-                        }}
-                        placeholder="Type your answer here..."
-                        placeholderTextColor="#94A3B8"
-                        multiline={true}
-                        numberOfLines={6}
-                        style={styles.answerInput}
-                      />
-                    )}
-                  </View>
-                </ScrollView>
-
-                {/* Footer Controls */}
-                <View style={styles.testFooter}>
-                  <TouchableOpacity
-                    onPress={() => {
-                      if (currentQuestionIndex > 0) {
-                        setCurrentQuestionIndex(prev => prev - 1);
-                      } else {
-                        setIsTestModalOpen(false);
-                      }
-                    }}
-                    style={styles.testBackBtn}
-                  >
-                    <Text style={styles.testBackBtnText}>
-                      {currentQuestionIndex > 0 ? 'Back' : 'Cancel'}
-                    </Text>
-                  </TouchableOpacity>
-
-                  {currentQuestionIndex < testQuestions.length - 1 ? (
-                    <TouchableOpacity
-                      onPress={() => {
-                        if (!userAnswers[currentQuestionIndex]) {
-                          Alert.alert('Select Answer', 'Please choose an option to continue.');
-                          return;
-                        }
-                        setCurrentQuestionIndex(prev => prev + 1);
-                      }}
-                      style={styles.testNextBtn}
-                    >
-                      <Text style={styles.testNextBtnText}>Next</Text>
-                    </TouchableOpacity>
-                  ) : (
-                    <TouchableOpacity
-                      onPress={handleSubmitTest}
-                      disabled={isSubmittingTest}
-                      style={[styles.testSubmitBtn, isSubmittingTest && styles.disabledBtn]}
-                    >
-                      {isSubmittingTest ? (
-                        <ActivityIndicator size="small" color="#fff" />
-                      ) : (
-                        <Text style={styles.testSubmitBtnText}>Submit</Text>
-                      )}
-                    </TouchableOpacity>
-                  )}
-                </View>
-              </View>
-            ) : (
-              // Test Result Scorecard View
-              <View style={styles.testBody}>
-                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.resultScrollContent}>
-                  {/* Circular/Badge Scorecard */}
-                  <View style={styles.scorecardMain}>
-                    <View style={styles.scoreCircle}>
-                      <Text style={styles.scorePercentText}>{testResult.score || 0}%</Text>
-                      <Text style={styles.scoreLabel}>SCORE</Text>
-                    </View>
-
-                    <View style={[
-                      styles.resultStatusBadge,
-                      { backgroundColor: testResult.passed ? '#ECFDF5' : '#FEF2F2', borderColor: testResult.passed ? '#A7F3D0' : '#FECACA' }
-                    ]}>
-                      <Text style={[
-                        styles.resultStatusText,
-                        { color: testResult.passed ? '#065F46' : '#991B1B' }
-                      ]}>
-                        {testResult.passed ? 'VERIFICATION PASSED' : 'VERIFICATION FAILED'}
-                      </Text>
-                    </View>
-
-                    <Text style={styles.correctAnswersText}>
-                      Correct Answers: <Text style={{fontWeight: '800', color: '#1E293B'}}>{testResult.total_correct || 0}</Text> / {testResult.total_questions || 0}
-                    </Text>
-                  </View>
-
-                  {/* Feedback Summary */}
-                  {testResult.feedback?.summary && (
-                    <View style={styles.feedbackSection}>
-                      <Text style={styles.sectionHeaderText}>AI SUMMARY</Text>
-                      <View style={styles.feedbackSummaryCard}>
-                        <Text style={styles.feedbackSummaryText}>{testResult.feedback.summary}</Text>
-                      </View>
-                    </View>
-                  )}
-
-                  {/* Strengths & Gaps */}
-                  <View style={styles.strengthsGapsContainer}>
-                    {testResult.feedback?.strengths && testResult.feedback.strengths.length > 0 && (
-                      <View style={styles.halfFeedbackSection}>
-                        <Text style={[styles.sectionHeaderText, { color: '#059669' }]}>STRENGTHS</Text>
-                        <View style={styles.strengthsCard}>
-                          {testResult.feedback.strengths.map((str: string, sIdx: number) => (
-                            <View key={sIdx} style={styles.bulletItem}>
-                              <Text style={styles.bulletIcon}>✓</Text>
-                              <Text style={styles.bulletText}>{str}</Text>
-                            </View>
-                          ))}
-                        </View>
-                      </View>
-                    )}
-
-                    {testResult.feedback?.gaps && testResult.feedback.gaps.length > 0 && (
-                      <View style={styles.halfFeedbackSection}>
-                        <Text style={[styles.sectionHeaderText, { color: '#D97706' }]}>AREAS TO IMPROVE</Text>
-                        <View style={styles.gapsCard}>
-                          {testResult.feedback.gaps.map((gap: string, gIdx: number) => (
-                            <View key={gIdx} style={styles.bulletItem}>
-                              <Text style={[styles.bulletIcon, { color: '#D97706' }]}>⚠</Text>
-                              <Text style={styles.bulletText}>{gap}</Text>
-                            </View>
-                          ))}
-                        </View>
-                      </View>
-                    )}
-                  </View>
-
-                  {/* Next Steps */}
-                  {testResult.feedback?.next_step && (
-                    <View style={styles.feedbackSection}>
-                      <Text style={[styles.sectionHeaderText, { color: '#2563EB' }]}>RECOMMENDED NEXT STEPS</Text>
-                      <View style={styles.nextStepsCard}>
-                        <Text style={styles.nextStepsText}>{testResult.feedback.next_step}</Text>
-                      </View>
-                    </View>
-                  )}
-
-                  {/* Question Breakdown */}
-                  {testResult.breakdown && testResult.breakdown.length > 0 && (
-                    <View style={styles.feedbackSection}>
-                      <Text style={[styles.sectionHeaderText, { color: '#475569' }]}>QUESTION BREAKDOWN</Text>
-                      {testResult.breakdown.map((item: any, bIdx: number) => {
-                        const isCorrect = !!item.is_correct;
-                        return (
-                          <View key={bIdx} style={styles.breakdownCard}>
-                            <View style={styles.breakdownHeader}>
-                              <View style={styles.questionIndexBadge}>
-                                <Text style={styles.questionIndexText}>QUESTION {item.index || bIdx + 1}</Text>
-                              </View>
-                              <View style={[
-                                styles.correctnessBadge,
-                                { backgroundColor: isCorrect ? '#ECFDF5' : '#FEF2F2' }
-                              ]}>
-                                <Text style={[
-                                  styles.correctnessText,
-                                  { color: isCorrect ? '#059669' : '#DC2626' }
-                                ]}>
-                                  {isCorrect ? 'Correct' : 'Incorrect'} ({item.answer_score || 0} pts)
-                                </Text>
-                              </View>
-                            </View>
-                            <Text style={styles.breakdownQuestionText}>{item.question}</Text>
-                            
-                            <View style={styles.userAnswerBox}>
-                              <Text style={styles.answerBoxLabel}>YOUR ANSWER:</Text>
-                              <Text style={styles.userAnswerText}>{item.selected_answer || 'Empty'}</Text>
-                            </View>
-                            
-                            {item.evaluation_comment ? (
-                              <View style={styles.commentBox}>
-                                <Text style={styles.commentBoxLabel}>AI EVALUATION:</Text>
-                                <Text style={styles.commentText}>{item.evaluation_comment}</Text>
-                              </View>
-                            ) : null}
-                          </View>
-                        );
-                      })}
-                    </View>
-                  )}
-                </ScrollView>
-
-                {/* Footer close button */}
-                <View style={styles.resultFooter}>
-                  <TouchableOpacity
-                    onPress={() => setIsTestModalOpen(false)}
-                    style={styles.doneBtn}
-                  >
-                    <Text style={styles.doneBtnText}>Close Result</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            )}
-          </View>
-        </SafeAreaView>
-      </Modal>
+      <SkillVerificationModal
+        visible={isTestModalOpen}
+        userName={userName || ''}
+        skillName={testSkill}
+        skillLevel={testLevel}
+        onClose={() => setIsTestModalOpen(false)}
+        onSuccess={async (result) => {
+          // If passed, create student skill in DB
+          try {
+            await createStudentSkill({
+              student: userName || "",
+              skill: testSkill,
+              current_level: testLevel,
+              ai_verified: 1
+            });
+          } catch (createErr) {
+            console.error('Error saving verified skill to DB:', createErr);
+          }
+          fetchSkillStats(false);
+        }}
+      />
     </SafeAreaView>
   );
 };
