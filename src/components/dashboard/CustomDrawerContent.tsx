@@ -24,7 +24,7 @@ import {
   ChevronUp
 } from 'lucide-react-native';
 
-export const CustomDrawerContent = (props: DrawerContentComponentProps) => {
+export const CustomDrawerContent = (props: DrawerContentComponentProps & { isIncomplete?: boolean }) => {
   const insets = useSafeAreaInsets();
   const { userFullName, role, logout } = useAuth();
 
@@ -103,8 +103,10 @@ export const CustomDrawerContent = (props: DrawerContentComponentProps) => {
             if (isNepChild && !nepExpanded) return null;
             if (isCampusChild && !campusExpanded) return null;
 
+            const isDisabled = props.isIncomplete && route.name !== 'Overview';
+
             return (
-              <View key={route.key}>
+              <View key={route.key} pointerEvents={isDisabled ? 'none' : 'auto'} style={{ opacity: isDisabled ? 0.5 : 1 }}>
                 <DrawerItem
                   label={({ focused, color }) => (
                     <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flex: 1, paddingRight: 4 }}>
@@ -141,7 +143,26 @@ export const CustomDrawerContent = (props: DrawerContentComponentProps) => {
             );
           })
         ) : (
-          <DrawerItemList {...props} />
+          props.state.routes.map((route: any, i: number) => {
+            const focused = i === props.state.index;
+            const { title, drawerIcon, drawerActiveTintColor, drawerInactiveTintColor, drawerActiveBackgroundColor, drawerLabelStyle, drawerItemStyle } = props.descriptors[route.key].options;
+            const isDisabled = props.isIncomplete && route.name !== 'Overview';
+            return (
+              <View key={route.key} pointerEvents={isDisabled ? 'none' : 'auto'} style={{ opacity: isDisabled ? 0.4 : 1 }}>
+                <DrawerItem
+                  label={title !== undefined ? title : route.name}
+                  icon={drawerIcon}
+                  focused={focused}
+                  activeTintColor={drawerActiveTintColor || colors.accent.DEFAULT}
+                  inactiveTintColor={drawerInactiveTintColor || colors.text.secondary}
+                  activeBackgroundColor={drawerActiveBackgroundColor || 'rgba(255, 107, 0, 0.1)'}
+                  style={drawerItemStyle}
+                  labelStyle={drawerLabelStyle}
+                  onPress={() => props.navigation.navigate(route.name)}
+                />
+              </View>
+            );
+          })
         )}
       </ScrollView>
 

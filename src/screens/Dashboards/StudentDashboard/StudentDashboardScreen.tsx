@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, Modal, KeyboardAvoidingView, Platform, Alert, TouchableOpacity, ActivityIndicator, Linking, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Modal, KeyboardAvoidingView, Platform, Alert, TouchableOpacity, ActivityIndicator, Linking, Dimensions, DeviceEventEmitter } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '@/theme/colors';
@@ -12,7 +12,7 @@ import { LearningActivityGraph } from '@/components/dashboard/LearningActivityGr
 import { AICoachCard } from '@/components/dashboard/AICoachCard';
 import { AlertsAgendaCard } from '@/components/dashboard/AlertsAgendaCard';
 import { useNavigation } from '@react-navigation/native';
-import { TrendingUp, Award, Briefcase, Bot, X, MapPin, Clock, IndianRupee, Target, ShieldCheck, Factory, FileText, ChevronRight } from 'lucide-react-native';
+import { TrendingUp, Award, Briefcase, Bot, X, MapPin, Clock, IndianRupee, Target, ShieldCheck, Factory, FileText, ChevronRight, AlertCircle } from 'lucide-react-native';
 
 import Animated, { FadeInUp, FadeInRight } from 'react-native-reanimated';
 import { getStudentByEmail, updateStudent, mapYearToWord, getSkillLedger, getDashboardStats, getStudentInternshipList, getLearningActivity, getTodaysOpportunityAlerts } from '@/api/student.services';
@@ -92,21 +92,28 @@ export const StudentDashboardScreen = () => {
   }, [userName]);
 
   const [statsData, setStatsData] = useState<any>(null);
+  const [isIncompletePopupVisible, setIsIncompletePopupVisible] = useState(false);
+
+  const fetchStats = async () => {
+    if (!userName) return;
+    try {
+      const res = await getDashboardStats(userName);
+      console.log("Mobile student stats response:", res);
+      const data = res?.data || res?.message || res;
+      if (data) {
+        setStatsData(data);
+        if (Number(data.profile_completeness) < 60) {
+          setIsIncompletePopupVisible(true);
+        } else {
+          setIsIncompletePopupVisible(false);
+        }
+      }
+    } catch (err) {
+      console.error("Error loading mobile dashboard stats:", err);
+    }
+  };
 
   useEffect(() => {
-    if (!userName) return;
-    const fetchStats = async () => {
-      try {
-        const res = await getDashboardStats(userName);
-        console.log("Mobile student stats response:", res);
-        const data = res?.data || res?.message || res;
-        if (data) {
-          setStatsData(data);
-        }
-      } catch (err) {
-        console.error("Error loading mobile dashboard stats:", err);
-      }
-    };
     fetchStats();
   }, [userName]);
 
@@ -317,6 +324,7 @@ export const StudentDashboardScreen = () => {
         course: formData.course || studentData?.course || "",
         semester: formData.semester || studentData?.semester || "",
         current_year: mapYearToWord(formData.current_year) || mapYearToWord(studentData?.current_year || studentData?.academic_year) || "",
+        academic_year: mapYearToWord(formData.current_year) || mapYearToWord(studentData?.current_year || studentData?.academic_year) || "",
         date_of_birth: formData.date_of_birth || studentData?.date_of_birth || "",
         gender: formData.gender || studentData?.gender || "",
         linkedin: formData.linkedin || studentData?.linkedin || "",
@@ -328,6 +336,8 @@ export const StudentDashboardScreen = () => {
       setIsEditModalVisible(false);
       Alert.alert("Success", "Profile updated successfully!");
       fetchStudentData();
+      await fetchStats();
+      DeviceEventEmitter.emit('PROFILE_UPDATED');
     } catch (err: any) {
       console.error("Failed to update student details:", err);
       Alert.alert("Error", err?.message || "Failed to update profile. Please try again.");
@@ -643,8 +653,16 @@ export const StudentDashboardScreen = () => {
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Edit Profile Settings</Text>
-              <TouchableOpacity onPress={() => setIsEditModalVisible(false)} style={styles.closeBtn}>
-                <X size={24} color="#000" />
+              <TouchableOpacity 
+                style={styles.closeBtn} 
+                onPress={() => {
+                  setIsEditModalVisible(false);
+                  if (Number(statsData?.profile_completeness) < 60) {
+                    setIsIncompletePopupVisible(true);
+                  }
+                }}
+              >
+                <X size={20} color="#64748B" />
               </TouchableOpacity>
             </View>
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.modalScroll}>
@@ -656,7 +674,10 @@ export const StudentDashboardScreen = () => {
                  />
                  <DynamicForm
                    fields={editFields}
-                   onSubmit={handleUpdateProfile}
+                   onSubmit={async (values) => {
+                     await handleUpdateProfile(values);
+                     await fetchStats();
+                   }}
                    initialValues={profileFormValues}
                    loading={updateLoading}
                    buttonLabel="Save Changes"
@@ -666,6 +687,30 @@ export const StudentDashboardScreen = () => {
           </View>
         </KeyboardAvoidingView>
       </Modal>
+
+      {isIncompletePopupVisible && (
+        <View style={[StyleSheet.absoluteFill, styles.incompleteOverlay]}>
+          <View style={styles.incompleteModal}>
+            <View style={styles.incompleteIconContainer}>
+              <AlertCircle size={32} color="#EF4444" />
+            </View>
+            <Text style={styles.incompleteTitle}>Profile Incomplete</Text>
+            <Text style={styles.incompleteText}>
+              Your profile completeness is {statsData?.profile_completeness || 0}%. Please update your profile to at least 60% to access all platform features.
+            </Text>
+            <TouchableOpacity 
+              style={styles.incompleteBtn}
+              onPress={() => {
+                setIsIncompletePopupVisible(false);
+                setProfileFormValues(initialFormValues);
+                setIsEditModalVisible(true);
+              }}
+            >
+              <Text style={styles.incompleteBtnText}>Update Profile</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
     </SafeAreaView>
   );
 };
@@ -869,4 +914,11 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#1E293B',
   },
+  incompleteOverlay: { zIndex: 1000, backgroundColor: 'rgba(255, 255, 255, 0.85)', justifyContent: 'center', alignItems: 'center', padding: 20 },
+  incompleteModal: { backgroundColor: '#FFF', borderRadius: 24, padding: 24, width: '100%', alignItems: 'center', elevation: 10, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 12 },
+  incompleteIconContainer: { width: 64, height: 64, borderRadius: 32, backgroundColor: '#FEE2E2', justifyContent: 'center', alignItems: 'center', marginBottom: 16 },
+  incompleteTitle: { fontSize: 20, fontWeight: '800', color: '#0F172A', marginBottom: 8, textAlign: 'center' },
+  incompleteText: { fontSize: 14, color: '#475569', textAlign: 'center', marginBottom: 24, lineHeight: 20 },
+  incompleteBtn: { backgroundColor: '#FF6B00', paddingVertical: 14, paddingHorizontal: 24, borderRadius: 12, width: '100%', alignItems: 'center' },
+  incompleteBtnText: { color: '#FFF', fontSize: 15, fontWeight: '700' }
 });

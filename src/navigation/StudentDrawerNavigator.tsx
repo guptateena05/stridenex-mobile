@@ -1,11 +1,13 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { createDrawerNavigator } from '@react-navigation/drawer';
 import { StudentDashboardScreen } from '@/screens/Dashboards/StudentDashboard/StudentDashboardScreen';
 import { StudentSkillsScreen } from '@/screens/Dashboards/StudentDashboard/StudentSkillsScreen';
 import { CustomDrawerContent } from '@/components/dashboard/CustomDrawerContent';
 import { colors } from '@/theme/colors';
 import { typography } from '@/theme/typography';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, DeviceEventEmitter } from 'react-native';
+import { useAuth } from '@/context/AuthContext';
+import { getStudentByEmail, getDashboardStats } from '@/api/student.services';
 import {
   LayoutDashboard,
   Zap,
@@ -57,9 +59,46 @@ const styles = StyleSheet.create({
 });
 
 export const StudentDrawerNavigator = () => {
+  const { userName } = useAuth();
+  const [hideJobs, setHideJobs] = useState(false);
+  const [isIncomplete, setIsIncomplete] = useState(false);
+
+  useEffect(() => {
+    const checkStudentYear = async () => {
+      if (!userName) return;
+      try {
+        const response = await getStudentByEmail(userName);
+        const data = response?.data || response?.message?.data || response?.message || response;
+        if (data && data.current_year) {
+          const year = data.current_year.toLowerCase();
+          if (year.includes('first') || year.includes('1st') || year.includes('second') || year.includes('2nd') || year === '1' || year === '2') {
+            setHideJobs(true);
+          } else {
+            setHideJobs(false);
+          }
+        }
+        const statsRes = await getDashboardStats(userName);
+        const stats = statsRes?.data || statsRes?.message || statsRes;
+        if (stats && Number(stats.profile_completeness) < 60) {
+          setIsIncomplete(true);
+        } else {
+          setIsIncomplete(false);
+        }
+      } catch (err) {
+        console.error("Error fetching student year for navigation:", err);
+      }
+    };
+    checkStudentYear();
+
+    const subscription = DeviceEventEmitter.addListener('PROFILE_UPDATED', checkStudentYear);
+    return () => {
+      subscription.remove();
+    };
+  }, [userName]);
+
   return (
     <Drawer.Navigator
-      drawerContent={(props) => <CustomDrawerContent {...props} />}
+      drawerContent={(props) => <CustomDrawerContent {...props} isIncomplete={isIncomplete} />}
       screenOptions={{
         header: () => <DashboardHeader />,
         drawerActiveBackgroundColor: 'rgba(255, 107, 0, 0.1)',
@@ -115,14 +154,16 @@ export const StudentDrawerNavigator = () => {
         name="Internships"
         component={StudentInternshipScreen}
         options={{
-          drawerIcon: ({ color, size }) => <Briefcase color={color} size={size} />
+          drawerIcon: ({ color, size }) => <Briefcase color={color} size={size} />,
+          drawerItemStyle: hideJobs ? { display: 'none' } : { borderRadius: 8, marginHorizontal: 12 }
         }}
       />
       <Drawer.Screen
         name="Jobs"
         component={StudentJobsScreen}
         options={{
-          drawerIcon: ({ color, size }) => <Award color={color} size={size} />
+          drawerIcon: ({ color, size }) => <Award color={color} size={size} />,
+          drawerItemStyle: hideJobs ? { display: 'none' } : { borderRadius: 8, marginHorizontal: 12 }
         }}
       />
       <Drawer.Screen

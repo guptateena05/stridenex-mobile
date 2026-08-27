@@ -610,10 +610,15 @@ const StudentOnboardingScreen = () => {
         career_interest: interest
       }));
 
-      // Extract just the number from academicYear (e.g., "2 Years" -> "2")
+      // Map academic year to the format expected by the API
       let academicYearValue = data.academicYear || "1";
       const numericMatch = academicYearValue.match(/\d+/);
-      academicYearValue = numericMatch ? numericMatch[0] : "1";
+      let yearNum = numericMatch ? parseInt(numericMatch[0]) : 1;
+      
+      let mappedAcademicYear = "First Year";
+      if (yearNum === 2) mappedAcademicYear = "Second Year";
+      else if (yearNum === 3) mappedAcademicYear = "Third Year";
+      else if (yearNum >= 4) mappedAcademicYear = "Forth Year";
 
       // Prepare payload matching web portal format
       const payload = {
@@ -626,7 +631,7 @@ const StudentOnboardingScreen = () => {
         college: data.college || "DRK",
         course: data.course || "BA",
         department: data.department || "Dispatch",
-        academic_year: academicYearValue,
+        academic_year: mappedAcademicYear,
         semester: data.semester || "1",
         current_year: data.current_year || "",
         date_of_birth: data.dateOfBirth, // Already in YYYY-MM-DD format from handleDateConfirm
