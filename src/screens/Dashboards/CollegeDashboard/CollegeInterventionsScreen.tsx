@@ -1,617 +1,443 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl, Modal, FlatList, TextInput, Alert } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, StyleSheet, ActivityIndicator, RefreshControl, Platform, ScrollView, TouchableOpacity } from 'react-native';
 import { colors } from '@/theme/colors';
 import { typography } from '@/theme/typography';
-import { spacing } from '@/theme/spacing';
-import { Card } from '@/components/Shared/Card';
-import { StatsCard } from '@/components/dashboard/StatsCard';
-import Animated, { FadeInUp, FadeInRight } from 'react-native-reanimated';
-import { AlertTriangle, TrendingDown, Target, Zap, Brain, ChevronDown, Search, X, ChevronRight } from 'lucide-react-native';
+import Animated, { FadeInUp } from 'react-native-reanimated';
+import { AlertTriangle, Target, Users, TrendingUp, GraduationCap, Bell, ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { useAuth } from '@/context/AuthContext';
-import { getCollegeDetails, getLowEmployabilityStudents, assignStudentMentor, getMasterData, getCollegeEmployabilitySummary } from '@/api/college.services';
+import { getCollegeDetails, getLowEmployabilityStudents } from '@/api/college.services';
 
-const recommendations = [
-  { icon: "📚", text: "Bulk-enroll CSE 3rd Year in Data bootcamp", subject: "84 students", impact: "+15 avg score" },
-  { icon: "🤝", text: "Peer mentors for at-risk 4th year", subject: "47 students", impact: "Improve retention" },
-  { icon: "🎤", text: "AI mock-interview sessions", subject: "52 students", impact: "+20% offer rate" },
-];
+const LIMIT = 20;
 
 export const CollegeInterventionsScreen = () => {
   const { userName } = useAuth();
   
-  const [collegeDetails, setCollegeDetails] = useState<any>(null);
+  const [collegeName, setCollegeName] = useState<string>('');
   const [studentsList, setStudentsList] = useState<any[]>([]);
-  const [mentorsList, setMentorsList] = useState<any[]>([]);
-  const [summaryData, setSummaryData] = useState<any>(null);
+  const [totalCritical, setTotalCritical] = useState<number>(0);
+  
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   
-  // Selected mentor per student email/name
-  const [selectedMentors, setSelectedMentors] = useState<Record<string, any>>({});
-  // Assigning status per student email/name
-  const [assigningMap, setAssigningMap] = useState<Record<string, boolean>>({});
-  
-  // Mentor search & selection modal
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [activeStudent, setActiveStudent] = useState<any>(null);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [page, setPage] = useState<number>(1);
+  const [loadingMore, setLoadingMore] = useState(false);
 
-  const [activeTab, setActiveTab] = useState<'students' | 'recommendations'>('students');
-
-  const dynamicRecommendations = useMemo(() => {
-    const list = [];
-    const criticalCount = summaryData?.critical || 0;
-    const highRiskCount = summaryData?.high_risk || 0;
-    const decliningCount = summaryData?.declining_progress || 0;
-    const placementReadyCount = summaryData?.placement_ready || 0;
-
-    if (criticalCount > 0) {
-      list.push({
-        icon: "🤝",
-        text: "Peer mentors for critical at-risk students",
-        subject: `${criticalCount} students`,
-        impact: "Improve retention"
-      });
-    }
-    if (highRiskCount > 0) {
-      list.push({
-        icon: "📚",
-        text: "Bulk-enroll high-risk students in employability bootcamps",
-        subject: `${highRiskCount} students`,
-        impact: "+15 avg score"
-      });
-    }
-    if (decliningCount > 0) {
-      list.push({
-        icon: "🎤",
-        text: "AI mock-interview sessions to boost progress",
-        subject: `${decliningCount} students`,
-        impact: "+20% offer rate"
-      });
-    }
-    if (placementReadyCount > 0) {
-      list.push({
-        icon: "🏢",
-        text: "Connect placement-ready students with industry partners",
-        subject: `${placementReadyCount} students`,
-        impact: "NEP compliance"
-      });
-    }
-
-    if (list.length === 0) {
-      return [
-        { icon: "📚", text: "Bulk-enroll CSE 3rd Year in Data bootcamp", subject: "84 students", impact: "+15 avg score" },
-        { icon: "🤝", text: "Peer mentors for at-risk 4th year", subject: "47 students", impact: "Improve retention" },
-        { icon: "🎤", text: "AI mock-interview sessions", subject: "52 students", impact: "+20% offer rate" },
-      ];
-    }
-
-    return list;
-  }, [summaryData]);
-
-  // Fetch college details, students list, and mentors list
-  const fetchDetailsAndData = useCallback(async (isRefresh = false) => {
+  const fetchInitialData = useCallback(async (isRefresh = false, targetPage = 1) => {
     if (!userName) return;
-    if (!isRefresh) setLoading(true);
+    if (!isRefresh && targetPage === 1) setLoading(true);
+    if (targetPage > 1) setLoadingMore(true);
+
     try {
-      const collegeRes = await getCollegeDetails(userName);
-      const data = collegeRes?.data || collegeRes?.message?.data || collegeRes?.message;
-      if (data) {
-        setCollegeDetails(data);
-        const collegeName = data.college_name || data.name;
-        if (!collegeName) {
-          console.warn("College name not found in college details");
-          return;
-        }
-
-        const [studentsRes, mentorsRes, summaryRes] = await Promise.allSettled([
-          getLowEmployabilityStudents(collegeName),
-          getMasterData("Mentor"),
-          getCollegeEmployabilitySummary(collegeName)
-        ]);
-
-        if (studentsRes.status === "fulfilled") {
-          const raw = studentsRes.value?.data ?? studentsRes.value?.message?.data ?? studentsRes.value?.message ?? studentsRes.value;
-          const list = Array.isArray(raw?.students) ? raw.students : (Array.isArray(raw) ? raw : []);
-          setStudentsList(list);
-        } else {
-          console.error("Failed to load low employability students:", studentsRes.reason);
-        }
-
-        if (mentorsRes.status === "fulfilled") {
-          const raw = mentorsRes.value?.data ?? mentorsRes.value?.message?.data ?? mentorsRes.value?.message ?? mentorsRes.value;
-          const arr = Array.isArray(raw) ? raw : (Array.isArray(raw?.data) ? raw.data : []);
-          setMentorsList(arr);
-        } else {
-          console.error("Failed to load mentors:", mentorsRes.reason);
-        }
-
-        if (summaryRes.status === "fulfilled") {
-          const raw = summaryRes.value?.data ?? summaryRes.value?.message?.data ?? summaryRes.value?.message ?? summaryRes.value;
-          setSummaryData(raw);
-        } else {
-          console.error("Failed to load employability summary:", summaryRes.reason);
+      let cName = collegeName;
+      if (!cName) {
+        const collegeRes = await getCollegeDetails(userName);
+        const data = collegeRes?.data || collegeRes?.message?.data || collegeRes?.message;
+        if (data) {
+          cName = data.college_name || data.name;
+          if (cName) setCollegeName(cName);
         }
       }
+
+      if (!cName) {
+        console.warn("College name not found");
+        return;
+      }
+
+      const offset = (targetPage - 1) * LIMIT;
+      const studentsRes = await getLowEmployabilityStudents(cName, LIMIT, offset);
+      const raw = studentsRes?.data ?? studentsRes?.message?.data ?? studentsRes?.message ?? studentsRes;
+      
+      if (raw && typeof raw === 'object') {
+        const list = Array.isArray(raw.students) ? raw.students : [];
+        setStudentsList(list);
+        setTotalCritical(raw.total || 0);
+      } else if (Array.isArray(raw)) {
+        setStudentsList(raw);
+        setTotalCritical(raw.length);
+      }
+      
+      setPage(targetPage);
+
     } catch (err) {
       console.error("Error fetching interventions data:", err);
     } finally {
       setLoading(false);
       setRefreshing(false);
+      setLoadingMore(false);
     }
-  }, [userName]);
+  }, [userName, collegeName]);
 
   useEffect(() => {
-    fetchDetailsAndData();
-  }, [fetchDetailsAndData]);
+    fetchInitialData();
+  }, [fetchInitialData]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    fetchDetailsAndData(true);
-  }, [fetchDetailsAndData]);
+    fetchInitialData(true, 1);
+  }, [fetchInitialData]);
 
-  // Assign a mentor to a student
-  const handleAssignMentor = async (student: any) => {
-    const studentId = student.email || student.name;
-    const selectedMentor = selectedMentors[studentId];
-    if (!studentId || !selectedMentor) return;
-
-    try {
-      setAssigningMap(prev => ({ ...prev, [studentId]: true }));
-      await assignStudentMentor({
-        student: studentId,
-        mentor: selectedMentor.name
-      });
-      
-      Alert.alert("Success", "Mentor assigned successfully!");
-      fetchDetailsAndData(true);
-    } catch (err: any) {
-      console.error("Failed to assign mentor:", err);
-      Alert.alert("Error", err?.message || "Failed to assign mentor. Please try again.");
-    } finally {
-      setAssigningMap(prev => ({ ...prev, [studentId]: false }));
-    }
+  const getInitials = (name: string) => {
+    if (!name) return 'S';
+    return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
   };
 
-  // Deterministic avatar colors
   const getAvatarColor = (name: string) => {
-    const hexColors = ['#2563EB', '#10B981', '#B45309', '#7C3AED', '#DB2777', '#E11D48', '#0284C7', '#4F46E5'];
-    const hash = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-    return hexColors[hash % hexColors.length];
+    const colorsList = ['#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '#06B6D4'];
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+      hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return colorsList[Math.abs(hash) % colorsList.length];
   };
 
-  // Filter mentors based on search input
-  const filteredMentors = useMemo(() => {
-    return mentorsList.filter(m => {
-      const name = (m.mentor_name || m.full_name || m.name || '').toLowerCase();
-      const email = (m.name || '').toLowerCase();
-      const term = searchTerm.toLowerCase();
-      return name.includes(term) || email.includes(term);
-    });
-  }, [mentorsList, searchTerm]);
+  const totalPages = Math.ceil(totalCritical / LIMIT) || 1;
 
-  // Top metric card metrics
-  const displayMetrics = useMemo(() => {
-    return [
-      { id: 1, title: 'Critical Risk <40', value: loading ? '...' : String(summaryData?.critical !== undefined ? summaryData.critical : 0), icon: AlertTriangle, color: colors.error },
-      { id: 2, title: 'High Risk 40-55', value: loading ? '...' : String(summaryData?.high_risk !== undefined ? summaryData.high_risk : 0), icon: AlertTriangle, color: colors.warning },
-      { id: 3, title: 'Declining Progress', value: loading ? '...' : String(summaryData?.declining_progress !== undefined ? summaryData.declining_progress : 0), icon: TrendingDown, color: colors.success },
-      { id: 4, title: 'Placement-Ready', value: loading ? '...' : String(summaryData?.placement_ready !== undefined ? summaryData.placement_ready : 0), icon: Target, color: colors.success },
-    ];
-  }, [loading, summaryData, studentsList.length]);
-
-  // Modal view for selecting a mentor
-  const renderMentorSelectModal = () => {
-    if (!activeStudent) return null;
-    const studentId = activeStudent.email || activeStudent.name;
-
+  if (loading) {
     return (
-      <Modal
-        visible={isModalOpen}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setIsModalOpen(false)}
-      >
-        <TouchableOpacity 
-          style={styles.modalOverlay} 
-          activeOpacity={1} 
-          onPress={() => setIsModalOpen(false)}
-        >
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Select Mentor</Text>
-              <TouchableOpacity onPress={() => setIsModalOpen(false)}>
-                <X size={20} color="#64748B" />
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.searchBarContainer}>
-              <Search size={16} color="#64748B" style={styles.searchIcon} />
-              <TextInput
-                placeholder="Search by name or email..."
-                placeholderTextColor="#94A3B8"
-                style={styles.searchBarInput}
-                value={searchTerm}
-                onChangeText={setSearchTerm}
-                autoFocus
-              />
-            </View>
-
-            <FlatList
-              data={filteredMentors}
-              keyExtractor={(item) => item.name}
-              style={{ maxHeight: 300 }}
-              renderItem={({ item }) => {
-                const isSelected = selectedMentors[studentId]?.name === item.name;
-                const displayName = item.mentor_name || item.full_name || item.name;
-                
-                return (
-                  <TouchableOpacity
-                    style={[styles.optionItem, isSelected && styles.selectedOption]}
-                    onPress={() => {
-                      setSelectedMentors(prev => ({ ...prev, [studentId]: item }));
-                      setIsModalOpen(false);
-                      setSearchTerm('');
-                    }}
-                  >
-                    <View style={styles.optionTextContainer}>
-                      <Text style={[styles.optionText, isSelected && styles.selectedOptionText]}>
-                        {displayName}
-                      </Text>
-                      {item.mentor_name || item.full_name ? (
-                        <Text style={styles.optionSubText}>{item.name}</Text>
-                      ) : null}
-                    </View>
-                    {isSelected && (
-                      <Text style={styles.checkMark}>✓</Text>
-                    )}
-                  </TouchableOpacity>
-                );
-              }}
-              ListEmptyComponent={
-                <View style={styles.emptyContainer}>
-                  <Text style={styles.emptyText}>No mentors found</Text>
-                </View>
-              }
-            />
-          </View>
-        </TouchableOpacity>
-      </Modal>
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={colors.accent.DEFAULT} />
+      </View>
     );
-  };
+  }
 
   return (
     <View style={styles.container}>
-      <ScrollView 
-        contentContainerStyle={styles.content} 
+      <ScrollView
         showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.contentContainer}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#FF6B00"]} />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.accent.DEFAULT]} />
         }
       >
-        
-        {/* Header */}
+        {/* Screen Header */}
         <Animated.View entering={FadeInUp.delay(50)} style={styles.header}>
-          <View style={styles.headerRow}>
-            <Text style={styles.title}>Student Actions</Text>
-            <View style={styles.headerBadge}>
-              <Zap size={10} color="#059669" />
-              <Text style={styles.headerBadgeText}>INTERVENTIONS</Text>
+          <View style={[styles.headerRow, { flexWrap: 'wrap', gap: 8 }]}>
+            <View style={{ flex: 1, minWidth: 180 }}>
+              <View style={[styles.headerBadge, { alignSelf: 'flex-start', marginBottom: 4 }]}>
+                <AlertTriangle size={10} color="#059669" />
+                <Text style={styles.headerBadgeText}>INTERVENTIONS</Text>
+              </View>
+              <Text style={styles.title}>At-Risk Students</Text>
             </View>
           </View>
-          <Text style={styles.subtitle}>Oversight of at-risk students and AI plans</Text>
         </Animated.View>
 
-        {/* Stats Row */}
-        <Animated.View entering={FadeInRight.delay(100)} style={styles.statsRow}>
-          {displayMetrics.map((stat, i) => (
-             <StatsCard 
-              key={i} 
-              title={stat.title.split(' ')[0]} 
-              value={stat.value} 
-              icon={stat.icon} 
-              color={stat.color} 
-            />
-          ))}
-        </Animated.View>
-
-        {/* Segmented Tab Switcher */}
-        <Animated.View entering={FadeInUp.delay(120)} style={styles.tabSwitcherContainer}>
-          <TouchableOpacity 
-            style={[styles.tabBtn, activeTab === 'students' && styles.activeTabBtn]}
-            onPress={() => setActiveTab('students')}
-          >
-            <Text style={[styles.tabBtnText, activeTab === 'students' && styles.activeTabBtnText]}>
-              Critical Students ({loading ? '...' : studentsList.length})
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={[styles.tabBtn, activeTab === 'recommendations' && styles.activeTabBtn]}
-            onPress={() => setActiveTab('recommendations')}
-          >
-            <Text style={[styles.tabBtnText, activeTab === 'recommendations' && styles.activeTabBtnText]}>
-              AI Recommendations ({dynamicRecommendations.length})
-            </Text>
-          </TouchableOpacity>
-        </Animated.View>
-
-        {activeTab === 'students' ? (
-          <Animated.View key="students-tab" entering={FadeInUp.duration(250)}>
-            {/* Critical Students Card */}
-            <Card style={styles.sectionCard}>
-              <View style={styles.sectionHeader}>
-                <AlertTriangle color="#EF4444" size={18} />
-                <Text style={styles.sectionTitle}>Critical Students — Immediate Action</Text>
-              </View>
-
-              <View style={styles.listContainer}>
-                {loading && !refreshing ? (
-                  <View style={styles.loaderContainer}>
-                    <ActivityIndicator size="small" color="#FF6B00" />
-                    <Text style={styles.loaderText}>Loading critical students...</Text>
-                  </View>
-                ) : studentsList.length === 0 ? (
-                  <View style={styles.emptyContainer}>
-                    <Text style={styles.emptyText}>No critical students found</Text>
-                  </View>
-                ) : (
-                  studentsList.map((student, idx) => {
-                    const fullName = student.student_name || student.name || student.email || "—";
-                    const initials = fullName.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2);
-                    const score = student.employability_score !== undefined ? student.employability_score : 0;
-                    const studentId = student.email || student.name;
-                    const selectedMentor = selectedMentors[studentId];
-                    const isAssignActive = !!selectedMentor;
-
-                    let badgeText = "Critical";
-                    let subtitle1 = "Student";
-                    let showSubtitle1 = true;
-
-                    if (!student.course) {
-                      if (idx % 3 === 1) {
-                        badgeText = "Critical Student";
-                        showSubtitle1 = false;
-                      } else if (idx % 3 === 2) {
-                        badgeText = "";
-                        subtitle1 = "Critical Student";
-                        showSubtitle1 = true;
-                      } else {
-                        badgeText = "Critical";
-                        subtitle1 = "Student";
-                        showSubtitle1 = true;
-                      }
-                    } else {
-                      badgeText = "Critical";
-                      subtitle1 = student.course;
-                      showSubtitle1 = true;
-                    }
-
-                    const avatarColor = getAvatarColor(fullName);
-
-                    return (
-                      <View key={studentId || idx} style={[styles.studentRow, idx === studentsList.length - 1 && styles.noBorder]}>
-                        
-                        {/* Left: Avatar & Info */}
-                        <View style={styles.leftSection}>
-                          <View style={[styles.avatarCircle, { backgroundColor: avatarColor }]}>
-                            <Text style={styles.avatarCircleText}>{initials}</Text>
-                          </View>
-                          <View style={styles.infoBlock}>
-                            <View style={styles.nameRow}>
-                              <Text style={styles.studentName} numberOfLines={1}>{fullName}</Text>
-                              {badgeText ? (
-                                <View style={styles.badgeContainer}>
-                                  <Text style={styles.badgeText}>{badgeText}</Text>
-                                </View>
-                              ) : null}
-                            </View>
-                            {showSubtitle1 && (
-                              <Text style={styles.studentSubtitle} numberOfLines={1}>{subtitle1}</Text>
-                            )}
-                            <Text style={styles.employabilityText}>
-                              Employability Score: <Text style={styles.scoreNumber}>{score}</Text>
-                            </Text>
-                          </View>
-                        </View>
-
-                        {/* Right: Dropdown & Assign button */}
-                        <View style={styles.rightSection}>
-                          <TouchableOpacity 
-                            style={styles.dropdownBtn}
-                            onPress={() => {
-                              setActiveStudent(student);
-                              setIsModalOpen(true);
-                            }}
-                          >
-                            <Text style={styles.dropdownBtnText} numberOfLines={1}>
-                              {selectedMentor ? selectedMentor.name : "Select Mentor"}
-                            </Text>
-                            <ChevronDown size={12} color="#64748B" />
-                          </TouchableOpacity>
-
-                          <TouchableOpacity 
-                            style={[
-                              styles.assignBtn,
-                              isAssignActive ? styles.assignBtnActive : styles.assignBtnInactive
-                            ]}
-                            disabled={!isAssignActive || assigningMap[studentId]}
-                            onPress={() => handleAssignMentor(student)}
-                          >
-                            <Text style={styles.assignBtnText}>
-                              {assigningMap[studentId] ? "..." : "Assign"}
-                            </Text>
-                          </TouchableOpacity>
-                        </View>
-                      </View>
-                    );
-                  })
-                )}
-              </View>
-
-              <TouchableOpacity style={styles.viewMoreBtn}>
-                 <Text style={styles.viewMoreText}>View All Critical Students</Text>
-                 <ChevronRight size={14} color="#64748B" />
-              </TouchableOpacity>
-            </Card>
+        {/* Top Summary Cards (4 in a row) */}
+        <View style={styles.cardsRow}>
+          {/* ACTIVE Card */}
+          <Animated.View entering={FadeInUp.delay(100).duration(500)} style={styles.summaryCard}>
+            <View style={[styles.iconBg, { backgroundColor: '#EFF6FF' }]}>
+              <Users size={20} color="#3B82F6" />
+            </View>
+            <Text style={styles.cardValue} numberOfLines={1} adjustsFontSizeToFit>{totalCritical}</Text>
+            <Text style={styles.cardLabel}>ACTIVE</Text>
           </Animated.View>
+
+          {/* AVG Card */}
+          <Animated.View entering={FadeInUp.delay(200).duration(500)} style={styles.summaryCard}>
+            <View style={[styles.iconBg, { backgroundColor: '#ECFDF5' }]}>
+              <TrendingUp size={20} color="#10B981" />
+            </View>
+            <Text style={styles.cardValue} numberOfLines={1} adjustsFontSizeToFit>0.8</Text>
+            <Text style={styles.cardLabel}>AVG</Text>
+          </Animated.View>
+
+          {/* AT-RISK Card */}
+          <Animated.View entering={FadeInUp.delay(300).duration(500)} style={styles.summaryCard}>
+            <View style={[styles.iconBg, { backgroundColor: '#FEF2F2' }]}>
+              <AlertTriangle size={20} color="#EF4444" />
+            </View>
+            <Text style={styles.cardValue} numberOfLines={1} adjustsFontSizeToFit>{totalCritical}</Text>
+            <Text style={styles.cardLabel}>AT-RISK</Text>
+          </Animated.View>
+
+          {/* NEW Card */}
+          <Animated.View entering={FadeInUp.delay(400).duration(500)} style={styles.summaryCard}>
+            <View style={[styles.iconBg, { backgroundColor: '#FFFBEB' }]}>
+              <GraduationCap size={20} color="#F59E0B" />
+            </View>
+            <Text style={styles.cardValue} numberOfLines={1} adjustsFontSizeToFit>0</Text>
+            <Text style={styles.cardLabel}>NEW</Text>
+          </Animated.View>
+        </View>
+
+        {/* List Header */}
+        <View style={styles.listHeader}>
+          <AlertTriangle size={16} color="#EF4444" />
+          <Text style={styles.listTitle}>Critical Students — Immediate Action</Text>
+        </View>
+
+        {loadingMore ? (
+          <View style={styles.loadingMoreContainer}>
+            <ActivityIndicator size="large" color={colors.accent.DEFAULT} />
+          </View>
         ) : (
-          <Animated.View key="recommendations-tab" entering={FadeInUp.duration(250)}>
-            {/* AI Recommendations */}
-            <Card style={styles.sectionCard}>
-              <View style={styles.sectionHeader}>
-                <Brain color="#059669" size={18} />
-                <Text style={styles.sectionTitle}>AI Recommendations</Text>
-              </View>
-              <View style={styles.listContainer}>
-                {dynamicRecommendations.map((rec, idx) => (
-                  <View key={idx} style={styles.insightCard}>
-                     <View style={styles.insightTop}>
-                        <View style={styles.insightIconBox}>
-                           <Text style={{ fontSize: 16 }}>{rec.icon}</Text>
-                        </View>
-                        <View style={styles.insightInfo}>
-                           <Text style={styles.insightText}>{rec.text}</Text>
-                           <View style={styles.insightMeta}>
-                              <View style={styles.metaBadge}>
-                                 <Text style={styles.metaBadgeText}>{rec.subject}</Text>
-                              </View>
-                              <Text style={styles.impactText}>Est. Impact: <Text style={{ color: '#059669' }}>{rec.impact}</Text></Text>
-                           </View>
-                        </View>
-                     </View>
-                     <TouchableOpacity style={styles.execBtn}>
-                        <Text style={styles.execBtnText}>Execute Action</Text>
-                     </TouchableOpacity>
+          <>
+            {studentsList.map((student, index) => (
+              <Animated.View 
+                key={student.email || student.name || index}
+                entering={FadeInUp.delay((index % LIMIT) * 50).duration(400)}
+                style={styles.studentItem}
+              >
+                <View style={[styles.avatar, { backgroundColor: getAvatarColor(student.student_name || 'Student') }]}>
+                  <Text style={styles.avatarText}>{getInitials(student.student_name)}</Text>
+                </View>
+                <View style={styles.studentInfo}>
+                  <View style={styles.nameRow}>
+                    <Text style={styles.studentName} numberOfLines={1}>{student.student_name}</Text>
+                    <View style={styles.badge}>
+                      <Text style={styles.badgeText}>Critical Student</Text>
+                    </View>
                   </View>
-                ))}
+                  <Text style={styles.scoreText}>
+                    Employability Score: <Text style={styles.scoreValue}>{student.employability_score}</Text>
+                  </Text>
+                </View>
+              </Animated.View>
+            ))}
+            
+            {studentsList.length === 0 && (
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyStateText}>No critical students found.</Text>
               </View>
-            </Card>
-          </Animated.View>
-        )}
+            )}
 
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <View style={styles.paginationRow}>
+                <TouchableOpacity
+                  disabled={page <= 1}
+                  onPress={() => fetchInitialData(false, page - 1)}
+                  style={[styles.pageBtn, page <= 1 && styles.pageBtnDisabled]}
+                >
+                  <ChevronLeft size={16} color={page <= 1 ? "#CBD5E1" : "#0F172A"} />
+                </TouchableOpacity>
+                <Text style={styles.pageIndicator}>{page} of {totalPages}</Text>
+                <TouchableOpacity
+                  disabled={page >= totalPages}
+                  onPress={() => fetchInitialData(false, page + 1)}
+                  style={[styles.pageBtn, page >= totalPages && styles.pageBtnDisabled]}
+                >
+                  <ChevronRight size={16} color={page >= totalPages ? "#CBD5E1" : "#0F172A"} />
+                </TouchableOpacity>
+              </View>
+            )}
+          </>
+        )}
       </ScrollView>
-      {renderMentorSelectModal()}
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8FAFC' },
-  content: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 40 },
-  
-  header: { marginBottom: 12, paddingHorizontal: 4 },
-  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 },
-  headerBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(5, 150, 105, 0.08)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
-  headerBadgeText: { fontSize: 8, fontWeight: '800', color: '#059669', letterSpacing: 0.5 },
-  title: { fontSize: 22, fontWeight: '800', color: '#0F172A', fontFamily: typography.fontFamily.display, letterSpacing: -0.5 },
-  subtitle: { fontSize: 12, color: '#64748B', fontWeight: '500' },
-  
-  statsRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4, marginBottom: 24 },
-
-  sectionCard: { backgroundColor: '#FFF', borderRadius: 20, padding: 20, marginBottom: 16, borderWidth: 1, borderColor: '#E2E8F0', borderLeftWidth: 4, borderLeftColor: '#059669' },
-  sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 20, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
-  sectionTitle: { fontSize: 15, fontWeight: '800', color: '#1E293B' },
-
-  listContainer: { gap: 16 },
-  
-  studentRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#F8FAFC' },
-  noBorder: { borderBottomWidth: 0, paddingBottom: 0 },
-  
-  leftSection: { flexDirection: 'row', alignItems: 'center', flex: 1.1, marginRight: 8 },
-  avatarCircle: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', marginRight: 10 },
-  avatarCircleText: { fontSize: 12, fontWeight: '800', color: '#FFF' },
-  
-  infoBlock: { flex: 1 },
-  nameRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 4 },
-  studentName: { fontSize: 13, fontWeight: '800', color: '#1E293B', maxWidth: 100 },
-  
-  badgeContainer: { backgroundColor: '#F1F5F9', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
-  badgeText: { fontSize: 9, fontWeight: '600', color: '#64748B' },
-  
-  studentSubtitle: { fontSize: 11, color: '#64748B', fontWeight: '500', marginTop: 1 },
-  employabilityText: { fontSize: 11, color: '#64748B', fontWeight: '500', marginTop: 1 },
-  scoreNumber: { color: '#EF4444', fontWeight: '700' },
-  
-  rightSection: { flexDirection: 'row', alignItems: 'center', flex: 1.9, gap: 8 },
-  dropdownBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#FFF', paddingHorizontal: 10, paddingVertical: 8, borderRadius: 16, borderWidth: 1, borderColor: '#CBD5E1', flex: 1 },
-  dropdownBtnText: { fontSize: 11, fontWeight: '600', color: '#334155', marginRight: 4, flex: 1 },
-  
-  assignBtn: { width: 70, height: 36, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
-  assignBtnActive: { backgroundColor: '#FF6B00' },
-  assignBtnInactive: { backgroundColor: '#FFB288' },
-  assignBtnText: { fontSize: 12, fontWeight: '800', color: '#FFF' },
-
-  loaderContainer: { alignItems: 'center', justifyContent: 'center', paddingVertical: 20 },
-  loaderText: { fontSize: 12, color: '#64748B', marginTop: 6, fontWeight: '500' },
-  
-  emptyContainer: { alignItems: 'center', justifyContent: 'center', paddingVertical: 20 },
-  emptyText: { fontSize: 12, color: '#64748B', fontWeight: '500' },
-  
-  viewMoreBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 16, paddingTop: 16, borderTopWidth: 1, borderTopColor: '#F1F5F9', gap: 4 },
-  viewMoreText: { fontSize: 12, fontWeight: '700', color: '#64748B' },
-
-  insightCard: { backgroundColor: '#F8FAFC', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: '#F1F5F9', borderLeftWidth: 4, borderLeftColor: '#059669' },
-  insightTop: { flexDirection: 'row', gap: 12, marginBottom: 16 },
-  insightIconBox: { width: 44, height: 44, borderRadius: 12, backgroundColor: '#FFF', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#F1F5F9' },
-  insightInfo: { flex: 1 },
-  insightText: { fontSize: 14, fontWeight: '800', color: '#1E293B', marginBottom: 6 },
-  insightMeta: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  metaBadge: { backgroundColor: '#FFF', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, borderWidth: 1, borderColor: '#E2E8F0' },
-  metaBadgeText: { fontSize: 9, fontWeight: '800', color: '#64748B' },
-  impactText: { fontSize: 10, fontWeight: '700', color: '#64748B' },
-  execBtn: { backgroundColor: '#10B981', paddingVertical: 10, borderRadius: 10, alignItems: 'center' },
-  execBtnText: { fontSize: 12, fontWeight: '800', color: '#FFF' },
-
-  // Modal styles
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.4)', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 20 },
-  modalContent: { width: '100%', maxHeight: '60%', backgroundColor: '#FFF', borderRadius: 16, padding: 16 },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
-  modalTitle: { fontSize: 15, fontWeight: '800', color: '#0F172A', fontFamily: typography.fontFamily.display },
-  
-  searchBarContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8FAFC', borderRadius: 12, borderWidth: 1, borderColor: '#E2E8F0', paddingHorizontal: 12, height: 40, marginBottom: 12 },
-  searchIcon: { marginRight: 8 },
-  searchBarInput: { flex: 1, fontSize: 13, color: '#1E293B', fontWeight: '500', height: '100%' },
-  
-  optionItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
-  selectedOption: { backgroundColor: '#F8FAFC' },
-  optionTextContainer: { flex: 1 },
-  optionText: { fontSize: 13, fontWeight: '600', color: '#334155' },
-  selectedOptionText: { color: '#0F172A', fontWeight: '800' },
-  optionSubText: { fontSize: 11, color: '#64748B', marginTop: 1 },
-  checkMark: { color: '#FF6B00', fontWeight: 'bold', fontSize: 14 },
-
-  // Tab Switcher Styles
-  tabSwitcherContainer: {
-    flexDirection: 'row',
-    backgroundColor: '#F1F5F9',
-    borderRadius: 16,
-    padding: 4,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-  },
-  tabBtn: {
+  container: {
     flex: 1,
-    paddingVertical: 10,
+    backgroundColor: '#F8FAFC',
+  },
+  contentContainer: {
+    paddingBottom: 40,
+  },
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F8FAFC',
+  },
+  loadingMoreContainer: {
+    paddingVertical: 40,
+    alignItems: 'center',
+  },
+  
+  // Header styles
+  header: {
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: '#FFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+    marginBottom: 16,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    ...Platform.select({
+      ios: { shadowColor: '#94A3B8', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 12 },
+      android: { elevation: 2 },
+    }),
+  },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  headerBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#ECFDF5',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  headerBadgeText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#059669',
+    letterSpacing: 0.5,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#0F172A',
+    fontFamily: typography.fontFamily.display,
+  },
+
+  cardsRow: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    gap: 8,
+    marginBottom: 12,
+    justifyContent: 'space-between',
+  },
+  summaryCard: {
+    flex: 1,
+    backgroundColor: '#FFF',
+    borderRadius: 16,
+    padding: 12,
+    alignItems: 'center',
+    ...Platform.select({
+      ios: { shadowColor: '#94A3B8', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 8 },
+      android: { elevation: 3 },
+    }),
+  },
+  iconBg: {
+    width: 40,
+    height: 40,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'transparent',
+    marginBottom: 12,
   },
-  activeTabBtn: {
+  cardValue: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#0F172A',
+    fontFamily: typography.fontFamily.display,
+    marginBottom: 4,
+    textAlign: 'center',
+  },
+  cardLabel: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#94A3B8',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  listHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 24,
+    marginBottom: 16,
+    paddingHorizontal: 20,
+  },
+  listTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#0F172A',
+    marginLeft: 8,
+  },
+  studentItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    marginHorizontal: 16,
+    marginBottom: 8,
     backgroundColor: '#FFF',
-    shadowColor: '#64748B',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    borderRadius: 16,
+    ...Platform.select({
+      ios: { shadowColor: '#94A3B8', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 12 },
+      android: { elevation: 2 },
+    }),
   },
-  tabBtnText: {
-    fontSize: 12,
+  avatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 16,
+  },
+  avatarText: {
+    color: '#FFF',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  studentInfo: {
+    flex: 1,
+  },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  studentName: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  badge: {
+    backgroundColor: '#F1F5F9',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  badgeText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#64748B',
+  },
+  scoreText: {
+    fontSize: 13,
+    color: '#64748B',
+  },
+  scoreValue: {
+    fontWeight: '800',
+    color: '#EF4444',
+  },
+  emptyState: {
+    padding: 32,
+    alignItems: 'center',
+  },
+  emptyStateText: {
+    fontSize: 14,
+    color: '#94A3B8',
+    fontWeight: '500',
+  },
+
+  // Pagination controls
+  paginationRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 12,
+    marginVertical: 24,
+  },
+  pageBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  pageBtnDisabled: {
+    opacity: 0.5,
+  },
+  pageIndicator: {
+    fontSize: 14,
     fontWeight: '700',
     color: '#64748B',
   },
-  activeTabBtnText: {
-    color: '#0F172A',
-  }
 });

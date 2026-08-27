@@ -68,6 +68,8 @@ export const DashboardHeader = ({ title, showMenu = true }: { title?: string, sh
     }
   };
 
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
   const handleLogout = () => {
     Alert.alert(
       "Logout",
@@ -77,7 +79,14 @@ export const DashboardHeader = ({ title, showMenu = true }: { title?: string, sh
         {
           text: "Logout",
           style: "destructive",
-          onPress: logout
+          onPress: async () => {
+            setIsLoggingOut(true);
+            try {
+              await logout();
+            } finally {
+              setIsLoggingOut(false);
+            }
+          }
         }
       ]
     );
@@ -189,6 +198,14 @@ export const DashboardHeader = ({ title, showMenu = true }: { title?: string, sh
           </Animated.View>
         </Pressable>
       </Modal>
+
+
+      <Modal visible={isLoggingOut} transparent animationType="fade" statusBarTranslucent>
+        <View style={styles.loaderOverlay}>
+          <ActivityIndicator size="large" color={colors.primary.DEFAULT} />
+          <Text style={styles.loggingOutText}>Logging out...</Text>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -253,7 +270,7 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'transparent',
+    backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'flex-start',
     alignItems: 'flex-end',
   },
@@ -299,9 +316,6 @@ const styles = StyleSheet.create({
   },
   readItem: {
     opacity: 0.7,
-  },
-  unreadItem: {
-    backgroundColor: 'rgba(255, 107, 0, 0.03)',
   },
   notifIconBox: {
     width: 20,
@@ -350,6 +364,23 @@ const styles = StyleSheet.create({
     marginTop: 12,
     fontSize: 13,
     color: colors.text.secondary,
+    fontWeight: '600',
+  },
+  logoutButtonText: {
+    color: colors.error,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  loaderOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loggingOutText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: '#FFFFFF',
     fontWeight: '600',
   }
 });

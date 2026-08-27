@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, Alert, Modal, ActivityIndicator } from 'react-native';
 import { DrawerContentComponentProps, DrawerItemList, DrawerItem } from '@react-navigation/drawer';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '@/theme/colors';
@@ -28,6 +28,8 @@ export const CustomDrawerContent = (props: DrawerContentComponentProps) => {
   const insets = useSafeAreaInsets();
   const { userFullName, role, logout } = useAuth();
 
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
   const handleLogout = () => {
     Alert.alert(
       "Logout",
@@ -37,7 +39,14 @@ export const CustomDrawerContent = (props: DrawerContentComponentProps) => {
         { 
           text: "Logout", 
           style: "destructive", 
-          onPress: logout 
+          onPress: async () => {
+            setIsLoggingOut(true);
+            try {
+              await logout();
+            } finally {
+              setIsLoggingOut(false);
+            }
+          } 
         }
       ]
     );
@@ -142,6 +151,13 @@ export const CustomDrawerContent = (props: DrawerContentComponentProps) => {
           <Text style={styles.logoutText}>Logout</Text>
         </TouchableOpacity>
       </View>
+
+      <Modal visible={isLoggingOut} transparent animationType="fade" statusBarTranslucent>
+        <View style={styles.loaderOverlay}>
+          <ActivityIndicator size="large" color={colors.primary.DEFAULT} />
+          <Text style={styles.loggingOutText}>Logging out...</Text>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -225,8 +241,21 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
   },
   logoutText: {
-    fontSize: typography.fontSize.sm,
+    fontSize: 15,
+    fontFamily: typography.fontFamily.body,
     color: colors.error,
-    fontWeight: '600',
+    fontWeight: '600'
   },
+  loaderOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loggingOutText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: '#FFFFFF',
+    fontWeight: '600',
+  }
 });

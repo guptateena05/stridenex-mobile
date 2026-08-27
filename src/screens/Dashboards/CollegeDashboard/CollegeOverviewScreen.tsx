@@ -19,6 +19,7 @@ import { typography } from '@/theme/typography';
 import { StatsCard } from '@/components/dashboard/StatsCard';
 import { Card } from '@/components/Shared/Card';
 import { RoleBannerWidget } from '@/components/dashboard/RoleBannerWidget';
+import { SuccessStoriesWidget } from '@/components/dashboard/SuccessStoriesWidget';
 import Animated, { FadeInUp, FadeInRight } from 'react-native-reanimated';
 import { useAuth } from '@/context/AuthContext';
 import { useNavigation } from '@react-navigation/native';
@@ -889,6 +890,11 @@ export const CollegeOverviewScreen = () => {
             </View>
           )}
         </Card>
+
+        {/* Success Stories Widget */}
+        <Animated.View entering={FadeInUp.delay(500)}>
+          <SuccessStoriesWidget collegeName={collegeData?.college_name} />
+        </Animated.View>
       </ScrollView>
 
       {/* Edit Profile Modal / Bottom Sheet */}

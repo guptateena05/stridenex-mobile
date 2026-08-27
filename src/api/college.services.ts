@@ -306,11 +306,11 @@ export const getStudentAnalyticsList = async (params: {
   }
 };
 
-export const getLowEmployabilityStudents = async (college: string) => {
+export const getLowEmployabilityStudents = async (college: string, limit?: number, offset?: number) => {
   try {
     const response = await api.get(
       `method/stridenex_app.stridenex_app.doctype.college_campus_drives.college_campus_drives.get_low_employability_students`,
-      { params: { college } }
+      { params: { college, limit, offset } }
     );
     return response.data;
   } catch (error) {
