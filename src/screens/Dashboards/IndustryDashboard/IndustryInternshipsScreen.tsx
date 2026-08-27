@@ -324,7 +324,7 @@ export const IndustryInternshipsScreen = () => {
       label: 'Application Deadline',
       fieldtype: 'Date',
       required: true,
-      maxDate: new Date(),
+      maxDate: formValues.start_date ? new Date(formValues.start_date) : new Date(),
     },
     {
       fieldname: 'no_of_openings',
@@ -391,7 +391,7 @@ export const IndustryInternshipsScreen = () => {
       fieldtype: 'Long Text',
       required: true,
     }
-  ], [formValues.payment_type, editingInternship, formValues.course, companyName]);
+  ], [formValues.payment_type, editingInternship, formValues.course, companyName, formValues.start_date]);
 
   const formatDate = (dateStr: string) => {
     if (!dateStr) return 'N/A';

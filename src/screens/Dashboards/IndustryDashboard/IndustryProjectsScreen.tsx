@@ -290,7 +290,7 @@ export const IndustryProjectsScreen = () => {
       label: 'Application Deadline',
       fieldtype: 'Date',
       required: true,
-      maxDate: new Date(),
+      maxDate: formValues.start_date ? new Date(formValues.start_date) : new Date(),
     },
     {
       fieldname: 'course',
@@ -344,7 +344,7 @@ export const IndustryProjectsScreen = () => {
       required: true,
       placeholder: 'Project details and objectives...'
     }
-  ], [editingProject, formValues.course]);
+  ], [editingProject, formValues.course, formValues.start_date]);
 
   const initialValues = useMemo(() => formValues, [formValues]);
 
