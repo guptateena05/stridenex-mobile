@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, Modal, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Alert, SafeAreaView } from 'react-native';
-import { X, Check, Award, AlertCircle, Zap } from 'lucide-react-native';
+import { X, Check, Award, AlertCircle, Zap, Shield, CheckCircle, Lightbulb } from 'lucide-react-native';
 import { getSkillTestQuestions, submitSkillTest } from '../api/student.services';
 import ConfettiCannon from 'react-native-confetti-cannon';
 
@@ -21,7 +21,7 @@ const SkillVerificationModal: React.FC<SkillVerificationModalProps> = ({
   onClose,
   onSuccess
 }) => {
-  const [testMode, setTestMode] = useState<'intro' | 'test' | 'result'>('intro');
+  const [testMode, setTestMode] = useState<'intro' | 'test' | 'result' | 'detailed_result'>('intro');
   const [testQuestions, setTestQuestions] = useState<any[]>([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [currentTestAnswers, setCurrentTestAnswers] = useState<Record<string, string>>({});
@@ -268,7 +268,7 @@ const SkillVerificationModal: React.FC<SkillVerificationModalProps> = ({
                        <Text style={{ fontSize: 10, fontWeight: 'bold', color: '#EA580C', textTransform: 'uppercase' }}>{skillLevel}</Text>
                     </View>
                  </View>
-                 <TouchableOpacity onPress={() => { onClose(); onSuccess(testResult); }} style={{ backgroundColor: '#F97316', width: '100%', paddingVertical: 14, borderRadius: 12, alignItems: 'center' }}>
+                 <TouchableOpacity onPress={() => setTestMode('detailed_result')} style={{ backgroundColor: '#F97316', width: '100%', paddingVertical: 14, borderRadius: 12, alignItems: 'center' }}>
                     <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 14 }}>Awesome! Continue Journey</Text>
                  </TouchableOpacity>
                </View>
@@ -280,12 +280,150 @@ const SkillVerificationModal: React.FC<SkillVerificationModalProps> = ({
                  <Text style={{ fontSize: 20, fontWeight: 'bold', textAlign: 'center', marginBottom: 8, color: '#1E293B' }}>Not Quite There</Text>
                  <Text style={{ fontSize: 14, color: '#64748B', marginBottom: 20, textAlign: 'center' }}>{testResult.feedback?.summary || testResult.feedback || 'You need to practice more.'}</Text>
 
-                 <TouchableOpacity onPress={() => onClose()} style={{ backgroundColor: '#EF4444', width: '100%', paddingVertical: 14, borderRadius: 12, alignItems: 'center' }}>
-                    <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 14 }}>Close</Text>
+                 <TouchableOpacity onPress={() => setTestMode('detailed_result')} style={{ backgroundColor: '#EF4444', width: '100%', paddingVertical: 14, borderRadius: 12, alignItems: 'center' }}>
+                    <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 14 }}>View Detailed Results</Text>
                  </TouchableOpacity>
                </View>
              )}
           </View>
+        )}
+
+        {testMode === 'detailed_result' && testResult && (
+           <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
+             {/* Header */}
+             <View style={{ padding: 20, paddingTop: 60, backgroundColor: '#FFFFFF', borderBottomWidth: 1, borderBottomColor: '#F1F5F9', flexDirection: 'row', alignItems: 'center' }}>
+               <View style={{ width: 48, height: 48, borderRadius: 12, backgroundColor: '#EA580C', alignItems: 'center', justifyContent: 'center', marginRight: 16 }}>
+                 <Shield size={24} color="#FFFFFF" />
+               </View>
+               <View style={{ flex: 1 }}>
+                 <Text style={{ fontSize: 20, fontWeight: '900', color: '#1E293B', marginBottom: 2 }}>Verification Result</Text>
+                 <Text style={{ fontSize: 12, color: '#64748B', fontWeight: '600' }}>{skillName} • Level: {skillLevel}</Text>
+               </View>
+               <TouchableOpacity onPress={() => { onClose(); if (testResult?.status === 'Pass' || testResult?.status === 'Passed' || testResult?.passed === true || testResult?.verification_status === 'Pass') onSuccess(testResult); }} style={{ width: 36, height: 36, backgroundColor: '#F8FAFC', borderRadius: 18, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#F1F5F9' }}>
+                 <X size={18} color="#64748B" />
+               </TouchableOpacity>
+             </View>
+             
+             <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
+                
+                {/* Score Section */}
+                <View style={{ alignItems: 'center', backgroundColor: '#F8FAFC', borderRadius: 20, padding: 30, marginBottom: 24, borderWidth: 1, borderColor: '#F1F5F9' }}>
+                  <View style={{ width: 120, height: 120, borderRadius: 60, borderWidth: 8, borderColor: (testResult?.status === 'Pass' || testResult?.status === 'Passed' || testResult?.passed === true || testResult?.verification_status === 'Pass') ? '#10B981' : '#EF4444', alignItems: 'center', justifyContent: 'center', marginBottom: 16, backgroundColor: '#FFFFFF' }}>
+                    <Text style={{ fontSize: 32, fontWeight: '900', color: '#1E293B' }}>{testResult.score}%</Text>
+                    <Text style={{ fontSize: 10, fontWeight: '800', color: '#94A3B8', textTransform: 'uppercase', letterSpacing: 1 }}>Score</Text>
+                  </View>
+
+                  <View style={{ backgroundColor: (testResult?.status === 'Pass' || testResult?.status === 'Passed' || testResult?.passed === true || testResult?.verification_status === 'Pass') ? '#D1FAE5' : '#FEE2E2', paddingHorizontal: 16, paddingVertical: 6, borderRadius: 20, marginBottom: 12 }}>
+                    <Text style={{ fontSize: 12, fontWeight: '800', color: (testResult?.status === 'Pass' || testResult?.status === 'Passed' || testResult?.passed === true || testResult?.verification_status === 'Pass') ? '#059669' : '#DC2626', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                      VERIFICATION {(testResult?.status === 'Pass' || testResult?.status === 'Passed' || testResult?.passed === true || testResult?.verification_status === 'Pass') ? 'PASSED' : 'FAILED'}
+                    </Text>
+                  </View>
+                  
+                  <Text style={{ fontSize: 14, color: '#64748B', fontWeight: '500' }}>
+                    Correct Answers: <Text style={{ fontWeight: '800', color: '#1E293B' }}>{testResult.total_correct}</Text> / {testResult.total_questions}
+                  </Text>
+                </View>
+
+                {/* AI Summary */}
+                {testResult.feedback?.summary && (
+                  <View style={{ marginBottom: 24 }}>
+                    <Text style={{ fontSize: 11, fontWeight: '800', color: '#94A3B8', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 8 }}>AI Assessment Summary</Text>
+                    <View style={{ backgroundColor: '#F8FAFC', borderRadius: 12, padding: 16, borderWidth: 1, borderColor: '#F1F5F9' }}>
+                      <Text style={{ fontSize: 14, color: '#334155', fontWeight: '600', lineHeight: 22 }}>
+                        {testResult.feedback.summary}
+                      </Text>
+                    </View>
+                  </View>
+                )}
+
+                {/* Strengths and Gaps */}
+                <View style={{ flexDirection: 'column', gap: 16, marginBottom: 24 }}>
+                  {testResult.feedback?.strengths && testResult.feedback.strengths.length > 0 && (
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 11, fontWeight: '800', color: '#94A3B8', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 8 }}>Strengths</Text>
+                      <View style={{ backgroundColor: '#FFFFFF', borderRadius: 12, padding: 16, borderWidth: 1, borderColor: '#D1FAE5' }}>
+                        {testResult.feedback.strengths.map((str: string, i: number) => (
+                          <View key={i} style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: i < testResult.feedback.strengths.length - 1 ? 12 : 0 }}>
+                            <CheckCircle size={16} color="#10B981" style={{ marginTop: 2, marginRight: 8 }} />
+                            <Text style={{ fontSize: 13, color: '#334155', fontWeight: '500', flex: 1, lineHeight: 20 }}>{str}</Text>
+                          </View>
+                        ))}
+                      </View>
+                    </View>
+                  )}
+                  
+                  {testResult.feedback?.gaps && testResult.feedback.gaps.length > 0 && (
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 11, fontWeight: '800', color: '#94A3B8', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 8 }}>Areas to Improve</Text>
+                      <View style={{ backgroundColor: '#FFFFFF', borderRadius: 12, padding: 16, borderWidth: 1, borderColor: '#FFEDD5' }}>
+                        {testResult.feedback.gaps.map((gap: string, i: number) => (
+                          <View key={i} style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: i < testResult.feedback.gaps.length - 1 ? 12 : 0 }}>
+                            <AlertCircle size={16} color="#F59E0B" style={{ marginTop: 2, marginRight: 8 }} />
+                            <Text style={{ fontSize: 13, color: '#334155', fontWeight: '500', flex: 1, lineHeight: 20 }}>{gap}</Text>
+                          </View>
+                        ))}
+                      </View>
+                    </View>
+                  )}
+                </View>
+
+                {/* Next Steps */}
+                {testResult.feedback?.next_step && (
+                  <View style={{ marginBottom: 32 }}>
+                    <Text style={{ fontSize: 11, fontWeight: '800', color: '#94A3B8', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 8 }}>Recommended Next Steps</Text>
+                    <View style={{ backgroundColor: '#FFFFFF', borderRadius: 12, padding: 16, borderWidth: 1, borderColor: '#F1F5F9', flexDirection: 'row', alignItems: 'flex-start' }}>
+                      <View style={{ backgroundColor: '#EFF6FF', padding: 8, borderRadius: 10, marginRight: 12 }}>
+                         <Zap size={18} color="#3B82F6" />
+                      </View>
+                      <Text style={{ fontSize: 13, color: '#334155', fontWeight: '600', flex: 1, lineHeight: 20, marginTop: 4 }}>
+                        {testResult.feedback.next_step}
+                      </Text>
+                    </View>
+                  </View>
+                )}
+
+                {/* Breakdown */}
+                {testResult.breakdown && testResult.breakdown.length > 0 && (
+                  <View style={{ marginBottom: 32 }}>
+                    <Text style={{ fontSize: 11, fontWeight: '800', color: '#94A3B8', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 16 }}>Question Breakdown</Text>
+                    
+                    {testResult.breakdown.map((item: any, idx: number) => (
+                      <View key={idx} style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 20, borderWidth: 1, borderColor: '#E2E8F0', marginBottom: 16 }}>
+                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                            <View style={{ backgroundColor: '#F1F5F9', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 }}>
+                               <Text style={{ fontSize: 10, fontWeight: '800', color: '#475569', letterSpacing: 0.5, textTransform: 'uppercase' }}>Question {item.index || idx + 1}</Text>
+                            </View>
+                            <View style={{ backgroundColor: item.is_correct ? '#ECFDF5' : '#FEF2F2', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 }}>
+                               <Text style={{ fontSize: 10, fontWeight: '800', color: item.is_correct ? '#059669' : '#DC2626', letterSpacing: 0.5, textTransform: 'uppercase' }}>
+                                 {item.is_correct ? 'Correct (100 pts)' : 'Incorrect (0 pts)'}
+                               </Text>
+                            </View>
+                         </View>
+                         
+                         <Text style={{ fontSize: 15, fontWeight: '800', color: '#1E293B', marginBottom: 16, lineHeight: 22 }}>
+                           {item.question}
+                         </Text>
+                         
+                         <View style={{ backgroundColor: '#F8FAFC', borderRadius: 12, padding: 16, borderWidth: 1, borderColor: '#F1F5F9' }}>
+                           <Text style={{ fontSize: 10, fontWeight: '800', color: '#94A3B8', marginBottom: 8, letterSpacing: 0.5, textTransform: 'uppercase' }}>Your Answer</Text>
+                           <Text style={{ fontSize: 14, color: '#334155', fontWeight: '500' }}>{item.selected_answer || 'No answer provided'}</Text>
+                         </View>
+                      </View>
+                    ))}
+                  </View>
+                )}
+
+                <View style={{ alignItems: 'flex-end' }}>
+                   <TouchableOpacity 
+                     onPress={() => { onClose(); if (testResult?.status === 'Pass' || testResult?.status === 'Passed' || testResult?.passed === true || testResult?.verification_status === 'Pass') onSuccess(testResult); }} 
+                     style={{ backgroundColor: '#F8FAFC', paddingHorizontal: 24, paddingVertical: 14, borderRadius: 12, borderWidth: 1, borderColor: '#E2E8F0' }}
+                   >
+                     <Text style={{ color: '#1E293B', fontWeight: '800', fontSize: 14 }}>Close Result</Text>
+                   </TouchableOpacity>
+                </View>
+
+             </ScrollView>
+           </View>
         )}
       </SafeAreaView>
     </Modal>
