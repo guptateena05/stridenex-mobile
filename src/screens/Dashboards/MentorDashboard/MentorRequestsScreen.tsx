@@ -463,28 +463,32 @@ export const MentorRequestsScreen = () => {
                           )}
                         </TouchableOpacity>
                         
-                        <TouchableOpacity 
-                          style={styles.altBtn} 
-                          onPress={() => openAltTimeModal(req)}
-                        >
-                          <Clock size={12} color="#1E293B" />
-                          <Text style={styles.altBtnText} numberOfLines={1} adjustsFontSizeToFit>Suggest Alt Time</Text>
-                        </TouchableOpacity>
+                        {false && (
+                          <TouchableOpacity 
+                            style={styles.altBtn} 
+                            onPress={() => openAltTimeModal(req)}
+                          >
+                            <Clock size={12} color="#1E293B" />
+                            <Text style={styles.altBtnText} numberOfLines={1} adjustsFontSizeToFit>Suggest Alt Time</Text>
+                          </TouchableOpacity>
+                        )}
 
-                        <TouchableOpacity 
-                          style={styles.declineBtn} 
-                          onPress={() => handleDeclineRequest(req)}
-                          disabled={decliningId === req.name}
-                        >
-                          {decliningId === req.name ? (
-                            <ActivityIndicator size="small" color="#475569" />
-                          ) : (
-                            <>
-                              <X size={12} color="#64748B" />
-                              <Text style={styles.declineBtnText} numberOfLines={1} adjustsFontSizeToFit>Decline</Text>
-                            </>
-                          )}
-                        </TouchableOpacity>
+                        {false && (
+                          <TouchableOpacity 
+                            style={styles.declineBtn} 
+                            onPress={() => handleDeclineRequest(req)}
+                            disabled={decliningId === req.name}
+                          >
+                            {decliningId === req.name ? (
+                              <ActivityIndicator size="small" color="#475569" />
+                            ) : (
+                              <>
+                                <X size={12} color="#64748B" />
+                                <Text style={styles.declineBtnText} numberOfLines={1} adjustsFontSizeToFit>Decline</Text>
+                              </>
+                            )}
+                          </TouchableOpacity>
+                        )}
                       </View>
                     </Animated.View>
                   );

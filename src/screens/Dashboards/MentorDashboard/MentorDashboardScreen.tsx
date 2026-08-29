@@ -68,6 +68,7 @@ export const MentorDashboardScreen = () => {
   const [rescheduleDate, setRescheduleDate] = useState("");
   const [rescheduleFromTime, setRescheduleFromTime] = useState("");
   const [rescheduleToTime, setRescheduleToTime] = useState("");
+  const [rescheduleReason, setRescheduleReason] = useState("");
   const [submittingReschedule, setSubmittingReschedule] = useState(false);
   const [rescheduleError, setRescheduleError] = useState("");
   const [isDatePickerVisible, setDatePickerVisible] = useState(false);
@@ -164,6 +165,7 @@ export const MentorDashboardScreen = () => {
     setRescheduleDate("");
     setRescheduleFromTime("");
     setRescheduleToTime("");
+    setRescheduleReason("");
     setRescheduleError("");
     setRescheduleModalOpen(true);
   };
@@ -191,7 +193,7 @@ export const MentorDashboardScreen = () => {
   };
 
   const submitReschedule = async () => {
-    if (!selectedSessionId || !rescheduleDate || !rescheduleFromTime || !rescheduleToTime) return;
+    if (!selectedSessionId || !rescheduleDate || !rescheduleFromTime || !rescheduleToTime || !rescheduleReason) return;
     try {
       setRescheduleError("");
       setSubmittingReschedule(true);
@@ -216,6 +218,7 @@ export const MentorDashboardScreen = () => {
         new_date: formattedDate,
         new_from_time: formatTimeToSeconds(rescheduleFromTime),
         new_to_time: formatTimeToSeconds(rescheduleToTime),
+        reason: rescheduleReason,
         mentor: selectedSessionMentor,
         student: selectedSessionStudent
       });
@@ -674,6 +677,18 @@ export const MentorDashboardScreen = () => {
               </View>
             </View>
 
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLbl}>REASON FOR RESCHEDULING</Text>
+              <TextInput
+                style={[styles.inputFld, { minHeight: 60, textAlignVertical: 'top' }]}
+                placeholder="Enter reason..."
+                placeholderTextColor="#94A3B8"
+                value={rescheduleReason}
+                onChangeText={setRescheduleReason}
+                multiline
+              />
+            </View>
+
             <View style={styles.modalActions}>
               <TouchableOpacity
                 style={styles.modalCancelBtn}
@@ -683,9 +698,9 @@ export const MentorDashboardScreen = () => {
                 <Text style={styles.modalCancelBtnText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.modalConfirmBtn, { opacity: rescheduleDate && rescheduleFromTime && rescheduleToTime ? 1 : 0.6 }]}
+                style={[styles.modalConfirmBtn, { opacity: rescheduleDate && rescheduleFromTime && rescheduleToTime && rescheduleReason ? 1 : 0.6 }]}
                 onPress={submitReschedule}
-                disabled={!rescheduleDate || !rescheduleFromTime || !rescheduleToTime || submittingReschedule}
+                disabled={!rescheduleDate || !rescheduleFromTime || !rescheduleToTime || !rescheduleReason || submittingReschedule}
               >
                 {submittingReschedule ? (
                   <ActivityIndicator size="small" color="#FFF" />

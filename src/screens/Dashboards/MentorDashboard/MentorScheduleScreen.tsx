@@ -34,7 +34,8 @@ import {
   CheckCircle,
   ChevronRight,
   Info,
-  CalendarDays
+  CalendarDays,
+  Ban
 } from 'lucide-react-native';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import { useAuth } from '@/context/AuthContext';
@@ -103,6 +104,7 @@ export const MentorScheduleScreen = () => {
   const [blockFromTime, setBlockFromTime] = useState("");
   const [blockToTime, setBlockToTime] = useState("");
   const [blockReason, setBlockReason] = useState("");
+  const [blockWholeDay, setBlockWholeDay] = useState(false);
   const [submittingBlock, setSubmittingBlock] = useState(false);
 
   // Reschedule Modal States
@@ -113,7 +115,9 @@ export const MentorScheduleScreen = () => {
   const [rescheduleDate, setRescheduleDate] = useState("");
   const [rescheduleFromTime, setRescheduleFromTime] = useState("");
   const [rescheduleToTime, setRescheduleToTime] = useState("");
+  const [rescheduleReason, setRescheduleReason] = useState("");
   const [submittingReschedule, setSubmittingReschedule] = useState(false);
+  const [rescheduleError, setRescheduleError] = useState("");
 
   // Availability Modal States
   const [availabilityModalOpen, setAvailabilityModalOpen] = useState(false);
@@ -325,11 +329,13 @@ export const MentorScheduleScreen = () => {
     setRescheduleDate("");
     setRescheduleFromTime("");
     setRescheduleToTime("");
+    setRescheduleReason("");
+    setRescheduleError("");
     setRescheduleModalOpen(true);
   };
 
   const submitReschedule = async () => {
-    if (!selectedSessionId || !rescheduleDate || !rescheduleFromTime || !rescheduleToTime) return;
+    if (!selectedSessionId || !rescheduleDate || !rescheduleFromTime || !rescheduleToTime || !rescheduleReason) return;
     setSubmittingReschedule(true);
     try {
       const formatTimeToSeconds = (t: string) => {
@@ -340,6 +346,7 @@ export const MentorScheduleScreen = () => {
         new_date: rescheduleDate,
         new_from_time: formatTimeToSeconds(rescheduleFromTime),
         new_to_time: formatTimeToSeconds(rescheduleToTime),
+        reason: rescheduleReason,
         mentor: selectedSessionMentor,
         student: selectedSessionStudent
       });
@@ -348,14 +355,15 @@ export const MentorScheduleScreen = () => {
       fetchData(true);
     } catch (err: any) {
       console.error("Failed to reschedule session:", err);
-      Alert.alert("Error", err?.message || "Failed to reschedule session.");
+      setRescheduleError(err?.message || "Failed to reschedule session.");
     } finally {
       setSubmittingReschedule(false);
     }
   };
 
   const handleBlockTime = async () => {
-    if (!userName || !blockDate || !blockFromTime || !blockToTime) return;
+    if (!userName || !blockDate) return;
+    if (!blockWholeDay && (!blockFromTime || !blockToTime)) return;
     setSubmittingBlock(true);
     try {
       const formatTimeToSeconds = (t: string) => {
@@ -364,9 +372,10 @@ export const MentorScheduleScreen = () => {
       await blockTime({
         mentor: userName,
         date: blockDate,
-        from_time: formatTimeToSeconds(blockFromTime),
-        to_time: formatTimeToSeconds(blockToTime),
-        reason: blockReason
+        from_time: blockWholeDay ? undefined : formatTimeToSeconds(blockFromTime),
+        to_time: blockWholeDay ? undefined : formatTimeToSeconds(blockToTime),
+        reason: blockReason,
+        whole_day: blockWholeDay ? 1 : 0
       });
       setBlockDate("");
       setBlockFromTime("");
@@ -783,7 +792,12 @@ export const MentorScheduleScreen = () => {
 
                         return (
                           <View key={j} style={[styles.slotPill, slotStyle]}>
-                            <Text style={[styles.slotText, slotTextStyle]}>{slot.time}</Text>
+                            {isBlocked && <Ban size={10} color="#EF4444" style={{ marginRight: 4 }} />}
+                            <Text style={[styles.slotText, slotTextStyle]}>
+                              {isBlocked 
+                                ? `Not Available${slot.reason?.trim() ? ` • ${slot.reason.trim()}` : ''}` 
+                                : slot.time}
+                            </Text>
                             {slot.status === 'booked_locked' && <Lock size={10} color="#FFF" />}
                           </View>
                         );
@@ -943,33 +957,51 @@ export const MentorScheduleScreen = () => {
                 </TouchableOpacity>
               </View>
 
-              <View style={styles.inputRow}>
-                <View style={[styles.inputGroup, { flex: 1 }]}>
-                  <Text style={styles.inputLbl}>FROM TIME</Text>
-                  <TouchableOpacity
-                    style={[styles.inputFld, styles.dateTimeSelector]}
-                    onPress={() => triggerTimePicker('blockFromTime')}
-                  >
-                    <Text style={{ color: blockFromTime ? '#0F172A' : '#94A3B8', fontSize: 14, fontWeight: '600' }}>
-                      {formatTimeLabel(blockFromTime)}
-                    </Text>
-                    <Clock size={16} color="#94A3B8" />
-                  </TouchableOpacity>
-                </View>
-
-                <View style={[styles.inputGroup, { flex: 1 }]}>
-                  <Text style={styles.inputLbl}>TO TIME</Text>
-                  <TouchableOpacity
-                    style={[styles.inputFld, styles.dateTimeSelector]}
-                    onPress={() => triggerTimePicker('blockToTime')}
-                  >
-                    <Text style={{ color: blockToTime ? '#0F172A' : '#94A3B8', fontSize: 14, fontWeight: '600' }}>
-                      {formatTimeLabel(blockToTime)}
-                    </Text>
-                    <Clock size={16} color="#94A3B8" />
-                  </TouchableOpacity>
-                </View>
+              <View style={styles.inputGroup}>
+                <TouchableOpacity 
+                  style={{ flexDirection: 'row', alignItems: 'center' }} 
+                  onPress={() => setBlockWholeDay(!blockWholeDay)}
+                  activeOpacity={0.7}
+                >
+                  <View style={[styles.checkbox, blockWholeDay && styles.checkboxActive]}>
+                    {blockWholeDay && <CheckCircle size={14} color="#FFF" />}
+                  </View>
+                  <View style={{ marginLeft: 10 }}>
+                    <Text style={{ fontSize: 14, fontWeight: '700', color: '#0F172A' }}>Whole Day</Text>
+                    <Text style={{ fontSize: 12, color: '#64748B', marginTop: 2 }}>Block the entire day — no specific time range needed</Text>
+                  </View>
+                </TouchableOpacity>
               </View>
+
+              {!blockWholeDay && (
+                <View style={styles.inputRow}>
+                  <View style={[styles.inputGroup, { flex: 1 }]}>
+                    <Text style={styles.inputLbl}>FROM TIME</Text>
+                    <TouchableOpacity
+                      style={[styles.inputFld, styles.dateTimeSelector]}
+                      onPress={() => triggerTimePicker('blockFromTime')}
+                    >
+                      <Text style={{ color: blockFromTime ? '#0F172A' : '#94A3B8', fontSize: 14, fontWeight: '600' }}>
+                        {formatTimeLabel(blockFromTime)}
+                      </Text>
+                      <Clock size={16} color="#94A3B8" />
+                    </TouchableOpacity>
+                  </View>
+
+                  <View style={[styles.inputGroup, { flex: 1 }]}>
+                    <Text style={styles.inputLbl}>TO TIME</Text>
+                    <TouchableOpacity
+                      style={[styles.inputFld, styles.dateTimeSelector]}
+                      onPress={() => triggerTimePicker('blockToTime')}
+                    >
+                      <Text style={{ color: blockToTime ? '#0F172A' : '#94A3B8', fontSize: 14, fontWeight: '600' }}>
+                        {formatTimeLabel(blockToTime)}
+                      </Text>
+                      <Clock size={16} color="#94A3B8" />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )}
 
               <View style={styles.inputGroup}>
                 <Text style={styles.inputLbl}>REASON (OPTIONAL)</Text>
@@ -994,9 +1026,9 @@ export const MentorScheduleScreen = () => {
                 <Text style={styles.modalCancelBtnText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.modalConfirmBtn, { opacity: blockDate && blockFromTime && blockToTime ? 1 : 0.6 }]}
+                style={[styles.modalConfirmBtn, { opacity: (blockWholeDay ? blockDate : (blockDate && blockFromTime && blockToTime)) ? 1 : 0.6 }]}
                 onPress={handleBlockTime}
-                disabled={!blockDate || !blockFromTime || !blockToTime || submittingBlock}
+                disabled={!(blockWholeDay ? blockDate : (blockDate && blockFromTime && blockToTime)) || submittingBlock}
               >
                 {submittingBlock ? (
                   <ActivityIndicator size="small" color="#FFF" />
@@ -1024,6 +1056,13 @@ export const MentorScheduleScreen = () => {
                 <X size={20} color="#64748B" />
               </TouchableOpacity>
             </View>
+
+            {rescheduleError ? (
+              <View style={styles.errorAlert}>
+                <AlertCircle size={16} color="#EF4444" />
+                <Text style={styles.errorAlertText}>{rescheduleError}</Text>
+              </View>
+            ) : null}
 
             <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
               <View style={styles.inputGroup}>
@@ -1066,6 +1105,18 @@ export const MentorScheduleScreen = () => {
                   </TouchableOpacity>
                 </View>
               </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLbl}>REASON FOR RESCHEDULING</Text>
+                <TextInput
+                  style={[styles.inputFld, { minHeight: 60, textAlignVertical: 'top' }]}
+                  placeholder="Enter reason..."
+                  placeholderTextColor="#94A3B8"
+                  value={rescheduleReason}
+                  onChangeText={setRescheduleReason}
+                  multiline
+                />
+              </View>
             </ScrollView>
 
             <View style={styles.modalActions}>
@@ -1077,9 +1128,9 @@ export const MentorScheduleScreen = () => {
                 <Text style={styles.modalCancelBtnText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.modalConfirmBtn, { opacity: rescheduleDate && rescheduleFromTime && rescheduleToTime ? 1 : 0.6 }]}
+                style={[styles.modalConfirmBtn, { opacity: rescheduleDate && rescheduleFromTime && rescheduleToTime && rescheduleReason ? 1 : 0.6 }]}
                 onPress={submitReschedule}
-                disabled={!rescheduleDate || !rescheduleFromTime || !rescheduleToTime || submittingReschedule}
+                disabled={!rescheduleDate || !rescheduleFromTime || !rescheduleToTime || !rescheduleReason || submittingReschedule}
               >
                 {submittingReschedule ? (
                   <ActivityIndicator size="small" color="#FFF" />
@@ -1454,9 +1505,16 @@ const styles = StyleSheet.create({
   notesSubtitleText: { fontSize: 12, color: '#64748B', fontWeight: '500', marginTop: 2 },
   closeBtn: { padding: 6, backgroundColor: '#F8FAFC', borderRadius: 20 },
 
+  errorAlert: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FEF2F2', padding: 12, borderRadius: 8, marginBottom: 16 },
+  errorAlertText: { fontSize: 13, color: '#DC2626', fontWeight: '600', flex: 1 },
+
   modalBody: { gap: 16, marginBottom: 16 },
   inputGroup: { marginBottom: 14 },
   inputLbl: { fontSize: 10, fontWeight: '800', color: '#475569', letterSpacing: 0.5, marginBottom: 6 },
+  
+  checkbox: { width: 20, height: 20, borderRadius: 4, borderWidth: 1.5, borderColor: '#CBD5E1', alignItems: 'center', justifyContent: 'center' },
+  checkboxActive: { backgroundColor: '#F97316', borderColor: '#F97316' },
+
   inputFld: { backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, fontSize: 13, color: '#0F172A', fontWeight: '600' },
   dateTimeSelector: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   inputRow: { flexDirection: 'row', gap: 10 },

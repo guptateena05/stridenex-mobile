@@ -6,40 +6,55 @@ const api = {
     try {
       return await baseApi.get(url, config);
     } catch (error: any) {
-      Alert.alert("Error", error?.message || "An unexpected error occurred");
-      throw error;
+      let msg = error?.response?.data?.message || error?.response?.data?.exception || error?.message || "An unexpected error occurred";
+      if (typeof msg === 'string' && msg.includes("frappe.exceptions.ValidationError:")) {
+        msg = msg.split("frappe.exceptions.ValidationError:")[1].trim();
+      }
+      throw new Error(msg);
     }
   },
   post: async (url: string, data?: any, config?: any) => {
     try {
       return await baseApi.post(url, data, config);
     } catch (error: any) {
-      Alert.alert("Error", error?.message || "An unexpected error occurred");
-      throw error;
+      let msg = error?.response?.data?.message || error?.response?.data?.exception || error?.message || "An unexpected error occurred";
+      if (typeof msg === 'string' && msg.includes("frappe.exceptions.ValidationError:")) {
+        msg = msg.split("frappe.exceptions.ValidationError:")[1].trim();
+      }
+      throw new Error(msg);
     }
   },
   put: async (url: string, data?: any, config?: any) => {
     try {
       return await baseApi.put(url, data, config);
     } catch (error: any) {
-      Alert.alert("Error", error?.message || "An unexpected error occurred");
-      throw error;
+      let msg = error?.response?.data?.message || error?.response?.data?.exception || error?.message || "An unexpected error occurred";
+      if (typeof msg === 'string' && msg.includes("frappe.exceptions.ValidationError:")) {
+        msg = msg.split("frappe.exceptions.ValidationError:")[1].trim();
+      }
+      throw new Error(msg);
     }
   },
   patch: async (url: string, data?: any, config?: any) => {
     try {
       return await baseApi.patch(url, data, config);
     } catch (error: any) {
-      Alert.alert("Error", error?.message || "An unexpected error occurred");
-      throw error;
+      let msg = error?.response?.data?.message || error?.response?.data?.exception || error?.message || "An unexpected error occurred";
+      if (typeof msg === 'string' && msg.includes("frappe.exceptions.ValidationError:")) {
+        msg = msg.split("frappe.exceptions.ValidationError:")[1].trim();
+      }
+      throw new Error(msg);
     }
   },
   delete: async (url: string, config?: any) => {
     try {
       return await baseApi.delete(url, config);
     } catch (error: any) {
-      Alert.alert("Error", error?.message || "An unexpected error occurred");
-      throw error;
+      let msg = error?.response?.data?.message || error?.response?.data?.exception || error?.message || "An unexpected error occurred";
+      if (typeof msg === 'string' && msg.includes("frappe.exceptions.ValidationError:")) {
+        msg = msg.split("frappe.exceptions.ValidationError:")[1].trim();
+      }
+      throw new Error(msg);
     }
   },
 };
@@ -106,7 +121,7 @@ export const getMentorPendingVerifications = async (mentor: string, limit: numbe
   }
 };
 
-export const rescheduleSession = async (payload: { session_name: string; new_date: string; new_from_time: string; new_to_time: string; mentor?: string; student?: string }) => {
+export const rescheduleSession = async (payload: { session_name: string; new_date: string; new_from_time: string; new_to_time: string; reason: string; mentor?: string; student?: string }) => {
   try {
     const response = await api.post(
       "method/stridenex_app.stridenex_app.doctype.mentor_session_booking.mentor_session_booking.reschedule_session",
@@ -339,9 +354,10 @@ export const getMonthlyBookedSessions = async (mentor: string) => {
 export const blockTime = async (payload: {
   mentor: string;
   date: string;
-  from_time: string;
-  to_time: string;
+  from_time?: string;
+  to_time?: string;
   reason: string;
+  whole_day?: number;
 }) => {
   try {
     const response = await api.post(

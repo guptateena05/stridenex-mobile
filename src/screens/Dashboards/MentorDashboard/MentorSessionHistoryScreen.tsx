@@ -279,8 +279,8 @@ export const MentorSessionHistoryScreen = () => {
   const summaryCards = [
     { label: "TOTAL SESSIONS", value: stats.total_sessions.toString(), icon: LayoutList, color: "#3B82F6" },
     { label: "TOTAL HOURS", value: `${stats.total_hours.toFixed(1)}h`, icon: Clock, color: "#10B981" },
-    { label: "NOTES SHARED", value: "—", icon: FileText, color: "#F59E0B" },
-    { label: "LIFETIME RATING", value: stats.avg_rating > 0 ? stats.avg_rating.toFixed(1) : "—", icon: Star, color: "#8B5CF6" }
+    { label: "NOTES SHARED", value: "—", icon: FileText, color: "#F59E0B" }
+    // { label: "LIFETIME RATING", value: stats.avg_rating > 0 ? stats.avg_rating.toFixed(1) : "—", icon: Star, color: "#8B5CF6" }
   ];
 
   if (loading && sessions.length === 0) {
@@ -385,16 +385,18 @@ export const MentorSessionHistoryScreen = () => {
 
                       {/* Ratings stars */}
                       <View style={styles.ratingsColumn}>
-                        <View style={styles.starsRow}>
-                          {[...Array(5)].map((_, idx) => (
-                            <Star
-                              key={idx}
-                              size={12}
-                              fill={idx < session.rating ? "#F59E0B" : "transparent"}
-                              color={idx < session.rating ? "#F59E0B" : "#CBD5E1"}
-                            />
-                          ))}
-                        </View>
+                        {false && (
+                          <View style={styles.starsRow}>
+                            {[...Array(5)].map((_, idx) => (
+                              <Star
+                                key={idx}
+                                size={12}
+                                fill={idx < session.rating ? "#F59E0B" : "transparent"}
+                                color={idx < session.rating ? "#F59E0B" : "#CBD5E1"}
+                              />
+                            ))}
+                          </View>
+                        )}
                         <TouchableOpacity
                           style={styles.toggleNotesBtn}
                           onPress={() => toggleNotes(session.id, session.studentEmail)}
