@@ -58,6 +58,20 @@ export const SharedCommunityScreen = ({ userType }: SharedCommunityScreenProps) 
   
   const [newCatName, setNewCatName] = useState("");
   const [newCatDesc, setNewCatDesc] = useState("");
+  
+  // Suggested Categories State
+  const [showCategoryOptionsModal, setShowCategoryOptionsModal] = useState(false);
+  const [selectedSuggestedCategory, setSelectedSuggestedCategory] = useState<any>(null);
+  
+  const SUGGESTED_CATEGORIES = [
+    { name: "Academics", emoji: "📚", desc: "Discuss classes, courses, exams, share lecture notes and study guides." },
+    { name: "Placements", emoji: "💼", desc: "Discuss job search, internships, interview experiences, resume reviews, and advice." },
+    { name: "Projects", emoji: "🚀", desc: "Find project teammates, share progress, post ideas, or collaborate on hackathons." },
+    { name: "Coding", emoji: "💻", desc: "Talk programming languages, framework updates, algorithms, system design, and dev news." },
+    { name: "Design", emoji: "🎨", desc: "Share layouts, logo design, receive UI/UX feedback, and show off design portfolios." },
+    { name: "General", emoji: "💬", desc: "Get to know peers, discuss campus events, make general announcements, and casual chats." },
+  ];
+
   const [newTagTitle, setNewTagTitle] = useState("");
   const [newTopicContent, setNewTopicContent] = useState("");
 
@@ -137,7 +151,7 @@ export const SharedCommunityScreen = ({ userType }: SharedCommunityScreenProps) 
     const isMember = commObj?.action === "leave" || joinedChannels.includes(channelId) || commObj?.is_member === 1 || commObj?.is_member === true;
 
     try {
-      if (!isMember) {
+      if (!isMember && userType === 'student') {
         await joinCommunity({ community: channelId, student: userEmail });
         setJoinedChannels(prev => [...prev, channelId]);
         loadCommunities(false);
@@ -289,6 +303,39 @@ export const SharedCommunityScreen = ({ userType }: SharedCommunityScreenProps) 
       const errStr = typeof err?.response?.data === 'string' ? err.response.data : JSON.stringify(err?.response?.data || err?.message || "").toLowerCase();
       if (errStr.includes("duplicate") || errStr.includes("exist") || errStr.includes("present") || errStr.includes("unique")) {
         Alert.alert("Already Present", "This category is already present.");
+      } else {
+        Alert.alert("Error", "Failed to create category");
+      }
+    }
+  };
+
+  const handleCreateSuggestedCategory = async () => {
+    if (!selectedSuggestedCategory) return;
+    
+    const exists = selectedChannel?.categories?.some((c: any) => (c.category_name || c.name)?.toLowerCase() === selectedSuggestedCategory.name.toLowerCase());
+    if (exists) {
+      Alert.alert("Already Present", "This category is already present in your community.");
+      return;
+    }
+    
+    try {
+      await createCategory({
+        category_name: selectedSuggestedCategory.name,
+        description: selectedSuggestedCategory.desc,
+        parent_category: selectedChannel?.id
+      });
+      setShowCategoryOptionsModal(false);
+      setSelectedSuggestedCategory(null);
+      
+      const detailRes = await getCommunityDetail({ community: selectedChannel?.id });
+      const channelDetails = detailRes?.message?.data || detailRes?.data || null;
+      if (channelDetails) {
+        setSelectedChannel({ ...selectedChannel, ...channelDetails });
+      }
+    } catch (err: any) {
+      const errStr = typeof err?.response?.data === 'string' ? err.response.data : JSON.stringify(err?.response?.data || err?.message || "").toLowerCase();
+      if (errStr.includes("duplicate") || errStr.includes("exist") || errStr.includes("present") || errStr.includes("unique")) {
+        Alert.alert("Already Present", "This category is already present in your community.");
       } else {
         Alert.alert("Error", "Failed to create category");
       }
@@ -477,7 +524,16 @@ export const SharedCommunityScreen = ({ userType }: SharedCommunityScreenProps) 
             <View>
               <View style={styles.sectionHeader}>
                 <Text style={styles.sectionTitle}>Categories</Text>
-                <TouchableOpacity style={styles.addBtn} onPress={() => setShowCreateCategoryModal(true)}>
+                <TouchableOpacity 
+                  style={styles.addBtn} 
+                  onPress={() => {
+                    if (userType !== 'student') {
+                      setShowCategoryOptionsModal(true);
+                    } else {
+                      setShowCreateCategoryModal(true);
+                    }
+                  }}
+                >
                   <Plus size={14} color="#FF6B00" />
                   <Text style={styles.addBtnText}>Add</Text>
                 </TouchableOpacity>
@@ -548,6 +604,73 @@ export const SharedCommunityScreen = ({ userType }: SharedCommunityScreenProps) 
           </View>
         </Modal>
 
+        {/* Suggested Categories Modal */}
+        <Modal visible={showCategoryOptionsModal} transparent animationType="fade">
+          <View style={styles.modalBg}>
+            <View style={[styles.modalContent, { width: '100%', maxHeight: '85%' }]}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <Folder size={20} color="#0F172A" />
+                  <Text style={[styles.modalTitle, { marginBottom: 0 }]}>Create Category</Text>
+                </View>
+                <TouchableOpacity onPress={() => setShowCategoryOptionsModal(false)}>
+                  <X size={20} color="#94A3B8" />
+                </TouchableOpacity>
+              </View>
+              
+              <Text style={{ fontSize: 13, color: '#64748B', marginBottom: 16, lineHeight: 18 }}>
+                Select a suggested category style to quickly set up your channel discussion, or create a completely custom one:
+              </Text>
+
+              <ScrollView style={{ maxHeight: 500 }} showsVerticalScrollIndicator={false}>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' }}>
+                  {SUGGESTED_CATEGORIES.map((cat, idx) => {
+                    const isSelected = selectedSuggestedCategory?.name === cat.name;
+                    return (
+                      <TouchableOpacity 
+                        key={idx} 
+                        style={[
+                          styles.suggestedCard, 
+                          isSelected && styles.suggestedCardActive
+                        ]}
+                        onPress={() => setSelectedSuggestedCategory(cat)}
+                      >
+                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6, gap: 8 }}>
+                          <Text style={{ fontSize: 18 }}>{cat.emoji}</Text>
+                          <Text style={{ fontSize: 14, fontWeight: '700', color: '#0F172A' }}>{cat.name}</Text>
+                        </View>
+                        <Text style={{ fontSize: 12, color: '#64748B', lineHeight: 16 }}>{cat.desc}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </ScrollView>
+
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 20, gap: 12 }}>
+                <TouchableOpacity 
+                  style={styles.customBtn}
+                  onPress={() => {
+                    setShowCategoryOptionsModal(false);
+                    setShowCreateCategoryModal(true);
+                  }}
+                >
+                  <Text style={styles.customBtnText}>Create Custom Category</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                  style={[styles.suggestedBtn, !selectedSuggestedCategory && styles.suggestedBtnDisabled]}
+                  onPress={handleCreateSuggestedCategory}
+                  disabled={!selectedSuggestedCategory}
+                >
+                  <Text style={[styles.suggestedBtnText, !selectedSuggestedCategory && styles.suggestedBtnTextDisabled]}>
+                    Create Suggested Category
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+
         <Modal visible={showCreateTagModal} transparent animationType="fade">
           <View style={styles.modalBg}>
             <View style={styles.modalContent}>
@@ -596,7 +719,7 @@ export const SharedCommunityScreen = ({ userType }: SharedCommunityScreenProps) 
           filteredCommunities.map((community, idx) => {
             const isJoined = joinedChannels.includes(community.id) || community.is_member === 1 || community.is_member === true || community.action === 'leave';
             return (
-              <TouchableOpacity key={idx} style={styles.communityCard} onPress={() => isJoined ? handleJoinChannel(community.id) : null}>
+              <TouchableOpacity key={idx} style={styles.communityCard} onPress={() => (isJoined || userType !== 'student') ? handleJoinChannel(community.id) : null}>
                 <View style={styles.communityIconWrapper}>
                   <Text style={styles.communityIconTxt}>{community.icon}</Text>
                 </View>
@@ -608,12 +731,14 @@ export const SharedCommunityScreen = ({ userType }: SharedCommunityScreenProps) 
                     <View style={styles.metaBadge}><Tag size={12} color="#64748B" /><Text style={styles.metaTxt}>{community.category}</Text></View>
                   </View>
                 </View>
-                <TouchableOpacity
-                  style={[styles.joinBtn, isJoined && styles.joinBtnActive]}
-                  onPress={() => handleJoinChannel(community.id)}
-                >
-                  <Text style={[styles.joinBtnText, isJoined && styles.joinBtnTextActive]}>{isJoined ? "View" : "Join"}</Text>
-                </TouchableOpacity>
+                {userType === 'student' && (
+                  <TouchableOpacity
+                    style={[styles.joinBtn, isJoined && styles.joinBtnActive]}
+                    onPress={() => handleJoinChannel(community.id)}
+                  >
+                    <Text style={[styles.joinBtnText, isJoined && styles.joinBtnTextActive]}>{isJoined ? "View" : "Join"}</Text>
+                  </TouchableOpacity>
+                )}
               </TouchableOpacity>
             )
           })
@@ -750,5 +875,13 @@ const styles = StyleSheet.create({
   memberName: { fontSize: 15, fontWeight: '700', color: '#0F172A' },
   memberRole: { fontSize: 12, color: '#64748B', marginTop: 2 },
   statusBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
-  statusTxt: { fontSize: 11, fontWeight: '700' }
+  statusTxt: { fontSize: 11, fontWeight: '700' },
+  suggestedCard: { width: '48%', backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, padding: 12, marginBottom: 12 },
+  suggestedCardActive: { borderColor: '#FF6B00', backgroundColor: '#FFF7ED' },
+  customBtn: { flex: 1, paddingVertical: 12, borderRadius: 12, borderWidth: 1, borderColor: '#FF6B00', alignItems: 'center', justifyContent: 'center' },
+  customBtnText: { color: '#FF6B00', fontSize: 14, fontWeight: '700' },
+  suggestedBtn: { flex: 1, paddingVertical: 12, borderRadius: 12, backgroundColor: '#FF6B00', alignItems: 'center', justifyContent: 'center' },
+  suggestedBtnDisabled: { backgroundColor: '#F1F5F9' },
+  suggestedBtnText: { color: '#FFFFFF', fontSize: 14, fontWeight: '700', textAlign: 'center' },
+  suggestedBtnTextDisabled: { color: '#94A3B8' }
 });

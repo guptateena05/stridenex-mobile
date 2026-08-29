@@ -176,80 +176,88 @@ export const CollegePlacementScreen = ({ route }: any) => {
   const [branchPerformance, setBranchPerformance] = useState<any[]>([]);
   const [salaryBandsList, setSalaryBandsList] = useState<any[]>([]);
 
-  const driveFields: FormField[] = useMemo(() => [
-    {
-      fieldname: 'industry_name',
-      label: 'Company Name',
-      fieldtype: 'Data',
-      required: true,
-      placeholder: 'e.g. Google'
-    },
-    {
-      fieldname: 'role',
-      label: 'Job Role / Title',
-      fieldtype: 'Data',
-      required: true,
-      placeholder: 'e.g. Software Engineer'
-    },
-    {
-      fieldname: 'drive_date',
-      label: 'Drive Date',
-      fieldtype: 'Date',
-      required: true
-    },
-    {
-      fieldname: 'registeration_deadline',
-      label: 'Registration Deadline',
-      fieldtype: 'Date',
-      required: true
-    },
-    {
-      fieldname: 'package_offered',
-      label: 'Package Offered',
-      fieldtype: 'Data',
-      required: true,
-      placeholder: 'e.g. ₹12-15 LPA'
-    },
-    {
-      fieldname: 'job_type',
-      label: 'Job Type',
-      fieldtype: 'Select',
-      options: ['Full-Time', 'Full-Time + PPO', 'Internship'],
-      required: true
-    },
-    {
-      fieldname: 'min_cgpa',
-      label: 'Min CGPA Required',
-      fieldtype: 'Float',
-      required: true,
-      placeholder: 'e.g. 6.0'
-    },
-    {
-      fieldname: 'backlog',
-      label: 'Max Backlogs Allowed',
-      fieldtype: 'Int',
-      required: true,
-      placeholder: 'e.g. 0'
-    },
-    {
-      fieldname: 'branches',
-      label: 'Eligible Branches',
-      fieldtype: 'Select',
-      options: availableBranches,
-      multiSelect: true,
-      required: true
-    },
-    {
-      fieldname: 'required_skill',
-      label: 'Required Skills',
-      fieldtype: 'Link',
-      apiEndpoint: 'method/stridenex_app.api_stridenex_app.college.master.get_master_data',
-      apiParams: { doctype: 'Skill' },
-      multiSelect: true,
-      required: true,
-      allowCustom: true
+  const driveFields: FormField[] = useMemo(() => {
+    let deadlineMaxDate: Date | undefined = undefined;
+    if (driveFormValues.drive_date) {
+      deadlineMaxDate = new Date(driveFormValues.drive_date);
     }
-  ], [availableBranches]);
+
+    return [
+      {
+        fieldname: 'industry_name',
+        label: 'Company Name',
+        fieldtype: 'Data',
+        required: true,
+        placeholder: 'e.g. Google'
+      },
+      {
+        fieldname: 'role',
+        label: 'Job Role / Title',
+        fieldtype: 'Data',
+        required: true,
+        placeholder: 'e.g. Software Engineer'
+      },
+      {
+        fieldname: 'drive_date',
+        label: 'Drive Date',
+        fieldtype: 'Date',
+        required: true
+      },
+      {
+        fieldname: 'registeration_deadline',
+        label: 'Registration Deadline',
+        fieldtype: 'Date',
+        required: true,
+        maxDate: deadlineMaxDate
+      },
+      {
+        fieldname: 'package_offered',
+        label: 'Package Offered',
+        fieldtype: 'Data',
+        required: true,
+        placeholder: 'e.g. ₹12-15 LPA'
+      },
+      {
+        fieldname: 'job_type',
+        label: 'Job Type',
+        fieldtype: 'Select',
+        options: ['Full-Time', 'Full-Time + PPO', 'Internship'],
+        required: true
+      },
+      {
+        fieldname: 'min_cgpa',
+        label: 'Min CGPA Required',
+        fieldtype: 'Float',
+        required: true,
+        placeholder: 'e.g. 6.0'
+      },
+      {
+        fieldname: 'backlog',
+        label: 'Max Backlogs Allowed',
+        fieldtype: 'Int',
+        required: true,
+        placeholder: 'e.g. 0'
+      },
+      {
+        fieldname: 'branches',
+        label: 'Eligible Branches',
+        fieldtype: 'Select',
+        options: availableBranches,
+        multiSelect: true,
+        required: true
+      },
+      {
+        fieldname: 'required_skill',
+        label: 'Required Skills',
+        fieldtype: 'Link',
+        apiEndpoint: 'method/stridenex_app.api_stridenex_app.college.master.get_master_data',
+        apiParams: { doctype: 'Skill' },
+        multiSelect: true,
+        required: true,
+        allowCustom: true
+      }
+    ];
+  }, [availableBranches, driveFormValues.drive_date]);
 
   const handleCreateCustomValue = async (fieldName: string, value: string) => {
     try {
@@ -857,6 +865,24 @@ export const CollegePlacementScreen = ({ route }: any) => {
     setIsSubmittingDrive(true);
     try {
       const collegeName = collegeDetails?.name || collegeDetails?.college_name || userName;
+      
+      if (formData.drive_date && formData.registeration_deadline) {
+        const driveDateObj = new Date(formData.drive_date);
+        const deadlineDateObj = new Date(formData.registeration_deadline);
+        
+        // Ensure both dates are valid before comparing
+        if (!isNaN(driveDateObj.getTime()) && !isNaN(deadlineDateObj.getTime())) {
+          // Normalize to midnight for accurate day-only comparison
+          driveDateObj.setHours(0, 0, 0, 0);
+          deadlineDateObj.setHours(0, 0, 0, 0);
+          
+          if (deadlineDateObj > driveDateObj) {
+            Alert.alert("Invalid Date", "Registration deadline cannot be later than the drive date.");
+            setIsSubmittingDrive(false);
+            return;
+          }
+        }
+      }
       
       const branchesArray = (formData.branches || []).map((branch: string) => ({ branch_name: branch }));
       const skillsArray = (formData.required_skill || []).map((s: string) => ({ skill: s }));
