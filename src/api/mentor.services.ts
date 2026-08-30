@@ -409,4 +409,16 @@ export const createLmsBatchForOffering = async (offeringName: string) => {
   }
 };
 
+export const getMentorDashboardData = async (mentorEmail: string) => {
+  try {
+    const response = await api.get(
+      `method/quantbit_billing_platform.quantbit_billing_platform.api.get_mentor_dashboard_data?mentor_email=${encodeURIComponent(mentorEmail)}`
+    );
+    return response?.data?.message ?? response?.data ?? response;
+  } catch (error) {
+    console.error("Error fetching mentor dashboard data:", error);
+    throw error;
+  }
+};
+
 

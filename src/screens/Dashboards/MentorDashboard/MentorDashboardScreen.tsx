@@ -42,7 +42,8 @@ import {
   getUpcomingSessions,
   getPendingRequests,
   getMentorPendingVerifications,
-  rescheduleSession
+  rescheduleSession,
+  getMentorDashboardData
 } from '@/api/mentor.services';
 
 export const MentorDashboardScreen = () => {
@@ -59,6 +60,7 @@ export const MentorDashboardScreen = () => {
   const [pendingRequestsCount, setPendingRequestsCount] = useState<number>(0);
   const [verifyQueue, setVerifyQueue] = useState<any[]>([]);
   const [totalPendingCount, setTotalPendingCount] = useState<number>(0);
+  const [payoutData, setPayoutData] = useState<any>(null);
 
   // Reschedule Modal states
   const [rescheduleModalOpen, setRescheduleModalOpen] = useState(false);
@@ -81,12 +83,13 @@ export const MentorDashboardScreen = () => {
       const email = userName || "";
       if (!email) return;
 
-      const [profileRes, statsRes, upcomingRes, pendingRes, verifyQueueRes] = await Promise.all([
+      const [profileRes, statsRes, upcomingRes, pendingRes, verifyQueueRes, payoutDataRes] = await Promise.all([
         getMentorByEmail(email).catch(e => { console.error(e); return null; }),
         getMentorDashboardStats(email).catch(e => { console.error(e); return null; }),
         getUpcomingSessions(email).catch(e => { console.error(e); return null; }),
         getPendingRequests(email, 3).catch(e => { console.error(e); return null; }),
-        getMentorPendingVerifications(email, 3).catch(e => { console.error(e); return null; })
+        getMentorPendingVerifications(email, 3).catch(e => { console.error(e); return null; }),
+        getMentorDashboardData(email).catch(e => { console.error(e); return null; })
       ]);
 
       if (profileRes?.message?.data || profileRes?.message) {
@@ -113,6 +116,9 @@ export const MentorDashboardScreen = () => {
       } else {
         setVerifyQueue([]);
         setTotalPendingCount(0);
+      }
+      if (payoutDataRes) {
+        setPayoutData(payoutDataRes);
       }
     } catch (error) {
       console.error("Error fetching mentor dashboard overview data:", error);
@@ -343,6 +349,19 @@ export const MentorDashboardScreen = () => {
     // { label: "Profile views", value: dashboardStats?.this_month?.profile_views?.toString() || "0", icon: Activity }
   ];
 
+  const parseINR = (str: string) => {
+    if (!str) return 0;
+    const numStr = str.replace(/[₹,]/g, "");
+    const val = parseFloat(numStr);
+    return isNaN(val) ? 0 : val;
+  };
+
+  const currentMonthLive = payoutData?.summary?.current_month_live || "₹0";
+  const liveNetVal = parseINR(currentMonthLive);
+  const liveGrossVal = Math.round(liveNetVal / 0.85);
+  const liveCommissionVal = liveGrossVal - liveNetVal;
+  const currentMonthName = new Date().toLocaleDateString("en-US", { month: "long", year: "numeric" });
+
   if (loading) {
     return (
       <SafeAreaView style={styles.safeArea} edges={['bottom']}>
@@ -565,28 +584,35 @@ export const MentorDashboardScreen = () => {
                 <View style={styles.earningsIconBox}>
                   <IndianRupee size={16} color="#059669" />
                 </View>
-                <Text style={styles.cardTitle}>Earnings Summary</Text>
+                <Text style={styles.cardTitle}>{currentMonthName} Earnings</Text>
               </View>
             </View>
             <View style={styles.earningsContent}>
-              <Text style={styles.earningsValue}>{dashboardStats?.pending_payout || "₹0.00"}</Text>
-              <Text style={styles.earningsSub}>Net payout • Processing Next Month</Text>
+              <Text style={styles.earningsValue}>{currentMonthLive}</Text>
+              <Text style={styles.earningsSub}>Net payout • Live estimate</Text>
 
               <View style={styles.earningsLedger}>
                 <View style={styles.ledgerRow}>
                   <Text style={styles.ledgerLabel}>Gross Earned</Text>
-                  <Text style={styles.ledgerValNormal}>{dashboardStats?.gross_earned || "₹0.00"}</Text>
+                  <Text style={styles.ledgerValNormal}>₹{liveGrossVal.toLocaleString("en-IN")}</Text>
                 </View>
                 <View style={styles.ledgerRow}>
-                  <Text style={styles.ledgerLabel}>Commission (15%)</Text>
+                  <Text style={styles.ledgerLabel}>Platform Commission (15%)</Text>
                   <Text style={styles.ledgerValDanger}>
-                    {dashboardStats?.commission ? `-${dashboardStats.commission}` : "-₹0.00"}
+                    {liveCommissionVal > 0 ? `-₹${liveCommissionVal.toLocaleString("en-IN")}` : "-₹0"}
                   </Text>
                 </View>
                 <View style={[styles.ledgerRow, { borderTopWidth: 1, borderTopColor: '#F1F5F9', paddingTop: 12, marginTop: 4 }]}>
                   <Text style={styles.ledgerLabelBold}>Net to Bank</Text>
-                  <Text style={styles.ledgerValSuccess}>{dashboardStats?.pending_payout || "₹0.00"}</Text>
+                  <Text style={styles.ledgerValSuccess}>{currentMonthLive}</Text>
                 </View>
+              </View>
+
+              <View style={styles.commissionBreakdownBox}>
+                <Text style={styles.commissionBreakdownText}>
+                  <Text style={{ fontWeight: '700', color: '#1E3A8A' }}>Commission Breakdown: </Text>
+                  Stridenex charges 15% on all bookings for platform access, AI matching, payment processing, and student trust & safety. Rate reduces to 12% above ₹50k/month.
+                </Text>
               </View>
             </View>
           </Animated.View>
@@ -783,6 +809,9 @@ const styles = StyleSheet.create({
   ledgerValNormal: { fontSize: 13, color: '#1E293B', fontWeight: '600' },
   ledgerValDanger: { fontSize: 13, color: '#EF4444', fontWeight: '600' },
   ledgerValSuccess: { fontSize: 14, color: '#10B981', fontWeight: '800' },
+  
+  commissionBreakdownBox: { backgroundColor: '#F8FAFC', padding: 12, borderRadius: 12, marginTop: 16, width: '100%' },
+  commissionBreakdownText: { fontSize: 11, color: '#1E40AF', lineHeight: 18, fontWeight: '500' },
 
   requestsList: { gap: 12, marginBottom: 16 },
   requestItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: '#F8FAFC' },
