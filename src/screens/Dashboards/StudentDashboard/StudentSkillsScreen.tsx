@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  ScrollView, 
-  Modal, 
-  KeyboardAvoidingView, 
-  Platform, 
-  Alert, 
-  TouchableOpacity, 
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  Modal,
+  KeyboardAvoidingView,
+  Platform,
+  Alert,
+  TouchableOpacity,
   ActivityIndicator,
   TextInput
 } from 'react-native';
@@ -20,24 +20,24 @@ import { useAuth } from '@/context/AuthContext';
 import { SkillsRadarChart } from '@/components/dashboard/SkillsRadarChart';
 import { OverallSkillScore } from '@/components/dashboard/OverallSkillScore';
 import { SkillLedgerList, SkillRow } from '@/components/dashboard/SkillLedgerList';
-import { 
-  Award, 
-  FileText, 
-  ShieldCheck, 
-  Target, 
-  Factory, 
-  TrendingUp, 
-  Zap, 
-  ChevronRight, 
-  X, 
+import {
+  Award,
+  FileText,
+  ShieldCheck,
+  Target,
+  Factory,
+  TrendingUp,
+  Zap,
+  ChevronRight,
+  X,
   Plus,
   Check
 } from 'lucide-react-native';
 import Animated, { FadeInUp } from 'react-native-reanimated';
-import { 
-  getSkillLedger, 
-  getEmployabilityScore, 
-  createStudentSkill, 
+import {
+  getSkillLedger,
+  getEmployabilityScore,
+  createStudentSkill,
   addSkillEvidence,
 } from '@/api/student.services';
 import SkillVerificationModal from '@/components/SkillVerificationModal';
@@ -247,8 +247,8 @@ export const StudentSkillsScreen = () => {
       const response = await addSkillEvidence(payload);
 
       const isSuccess = response && (
-        response.status === 200 || 
-        response.status === '200' || 
+        response.status === 200 ||
+        response.status === '200' ||
         response.message === 'Evidence added successfully' ||
         (typeof response.message === 'string' && response.message.startsWith('SE-')) ||
         response.data
@@ -295,17 +295,17 @@ export const StudentSkillsScreen = () => {
         {/* Skill Radar Section */}
         <Animated.View entering={FadeInUp.delay(200)} style={styles.premiumCard}>
           <View style={styles.cardHeader}>
-             <View style={styles.cardHeaderTitle}>
-                <TrendingUp size={16} color={colors.accent.DEFAULT} />
-                <Text style={styles.sectionTitle}>Skill Radar</Text>
-             </View>
+            <View style={styles.cardHeaderTitle}>
+              <TrendingUp size={16} color={colors.accent.DEFAULT} />
+              <Text style={styles.sectionTitle}>Skill Radar</Text>
+            </View>
           </View>
-          
+
           <View style={styles.radarContainer}>
             <SkillsRadarChart data={radarData} size={200} />
           </View>
 
-          <View style={styles.insightBox}>
+          {/* <View style={styles.insightBox}>
              <View style={styles.insightIconContainer}>
                 <Zap size={14} color={colors.accent.DEFAULT} />
              </View>
@@ -319,7 +319,7 @@ export const StudentSkillsScreen = () => {
                     : 'Start by declaring your skills and uploading evidence items to verify them.'}
                 </Text>
              </View>
-          </View>
+          </View> */}
         </Animated.View>
 
         {/* Stats Row */}
@@ -349,8 +349,8 @@ export const StudentSkillsScreen = () => {
 
         {/* Skill Ledger List */}
         <Animated.View entering={FadeInUp.delay(500)}>
-          <SkillLedgerList 
-            skills={skills} 
+          <SkillLedgerList
+            skills={skills}
             onSkillPress={(skill) => {
               setSelectedSkill(skill);
               setIsDetailModalVisible(true);
@@ -374,14 +374,14 @@ export const StudentSkillsScreen = () => {
               </TouchableOpacity>
             </View>
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.modalScroll}>
-               <View style={{ padding: 20 }}>
-                 <DynamicForm
-                   fields={skillFields}
-                   onSubmit={handleCreateSkill}
-                   loading={submittingSkill}
-                   buttonLabel="Verify Skill"
-                 />
-               </View>
+              <View style={{ padding: 20 }}>
+                <DynamicForm
+                  fields={skillFields}
+                  onSubmit={handleCreateSkill}
+                  loading={submittingSkill}
+                  buttonLabel="Verify Skill"
+                />
+              </View>
             </ScrollView>
           </View>
         </KeyboardAvoidingView>
@@ -422,7 +422,7 @@ export const StudentSkillsScreen = () => {
                 </View>
               </View>
 
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.evidenceBtn}
                 onPress={() => {
                   setIsDetailModalVisible(false);
@@ -447,14 +447,14 @@ export const StudentSkillsScreen = () => {
               </TouchableOpacity>
             </View>
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.modalScroll}>
-               <View style={{ padding: 20 }}>
-                 <DynamicForm
-                   fields={evidenceFields}
-                   onSubmit={handleAddEvidence}
-                   loading={submittingEvidence}
-                   buttonLabel="Add Evidence"
-                 />
-               </View>
+              <View style={{ padding: 20 }}>
+                <DynamicForm
+                  fields={evidenceFields}
+                  onSubmit={handleAddEvidence}
+                  loading={submittingEvidence}
+                  buttonLabel="Add Evidence"
+                />
+              </View>
             </ScrollView>
           </View>
         </KeyboardAvoidingView>

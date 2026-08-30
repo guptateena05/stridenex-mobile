@@ -33,7 +33,8 @@ import {
   CheckCircle2,
   AlertCircle,
   Award,
-  ChevronLeft
+  ChevronLeft,
+  ArrowRight
 } from 'lucide-react-native';
 import Animated, { FadeInUp, FadeInRight } from 'react-native-reanimated';
 import { useAuth } from '@/context/AuthContext';
@@ -127,6 +128,7 @@ export const StudentMentorsScreen = () => {
 
   // Debounced search logic
   const searchInputRef = useRef<TextInput>(null);
+  const tabScrollViewRef = useRef<ScrollView>(null);
 
   const handleSearchChange = (val: string) => {
     setSearchVal(val);
@@ -986,11 +988,18 @@ export const StudentMentorsScreen = () => {
         </Animated.View>
 
         {/* Segmented Tab Switcher */}
-        <Animated.View entering={FadeInUp.delay(120)}>
+        <Animated.View entering={FadeInUp.delay(120)} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 20 }}>
+          <TouchableOpacity 
+            onPress={() => tabScrollViewRef.current?.scrollTo({ x: 0, animated: true })}
+            style={{ paddingRight: 4, paddingBottom: 4 }}
+          >
+            <ChevronLeft size={20} color="#94A3B8" />
+          </TouchableOpacity>
           <ScrollView
+            ref={tabScrollViewRef}
             horizontal
             showsHorizontalScrollIndicator={false}
-            style={styles.tabScrollContainer}
+            style={[styles.tabScrollContainer, { marginBottom: 0, flex: 1 }]}
             contentContainerStyle={styles.tabScrollContent}
           >
             <TouchableOpacity 
@@ -1029,6 +1038,12 @@ export const StudentMentorsScreen = () => {
               </Text>
             </TouchableOpacity>
           </ScrollView>
+          <TouchableOpacity 
+            onPress={() => tabScrollViewRef.current?.scrollToEnd({ animated: true })}
+            style={{ paddingLeft: 4, paddingBottom: 4 }}
+          >
+            <ChevronRight size={20} color="#94A3B8" />
+          </TouchableOpacity>
         </Animated.View>
 
         {activeTab === 'group_sessions' || activeTab === 'workshops' ? (

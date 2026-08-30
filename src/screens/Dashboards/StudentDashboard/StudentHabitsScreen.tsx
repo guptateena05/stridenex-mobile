@@ -11,7 +11,9 @@ import {
   Modal,
   TextInput,
   Switch,
-  RefreshControl
+  RefreshControl,
+  KeyboardAvoidingView,
+  Platform
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '@/theme/colors';
@@ -950,25 +952,6 @@ export const StudentHabitsScreen = () => {
           </View>
         )}
 
-        {/* Suggested Habit Section */}
-        {suggestedHabit && (
-          <View style={styles.suggestedContainer}>
-            <View style={styles.suggestedHeader}>
-              <Zap size={16} color={colors.accent.DEFAULT} />
-              <Text style={styles.suggestedHeading}>Recommended for you</Text>
-            </View>
-            <Text style={styles.suggestedTitle}>{suggestedHabit.title}</Text>
-            <Text style={styles.suggestedDescription}>{suggestedHabit.description}</Text>
-            <TouchableOpacity
-              style={styles.suggestedAddBtn}
-              activeOpacity={0.7}
-              onPress={() => handleAddSuggestedHabit(suggestedHabit)}
-            >
-              <Plus size={14} color="#FFF" />
-              <Text style={styles.suggestedAddBtnText}>Add to My Plans</Text>
-            </TouchableOpacity>
-          </View>
-        )}
 
         <View style={styles.footerSpacer} />
       </ScrollView>
@@ -980,7 +963,10 @@ export const StudentHabitsScreen = () => {
         transparent={true}
         onRequestClose={() => setIsModalOpen(false)}
       >
-        <View style={styles.modalOverlay}>
+        <KeyboardAvoidingView 
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={styles.modalOverlay}
+        >
           <View style={[styles.modalContent, { borderRadius: 16, padding: 0 }]}>
             {/* Modal Header */}
             <View style={{ flexDirection: 'row', alignItems: 'flex-start', padding: 20, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' }}>
@@ -1016,27 +1002,25 @@ export const StudentHabitsScreen = () => {
               </View>
 
               {/* Dates Row */}
-              <View style={{ flexDirection: 'row', gap: 16, marginBottom: 20 }}>
+              <View style={{ flexDirection: 'row', gap: 12, marginBottom: 20 }}>
                 <View style={{ flex: 1 }}>
                   <Text style={{ fontSize: 9, fontWeight: '800', color: '#64748B', letterSpacing: 0.5, marginBottom: 8, textTransform: 'uppercase' }}>START DATE *</Text>
                   <TouchableOpacity
-                    style={{ flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 12, backgroundColor: '#FFF' }}
+                    style={{ flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, paddingHorizontal: 10, paddingVertical: 12, backgroundColor: '#FFF' }}
                     onPress={() => setActiveDatePicker('start')}
                   >
-                    <Calendar size={16} color="#94A3B8" style={{ marginRight: 8 }} />
-                    <Text style={{ fontSize: 14, color: '#1E293B', flex: 1 }}>{startDate}</Text>
-                    <Calendar size={14} color="#64748B" />
+                    <Calendar size={14} color="#94A3B8" style={{ marginRight: 6 }} />
+                    <Text style={{ fontSize: 13, color: '#1E293B', flex: 1 }} numberOfLines={1} adjustsFontSizeToFit>{startDate}</Text>
                   </TouchableOpacity>
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={{ fontSize: 9, fontWeight: '800', color: '#64748B', letterSpacing: 0.5, marginBottom: 8, textTransform: 'uppercase' }}>END DATE</Text>
                   <TouchableOpacity
-                    style={{ flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 12, backgroundColor: '#FFF' }}
+                    style={{ flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, paddingHorizontal: 10, paddingVertical: 12, backgroundColor: '#FFF' }}
                     onPress={() => setActiveDatePicker('end')}
                   >
-                    <Calendar size={16} color="#94A3B8" style={{ marginRight: 8 }} />
-                    <Text style={{ fontSize: 14, color: endDate ? '#1E293B' : '#94A3B8', flex: 1 }}>{endDate || 'DD/MM/YYYY'}</Text>
-                    <Calendar size={14} color="#64748B" />
+                    <Calendar size={14} color="#94A3B8" style={{ marginRight: 6 }} />
+                    <Text style={{ fontSize: 13, color: endDate ? '#1E293B' : '#94A3B8', flex: 1 }} numberOfLines={1} adjustsFontSizeToFit>{endDate || 'DD/MM/YYYY'}</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -1131,7 +1115,7 @@ export const StudentHabitsScreen = () => {
               </TouchableOpacity>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Newly Unlocked Badge Modal */}

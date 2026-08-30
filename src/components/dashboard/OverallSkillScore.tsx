@@ -11,11 +11,11 @@ interface OverallSkillScoreProps {
   strokeWidth?: number;
 }
 
-export const OverallSkillScore = ({ 
-  score, 
-  label = 'Overall', 
-  size = 85, 
-  strokeWidth = 6 
+export const OverallSkillScore = ({
+  score,
+  label = 'Overall',
+  size = 85,
+  strokeWidth = 6
 }: OverallSkillScoreProps) => {
   const radius = (size - strokeWidth) / 2;
   const circumference = radius * 2 * Math.PI;
@@ -31,7 +31,7 @@ export const OverallSkillScore = ({
               <Stop offset="100%" stopColor={colors.accent.DEFAULT} />
             </SvgGradient>
           </Defs>
-          
+
           {/* Background Circle */}
           <Circle
             cx={size / 2}
@@ -41,7 +41,7 @@ export const OverallSkillScore = ({
             strokeWidth={strokeWidth}
             fill="none"
           />
-          
+
           {/* Progress Circle */}
           <Circle
             cx={size / 2}
@@ -56,15 +56,15 @@ export const OverallSkillScore = ({
             transform={`rotate(-90 ${size / 2} ${size / 2})`}
           />
         </Svg>
-        
+
         <View style={styles.content}>
           <Text style={styles.scoreText}>{score}</Text>
           <Text style={styles.labelText}>{label}</Text>
         </View>
       </View>
-      
+
       <Text style={styles.footerText}>
-        Top 15% in cohort · 6 skills verified
+        Keep building your profile
       </Text>
     </View>
   );

@@ -542,11 +542,20 @@ export const StudentPathScreen = () => {
         // WIZARD FLOW
         <ScrollView style={styles.container} contentContainerStyle={styles.content}>
           <Animated.View entering={FadeInUp.delay(100)} style={styles.header}>
-            <View style={styles.headerBadge}>
-              <Sparkles size={10} color={colors.accent.DEFAULT} />
-              <Text style={styles.headerBadgeText}>AI CAREER PATHFINDER</Text>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <View>
+                <View style={styles.headerBadge}>
+                  <Sparkles size={10} color={colors.accent.DEFAULT} />
+                  <Text style={styles.headerBadgeText}>AI CAREER PATHFINDER</Text>
+                </View>
+                <Text style={styles.title}>Onboarding</Text>
+              </View>
+              {activePath && (
+                <TouchableOpacity onPress={() => setInWizardMode(false)} style={{ backgroundColor: '#EFF6FF', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: '#DBEAFE' }}>
+                  <Text style={{ fontSize: 10, fontWeight: 'bold', color: '#1D4ED8' }}>Back to Active</Text>
+                </TouchableOpacity>
+              )}
             </View>
-            <Text style={styles.title}>Onboarding</Text>
           </Animated.View>
 
           {/* Step Indicators */}
@@ -562,6 +571,14 @@ export const StudentPathScreen = () => {
                  {step < 3 && <View style={{ height: 2, flex: 1, backgroundColor: wizardStep > step ? '#10B981' : '#E2E8F0', marginHorizontal: 4 }} />}
                </React.Fragment>
             ))}
+          </View>
+
+          {/* Guide Hint */}
+          <View style={{ backgroundColor: '#FFFBEB', borderColor: '#FEF3C7', borderWidth: 1, padding: 12, borderRadius: 12, marginBottom: 16, flexDirection: 'row', alignItems: 'center' }}>
+            <AlertCircle size={16} color="#D97706" />
+            <Text style={{ flex: 1, marginLeft: 8, fontSize: 12, color: '#92400E', fontWeight: '500' }}>
+              Unsure about what to enter? Scroll down below the form to read our step-by-step Onboarding Guide.
+            </Text>
           </View>
 
           <View style={styles.premiumCard}>
