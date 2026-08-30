@@ -968,26 +968,27 @@ export const StudentHabitsScreen = () => {
           style={styles.modalOverlay}
         >
           <View style={[styles.modalContent, { borderRadius: 16, padding: 0 }]}>
-            {/* Modal Header */}
-            <View style={{ flexDirection: 'row', alignItems: 'flex-start', padding: 20, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, gap: 12 }}>
-                <View style={{ backgroundColor: '#FFEDD5', padding: 10, borderRadius: 12 }}>
-                  <Target size={20} color="#FF6B00" />
-                </View>
-                <View>
-                  <Text style={{ fontSize: 16, fontWeight: '700', color: '#1E293B' }}>{habitToEdit ? "Edit Habit Plan" : "Create New Habit Plan"}</Text>
-                  <Text style={{ fontSize: 12, color: '#64748B', marginTop: 2 }}>Set up a new habit to track your progress</Text>
-                </View>
-              </View>
-              <TouchableOpacity onPress={() => setIsModalOpen(false)} style={{ padding: 6, backgroundColor: '#F8FAFC', borderRadius: 20, borderWidth: 1, borderColor: '#F1F5F9' }}>
-                <X size={16} color="#94A3B8" />
-              </TouchableOpacity>
-            </View>
-
             {/* Modal Form Scroll */}
-            <ScrollView style={{ padding: 20 }} showsVerticalScrollIndicator={false}>
-              {/* Plan Name */}
-              <View style={{ marginBottom: 20 }}>
+            <ScrollView contentContainerStyle={{ paddingBottom: 20 }} showsVerticalScrollIndicator={false}>
+              {/* Modal Header */}
+              <View style={{ flexDirection: 'row', alignItems: 'flex-start', padding: 20, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, gap: 12 }}>
+                  <View style={{ backgroundColor: '#FFEDD5', padding: 10, borderRadius: 12 }}>
+                    <Target size={20} color="#FF6B00" />
+                  </View>
+                  <View>
+                    <Text style={{ fontSize: 16, fontWeight: '700', color: '#1E293B' }}>{habitToEdit ? "Edit Habit Plan" : "Create New Habit Plan"}</Text>
+                    <Text style={{ fontSize: 12, color: '#64748B', marginTop: 2 }}>Set up a new habit to track your progress</Text>
+                  </View>
+                </View>
+                <TouchableOpacity onPress={() => setIsModalOpen(false)} style={{ padding: 6, backgroundColor: '#F8FAFC', borderRadius: 20, borderWidth: 1, borderColor: '#F1F5F9' }}>
+                  <X size={16} color="#94A3B8" />
+                </TouchableOpacity>
+              </View>
+
+              <View style={{ padding: 20, paddingTop: 16 }}>
+                {/* Plan Name */}
+                <View style={{ marginBottom: 20 }}>
                 <Text style={{ fontSize: 9, fontWeight: '800', color: '#64748B', letterSpacing: 0.5, marginBottom: 8, textTransform: 'uppercase' }}>PLAN NAME *</Text>
                 <View style={{ flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, paddingHorizontal: 12, backgroundColor: '#FFF' }}>
                   <Target size={16} color="#94A3B8" style={{ marginRight: 8 }} />
@@ -1088,6 +1089,7 @@ export const StudentHabitsScreen = () => {
                 </TouchableOpacity>
               </View>
               
+              </View>
               <View style={{height: 40}} />
             </ScrollView>
 
