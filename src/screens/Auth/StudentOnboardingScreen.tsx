@@ -231,9 +231,6 @@ const StudentOnboardingScreen = () => {
         doctype: "State"
       },
       mapOptions: (data) => {
-        console.log("State data received in mapOptions:", data); // This should be the array
-
-        // 'data' is already the array, so just map it directly
         return data.map((state: any) => ({
           value: state.name,
           label: state.name
@@ -256,8 +253,6 @@ const StudentOnboardingScreen = () => {
         limit_page_length: 1000
       } : undefined,
       mapOptions: (data) => {
-        console.log("District data in mapOptions:", data);
-        // data is the array from the response
         return data.map((district: any) => ({
           value: district.name,
           label: district.district_name || district.name
@@ -266,77 +261,71 @@ const StudentOnboardingScreen = () => {
       disabled: !dynamicFormData.state
     },
     {
-      fieldname: "stream",
-      label: "Stream",
-      fieldtype: "Data",
-      required: true,
-      placeholder: "Select Stream",
-      layout: "full",
-      apiEndpoint: `${API_BASE_URL}/api/method/stridenex_app.api_stridenex_app.college.master.get_master_data`,
-      apiParams: {
-        doctype: "Stream"
-      },
-      mapOptions: (data) => {
-        console.log("Stream data received in mapOptions:", data);
-        return data.map((stream: any) => ({
-          value: stream.name,
-          label: stream.name
-        }));
-      }
-    },
-
-    {
       fieldname: "college",
       label: "College",
       fieldtype: "Data",
       required: true,
       placeholder: "Select College",
       layout: "full",
-      // Only enable when stream, state, and district are selected
-      apiEndpoint: (dynamicFormData.stream && dynamicFormData.state && dynamicFormData.district)
-        ? `${API_BASE_URL}/api/method/stridenex_app.api_stridenex_app.student.masters.get_colleges_by_stream`
-        : undefined,
-      apiParams: (dynamicFormData.stream && dynamicFormData.state && dynamicFormData.district) ? {
-        stream: dynamicFormData.stream,
-        state: dynamicFormData.state,
-        district: dynamicFormData.district
-      } : undefined,
+      apiEndpoint: `${API_BASE_URL}/api/method/stridenex_app.api_stridenex_app.college.master.get_master_data`,
+      apiParams: {
+        doctype: "College",
+        limit_page_length: 1000
+      },
       mapOptions: (data) => {
-        console.log("College data received in mapOptions:", data);
-
-        // Handle the response structure: { message: "...", data: [...] }
         const colleges = data.data || data || [];
-
         return colleges.map((college: any) => ({
           value: college.name,
           label: college.college_name || college.name
         }));
-      },
-      disabled: !(dynamicFormData.stream && dynamicFormData.state && dynamicFormData.district) // Disable until all filters are selected
+      }
     },
     {
       fieldname: "courses",
-      label: "Courses Type",
+      label: "Course Type",
       fieldtype: "Data",
       required: true,
-      placeholder: "Select courses",
+      placeholder: "Select Course Type",
       layout: "full",
-      multiSelect: true,
       apiEndpoint: `${API_BASE_URL}/api/method/stridenex_app.api_stridenex_app.college.master.get_master_data`,
       apiParams: {
-        doctype: "Course Type"  // Note the space in "Course Type"
+        doctype: "Course Type",
+        limit_page_length: 1000
       },
       mapOptions: (data) => {
-        console.log("Courses Type data received in mapOptions:", data);
-
-        // Handle the response structure (similar to state)
         const courses = data.data || data || [];
-
         return courses.map((course: any) => ({
           value: course.name || course.course_type,
           label: course.course_type || course.name
         }));
       }
+    },
+    {
+      fieldname: "stream",
+      label: "Stream",
+      fieldtype: "Data",
+      required: true,
+      placeholder: "Select Stream",
+      layout: "full",
+      apiEndpoint: (dynamicFormData.college && dynamicFormData.courses) ? `${API_BASE_URL}/api/method/stridenex_app.api_stridenex_app.college.master.get_master_data` : undefined,
+      apiParams: (dynamicFormData.college && dynamicFormData.courses) ? {
+        doctype: "College Program Details",
+        fields: ["stream"],
+        filters: [
+          ["college", "=", dynamicFormData.college],
+          ["course_type", "=", dynamicFormData.courses]
+        ],
+        limit_page_length: 1000
+      } : undefined,
+      mapOptions: (data) => {
+        const items = data.data || data || [];
+        const uniqueStreams = Array.from(new Set(items.map((item: any) => item.stream))).filter(Boolean);
+        return uniqueStreams.map((stream: any) => ({
+          value: stream,
+          label: stream
+        }));
+      },
+      disabled: !(dynamicFormData.college && dynamicFormData.courses)
     },
     {
       fieldname: "course",
@@ -345,29 +334,27 @@ const StudentOnboardingScreen = () => {
       required: true,
       placeholder: "Select Course",
       layout: "full",
-      // Only enable when college is selected
-      apiEndpoint: dynamicFormData.college
-        ? `${API_BASE_URL}/api/method/stridenex_app.api_stridenex_app.college.master.get_master_data`
-        : undefined,
-      apiParams: dynamicFormData.college ? {
-        doctype: "Courses",
-        fields: ["name", "course_name"], // Add fields if needed
-        filters: [["college", "=", dynamicFormData.college]], // Use array format like district field
-        order_by: "course_name asc",
+      apiEndpoint: (dynamicFormData.college && dynamicFormData.courses && dynamicFormData.stream) ? `${API_BASE_URL}/api/method/stridenex_app.api_stridenex_app.college.master.get_master_data` : undefined,
+      apiParams: (dynamicFormData.college && dynamicFormData.courses && dynamicFormData.stream) ? {
+        doctype: "College Program Details",
+        fields: ["course"],
+        filters: [
+          ["college", "=", dynamicFormData.college],
+          ["course_type", "=", dynamicFormData.courses],
+          ["stream", "=", dynamicFormData.stream]
+        ],
         limit_page_length: 1000
       } : undefined,
       mapOptions: (data) => {
-        console.log("Course data received in mapOptions:", data);
-        const courses = data.data || data || [];
-
-        return courses.map((course: any) => ({
-          value: course.name,
-          label: course.course_name || course.name
+        const items = data.data || data || [];
+        const uniqueCourses = Array.from(new Set(items.map((item: any) => item.course))).filter(Boolean);
+        return uniqueCourses.map((course: any) => ({
+          value: course,
+          label: course
         }));
       },
-      disabled: !dynamicFormData.college
+      disabled: !(dynamicFormData.college && dynamicFormData.courses && dynamicFormData.stream)
     },
-
     {
       fieldname: "department",
       label: "Department",
@@ -375,32 +362,31 @@ const StudentOnboardingScreen = () => {
       required: true,
       placeholder: "Select department",
       layout: "full",
-      apiEndpoint: `${API_BASE_URL}/api/method/stridenex_app.api_stridenex_app.college.master.get_master_data`,
-      apiParams: {
-        doctype: "College Department",
-        fields: ["name", "academic_years", "semester"]
-      },
+      apiEndpoint: (dynamicFormData.college && dynamicFormData.courses && dynamicFormData.stream && dynamicFormData.course) ? `${API_BASE_URL}/api/method/stridenex_app.api_stridenex_app.college.master.get_master_data` : undefined,
+      apiParams: (dynamicFormData.college && dynamicFormData.courses && dynamicFormData.stream && dynamicFormData.course) ? {
+        doctype: "College Program Details",
+        fields: ["department", "academic_years", "semester"],
+        filters: [
+          ["college", "=", dynamicFormData.college],
+          ["course_type", "=", dynamicFormData.courses],
+          ["stream", "=", dynamicFormData.stream],
+          ["course", "=", dynamicFormData.course]
+        ],
+        limit_page_length: 1000
+      } : undefined,
       mapOptions: (data) => {
-        console.log("Department data received in mapOptions:", data);
-
         const departments = data.data || data || [];
-
         const deptOptions = departments.map((dept: any) => ({
-          value: dept.name,
-          label: dept.name,
-          academicYears: dept.academic_years,
-          semester: dept.semester  // Make sure this is included
+          value: dept.department || dept.name,
+          label: dept.department || dept.name,
+          academicYears: dept.academic_years || "3",
+          semester: dept.semester || "Semester 1"
         }));
-
-        console.log("Mapped department options:", deptOptions);
-
         setDepartmentOptions(deptOptions);
-
         return deptOptions.map(({ value, label }: { value: string; label: string }) => ({ value, label }));
       },
-      disabled: false
+      disabled: !(dynamicFormData.college && dynamicFormData.courses && dynamicFormData.stream && dynamicFormData.course)
     },
-
     {
       fieldname: "academicYear",
       label: "Academic Year",
@@ -410,8 +396,6 @@ const StudentOnboardingScreen = () => {
       layout: "full",
       read_only: true
     },
-
-
     {
       fieldname: "semester",
       label: "Semester",
@@ -426,15 +410,10 @@ const StudentOnboardingScreen = () => {
         semester: departmentOptions.find(d => d.value === dynamicFormData.department)?.semester || ""
       } : undefined,
       mapOptions: (data) => {
-        console.log("Semester data received:", data);
-
-        // Handle the response structure: { message: "...", data: [...] }
         const semesters = data.data || data || [];
-
-        // Map each semester object to { value, label } format
         return semesters.map((sem: any) => ({
           value: sem.name,
-          label: sem.name  // Use the name as both value and label
+          label: sem.name
         }));
       },
       disabled: !dynamicFormData.department
@@ -466,7 +445,6 @@ const StudentOnboardingScreen = () => {
       layout: "full",
       options: ["Male", "Female", "Other", "Prefer not to say"]
     },
-
     {
       fieldname: "skills",
       label: "Skills",
@@ -474,14 +452,13 @@ const StudentOnboardingScreen = () => {
       required: false,
       placeholder: "Select skills",
       layout: "full",
-      multiSelect: true, // This makes it multi-select
+      multiSelect: true,
       apiEndpoint: `${API_BASE_URL}/api/method/stridenex_app.api_stridenex_app.college.master.get_master_data`,
       apiParams: {
         doctype: "Skill",
         fields: ["skill_name"]
       },
       mapOptions: (data) => {
-        console.log("Skills data received:", data);
         const items = data.data || data || [];
         return items.map((item: any) => ({
           value: item.name || item.skill_name,
@@ -496,13 +473,12 @@ const StudentOnboardingScreen = () => {
       required: false,
       placeholder: "Select career interests",
       layout: "full",
-      multiSelect: true, // This makes it multi-select
+      multiSelect: true,
       apiEndpoint: `${API_BASE_URL}/api/method/stridenex_app.api_stridenex_app.college.master.get_master_data`,
       apiParams: {
-        doctype: "Student Career Interest" // Updated doctype
+        doctype: "Student Career Interest"
       },
       mapOptions: (data) => {
-        console.log("Career Interest data received:", data);
         const items = data.data || data || [];
         return items.map((item: any) => ({
           value: item.name || item.career_interest_name,
@@ -510,7 +486,6 @@ const StudentOnboardingScreen = () => {
         }));
       }
     },
-
     {
       fieldname: "resume",
       label: "Resume (PDF only)",
@@ -518,7 +493,7 @@ const StudentOnboardingScreen = () => {
       required: false,
       placeholder: "Upload your resume (PDF)",
       layout: "full",
-      accept: ".pdf",
+      accept: ".pdf"
     },
     {
       fieldname: "linkedinUrl",
@@ -562,7 +537,7 @@ const StudentOnboardingScreen = () => {
     requiredFields.forEach(f => {
       if (!data[f] || data[f].toString().trim() === '') errs[f as string] = 'This field is required';
     });
-    if (!data.courses || data.courses.length === 0) errs.courses = 'Please select at least one course type';
+    if (!data.courses) errs.courses = 'Please select a course type';
     if (!data.skills || data.skills.length === 0) errs.skills = 'Please select at least one skill';
 
     if (data.hasReferral === "1" && (!data.referal_code || data.referal_code.trim() === '')) {
@@ -596,9 +571,11 @@ const StudentOnboardingScreen = () => {
       const formattedMobile = mobile ? `+91-${mobile}` : "";
 
       // Format courses type as array of objects
-      const coursesTypeArray = (data.courses || []).map((course: string) => ({
-        course_type: course
-      }));
+      const coursesTypeArray = typeof data.courses === "string" 
+        ? (data.courses ? [{ course_type: data.courses }] : [])
+        : Array.isArray(data.courses)
+          ? data.courses.map((course: string) => ({ course_type: course }))
+          : [];
 
       // Format skills as array of objects
       const skillsArray = (data.skills || []).map((skill: string) => ({
@@ -610,15 +587,10 @@ const StudentOnboardingScreen = () => {
         career_interest: interest
       }));
 
-      // Map academic year to the format expected by the API
+      // Extract just the number from academicYear (e.g., "2 Years" -> "2")
       let academicYearValue = data.academicYear || "1";
       const numericMatch = academicYearValue.match(/\d+/);
-      let yearNum = numericMatch ? parseInt(numericMatch[0]) : 1;
-      
-      let mappedAcademicYear = "First Year";
-      if (yearNum === 2) mappedAcademicYear = "Second Year";
-      else if (yearNum === 3) mappedAcademicYear = "Third Year";
-      else if (yearNum >= 4) mappedAcademicYear = "Forth Year";
+      academicYearValue = numericMatch ? numericMatch[0] : "1";
 
       // Prepare payload matching web portal format
       const payload = {
@@ -631,7 +603,7 @@ const StudentOnboardingScreen = () => {
         college: data.college || "DRK",
         course: data.course || "BA",
         department: data.department || "Dispatch",
-        academic_year: mappedAcademicYear,
+        academic_year: academicYearValue,
         semester: data.semester || "1",
         current_year: data.current_year || "",
         date_of_birth: data.dateOfBirth, // Already in YYYY-MM-DD format from handleDateConfirm

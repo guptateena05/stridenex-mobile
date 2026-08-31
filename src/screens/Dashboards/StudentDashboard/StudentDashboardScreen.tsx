@@ -136,7 +136,7 @@ export const StudentDashboardScreen = () => {
     fetchLearningActivity();
   }, [userName]);
 
-  const [opportunityAlerts, setOpportunityAlerts] = useState<any[]>([]);
+  const [opportunityAlerts, setOpportunityAlerts] = useState<any>({ newPostings: [], deadlineAlerts: [] });
 
   useEffect(() => {
     if (!userName) return;
@@ -146,22 +146,11 @@ export const StudentDashboardScreen = () => {
         console.log("Mobile opportunity alerts response:", res);
         const data = res?.data || res?.message;
         
-        let alertsArray: any[] = [];
-        if (Array.isArray(data)) {
-          alertsArray = data;
-        } else if (data && Array.isArray(data.alerts)) {
-          alertsArray = data.alerts;
-        }
-        
-        if (alertsArray.length > 0) {
-          const mapped = alertsArray.map((item: any) => ({
-            type: (item.type || 'warning') as 'warning' | 'success' | 'danger',
-            message: item.message || item.title || item.opportunity_title || item.heading || "Opportunity Alert",
-            detail: item.detail || item.description || item.detail_text || item.text || ""
-          }));
-          setOpportunityAlerts(mapped);
-        } else {
-          setOpportunityAlerts([]);
+        if (data) {
+          setOpportunityAlerts({
+            newPostings: data.new_postings || [],
+            deadlineAlerts: data.deadline_alerts || []
+          });
         }
       } catch (err) {
         console.error("Error loading mobile opportunity alerts:", err);

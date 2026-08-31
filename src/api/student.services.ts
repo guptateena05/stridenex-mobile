@@ -147,11 +147,10 @@ export const addSkillEvidence = async (data: any) => {
 /**
  * Fetch skill test questions.
  */
-export const getSkillTestQuestions = async (student: string, skill: string, level: string) => {
+export const getSkillTestQuestions = async (student: string, skill: string, level: string, isRetest?: boolean) => {
   try {
-    const response = await api.get(
-      `method/nexedu.api.skill_assessment_ai.get_skill_test_questions?student=${encodeURIComponent(student)}&skill=${encodeURIComponent(skill)}&level=${encodeURIComponent(level)}`
-    );
+    const url = `method/nexedu.api.skill_assessment_ai.get_skill_test_questions?student=${encodeURIComponent(student)}&skill=${encodeURIComponent(skill)}&level=${encodeURIComponent(level)}${isRetest ? '&retest=1&force_new=1&regenerate=1' : ''}`;
+    const response = await api.get(url);
     return response.data;
   } catch (error) {
     console.error("Error fetching skill test questions:", error);

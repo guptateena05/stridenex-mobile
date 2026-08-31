@@ -14,6 +14,12 @@ const getOneDayPriorDate = (dateStr: string): Date | undefined => {
   return d;
 };
 
+const get15YearsPriorDate = (): Date => {
+  const d = new Date();
+  d.setFullYear(d.getFullYear() - 15);
+  return d;
+};
+
 export interface DynamicFormProps {
   fields: FormField[];
   onSubmit: (data: any) => void;
@@ -145,7 +151,9 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
                       ? { ...f, minDate: disableToDateBeforeFromDate(formData.start_date || formData.from_date) }
                       : (f.fieldname === 'registeration_deadline' && formData.drive_date)
                         ? { ...f, maxDate: getOneDayPriorDate(formData.drive_date) }
-                        : f}
+                        : f.fieldname === 'dateOfBirth'
+                          ? { ...f, maxDate: get15YearsPriorDate() }
+                          : f}
                     value={formData[f.fieldname]}
                     onChange={handleChange}
                     onCreateCustomValue={onCreateCustomValue ? (val) => onCreateCustomValue(f.fieldname, val) : undefined}
@@ -178,7 +186,9 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
                   ? { ...f, minDate: disableToDateBeforeFromDate(formData.start_date || formData.from_date) }
                   : (f.fieldname === 'registeration_deadline' && formData.drive_date)
                     ? { ...f, maxDate: getOneDayPriorDate(formData.drive_date) }
-                    : f}
+                    : f.fieldname === 'dateOfBirth'
+                      ? { ...f, maxDate: get15YearsPriorDate() }
+                      : f}
                 value={formData[f.fieldname]}
                 onChange={handleChange}
                 onCreateCustomValue={onCreateCustomValue ? (val) => onCreateCustomValue(f.fieldname, val) : undefined}

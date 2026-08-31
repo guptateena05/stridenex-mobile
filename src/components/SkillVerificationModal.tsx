@@ -40,12 +40,13 @@ const SkillVerificationModal: React.FC<SkillVerificationModalProps> = ({
     }
   }, [visible, skillName, skillLevel]);
 
-  const handleBeginTest = async () => {
+  const handleBeginTest = async (isRetest = false) => {
     if (!userName || !skillName) return;
+    setTestQuestions([]); // Clear questions to show loader
     setTestLoading(true);
     setTestMode('test');
     try {
-      const res = await getSkillTestQuestions(userName, skillName, skillLevel);
+      const res = await getSkillTestQuestions(userName, skillName, skillLevel, isRetest);
       if (res.message && res.message.questions) {
         setTestQuestions(res.message.questions);
         setCurrentTestAnswers({});
@@ -180,6 +181,13 @@ const SkillVerificationModal: React.FC<SkillVerificationModalProps> = ({
 
         {testMode === 'test' && (
           <View style={{ flex: 1, backgroundColor: '#F8FAFC' }}>
+            {testQuestions.length === 0 ? (
+               <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                 <ActivityIndicator size="large" color="#F97316" />
+                 <Text style={{ marginTop: 16, fontSize: 14, color: '#64748B', fontWeight: '600' }}>Preparing your assessment...</Text>
+               </View>
+            ) : (
+             <>
               <View style={{ height: 6, backgroundColor: '#E2E8F0', width: '100%' }}>
                 <View style={{ height: '100%', backgroundColor: '#F97316', width: `${((currentQuestionIndex + 1) / (testQuestions.length || 1)) * 100}%` }} />
               </View>
@@ -244,6 +252,8 @@ const SkillVerificationModal: React.FC<SkillVerificationModalProps> = ({
                   </TouchableOpacity>
                 )}
               </View>
+             </>
+            )}
           </View>
         )}
 
@@ -413,7 +423,15 @@ const SkillVerificationModal: React.FC<SkillVerificationModalProps> = ({
                   </View>
                 )}
 
-                <View style={{ alignItems: 'flex-end' }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 12 }}>
+                   {(!testResult?.passed && testResult?.status !== 'Pass' && testResult?.status !== 'Passed' && testResult?.verification_status !== 'Pass') && (
+                     <TouchableOpacity 
+                       onPress={() => handleBeginTest(true)} 
+                       style={{ backgroundColor: '#F97316', paddingHorizontal: 24, paddingVertical: 14, borderRadius: 12 }}
+                     >
+                       <Text style={{ color: '#FFFFFF', fontWeight: '800', fontSize: 14 }}>Retest</Text>
+                     </TouchableOpacity>
+                   )}
                    <TouchableOpacity 
                      onPress={() => { onClose(); if (testResult?.status === 'Pass' || testResult?.status === 'Passed' || testResult?.passed === true || testResult?.verification_status === 'Pass') onSuccess(testResult); }} 
                      style={{ backgroundColor: '#F8FAFC', paddingHorizontal: 24, paddingVertical: 14, borderRadius: 12, borderWidth: 1, borderColor: '#E2E8F0' }}
