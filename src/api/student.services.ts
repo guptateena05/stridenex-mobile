@@ -489,7 +489,8 @@ export const completeHabitPlanStatus = async (planName: string, habitName: strin
     );
     return response.data;
   } catch (error) {
-    console.error("Error completing habit plan status:", error);
+    // Use log instead of error because this often fails gracefully when a log already exists
+    console.log("Error completing habit plan status:", error.message || error);
     throw error;
   }
 };

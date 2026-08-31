@@ -1071,12 +1071,21 @@ export const StudentMentorsScreen = () => {
                 </View>
               ) : (
                 <View style={styles.offeringList}>
-                  {groupOfferings.map((offering, idx) => (
+                  {groupOfferings.map((offering, idx) => {
+                    const isBooked = bookedSessions.some(session => session.offering === offering.name);
+                    return (
                     <View key={offering.name || idx} style={styles.groupOfferingCard}>
                       {/* Header row */}
                       <View style={styles.groupOfferingHeader}>
-                        <View style={styles.groupOfferingTypeBadge}>
-                          <Text style={styles.groupOfferingTypeText}>{offering.offering_type}</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                          <View style={styles.groupOfferingTypeBadge}>
+                            <Text style={styles.groupOfferingTypeText}>{offering.offering_type}</Text>
+                          </View>
+                          {isBooked && (
+                            <View style={{ backgroundColor: '#DCFCE7', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, marginLeft: 8 }}>
+                              <Text style={{ color: '#166534', fontSize: 10, fontWeight: '700' }}>Booked</Text>
+                            </View>
+                          )}
                         </View>
                         <View style={styles.groupOfferingDurationBadge}>
                           <Text style={styles.groupOfferingDurationText}>{offering.duration_minutes || 60} mins</Text>
@@ -1135,14 +1144,15 @@ export const StudentMentorsScreen = () => {
                           </Text>
                         </View>
                         <TouchableOpacity
-                          style={styles.joinBtn}
+                          style={[styles.joinBtn, isBooked && { backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', paddingVertical: 7 }]}
+                          disabled={isBooked}
                           onPress={() => Alert.alert('Join Session', `Join "${offering.title}"?\n\nThis will open the booking flow.`)}
                         >
-                          <Text style={styles.joinBtnText}>Join</Text>
+                          <Text style={[styles.joinBtnText, isBooked && { color: '#64748B' }]}>{isBooked ? 'Booked' : 'Join'}</Text>
                         </TouchableOpacity>
                       </View>
                     </View>
-                  ))}
+                  )})}
                 </View>
               )}
             </Animated.View>

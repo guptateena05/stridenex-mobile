@@ -284,7 +284,8 @@ export const StudentHabitsScreen = () => {
 
       // Process pending habits
       if (pendingRes.status === "fulfilled" && pendingRes.value?.message && Array.isArray(pendingRes.value.message)) {
-        setPendingHabits(pendingRes.value.message);
+        const filteredPending = pendingRes.value.message.filter((h: any) => h.status !== 'completed' && h.status !== 'done');
+        setPendingHabits(filteredPending);
       } else {
         setPendingHabits([]);
       }
@@ -407,8 +408,12 @@ export const StudentHabitsScreen = () => {
         }]
       });
 
-      if (actualPlanName && habit) {
-        await completeHabitPlanStatus(actualPlanName, habit.habit_name, userName);
+      try {
+        if (actualPlanName && habit) {
+          await completeHabitPlanStatus(actualPlanName, habit.habit_name, userName);
+        }
+      } catch (e) {
+        console.log("Non-critical error in completeHabitPlanStatus:", e);
       }
 
       Alert.alert("Success", "Habit logged successfully!");
@@ -1212,6 +1217,11 @@ export const StudentHabitsScreen = () => {
       <DateTimePickerModal
         isVisible={activeDatePicker !== null}
         mode="date"
+        minimumDate={
+          activeDatePicker === 'end' && startDate 
+            ? new Date(Number(startDate.split('/')[2]), Number(startDate.split('/')[1]) - 1, Number(startDate.split('/')[0])) 
+            : undefined
+        }
         onConfirm={(date) => {
           const formatted = formatDateToDDMMYYYY(date);
           if (activeDatePicker === 'start') {
