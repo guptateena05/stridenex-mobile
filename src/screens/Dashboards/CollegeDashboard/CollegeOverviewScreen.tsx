@@ -475,7 +475,7 @@ export const CollegeOverviewScreen = () => {
       const valPercent = Math.round((value / maxVal) * 100);
       return {
         val: valPercent,
-        label: m.month || m.label || ""
+        label: (m.month || m.label || "").substring(0, 3)
       };
     });
   }, [onboardingGrowth]);
@@ -883,8 +883,10 @@ export const CollegeOverviewScreen = () => {
             <View style={styles.chartContainer}>
                {displayMonthlyData.map((d: any, idx: number) => (
                   <View key={idx} style={styles.chartCol}>
-                     <View style={[styles.chartBar, { height: `${d.val}%`, backgroundColor: colors.navy + '20' }]} />
-                     <Text style={styles.chartLabel}>{d.label}</Text>
+                     <View style={styles.chartTrack}>
+                        <View style={[styles.chartFill, { height: `${Math.max(d.val, 5)}%` }]} />
+                     </View>
+                     <Text style={styles.chartLabel} numberOfLines={1}>{d.label}</Text>
                   </View>
                ))}
             </View>
@@ -973,10 +975,11 @@ const styles = StyleSheet.create({
   skillLabelGroup: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   skillBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
   skillBadgeText: { fontSize: 10, fontWeight: '800' },
-  chartContainer: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', height: 120, paddingTop: 20 },
+  chartContainer: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', height: 160, marginTop: 40 },
   chartCol: { flex: 1, alignItems: 'center', height: '100%', justifyContent: 'flex-end' },
-  chartBar: { width: '50%', borderTopLeftRadius: 4, borderTopRightRadius: 4 },
-  chartLabel: { fontSize: 9, color: '#64748B', marginTop: 8, fontWeight: '700' },
+  chartTrack: { width: 14, height: '100%', backgroundColor: '#EFF6FF', borderRadius: 7, justifyContent: 'flex-end' },
+  chartFill: { width: '100%', backgroundColor: '#3B82F6', borderRadius: 7 },
+  chartLabel: { fontSize: 10, color: '#64748B', marginTop: 10, fontWeight: '600' },
   viewDetailsText: { fontSize: 12, fontWeight: '800', color: '#2563EB' },
   flexRowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)', justifyContent: 'flex-end' },
