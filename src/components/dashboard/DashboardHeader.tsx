@@ -69,27 +69,20 @@ export const DashboardHeader = ({ title, showMenu = true }: { title?: string, sh
   };
 
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   const handleLogout = () => {
-    Alert.alert(
-      "Logout",
-      "Are you sure you want to logout?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Logout",
-          style: "destructive",
-          onPress: async () => {
-            setIsLoggingOut(true);
-            try {
-              await logout();
-            } finally {
-              setIsLoggingOut(false);
-            }
-          }
-        }
-      ]
-    );
+    setShowLogoutModal(true);
+  };
+
+  const confirmLogout = async () => {
+    setShowLogoutModal(false);
+    setIsLoggingOut(true);
+    try {
+      await logout();
+    } finally {
+      setIsLoggingOut(false);
+    }
   };
 
   const openDrawer = () => {
@@ -204,6 +197,32 @@ export const DashboardHeader = ({ title, showMenu = true }: { title?: string, sh
         <View style={styles.loaderOverlay}>
           <ActivityIndicator size="large" color={colors.primary.DEFAULT} />
           <Text style={styles.loggingOutText}>Logging out...</Text>
+        </View>
+      </Modal>
+
+      {/* Logout Confirmation Modal */}
+      <Modal visible={showLogoutModal} transparent animationType="fade">
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' }}>
+           <View style={{ backgroundColor: 'white', padding: 24, borderRadius: 16, width: '85%', alignItems: 'center' }}>
+              <LogOut size={40} color="#DC2626" style={{ marginBottom: 16 }} />
+              <Text style={{ fontSize: 16, fontWeight: 'bold', marginBottom: 8, textAlign: 'center', color: '#1E293B' }}>
+                 Confirm Logout
+              </Text>
+              <Text style={{ fontSize: 13, color: '#64748B', textAlign: 'center', marginBottom: 20, lineHeight: 18 }}>
+                Are you sure you want to log out of your account?
+              </Text>
+              <View style={{ flexDirection: 'row', width: '100%', justifyContent: 'space-between' }}>
+                 <TouchableOpacity style={{ flex: 1, marginRight: 8, padding: 12, borderRadius: 12, borderWidth: 1, borderColor: '#E2E8F0', alignItems: 'center' }} onPress={() => setShowLogoutModal(false)}>
+                   <Text style={{ color: '#64748B', fontWeight: 'bold' }}>Cancel</Text>
+                 </TouchableOpacity>
+                 <TouchableOpacity 
+                   style={{ flex: 1, marginLeft: 8, backgroundColor: '#DC2626', padding: 12, borderRadius: 12, alignItems: 'center' }} 
+                   onPress={confirmLogout}
+                 >
+                   <Text style={{ color: 'white', fontWeight: 'bold' }}>Logout</Text>
+                 </TouchableOpacity>
+              </View>
+           </View>
         </View>
       </Modal>
     </View>

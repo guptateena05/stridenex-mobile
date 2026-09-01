@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useState, useRef } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
 import { Input } from '@/components/Shared/Input';
 import { Button } from '@/components/Shared/Button';
 import { Checkbox } from '@/components/Shared/Checkbox';
@@ -27,13 +27,23 @@ export const SignupScreen = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [selectedRole, setSelectedRole] = useState<UserRole>('student');
+  const [selectedRole, setSelectedRole] = useState<UserRole | null>(null);
   const [acceptTerms, setAcceptTerms] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const navigation = useNavigation<any>();
+  const shakeAnimation = useRef(new Animated.Value(0)).current;
+
+  const triggerShake = () => {
+    Animated.sequence([
+      Animated.timing(shakeAnimation, { toValue: 10, duration: 50, useNativeDriver: true }),
+      Animated.timing(shakeAnimation, { toValue: -10, duration: 50, useNativeDriver: true }),
+      Animated.timing(shakeAnimation, { toValue: 10, duration: 50, useNativeDriver: true }),
+      Animated.timing(shakeAnimation, { toValue: 0, duration: 50, useNativeDriver: true })
+    ]).start();
+  };
 
   const validatePasswordStrength = (pass: string) => {
     if (pass.length < 8) return "Password must be at least 8 characters long";
@@ -83,6 +93,11 @@ export const SignupScreen = () => {
 
     if (!acceptTerms) {
       newErrors.acceptTerms = "You must accept the Terms of Service and Privacy Policy";
+    }
+
+    if (!selectedRole) {
+      newErrors.selectedRole = "Please select a role to continue";
+      triggerShake();
     }
 
     if (Object.keys(newErrors).length > 0) {
@@ -228,7 +243,7 @@ export const SignupScreen = () => {
         />
 
         <Text style={styles.roleLabel}>I want to join as</Text>
-        <View style={styles.rolesGrid}>
+        <Animated.View style={[styles.rolesGrid, { transform: [{ translateX: shakeAnimation }] }]}>
           {roles.map(role => {
             const isSelected = selectedRole === role.id;
             return (
@@ -246,7 +261,8 @@ export const SignupScreen = () => {
               </TouchableOpacity>
             )
           })}
-        </View>
+        </Animated.View>
+        {errors.selectedRole && <Text style={styles.errorText}>{errors.selectedRole}</Text>}
 
         <View style={[styles.termsRow, errors.acceptTerms ? { marginBottom: spacing.xs } : null]}>
           <Checkbox checked={acceptTerms} onCheckedChange={(val) => handleFieldChange('acceptTerms', val, setAcceptTerms)} />
