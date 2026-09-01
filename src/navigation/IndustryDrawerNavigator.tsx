@@ -67,31 +67,18 @@ export const IndustryDrawerNavigator = () => {
         }}
       />
       <Drawer.Screen
-        name="Find Talent"
-        component={IndustryFindTalentScreen}
-        options={{
-          drawerIcon: ({ color, size }) => <Briefcase color={color} size={size} />,
-          drawerItemStyle: { display: 'none' }
-        }}
-      />
-      <Drawer.Screen
         name="Pipeline"
         component={IndustryPipelineScreen}
         options={{
+          drawerLabel: 'Application Pipeline',
           drawerIcon: ({ color, size }) => <Mail color={color} size={size} />
-        }}
-      />
-      <Drawer.Screen
-        name="Community"
-        component={IndustryCommunityScreen}
-        options={{
-          drawerIcon: ({ color, size }) => <Users color={color} size={size} />
         }}
       />
       <Drawer.Screen
         name="Projects"
         component={IndustryProjectsScreen}
         options={{
+          drawerLabel: 'Projects & R&D',
           drawerIcon: ({ color, size }) => <FolderGit2 color={color} size={size} />
         }}
       />
@@ -99,6 +86,7 @@ export const IndustryDrawerNavigator = () => {
         name="Internships"
         component={IndustryInternshipsScreen}
         options={{
+          drawerLabel: 'Internship Posts',
           drawerIcon: ({ color, size }) => <UserCheck color={color} size={size} />
         }}
       />
@@ -109,20 +97,13 @@ export const IndustryDrawerNavigator = () => {
           drawerIcon: ({ color, size }) => <Briefcase color={color} size={size} />
         }}
       />
-      {/* <Drawer.Screen
-        name="Feedback"
-        component={IndustryFeedbackScreen}
+      <Drawer.Screen
+        name="Community"
+        component={IndustryCommunityScreen}
         options={{
-          drawerIcon: ({ color, size }) => <Star color={color} size={size} />
+          drawerIcon: ({ color, size }) => <Users color={color} size={size} />
         }}
       />
-      <Drawer.Screen
-        name="Analytics"
-        component={IndustryAnalyticsScreen}
-        options={{
-          drawerIcon: ({ color, size }) => <Calendar color={color} size={size} />
-        }}
-      /> */}
       <Drawer.Screen
         name="Settings"
         component={IndustrySettingsScreen}
@@ -130,11 +111,21 @@ export const IndustryDrawerNavigator = () => {
           drawerIcon: ({ color, size }) => <Settings color={color} size={size} />
         }}
       />
+      {/* Hidden Screens */}
+      <Drawer.Screen
+        name="Find Talent"
+        component={IndustryFindTalentScreen}
+        options={{
+          drawerIcon: ({ color, size }) => <Briefcase color={color} size={size} />,
+          drawerItemStyle: { display: 'none' }
+        }}
+      />
       <Drawer.Screen
         name="Plans"
         component={IndustryPlansScreen}
         options={{
-          drawerIcon: ({ color, size }) => <School color={color} size={size} />
+          drawerIcon: ({ color, size }) => <School color={color} size={size} />,
+          drawerItemStyle: { display: 'none' }
         }}
       />
       <Drawer.Screen

@@ -670,4 +670,73 @@ export const getApplicationsCount = async (params: {
   }
 };
 
+export interface OfferTemplatePayload {
+  template_name: string;
+  template_code: string;
+  link_ewqm: string;
+  select_egwf: string;
+  status: string;
+  subject: string;
+  salutation: string;
+  body: string;
+  compensation_type: string;
+  compensation_amount: number;
+  currency: string;
+  duration: string;
+  effective_from: string;
+  effective_to: string;
+}
+
+export const createOfferTemplate = async (data: OfferTemplatePayload) => {
+  try {
+    const response = await api.post(
+      `method/stridenex_app.stridenex_app.doctype.offer_template.offer_template.create_offer_template`,
+      data
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error creating offer template:", error);
+    throw error;
+  }
+};
+
+export const getOfferTemplates = async (industry?: string) => {
+  try {
+    let url = `method/stridenex_app.stridenex_app.doctype.offer_template.offer_template.get_offer_templates`;
+    if (industry) {
+      url += `?link_ewqm=${encodeURIComponent(industry)}`;
+    }
+    const response = await api.get(url);
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching offer templates:", error);
+    throw error;
+  }
+};
+
+export const updateOfferTemplate = async (data: any) => {
+  try {
+    const response = await api.post(
+      `method/stridenex_app.stridenex_app.doctype.offer_template.offer_template.update_offer_template`,
+      data
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error updating offer template:", error);
+    throw error;
+  }
+};
+
+export const deleteOfferTemplate = async (name: string) => {
+  try {
+    const response = await api.post(
+      `method/stridenex_app.stridenex_app.doctype.offer_template.offer_template.delete_offer_template`,
+      { name }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error deleting offer template:", error);
+    throw error;
+  }
+};
 
