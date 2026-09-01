@@ -365,7 +365,7 @@ const StudentOnboardingScreen = () => {
       apiEndpoint: (dynamicFormData.college && dynamicFormData.courses && dynamicFormData.stream && dynamicFormData.course) ? `${API_BASE_URL}/api/method/stridenex_app.api_stridenex_app.college.master.get_master_data` : undefined,
       apiParams: (dynamicFormData.college && dynamicFormData.courses && dynamicFormData.stream && dynamicFormData.course) ? {
         doctype: "College Program Details",
-        fields: ["department", "academic_years", "semester"],
+        fields: ["department"],
         filters: [
           ["college", "=", dynamicFormData.college],
           ["course_type", "=", dynamicFormData.courses],
