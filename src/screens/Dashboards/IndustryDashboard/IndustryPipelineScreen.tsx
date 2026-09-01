@@ -34,7 +34,8 @@ import {
   GraduationCap,
   TrendingUp,
   Trophy,
-  FileText
+  FileText,
+  HelpCircle
 } from 'lucide-react-native';
 import Animated, { FadeInUp, FadeInRight } from 'react-native-reanimated';
 import { useIndustry } from '@/context/IndustryContext';
@@ -119,6 +120,7 @@ export const IndustryPipelineScreen = ({ route, navigation }: any) => {
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [updateStatusLoading, setUpdateStatusLoading] = useState(false);
   const [isStatusPickerOpen, setIsStatusPickerOpen] = useState(false);
+  const [showConfirmStatusModal, setShowConfirmStatusModal] = useState(false);
 
   const tabScrollRef = useRef<ScrollView>(null);
 
@@ -406,9 +408,10 @@ export const IndustryPipelineScreen = ({ route, navigation }: any) => {
     }
   };
 
-  const handleChangeStatus = async () => {
+  const confirmStatusChange = async () => {
     if (!selectedCandidate) return;
     try {
+      setShowConfirmStatusModal(false);
       setUpdateStatusLoading(true);
       await updateApplicationStatus(selectedCandidate.id, selectedStatus);
       await fetchApplications(companyName, opportunityType, selectedSubFilter);
@@ -715,7 +718,7 @@ export const IndustryPipelineScreen = ({ route, navigation }: any) => {
                     {selectedStatus !== selectedCandidate?.status && (
                       <TouchableOpacity 
                         style={styles.confirmBtn}
-                        onPress={handleChangeStatus}
+                        onPress={() => setShowConfirmStatusModal(true)}
                         disabled={updateStatusLoading}
                       >
                         {updateStatusLoading ? (
@@ -869,6 +872,33 @@ export const IndustryPipelineScreen = ({ route, navigation }: any) => {
           </View>
         </TouchableOpacity>
       </Modal>
+
+      {/* Confirm Status Change Modal */}
+      <Modal visible={showConfirmStatusModal} transparent animationType="fade">
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' }}>
+           <View style={{ backgroundColor: 'white', padding: 24, borderRadius: 16, width: '85%', alignItems: 'center' }}>
+              <HelpCircle size={40} color="#F97316" style={{ marginBottom: 16 }} />
+              <Text style={{ fontSize: 16, fontWeight: 'bold', marginBottom: 8, textAlign: 'center', color: '#1E293B' }}>
+                 Confirm Status Change
+              </Text>
+              <Text style={{ fontSize: 13, color: '#64748B', textAlign: 'center', marginBottom: 20, lineHeight: 18 }}>
+                Are you sure you want to change the status of {selectedCandidate?.name} to "{selectedStatus}"?
+              </Text>
+              <View style={{ flexDirection: 'row', width: '100%', justifyContent: 'space-between' }}>
+                 <TouchableOpacity style={{ flex: 1, marginRight: 8, padding: 12, borderRadius: 12, borderWidth: 1, borderColor: '#E2E8F0', alignItems: 'center' }} onPress={() => setShowConfirmStatusModal(false)}>
+                   <Text style={{ color: '#64748B', fontWeight: 'bold' }}>Cancel</Text>
+                 </TouchableOpacity>
+                 <TouchableOpacity 
+                   style={{ flex: 1, marginLeft: 8, backgroundColor: '#F97316', padding: 12, borderRadius: 12, alignItems: 'center' }} 
+                   onPress={confirmStatusChange}
+                 >
+                   <Text style={{ color: 'white', fontWeight: 'bold' }}>Confirm</Text>
+                 </TouchableOpacity>
+              </View>
+           </View>
+        </View>
+      </Modal>
+
     </SafeAreaView>
   );
 };

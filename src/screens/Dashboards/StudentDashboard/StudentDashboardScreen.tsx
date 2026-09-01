@@ -551,15 +551,15 @@ export const StudentDashboardScreen = () => {
             </View>
           </TouchableOpacity>
 
-          <View style={styles.statsList}>
+          <View style={[styles.statsList, { gap: 8 }]}>
             {ledgerStats.map((stat, i) => (
-              <View key={i} style={styles.statItem}>
-                <View style={[styles.statIcon, { backgroundColor: stat.bg }]}>
-                  <stat.icon size={11} color={stat.color} />
+              <View key={i} style={[styles.statItem, { backgroundColor: stat.bg, padding: 8, borderRadius: 12 }]}>
+                <View style={[styles.statIcon, { backgroundColor: 'transparent', width: 32, height: 32 }]}>
+                  <stat.icon size={20} color={stat.color} />
                 </View>
-                <View style={{ flex: 1, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Text style={{ fontSize: 13, fontWeight: '600', color: '#475569' }}>{stat.label}</Text>
-                  <Text style={styles.statValue}>{stat.value}</Text>
+                <View style={{ flex: 1, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginLeft: 8 }}>
+                  <Text style={{ fontSize: 14, fontWeight: '700', color: '#334155' }}>{stat.label}</Text>
+                  <Text style={[styles.statValue, { fontSize: 16 }]}>{stat.value}</Text>
                 </View>
               </View>
             ))}

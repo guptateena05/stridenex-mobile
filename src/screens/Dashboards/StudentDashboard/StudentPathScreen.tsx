@@ -42,7 +42,8 @@ import {
   Lock,
   RefreshCw,
   SkipForward,
-  ChevronUp
+  ChevronUp,
+  HelpCircle
 } from 'lucide-react-native';
 import Animated, { FadeInUp, FadeInRight } from 'react-native-reanimated';
 import { useAuth } from '@/context/AuthContext';
@@ -146,6 +147,8 @@ export const StudentPathScreen = () => {
   const [detailsLoading, setDetailsLoading] = useState(false);
   
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showToggleModal, setShowToggleModal] = useState(false);
+  const [toggleModalData, setToggleModalData] = useState<{ milestoneTitle: string, pointTitle: string, currentStatus: string } | null>(null);
 
   // AI Generation States
   const [isGenerating, setIsGenerating] = useState(false);
@@ -407,10 +410,20 @@ export const StudentPathScreen = () => {
   // -----------------------------------------
   // Active Path Functions
   // -----------------------------------------
-  const handleTogglePoint = async (milestoneTitle: string, pointTitle: string, currentStatus: string) => {
-    if (!activePath || !pathData?.enrollment_id) return;
+  const handleTogglePoint = (milestoneTitle: string, pointTitle: string, currentStatus: string) => {
+    setToggleModalData({ milestoneTitle, pointTitle, currentStatus });
+    setShowToggleModal(true);
+  };
+
+  const confirmTogglePoint = async () => {
+    if (!activePath || !pathData?.enrollment_id || !toggleModalData) return;
+    
+    const { milestoneTitle, pointTitle, currentStatus } = toggleModalData;
+    const newCompleted = currentStatus !== 'Completed';
+
+    setShowToggleModal(false);
+
     try {
-      const newCompleted = currentStatus !== 'Completed';
       const res = await completeMilestonePoint({
         enrollment: pathData.enrollment_id,
         milestone_title: milestoneTitle,
@@ -420,12 +433,12 @@ export const StudentPathScreen = () => {
       if (res?.message?.milestone_completed) {
         Alert.alert("🎉 Success!", "Milestone fully completed! You have gained the corresponding skills.");
       } else if (res?.message?.success) {
-        Alert.alert("Success", "Milestone task marked as completed.");
+        // Quietly succeed
       }
       await fetchData();
     } catch (err) {
       console.error("Failed to check off task", err);
-      Alert.alert("Error", "Failed to mark task as complete.");
+      Alert.alert("Error", "Failed to update task status.");
     }
   };
 
@@ -1078,54 +1091,59 @@ export const StudentPathScreen = () => {
               {/* Skills Analysis */}
               {pathData && (
                 <View style={{ marginBottom: 24, flexDirection: 'column', gap: 12 }}>
-                  <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#1E293B', marginBottom: 4 }}>Skills Analysis</Text>
-                  <View style={{ flexDirection: 'row', gap: 12 }}>
-                     <View style={{ flex: 1, backgroundColor: '#F0FDF4', padding: 16, borderRadius: 16, borderWidth: 1, borderColor: '#DCFCE7' }}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-                           <CheckCircle2 size={16} color="#16A34A" style={{ marginRight: 6 }} />
-                           <Text style={{ fontSize: 12, fontWeight: 'bold', color: '#16A34A' }}>Acquired</Text>
+                  <Text style={{ fontSize: 18, fontWeight: '800', color: '#0F172A', marginBottom: 4 }}>Skills Analysis</Text>
+                  <View style={{ flexDirection: 'column', gap: 16 }}>
+                     <View style={{ backgroundColor: '#F0FDF4', padding: 16, borderRadius: 16, borderWidth: 1, borderColor: '#DCFCE7' }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+                           <View style={{ backgroundColor: '#DCFCE7', padding: 6, borderRadius: 8, marginRight: 8 }}>
+                             <CheckCircle2 size={18} color="#16A34A" />
+                           </View>
+                           <Text style={{ fontSize: 14, fontWeight: 'bold', color: '#16A34A' }}>Acquired Skills</Text>
                         </View>
                         {Array.isArray(pathData.matched_skills) && pathData.matched_skills.length > 0 ? (
-                           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                               {pathData.matched_skills.map((matched: any, idx: number) => {
                                  const skillName = matched.skill || matched.name || "";
                                  const skillLevel = matched.current_level || matched.level || "Beginner";
                                  return (
-                                   <View key={idx} style={{ backgroundColor: 'white', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12, borderWidth: 1, borderColor: '#DCFCE7', flexDirection: 'row', alignItems: 'center' }}>
-                                      <Text style={{ fontSize: 10, color: '#334155', fontWeight: '600' }}>{skillName}</Text>
-                                      <View style={{ backgroundColor: '#ECFDF5', paddingHorizontal: 4, paddingVertical: 2, borderRadius: 4, marginLeft: 4 }}>
-                                        <Text style={{ fontSize: 8, color: '#059669', fontWeight: 'bold' }}>{skillLevel}</Text>
+                                   <View key={idx} style={{ backgroundColor: 'white', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12, borderWidth: 1, borderColor: '#DCFCE7', flexDirection: 'row', alignItems: 'center' }}>
+                                      <Text style={{ fontSize: 12, color: '#334155', fontWeight: '600' }}>{skillName}</Text>
+                                      <View style={{ backgroundColor: '#ECFDF5', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, marginLeft: 6 }}>
+                                        <Text style={{ fontSize: 10, color: '#059669', fontWeight: 'bold' }}>{skillLevel}</Text>
                                       </View>
                                    </View>
                                  );
                               })}
                            </View>
                         ) : (
-                           <Text style={{ fontSize: 10, color: '#94A3B8', fontStyle: 'italic' }}>No acquired skills yet</Text>
+                           <Text style={{ fontSize: 12, color: '#94A3B8', fontStyle: 'italic', marginTop: 4 }}>No acquired skills yet</Text>
                         )}
                      </View>
-                     <View style={{ flex: 1, backgroundColor: '#FEF2F2', padding: 16, borderRadius: 16, borderWidth: 1, borderColor: '#FEE2E2' }}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-                           <Target size={16} color="#DC2626" style={{ marginRight: 6 }} />
-                           <Text style={{ fontSize: 12, fontWeight: 'bold', color: '#DC2626' }}>To Acquire</Text>
+
+                     <View style={{ backgroundColor: '#FEF2F2', padding: 16, borderRadius: 16, borderWidth: 1, borderColor: '#FEE2E2' }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+                           <View style={{ backgroundColor: '#FEE2E2', padding: 6, borderRadius: 8, marginRight: 8 }}>
+                             <Target size={18} color="#DC2626" />
+                           </View>
+                           <Text style={{ fontSize: 14, fontWeight: 'bold', color: '#DC2626' }}>To Acquire</Text>
                         </View>
                         {Array.isArray(pathData.missing_skills) && pathData.missing_skills.length > 0 ? (
-                           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                               {pathData.missing_skills.map((missing: any, idx: number) => {
                                  const skillName = missing.skill || missing.name || "";
                                  const skillLevel = missing.required_level || missing.level || "Beginner";
                                  return (
-                                   <View key={idx} style={{ backgroundColor: 'white', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12, borderWidth: 1, borderColor: '#FEE2E2', flexDirection: 'row', alignItems: 'center' }}>
-                                      <Text style={{ fontSize: 10, color: '#334155', fontWeight: '600' }}>{skillName}</Text>
-                                      <View style={{ backgroundColor: '#FEF2F2', paddingHorizontal: 4, paddingVertical: 2, borderRadius: 4, marginLeft: 4 }}>
-                                        <Text style={{ fontSize: 8, color: '#E11D48', fontWeight: 'bold' }}>{skillLevel}</Text>
+                                   <View key={idx} style={{ backgroundColor: 'white', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12, borderWidth: 1, borderColor: '#FEE2E2', flexDirection: 'row', alignItems: 'center' }}>
+                                      <Text style={{ fontSize: 12, color: '#475569', fontWeight: '600' }}>{skillName}</Text>
+                                      <View style={{ backgroundColor: '#FEF2F2', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, marginLeft: 6 }}>
+                                        <Text style={{ fontSize: 10, color: '#EF4444', fontWeight: 'bold' }}>{skillLevel}</Text>
                                       </View>
                                    </View>
                                  );
                               })}
                            </View>
                         ) : (
-                           <Text style={{ fontSize: 10, color: '#059669', fontStyle: 'italic' }}>🎉 All skills matched! You are fully qualified.</Text>
+                           <Text style={{ fontSize: 12, color: '#059669', fontStyle: 'italic', marginTop: 4 }}>🎉 All required skills acquired!</Text>
                         )}
                      </View>
                   </View>
@@ -1308,6 +1326,34 @@ export const StudentPathScreen = () => {
                  </TouchableOpacity>
                  <TouchableOpacity style={[styles.primaryBtn, { flex: 1, marginLeft: 8 }]} onPress={handleStartPersonalizedRoadmap}>
                    <Text style={styles.primaryBtnText}>Confirm</Text>
+                 </TouchableOpacity>
+              </View>
+           </View>
+        </View>
+      </Modal>
+
+      {/* Toggle Task Confirmation Modal */}
+      <Modal visible={showToggleModal} transparent animationType="fade">
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' }}>
+           <View style={{ backgroundColor: 'white', padding: 24, borderRadius: 16, width: '85%', alignItems: 'center' }}>
+              <HelpCircle size={40} color={toggleModalData?.currentStatus !== 'Completed' ? '#10B981' : '#F59E0B'} style={{ marginBottom: 16 }} />
+              <Text style={{ fontSize: 16, fontWeight: 'bold', marginBottom: 8, textAlign: 'center', color: '#1E293B' }}>
+                 {toggleModalData?.currentStatus !== 'Completed' ? "Complete Task?" : "Unmark Task?"}
+              </Text>
+              <Text style={{ fontSize: 13, color: '#64748B', textAlign: 'center', marginBottom: 20, lineHeight: 18 }}>
+                {toggleModalData?.currentStatus !== 'Completed' 
+                  ? `Are you sure you want to mark "${toggleModalData?.pointTitle}" as completed?`
+                  : `Are you sure you want to unmark "${toggleModalData?.pointTitle}"?`}
+              </Text>
+              <View style={{ flexDirection: 'row', width: '100%', justifyContent: 'space-between' }}>
+                 <TouchableOpacity style={[styles.secondaryBtn, { flex: 1, marginRight: 8 }]} onPress={() => setShowToggleModal(false)}>
+                   <Text style={styles.secondaryBtnText}>Cancel</Text>
+                 </TouchableOpacity>
+                 <TouchableOpacity 
+                   style={[styles.primaryBtn, { flex: 1, marginLeft: 8, backgroundColor: toggleModalData?.currentStatus !== 'Completed' ? '#10B981' : '#F59E0B' }]} 
+                   onPress={confirmTogglePoint}
+                 >
+                   <Text style={[styles.primaryBtnText, { color: 'white' }]}>Confirm</Text>
                  </TouchableOpacity>
               </View>
            </View>

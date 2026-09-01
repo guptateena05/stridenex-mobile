@@ -322,28 +322,28 @@ export const StudentSkillsScreen = () => {
           </View> */}
         </Animated.View>
 
-        {/* Stats Row */}
-        <View style={styles.row}>
-          <Animated.View entering={FadeInUp.delay(300)} style={[styles.premiumCard, styles.halfCard]}>
+        {/* Stats Section */}
+        <View style={{ flexDirection: 'column', gap: 16 }}>
+          <Animated.View entering={FadeInUp.delay(300)} style={styles.premiumCard}>
             <Text style={styles.miniTitle}>LEDGER STATS</Text>
-            <View style={styles.statsList}>
+            <View style={[styles.statsList, { gap: 6 }]}>
               {ledgerStats.map((stat, i) => (
-                <View key={i} style={styles.statItem}>
-                  <View style={[styles.statIcon, { backgroundColor: stat.bg }]}>
-                    <stat.icon size={11} color={stat.color} />
+                <View key={i} style={[styles.statItem, { backgroundColor: stat.bg, padding: 8, borderRadius: 12 }]}>
+                  <View style={[styles.statIcon, { backgroundColor: 'transparent', width: 28, height: 28 }]}>
+                    <stat.icon size={16} color={stat.color} />
                   </View>
-                  <View>
-                    <Text style={styles.statValue}>{stat.value}</Text>
-                    <Text style={styles.statLabel}>{stat.label}</Text>
+                  <View style={{ flex: 1, marginLeft: 4 }}>
+                    <Text style={[styles.statValue, { fontSize: 14 }]}>{stat.value}</Text>
+                    <Text style={[styles.statLabel, { fontSize: 11, color: '#475569', marginTop: 2 }]} numberOfLines={1}>{stat.label}</Text>
                   </View>
                 </View>
               ))}
             </View>
           </Animated.View>
 
-          <Animated.View entering={FadeInUp.delay(400)} style={[styles.premiumCard, styles.halfCard, { justifyContent: 'center', alignItems: 'center' }]}>
+          <Animated.View entering={FadeInUp.delay(400)} style={[styles.premiumCard, { justifyContent: 'center', alignItems: 'center', paddingVertical: 32 }]}>
             <Text style={[styles.miniTitle, { alignSelf: 'flex-start', position: 'absolute', top: 16, left: 16 }]}>OVERALL</Text>
-            <OverallSkillScore score={overallScore} size={92} strokeWidth={8} />
+            <OverallSkillScore score={overallScore} size={140} strokeWidth={10} />
           </Animated.View>
         </View>
 
