@@ -29,6 +29,7 @@ interface DynamicFormDataType {
   state: string;
   district: string;
   college: string;
+  college_other?: string;
   stream: string;
   courses: string[];
   course: string;
@@ -76,7 +77,7 @@ const StudentOnboardingScreen = () => {
   const [departmentOptions, setDepartmentOptions] = useState<DepartmentOption[]>([]);
 
   const [dynamicFormData, setDynamicFormData] = useState<DynamicFormDataType>({
-    state: "", district: "", college: "", stream: "", courses: [], course: "", department: "",
+    state: "", district: "", college: "", college_other: "", stream: "", courses: [], course: "", department: "",
     academicYear: "1", semester: "", current_year: "", dateOfBirth: "", gender: "Male", skills: [], careerInterest: [],
     resume: null, linkedinUrl: "", githubUrl: "",
     hasReferral: "0", referal_code: ""
@@ -274,12 +275,24 @@ const StudentOnboardingScreen = () => {
       },
       mapOptions: (data) => {
         const colleges = data.data || data || [];
-        return colleges.map((college: any) => ({
+        const options = colleges.map((college: any) => ({
           value: college.name,
           label: college.college_name || college.name
         }));
+        if (!options.some((opt: any) => opt.value === "Others" || opt.label === "Others")) {
+          options.push({ value: "Others", label: "Others" });
+        }
+        return options;
       }
     },
+    ...(dynamicFormData.college === "Others" ? [{
+      fieldname: "college_other",
+      label: "Enter College Name",
+      placeholder: "Enter your college name",
+      fieldtype: "Data",
+      required: true,
+      layout: "full" as const
+    }] : []),
     {
       fieldname: "courses",
       label: "Course Type",
@@ -537,6 +550,11 @@ const StudentOnboardingScreen = () => {
     requiredFields.forEach(f => {
       if (!data[f] || data[f].toString().trim() === '') errs[f as string] = 'This field is required';
     });
+    
+    if (data.college === "Others" && (!data.college_other || data.college_other.trim() === '')) {
+      errs.college_other = 'College name is required';
+    }
+
     if (!data.courses) errs.courses = 'Please select a course type';
     if (!data.skills || data.skills.length === 0) errs.skills = 'Please select at least one skill';
 
@@ -600,7 +618,7 @@ const StudentOnboardingScreen = () => {
         email_id: email,
         stream: data.stream || "Engineering",
         courses_type: coursesTypeArray.length > 0 ? coursesTypeArray : [{ course_type: "PG" }],
-        college: data.college || "DRK",
+        college: data.college === "Others" ? (data.college_other || "Others") : (data.college || "DRK"),
         course: data.course || "BA",
         department: data.department || "Dispatch",
         academic_year: academicYearValue,
@@ -717,6 +735,7 @@ const StudentOnboardingScreen = () => {
         state: newData.state ?? prev.state,
         district: newData.district ?? prev.district,
         college: newData.college ?? prev.college,
+        college_other: newData.college_other ?? prev.college_other,
         department: newData.department ?? prev.department,
         academicYear: newData.academicYear ?? prev.academicYear,
         stream: newData.stream ?? prev.stream,

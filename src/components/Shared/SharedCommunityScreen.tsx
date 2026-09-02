@@ -23,7 +23,7 @@ const getFallbackIcon = (name: string, type: string) => {
 };
 
 interface SharedCommunityScreenProps {
-  userType: 'mentor' | 'college' | 'industry';
+  userType: 'mentor' | 'college' | 'industry' | 'student';
 }
 
 export const SharedCommunityScreen = ({ userType }: SharedCommunityScreenProps) => {

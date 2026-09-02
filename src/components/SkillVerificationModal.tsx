@@ -172,7 +172,7 @@ const SkillVerificationModal: React.FC<SkillVerificationModalProps> = ({
                <TouchableOpacity onPress={onClose} style={{ flex: 1, height: 56, borderRadius: 16, borderWidth: 1.5, borderColor: '#E2E8F0', alignItems: 'center', justifyContent: 'center', backgroundColor: 'white' }}>
                   <Text style={{ fontSize: 15, fontWeight: '700', color: '#0F172A' }}>Cancel</Text>
                </TouchableOpacity>
-               <TouchableOpacity onPress={handleBeginTest} disabled={testLoading} style={{ flex: 2, height: 56, borderRadius: 16, backgroundColor: '#F97316', alignItems: 'center', justifyContent: 'center', flexDirection: 'row' }}>
+               <TouchableOpacity onPress={() => handleBeginTest()} disabled={testLoading} style={{ flex: 2, height: 56, borderRadius: 16, backgroundColor: '#F97316', alignItems: 'center', justifyContent: 'center', flexDirection: 'row' }}>
                   {testLoading ? <ActivityIndicator color="white" /> : <Text style={{ fontSize: 15, fontWeight: '800', color: 'white' }}>Start Verification Test {'>'}</Text>}
                </TouchableOpacity>
             </View>
