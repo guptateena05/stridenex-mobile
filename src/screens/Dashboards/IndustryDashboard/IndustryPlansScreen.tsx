@@ -33,7 +33,8 @@ import Animated, { FadeInUp, FadeInRight } from 'react-native-reanimated';
 import { useAuth } from '@/context/AuthContext';
 import { 
   getBillingPackagesByType, 
-  getUserSubscriptionDashboard 
+  getUserSubscriptionDashboard,
+  getBillingUrl
 } from '@/api/student.services';
 
 interface BillingPackage {
@@ -45,6 +46,7 @@ interface BillingPackage {
   app?: string;
   app_name?: string;
   features: string[];
+  is_tax_inclusive?: number | boolean;
 }
 
 function calcRemainingDays(expiryDateStr: string): number {
@@ -80,12 +82,16 @@ async function handleSelectPlan(
   setRedirectingPlan(plan.package_name);
   try {
     const fromSite = "devstridenex.quantcloud.in";
-    const billingUrl = "https://uat-dev.stridenex.ai";
+    const billingUrl = await getBillingUrl(fromSite);
+    
+    if (!billingUrl) throw new Error("Billing URL not returned from server");
+
+    const isInclusive = plan.is_tax_inclusive === 1 || plan.is_tax_inclusive === true;
 
     // Use URLSearchParams to ensure identical query parameter encoding as web (e.g. + for spaces)
     const paymentParams = new URLSearchParams({
       from_site: fromSite,
-      frontend_url: "http://localhost:3000",
+      frontend_url: "stridenex://",
       pkg_name: plan.package_name || "",
       pkg_type: plan.package_type || "",
       pkg_app: plan.app_name || plan.app || "",
@@ -94,6 +100,7 @@ async function handleSelectPlan(
       pkg_amount: plan.amount !== undefined && plan.amount !== null ? String(plan.amount) : "",
       account_type: "Industry",
       customer_email: customerEmail || "",
+      is_tax_inclusive: isInclusive ? "1" : "0",
     });
 
     // Use standard URL constructor to correctly resolve page path relative to base billing domain
@@ -508,13 +515,28 @@ export const IndustryPlansScreen = () => {
 
                     <Text style={styles.planName}>{plan.package_name}</Text>
                     
-                    <View style={styles.priceRow}>
-                      <Text style={styles.currencySymbol}>₹</Text>
-                      <Text style={styles.priceValue}>{plan.amount.toLocaleString("en-IN")}</Text>
-                      {plan.no_of_days > 0 && (
-                        <Text style={styles.pricePeriod}>/ {plan.no_of_days} days</Text>
-                      )}
-                    </View>
+                    {(() => {
+                      const isInclusive = plan.is_tax_inclusive === 1 || plan.is_tax_inclusive === true;
+                      return (
+                        <View style={{ marginBottom: 12 }}>
+                          <View style={styles.priceRow}>
+                            <Text style={styles.currencySymbol}>₹</Text>
+                            <Text style={styles.priceValue}>{plan.amount.toLocaleString("en-IN")}</Text>
+                            <Text style={{ fontSize: 12, color: '#94A3B8', marginLeft: 4, fontWeight: '500' }}>
+                              {isInclusive ? "inc. tax" : "+ 18% GST"}
+                            </Text>
+                            {plan.no_of_days > 0 && (
+                              <Text style={styles.pricePeriod}>/ {plan.no_of_days} days</Text>
+                            )}
+                          </View>
+                          {!isInclusive && (
+                            <Text style={{ fontSize: 12, color: '#64748B', fontWeight: '600' }}>
+                              Total: ₹{(plan.amount * 1.18).toLocaleString("en-IN")}
+                            </Text>
+                          )}
+                        </View>
+                      );
+                    })()}
 
                     <View style={styles.metaBadgeRow}>
                       {plan.package_type ? (

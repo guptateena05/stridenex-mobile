@@ -1169,7 +1169,7 @@ export const getUserSubscriptionDashboard = async () => {
     );
     return response.data?.message ?? response.data;
   } catch (error) {
-    console.error("Error fetching subscription dashboard on mobile:", error);
+    console.log("Error fetching subscription dashboard on mobile:", error);
     throw error;
   }
 };

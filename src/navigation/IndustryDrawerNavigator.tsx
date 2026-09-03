@@ -124,8 +124,7 @@ export const IndustryDrawerNavigator = () => {
         name="Plans"
         component={IndustryPlansScreen}
         options={{
-          drawerIcon: ({ color, size }) => <School color={color} size={size} />,
-          drawerItemStyle: { display: 'none' }
+          drawerIcon: ({ color, size }) => <School color={color} size={size} />
         }}
       />
       <Drawer.Screen
