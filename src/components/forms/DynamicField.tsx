@@ -161,6 +161,8 @@ export default function DynamicField({ field, value, onChange, onCreateCustomVal
             data = responseData;
           } else if (responseData.data && Array.isArray(responseData.data)) {
             data = responseData.data;
+          } else if (responseData.data?.data && Array.isArray(responseData.data.data)) {
+            data = responseData.data.data;
           } else if (responseData.message && Array.isArray(responseData.message)) {
             data = responseData.message;
           } else if (responseData.message?.data && Array.isArray(responseData.message.data)) {

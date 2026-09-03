@@ -29,7 +29,7 @@ interface DynamicFormDataType {
   state: string;
   district: string;
   college: string;
-  college_other?: string;
+  otherCollege?: string;
   stream: string;
   courses: string[];
   course: string;
@@ -77,7 +77,7 @@ const StudentOnboardingScreen = () => {
   const [departmentOptions, setDepartmentOptions] = useState<DepartmentOption[]>([]);
 
   const [dynamicFormData, setDynamicFormData] = useState<DynamicFormDataType>({
-    state: "", district: "", college: "", college_other: "", stream: "", courses: [], course: "", department: "",
+    state: "", district: "", college: "", otherCollege: "", stream: "", courses: [], course: "", department: "",
     academicYear: "1", semester: "", current_year: "", dateOfBirth: "", gender: "Male", skills: [], careerInterest: [],
     resume: null, linkedinUrl: "", githubUrl: "",
     hasReferral: "0", referal_code: ""
@@ -147,7 +147,7 @@ const StudentOnboardingScreen = () => {
       if (selectedDept?.academicYears) {
         setDynamicFormData(prev => ({
           ...prev,
-          academicYear: `${selectedDept.academicYears} Years`
+          academicYear: selectedDept.academicYears
         }));
       }
     }
@@ -279,16 +279,16 @@ const StudentOnboardingScreen = () => {
           value: college.name,
           label: college.college_name || college.name
         }));
-        if (!options.some((opt: any) => opt.value === "Others" || opt.label === "Others")) {
-          options.push({ value: "Others", label: "Others" });
+        if (!options.some((opt: any) => opt.value === "Other" || opt.label === "Other")) {
+          options.push({ value: "Other", label: "Other" });
         }
         return options;
       }
     },
-    ...(dynamicFormData.college === "Others" ? [{
-      fieldname: "college_other",
-      label: "Enter College Name",
-      placeholder: "Enter your college name",
+    ...(dynamicFormData.college === "Other" ? [{
+      fieldname: "otherCollege",
+      label: "College Name",
+      placeholder: "Enter full college name",
       fieldtype: "Data",
       required: true,
       layout: "full" as const
@@ -325,7 +325,7 @@ const StudentOnboardingScreen = () => {
         doctype: "College Program Details",
         fields: ["stream"],
         filters: [
-          ["college", "=", dynamicFormData.college],
+          ...(dynamicFormData.college !== "Other" ? [["college", "=", dynamicFormData.college]] : []),
           ["course_type", "=", dynamicFormData.courses]
         ],
         limit_page_length: 1000
@@ -352,7 +352,7 @@ const StudentOnboardingScreen = () => {
         doctype: "College Program Details",
         fields: ["course"],
         filters: [
-          ["college", "=", dynamicFormData.college],
+          ...(dynamicFormData.college !== "Other" ? [["college", "=", dynamicFormData.college]] : []),
           ["course_type", "=", dynamicFormData.courses],
           ["stream", "=", dynamicFormData.stream]
         ],
@@ -376,22 +376,31 @@ const StudentOnboardingScreen = () => {
       placeholder: "Select department",
       layout: "full",
       apiEndpoint: (dynamicFormData.college && dynamicFormData.courses && dynamicFormData.stream && dynamicFormData.course) ? `${API_BASE_URL}/api/method/stridenex_app.api_stridenex_app.college.master.get_master_data` : undefined,
-      apiParams: (dynamicFormData.college && dynamicFormData.courses && dynamicFormData.stream && dynamicFormData.course) ? {
-        doctype: "College Program Details",
-        fields: ["department"],
-        filters: [
-          ["college", "=", dynamicFormData.college],
-          ["course_type", "=", dynamicFormData.courses],
-          ["stream", "=", dynamicFormData.stream],
-          ["course", "=", dynamicFormData.course]
-        ],
-        limit_page_length: 1000
-      } : undefined,
+      apiParams: (dynamicFormData.college && dynamicFormData.courses && dynamicFormData.stream && dynamicFormData.course)
+        ? dynamicFormData.college === "Other"
+          ? {
+            doctype: "College Department",
+            fields: ["department_name", "academic_years", "semester"],
+            filters: [["course", "=", dynamicFormData.course]],
+            limit_page_length: 1000
+          }
+          : {
+            doctype: "College Program Details",
+            fields: ["department"],
+            filters: [
+              ["college", "=", dynamicFormData.college],
+              ["course_type", "=", dynamicFormData.courses],
+              ["stream", "=", dynamicFormData.stream],
+              ["course", "=", dynamicFormData.course]
+            ],
+            limit_page_length: 1000
+          }
+        : undefined,
       mapOptions: (data) => {
         const departments = data.data || data || [];
         const deptOptions = departments.map((dept: any) => ({
-          value: dept.department || dept.name,
-          label: dept.department || dept.name,
+          value: dept.department || dept.department_name || dept.name,
+          label: dept.department || dept.department_name || dept.name,
           academicYears: dept.academic_years || "3",
           semester: dept.semester || "Semester 1"
         }));
@@ -419,14 +428,19 @@ const StudentOnboardingScreen = () => {
       apiEndpoint: dynamicFormData.department
         ? `${API_BASE_URL}/api/method/stridenex_app.api_stridenex_app.student.masters.get_semester`
         : undefined,
-      apiParams: dynamicFormData.department ? {
-        semester: departmentOptions.find(d => d.value === dynamicFormData.department)?.semester || ""
-      } : undefined,
       mapOptions: (data) => {
-        const semesters = data.data || data || [];
+        const semesters = Array.isArray(data)
+          ? data
+          : Array.isArray(data?.data)
+            ? data.data
+            : Array.isArray(data?.data?.data)
+              ? data.data.data
+              : Array.isArray(data?.message?.data)
+                ? data.message.data
+                : [];
         return semesters.map((sem: any) => ({
-          value: sem.name,
-          label: sem.name
+          value: sem.name || sem.value || sem,
+          label: sem.name || sem.label || sem
         }));
       },
       disabled: !dynamicFormData.department
@@ -551,8 +565,8 @@ const StudentOnboardingScreen = () => {
       if (!data[f] || data[f].toString().trim() === '') errs[f as string] = 'This field is required';
     });
     
-    if (data.college === "Others" && (!data.college_other || data.college_other.trim() === '')) {
-      errs.college_other = 'College name is required';
+    if (data.college === "Other" && (!data.otherCollege || data.otherCollege.trim() === '')) {
+      errs.otherCollege = 'College name is required';
     }
 
     if (!data.courses) errs.courses = 'Please select a course type';
@@ -606,9 +620,9 @@ const StudentOnboardingScreen = () => {
       }));
 
       // Extract just the number from academicYear (e.g., "2 Years" -> "2")
-      let academicYearValue = data.academicYear || "1";
-      const numericMatch = academicYearValue.match(/\d+/);
-      academicYearValue = numericMatch ? numericMatch[0] : "1";
+      let academicYearValue = data.academicYear || "First Year";
+
+      const isOtherCollegeSelected = data.college === "Other";
 
       // Prepare payload matching web portal format
       const payload = {
@@ -618,7 +632,8 @@ const StudentOnboardingScreen = () => {
         email_id: email,
         stream: data.stream || "Engineering",
         courses_type: coursesTypeArray.length > 0 ? coursesTypeArray : [{ course_type: "PG" }],
-        college: data.college === "Others" ? (data.college_other || "Others") : (data.college || "DRK"),
+        college: isOtherCollegeSelected ? "" : (data.college || "DRK"),
+        other_college: isOtherCollegeSelected ? (data.otherCollege || "").trim() : "",
         course: data.course || "BA",
         department: data.department || "Dispatch",
         academic_year: academicYearValue,
@@ -735,7 +750,7 @@ const StudentOnboardingScreen = () => {
         state: newData.state ?? prev.state,
         district: newData.district ?? prev.district,
         college: newData.college ?? prev.college,
-        college_other: newData.college_other ?? prev.college_other,
+        otherCollege: newData.otherCollege ?? prev.otherCollege,
         department: newData.department ?? prev.department,
         academicYear: newData.academicYear ?? prev.academicYear,
         stream: newData.stream ?? prev.stream,
@@ -931,12 +946,13 @@ const StudentOnboardingScreen = () => {
 
                 if (changedField) {
                   const fieldDependencies: Record<string, string[]> = {
-                    state: ["district", "college", "department", "academicYear", "course", "semester"],
-                    district: ["college", "department", "academicYear", "course", "semester"],
-                    stream: ["college", "department", "academicYear", "course", "semester"],
-                    college: ["department", "academicYear", "course", "semester"],
-                    department: ["semester"],
-                    course: ["semester"]
+                    state: ["district", "college", "otherCollege", "courses", "stream", "course", "department", "academicYear", "semester"],
+                    district: ["college", "otherCollege", "courses", "stream", "course", "department", "academicYear", "semester"],
+                    college: ["otherCollege", "courses", "stream", "course", "department", "academicYear", "semester"],
+                    courses: ["stream", "course", "department", "academicYear", "semester"],
+                    stream: ["course", "department", "academicYear", "semester"],
+                    course: ["department", "semester"],
+                    department: ["semester"]
                   };
 
                   const fieldsToReset = fieldDependencies[changedField] || [];
@@ -953,10 +969,13 @@ const StudentOnboardingScreen = () => {
                     return newErrors;
                   });
 
-                  if (changedField === "state" || changedField === "district" ||
-                    changedField === "stream" || changedField === "college") {
-                    fetchedFieldsRef.current.delete('department');
+                  if (changedField === "state" || changedField === "district" || changedField === "college" || changedField === "courses" || changedField === "stream" || changedField === "course") {
+                    fetchedFieldsRef.current.delete('district');
+                    fetchedFieldsRef.current.delete('college');
+                    fetchedFieldsRef.current.delete('courses');
+                    fetchedFieldsRef.current.delete('stream');
                     fetchedFieldsRef.current.delete('course');
+                    fetchedFieldsRef.current.delete('department');
                     fetchedFieldsRef.current.delete('semester');
                   } else if (changedField === "department") {
                     fetchedFieldsRef.current.delete('semester');

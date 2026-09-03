@@ -28,6 +28,7 @@ export interface CreateStudentPayload {
   stream: string;
   courses_type: Array<{ course_type: string }>;
   college: string;
+  other_college?: string;
   course: string;
   department: string;
   academic_year: string;
