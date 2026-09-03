@@ -367,3 +367,8 @@ export const getProfilePicture = async (): Promise<string | null> => {
     return null;
   }
 };
+
+export const updateCommunityMemberStatus = async (params: { name: string; status: string }) => {
+  const response = await api.post("method/stridenex_app.stridenex_app.doctype.community_member.community_member.update_community_member_status", params);
+  return response.data;
+};

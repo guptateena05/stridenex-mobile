@@ -50,6 +50,9 @@ export const LoginScreen = () => {
           else if (lowerRoles.some((r: string) => r.includes('mentor'))) userRole = 'Mentor';
         }
 
+        const userEmail = data.user || username;
+        await AsyncStorage.setItem("userEmail", userEmail);
+
         const userDetails = {
           full_name: data.full_name || '',
           username: username

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, RefreshControl, Modal, BackHandler, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Users, MessageSquare, Heart, Search, ArrowLeft, Folder, Tag, Plus, Send, X, ChevronRight } from 'lucide-react-native';
+import { Users, MessageSquare, Heart, Search, ArrowLeft, Folder, Tag, Plus, Send, X, ChevronRight, Check, Clock, Lock, Shield, CheckCircle } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getCommunities, joinCommunity, leaveCommunity, getPosts, getPostDetail, postComment, createPost, createCategory, createTag, getCommunityDetail, toggleCommentLike } from '@/api/api.services';
@@ -57,6 +57,24 @@ export const StudentCommunityScreen = ({ navigation }: any) => {
   const [replyText, setReplyText] = useState("");
 
   const [studentEmail, setStudentEmail] = useState("");
+
+  const getErrorMessage = (err: any, defaultMsg: string) => {
+    const data = err?.response?.data;
+    if (data) {
+      if (typeof data.message === 'string') return data.message;
+      if (typeof data.message === 'object' && data.message?.message) return data.message.message;
+      if (typeof data.message === 'object' && data.message?.error) return data.message.error;
+      if (typeof data.error === 'string') return data.error;
+    }
+    if (typeof err?.message === 'string') return err.message;
+    return defaultMsg;
+  };
+
+  const [showTermsModal, setShowTermsModal] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [joiningChannelId, setJoiningChannelId] = useState<string | null>(null);
+  const [isJoining, setIsJoining] = useState(false);
+  const [successModal, setSuccessModal] = useState<{ visible: boolean, title: string, message: string, isPrivate: boolean, onOk?: () => void }>({ visible: false, title: "", message: "", isPrivate: false });
 
   useEffect(() => {
     navigation?.setOptions({ headerShown: !selectedChannel });
@@ -127,15 +145,19 @@ export const StudentCommunityScreen = ({ navigation }: any) => {
 
   const handleJoinChannel = async (channelId: string) => {
     const commObj = communities.find(c => c.id === channelId);
-    const isMember = commObj?.action === "leave" || joinedChannels.includes(channelId) || commObj?.is_member === 1;
+    const isJoined = joinedChannels.includes(channelId) || Number(commObj?.is_member) === 1 || commObj?.is_member === true || commObj?.action === 'leave';
+    const isPending = commObj?.action === "pending" || commObj?.action === "Pending" || commObj?.status === "Pending";
+
+    if (isPending) return;
+
+    if (!isJoined) {
+      setJoiningChannelId(channelId);
+      setTermsAccepted(false);
+      setShowTermsModal(true);
+      return;
+    }
 
     try {
-      if (!isMember) {
-        await joinCommunity({ community: channelId, student: studentEmail });
-        setJoinedChannels(prev => [...prev, channelId]);
-        loadCommunities(false);
-      }
-      
       setChannelDetailsLoading(true);
       const detailRes = await getCommunityDetail({ community: channelId });
       const channelDetails = detailRes?.message?.data || detailRes?.data || null;
@@ -149,10 +171,71 @@ export const StudentCommunityScreen = ({ navigation }: any) => {
       } else {
         setSelectedChannel(commObj);
       }
-    } catch (err) {
-      Alert.alert("Error", "Could not process action");
+    } catch (err: any) {
+      Alert.alert("Error", getErrorMessage(err, "Could not process action"));
     } finally {
       setChannelDetailsLoading(false);
+    }
+  };
+
+  const confirmJoinChannel = async () => {
+    if (!joiningChannelId || !studentEmail) return;
+    const commObj = communities.find(c => c.id === joiningChannelId);
+    try {
+      setIsJoining(true);
+      await joinCommunity({ community: joiningChannelId, student: studentEmail });
+      
+      if (commObj?.category === 'Private' || commObj?.community_type === 'Private') {
+        setCommunities(prev => prev.map(c => c.id === joiningChannelId ? { ...c, action: 'pending' } : c));
+        setShowTermsModal(false);
+        setTimeout(() => {
+          setSuccessModal({
+            visible: true,
+            title: "Request Sent",
+            message: `Your request to join ${commObj?.prettyName} has been sent for approval.`,
+            isPrivate: true,
+            onOk: () => setSuccessModal(prev => ({ ...prev, visible: false }))
+          });
+        }, 300);
+      } else {
+        setJoinedChannels(prev => [...prev, joiningChannelId]);
+        loadCommunities(false);
+        setShowTermsModal(false);
+        setTimeout(() => {
+          setSuccessModal({
+            visible: true,
+            title: "Success",
+            message: `You have successfully joined ${commObj?.prettyName || 'the community'}!`,
+            isPrivate: false,
+            onOk: async () => {
+              setSuccessModal(prev => ({ ...prev, visible: false }));
+              try {
+                setChannelDetailsLoading(true);
+                const detailRes = await getCommunityDetail({ community: joiningChannelId });
+                const channelDetails = detailRes?.message?.data || detailRes?.data || null;
+
+                if (channelDetails) {
+                  setSelectedChannel({
+                    ...commObj,
+                    ...channelDetails,
+                    prettyName: formatChannelNameStr(channelDetails.community_name || channelDetails.name),
+                  });
+                } else {
+                  setSelectedChannel(commObj as any);
+                }
+              } catch (err: any) {
+                Alert.alert("Error", getErrorMessage(err, "Could not process action"));
+              } finally {
+                setChannelDetailsLoading(false);
+              }
+            }
+          });
+        }, 300);
+      }
+    } catch (err: any) {
+      Alert.alert("Error", getErrorMessage(err, "Could not join community"));
+    } finally {
+      setIsJoining(false);
     }
   };
 
@@ -495,6 +578,9 @@ export const StudentCommunityScreen = ({ navigation }: any) => {
   }
 
   // LIST VIEW
+  const joiningCommObj = communities.find(c => c.id === joiningChannelId);
+  const isJoiningPrivate = joiningCommObj?.category === 'Private' || joiningCommObj?.community_type === 'Private';
+
   return (
     <View style={styles.container}>
       <View style={styles.listHeader}>
@@ -520,9 +606,11 @@ export const StudentCommunityScreen = ({ navigation }: any) => {
       <ScrollView refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#FF6B00']} />} contentContainerStyle={{ padding: 16 }}>
         {loading ? <ActivityIndicator size="large" color="#FF6B00" style={{ marginTop: 40 }} /> : (
           filteredCommunities.map((community, idx) => {
-            const isJoined = joinedChannels.includes(community.id) || community.is_member === 1 || community.action === 'leave';
+            const isJoined = joinedChannels.includes(community.id) || Number(community.is_member) === 1 || community.is_member === true || community.action === 'leave';
+            const isPending = community.action === "pending" || community.action === "Pending" || community.status === "Pending";
+            
             return (
-              <TouchableOpacity key={idx} style={styles.communityCard} onPress={() => isJoined ? handleJoinChannel(community.id) : null}>
+              <TouchableOpacity key={idx} style={styles.communityCard} onPress={() => (isJoined && !isPending) ? handleJoinChannel(community.id) : null}>
                 <View style={styles.communityIconWrapper}>
                   <Text style={styles.communityIconTxt}>{community.icon}</Text>
                 </View>
@@ -534,17 +622,187 @@ export const StudentCommunityScreen = ({ navigation }: any) => {
                     <View style={styles.metaBadge}><Tag size={12} color="#64748B" /><Text style={styles.metaTxt}>{community.category}</Text></View>
                   </View>
                 </View>
-                <TouchableOpacity
-                  style={[styles.joinBtn, isJoined && styles.joinBtnActive]}
-                  onPress={() => handleJoinChannel(community.id)}
-                >
-                  <Text style={[styles.joinBtnText, isJoined && styles.joinBtnTextActive]}>{isJoined ? "View" : "Join"}</Text>
-                </TouchableOpacity>
+                {isPending ? (
+                  <View style={[styles.joinBtn, { backgroundColor: '#FFFBEB', borderWidth: 1, borderColor: '#FDE68A', flexDirection: 'row', gap: 4, width: 'auto', paddingHorizontal: 8 }]}>
+                    <Clock size={12} color="#D97706" />
+                    <Text style={[styles.joinBtnText, { color: '#D97706' }]}>Pending</Text>
+                  </View>
+                ) : (
+                  <TouchableOpacity
+                    style={[styles.joinBtn, isJoined && styles.joinBtnActive]}
+                    onPress={() => handleJoinChannel(community.id)}
+                  >
+                    <Text style={[styles.joinBtnText, isJoined && styles.joinBtnTextActive]}>{isJoined ? "View" : "Join"}</Text>
+                  </TouchableOpacity>
+                )}
               </TouchableOpacity>
             )
           })
         )}
       </ScrollView>
+
+      {/* Terms and Conditions Modal */}
+      <Modal visible={showTermsModal} transparent animationType="slide">
+        <View style={styles.modalBg}>
+          <View style={[styles.modalContent, { padding: 0, overflow: 'hidden' }]}>
+            {/* Header */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 20, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                <View style={{ width: 40, height: 40, borderRadius: 10, backgroundColor: isJoiningPrivate ? '#9333EA' : '#2563EB', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                  {isJoiningPrivate ? <Lock size={20} color="#FFFFFF" /> : <Shield size={20} color="#FFFFFF" />}
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 18, fontWeight: '700', color: '#0F172A' }}>
+                    {isJoiningPrivate ? 'Request to Join Private Space' : 'Community Guidelines'}
+                  </Text>
+                  <Text style={{ fontSize: 13, color: '#64748B', marginTop: 2 }}>
+                    {isJoiningPrivate ? 'Requires owner approval to access' : 'Please read before joining'}
+                  </Text>
+                </View>
+              </View>
+              <TouchableOpacity 
+                style={{ width: 32, height: 32, borderRadius: 16, borderWidth: 1, borderColor: '#E2E8F0', alignItems: 'center', justifyContent: 'center' }}
+                onPress={() => setShowTermsModal(false)}
+              >
+                <X size={16} color="#64748B" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={{ maxHeight: 400 }} contentContainerStyle={{ padding: 20 }}>
+              {/* Banner */}
+              {isJoiningPrivate && (
+                <View style={{ backgroundColor: '#FAF5FF', borderWidth: 1, borderColor: '#E9D5FF', borderRadius: 12, padding: 16, marginBottom: 20, flexDirection: 'row', alignItems: 'flex-start' }}>
+                  <Lock size={16} color="#9333EA" style={{ marginTop: 2, marginRight: 8 }} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 14, fontWeight: '700', color: '#6B21A8', marginBottom: 4 }}>Private Community Approval</Text>
+                    <Text style={{ fontSize: 13, color: '#7E22CE', lineHeight: 18 }}>This is a private community. Submitting this request will send your profile for approval to the community owner.</Text>
+                  </View>
+                </View>
+              )}
+
+              <Text style={{ fontSize: 14, color: '#334155', lineHeight: 22, marginBottom: 16 }}>
+                Welcome to our community! To ensure a safe, collaborative, and professional environment, we ask all members to adhere to the following guidelines:
+              </Text>
+              
+              <View style={{ marginBottom: 12, flexDirection: 'row' }}>
+                <Text style={{ fontSize: 14, color: '#0F172A', marginRight: 6 }}>•</Text>
+                <Text style={{ fontSize: 14, color: '#334155', lineHeight: 22, flex: 1 }}>
+                  <Text style={{ fontWeight: '700', color: '#0F172A' }}>Respect Everyone: </Text>
+                  Treat all members with respect. Harassment, discrimination, or abusive language will not be tolerated.
+                </Text>
+              </View>
+              
+              <View style={{ marginBottom: 12, flexDirection: 'row' }}>
+                <Text style={{ fontSize: 14, color: '#0F172A', marginRight: 6 }}>•</Text>
+                <Text style={{ fontSize: 14, color: '#334155', lineHeight: 22, flex: 1 }}>
+                  <Text style={{ fontWeight: '700', color: '#0F172A' }}>No Spam or Self-Promotion: </Text>
+                  Keep discussions relevant to the community topic. Do not post spam or unsolicited promotional material.
+                </Text>
+              </View>
+              
+              <View style={{ marginBottom: 12, flexDirection: 'row' }}>
+                <Text style={{ fontSize: 14, color: '#0F172A', marginRight: 6 }}>•</Text>
+                <Text style={{ fontSize: 14, color: '#334155', lineHeight: 22, flex: 1 }}>
+                  <Text style={{ fontWeight: '700', color: '#0F172A' }}>Protect Privacy: </Text>
+                  Do not share personal information of others or sensitive data without explicit permission.
+                </Text>
+              </View>
+              
+              <View style={{ marginBottom: 12, flexDirection: 'row' }}>
+                <Text style={{ fontSize: 14, color: '#0F172A', marginRight: 6 }}>•</Text>
+                <Text style={{ fontSize: 14, color: '#334155', lineHeight: 22, flex: 1 }}>
+                  <Text style={{ fontWeight: '700', color: '#0F172A' }}>Constructive Feedback: </Text>
+                  When reviewing others' work or answering questions, be constructive, helpful, and kind.
+                </Text>
+              </View>
+              
+              <View style={{ marginBottom: 4, flexDirection: 'row' }}>
+                <Text style={{ fontSize: 14, color: '#0F172A', marginRight: 6 }}>•</Text>
+                <Text style={{ fontSize: 14, color: '#334155', lineHeight: 22, flex: 1 }}>
+                  <Text style={{ fontWeight: '700', color: '#0F172A' }}>Compliance: </Text>
+                  {isJoiningPrivate ? 
+                    'By joining this community, you agree to comply with all platform rules.' :
+                    "By joining this community, you agree to comply with StrideNex's overarching Terms of Use and Privacy Policy."
+                  }
+                </Text>
+              </View>
+
+              {!isJoiningPrivate && (
+                <Text style={{ fontSize: 14, color: '#334155', lineHeight: 22, marginTop: 12, marginBottom: 4 }}>
+                  Failure to follow these rules may result in temporary suspension or permanent removal from the community.
+                </Text>
+              )}
+            </ScrollView>
+
+            {/* Footer */}
+            <View style={{ padding: 20, borderTopWidth: 1, borderTopColor: '#F1F5F9' }}>
+              <TouchableOpacity 
+                style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 20 }}
+                onPress={() => setTermsAccepted(!termsAccepted)}
+              >
+                <View style={{ width: 20, height: 20, borderRadius: 4, borderWidth: 1, borderColor: termsAccepted ? (isJoiningPrivate ? '#C084FC' : '#3B82F6') : '#CBD5E1', backgroundColor: termsAccepted ? (isJoiningPrivate ? '#C084FC' : '#3B82F6') : '#FFFFFF', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                  {termsAccepted && <Check size={14} color="#FFFFFF" strokeWidth={3} />}
+                </View>
+                <Text style={{ fontSize: 14, color: '#334155', flex: 1, lineHeight: 20 }}>
+                  I have read and agree to follow the community guidelines and terms of use.
+                </Text>
+              </TouchableOpacity>
+
+              <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 16 }}>
+                <TouchableOpacity 
+                  style={{ paddingVertical: 12, paddingHorizontal: 24, borderRadius: 12 }}
+                  onPress={() => setShowTermsModal(false)}
+                >
+                  <Text style={{ fontSize: 15, fontWeight: '700', color: '#334155' }}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={{ paddingVertical: 12, paddingHorizontal: 24, borderRadius: 12, backgroundColor: termsAccepted ? (isJoiningPrivate ? '#C084FC' : '#3B82F6') : (isJoiningPrivate ? '#E9D5FF' : '#DBEAFE'), alignItems: 'center', justifyContent: 'center' }}
+                  disabled={!termsAccepted || isJoining}
+                  onPress={confirmJoinChannel}
+                >
+                  {isJoining ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <Text style={{ fontSize: 15, fontWeight: '700', color: termsAccepted ? '#FFFFFF' : (isJoiningPrivate ? '#9333EA' : '#2563EB') }}>
+                      {isJoiningPrivate ? 'Accept & Request to Join' : 'Accept & Join'}
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Success Modal */}
+      <Modal visible={successModal.visible} transparent animationType="fade">
+        <View style={styles.modalBg}>
+          <View style={[styles.modalContent, { padding: 0, overflow: 'hidden', alignItems: 'center' }]}>
+            <View style={{ padding: 24, alignItems: 'center', width: '100%' }}>
+              <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: successModal.isPrivate ? '#FAF5FF' : '#EFF6FF', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+                {successModal.isPrivate ? (
+                  <CheckCircle size={32} color="#9333EA" strokeWidth={2.5} />
+                ) : (
+                  <CheckCircle size={32} color="#2563EB" strokeWidth={2.5} />
+                )}
+              </View>
+              <Text style={{ fontSize: 20, fontWeight: '700', color: '#0F172A', marginBottom: 8, textAlign: 'center' }}>
+                {successModal.title}
+              </Text>
+              <Text style={{ fontSize: 14, color: '#64748B', textAlign: 'center', lineHeight: 22, marginBottom: 24 }}>
+                {successModal.message}
+              </Text>
+              
+              <TouchableOpacity 
+                style={{ width: '100%', paddingVertical: 14, borderRadius: 12, backgroundColor: successModal.isPrivate ? '#9333EA' : '#2563EB', alignItems: 'center', justifyContent: 'center' }}
+                onPress={() => successModal.onOk && successModal.onOk()}
+              >
+                <Text style={{ fontSize: 15, fontWeight: '700', color: '#FFFFFF' }}>Okay</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };

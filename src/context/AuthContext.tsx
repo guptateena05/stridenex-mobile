@@ -119,6 +119,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       await AsyncStorage.removeItem('userFullName');
       await AsyncStorage.removeItem('userName');
       await AsyncStorage.removeItem('userImage');
+      await AsyncStorage.removeItem('userEmail');
+      await AsyncStorage.removeItem('currentUser');
       setRole(null);
       setUserFullName(null);
       setUserName(null);

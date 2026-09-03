@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, RefreshControl, Modal, BackHandler, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Users, MessageSquare, Heart, Search, ArrowLeft, Folder, Tag, Plus, Send, X, ChevronRight, Check } from 'lucide-react-native';
+import { Users, MessageSquare, Heart, Search, ArrowLeft, Folder, Tag, Plus, Send, X, ChevronRight, Check, Clock } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { getCommunities, joinCommunity, leaveCommunity, getPosts, getPostDetail, postComment, createPost, createCategory, createTag, getCommunityDetail, api, toggleCommentLike } from '@/api/api.services';
+import { getCommunities, joinCommunity, leaveCommunity, getPosts, getPostDetail, postComment, createPost, createCategory, createTag, getCommunityDetail, api, toggleCommentLike, updateCommunityMemberStatus } from '@/api/api.services';
 
 const formatChannelNameStr = (name: string): string => {
   if (!name) return "";
@@ -50,6 +50,7 @@ export const SharedCommunityScreen = ({ userType }: SharedCommunityScreenProps) 
   const [showCreateCommunityModal, setShowCreateCommunityModal] = useState(false);
   const [showCreateCategoryModal, setShowCreateCategoryModal] = useState(false);
   const [showCreateTagModal, setShowCreateTagModal] = useState(false);
+  const [isJoining, setIsJoining] = useState(false);
 
   // Form Data
   const [newCommName, setNewCommName] = useState("");
@@ -146,17 +147,8 @@ export const SharedCommunityScreen = ({ userType }: SharedCommunityScreenProps) 
 
   const [channelDetailsLoading, setChannelDetailsLoading] = useState(false);
 
-  const handleJoinChannel = async (channelId: string) => {
-    const commObj = communities.find(c => c.id === channelId);
-    const isMember = commObj?.action === "leave" || joinedChannels.includes(channelId) || commObj?.is_member === 1 || commObj?.is_member === true;
-
+  const fetchAndShowChannelDetails = async (channelId: string, commObj: any) => {
     try {
-      if (!isMember && userType === 'student') {
-        await joinCommunity({ community: channelId, student: userEmail });
-        setJoinedChannels(prev => [...prev, channelId]);
-        loadCommunities(false);
-      }
-      
       setChannelDetailsLoading(true);
       const detailRes = await getCommunityDetail({ community: channelId });
       const channelDetails = detailRes?.message?.data || detailRes?.data || detailRes?.data?.message?.data || null;
@@ -177,6 +169,38 @@ export const SharedCommunityScreen = ({ userType }: SharedCommunityScreenProps) 
     }
   };
 
+  const handleJoinChannel = async (channelId: string) => {
+    const commObj = communities.find(c => c.id === channelId);
+    const isJoined = joinedChannels.includes(channelId) || Number(commObj?.is_member) === 1 || commObj?.is_member === true || commObj?.action === 'leave';
+    const isPending = commObj?.action === "pending" || commObj?.action === "Pending" || commObj?.status === "Pending";
+
+    if (isPending) return;
+
+    if (!isJoined && userType === 'student') {
+      try {
+        setIsJoining(true);
+        await joinCommunity({ community: channelId, student: userEmail });
+        
+        if (commObj?.category === 'Private') {
+          Alert.alert("Request Sent", `Your request to join ${commObj?.prettyName} has been sent for approval.`);
+          setCommunities(prev => prev.map(c => c.id === channelId ? { ...c, action: 'pending' } : c));
+        } else {
+          setJoinedChannels(prev => [...prev, channelId]);
+          Alert.alert("Success", `You have successfully joined ${commObj?.prettyName || 'the community'}!`);
+          loadCommunities(false);
+          await fetchAndShowChannelDetails(channelId, commObj);
+        }
+      } catch (err) {
+        Alert.alert("Error", "Could not join community");
+      } finally {
+        setIsJoining(false);
+      }
+      return;
+    }
+    
+    await fetchAndShowChannelDetails(channelId, commObj);
+  };
+
   const handleLeaveChannel = async () => {
     if (!selectedChannel) return;
     try {
@@ -184,8 +208,25 @@ export const SharedCommunityScreen = ({ userType }: SharedCommunityScreenProps) 
       setJoinedChannels(prev => prev.filter(id => id !== selectedChannel.id));
       setSelectedChannel(null);
       loadCommunities(false);
+      Alert.alert("Success", "You have left the community.");
     } catch (err) {
       Alert.alert("Error", "Could not leave community");
+    }
+  };
+
+  const handleApproveMember = async (memberName: string) => {
+    try {
+      await updateCommunityMemberStatus({ name: memberName, status: 'Approved' });
+      setSelectedChannel((prev: any) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          members: prev.members.map((m: any) => m.name === memberName ? { ...m, status: 'Approved' } : m)
+        };
+      });
+      Alert.alert("Success", "Member approved successfully.");
+    } catch (err: any) {
+      Alert.alert("Error", "Could not approve member.");
     }
   };
 
@@ -572,16 +613,34 @@ export const SharedCommunityScreen = ({ userType }: SharedCommunityScreenProps) 
                 <Text style={styles.sectionTitle}>Members ({selectedChannel?.members?.length || 0})</Text>
               </View>
               {selectedChannel?.members?.map((member: any, idx: number) => (
-                <View key={idx} style={styles.memberCard}>
-                  <View style={styles.memberAvatar}>
-                    <Text style={styles.memberAvatarTxt}>{(member.member || member.name || '?').substring(0, 1).toUpperCase()}</Text>
+                <View key={idx} style={[styles.memberCard, { justifyContent: 'space-between' }]}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                    <View style={styles.memberAvatar}>
+                      <Text style={styles.memberAvatarTxt}>{(member.member || member.name || '?').substring(0, 1).toUpperCase()}</Text>
+                    </View>
+                    <View style={{ flex: 1, paddingRight: 8 }}>
+                      <Text style={styles.memberName} numberOfLines={1}>{member.member || member.name}</Text>
+                      <Text style={styles.memberRole}>{member.role || 'Member'} • Joined {member.joined_on?.substring(0, 10)}</Text>
+                    </View>
                   </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.memberName}>{member.member || member.name}</Text>
-                    <Text style={styles.memberRole}>{member.role || 'Member'} • Joined {member.joined_on?.substring(0, 10)}</Text>
-                  </View>
-                  <View style={[styles.statusBadge, { backgroundColor: member.status === 'Approved' ? '#ECFDF5' : '#FFFBEB' }]}>
-                    <Text style={[styles.statusTxt, { color: member.status === 'Approved' ? '#059669' : '#D97706' }]}>{member.status || 'Pending'}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    {(member.role?.toUpperCase() === 'ADMIN' || member.role?.toUpperCase() === 'MEMBER') && (
+                      <View style={[styles.statusBadge, { backgroundColor: '#F1F5F9', marginRight: 4 }]}>
+                        <Text style={[styles.statusTxt, { color: '#475569', fontSize: 10, letterSpacing: 0.5 }]}>{member.role?.toUpperCase()}</Text>
+                      </View>
+                    )}
+                    <View style={[styles.statusBadge, { backgroundColor: member.status === 'Approved' ? '#ECFDF5' : '#FEF3C7', paddingHorizontal: 10 }]}>
+                      <Text style={[styles.statusTxt, { color: member.status === 'Approved' ? '#059669' : '#D97706', fontSize: 10, letterSpacing: 0.5 }]}>{member.status?.toUpperCase() || 'PENDING'}</Text>
+                    </View>
+                    {(member.status === 'Pending' || member.status === 'pending') && (
+                      <TouchableOpacity 
+                        style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#059669', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, gap: 4 }}
+                        onPress={() => handleApproveMember(member.name)}
+                      >
+                        <Check size={14} color="#FFFFFF" strokeWidth={3} />
+                        <Text style={{ color: '#FFFFFF', fontSize: 12, fontWeight: '700' }}>Approve</Text>
+                      </TouchableOpacity>
+                    )}
                   </View>
                 </View>
               ))}
@@ -717,27 +776,60 @@ export const SharedCommunityScreen = ({ userType }: SharedCommunityScreenProps) 
       <ScrollView refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#FF6B00']} />} contentContainerStyle={{ padding: 16 }}>
         {loading ? <ActivityIndicator size="large" color="#FF6B00" style={{ marginTop: 40 }} /> : (
           filteredCommunities.map((community, idx) => {
-            const isJoined = joinedChannels.includes(community.id) || community.is_member === 1 || community.is_member === true || community.action === 'leave';
+            const isJoined = joinedChannels.includes(community.id) || Number(community.is_member) === 1 || community.is_member === true || community.action === 'leave';
+            const isPending = community.action === "pending" || community.action === "Pending" || community.status === "Pending";
             return (
-              <TouchableOpacity key={idx} style={styles.communityCard} onPress={() => (isJoined || userType !== 'student') ? handleJoinChannel(community.id) : null}>
-                <View style={styles.communityIconWrapper}>
-                  <Text style={styles.communityIconTxt}>{community.icon}</Text>
-                </View>
-                <View style={styles.communityInfo}>
-                  <Text style={styles.communityName} numberOfLines={1}>{community.prettyName}</Text>
-                  <Text style={styles.communityDesc} numberOfLines={2}>{community.description || "A community space to collaborate."}</Text>
-                  <View style={styles.communityMeta}>
-                    <View style={styles.metaBadge}><Users size={12} color="#64748B" /><Text style={styles.metaTxt}>{community.member_count || 0}</Text></View>
-                    <View style={styles.metaBadge}><Tag size={12} color="#64748B" /><Text style={styles.metaTxt}>{community.category}</Text></View>
+              <TouchableOpacity key={idx} style={[styles.communityCard, { flexDirection: 'column', alignItems: 'stretch' }]} onPress={() => (isJoined || userType !== 'student') && !isPending ? handleJoinChannel(community.id) : (!isJoined && !isPending && userType === 'student' ? handleJoinChannel(community.id) : null)}>
+                <View style={{ flexDirection: 'row', width: '100%', marginBottom: userType === 'student' ? 16 : 0 }}>
+                  <View style={styles.communityIconWrapper}>
+                    <Text style={styles.communityIconTxt}>{community.icon}</Text>
+                  </View>
+                  <View style={styles.communityInfo}>
+                    <Text style={styles.communityName} numberOfLines={1}>{community.prettyName}</Text>
+                    <Text style={styles.communityDesc} numberOfLines={2}>{community.description || "A community space to collaborate."}</Text>
+                    <View style={styles.communityMeta}>
+                      <View style={styles.metaBadge}><Users size={12} color="#64748B" /><Text style={styles.metaTxt}>{community.member_count || 0}</Text></View>
+                      <View style={[styles.metaBadge, { backgroundColor: community.category === 'Private' ? '#F3E8FF' : '#EFF6FF' }]}>
+                        <Tag size={12} color={community.category === 'Private' ? '#9333EA' : '#2563EB'} />
+                        <Text style={[styles.metaTxt, { color: community.category === 'Private' ? '#9333EA' : '#2563EB' }]}>{community.category}</Text>
+                      </View>
+                    </View>
                   </View>
                 </View>
                 {userType === 'student' && (
-                  <TouchableOpacity
-                    style={[styles.joinBtn, isJoined && styles.joinBtnActive]}
-                    onPress={() => handleJoinChannel(community.id)}
-                  >
-                    <Text style={[styles.joinBtnText, isJoined && styles.joinBtnTextActive]}>{isJoined ? "View" : "Join"}</Text>
-                  </TouchableOpacity>
+                  isPending ? (
+                    <View
+                      style={[
+                        { width: '100%', height: 44, borderRadius: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
+                        { backgroundColor: '#FFFBEB', borderWidth: 1, borderColor: '#FDE68A' }
+                      ]}
+                    >
+                      <Clock size={16} color="#D97706" />
+                      <Text style={{ fontSize: 14, fontWeight: '700', color: '#D97706' }}>
+                        Pending Approval
+                      </Text>
+                    </View>
+                  ) : (
+                    <TouchableOpacity
+                      style={[
+                        { width: '100%', height: 44, borderRadius: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
+                        isJoined 
+                          ? { backgroundColor: '#ECFDF5', borderWidth: 1, borderColor: '#A7F3D0' }
+                          : { backgroundColor: '#FFF7ED', borderWidth: 1, borderColor: '#FED7AA' }
+                      ]}
+                      onPress={() => handleJoinChannel(community.id)}
+                    >
+                      {isJoined && <Check size={16} color="#059669" strokeWidth={3} />}
+                      {!isJoined && <Plus size={16} color="#EA580C" strokeWidth={2.5} />}
+                      <Text style={{ 
+                        fontSize: 14, 
+                        fontWeight: '700', 
+                        color: isJoined ? '#059669' : '#EA580C' 
+                      }}>
+                        {isJoined ? "Joined" : (community.category === "Private" ? "Request to Join" : "Join Community")}
+                      </Text>
+                    </TouchableOpacity>
+                  )
                 )}
               </TouchableOpacity>
             )
