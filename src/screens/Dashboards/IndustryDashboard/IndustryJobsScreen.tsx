@@ -538,7 +538,7 @@ export const IndustryJobsScreen = () => {
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: '#F8FAFC' },
   container: { flex: 1 },
-  content: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 40 },
+  content: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 110 },
 
   header: { marginBottom: 12, paddingHorizontal: 4 },
   headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 },

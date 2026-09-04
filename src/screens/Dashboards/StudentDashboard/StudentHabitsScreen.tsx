@@ -1240,7 +1240,7 @@ export const StudentHabitsScreen = () => {
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: '#F8FAFC' },
   container: { flex: 1 },
-  content: { paddingHorizontal: 16, paddingTop: 24, paddingBottom: 40 },
+  content: { paddingHorizontal: 16, paddingTop: 24, paddingBottom: 110 },
   header: {
     marginBottom: 16,
     paddingHorizontal: 4,

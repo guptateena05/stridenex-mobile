@@ -1671,7 +1671,7 @@ export const StudentMentorsScreen = () => {
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: '#F8FAFC' },
   container: { flex: 1 },
-  content: { paddingHorizontal: 16, paddingTop: 24, paddingBottom: 40 },
+  content: { paddingHorizontal: 16, paddingTop: 24, paddingBottom: 110 },
   
   header: { marginBottom: 16, paddingHorizontal: 4 },
   headerBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(255, 107, 0, 0.08)', alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, marginBottom: 6 },

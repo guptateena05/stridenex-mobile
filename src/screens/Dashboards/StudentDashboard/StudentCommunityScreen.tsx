@@ -377,7 +377,7 @@ export const StudentCommunityScreen = ({ navigation }: any) => {
           </TouchableOpacity>
           <Text style={styles.headerTitle} numberOfLines={1}>Discussion</Text>
         </View>
-        <ScrollView style={styles.body} contentContainerStyle={{ paddingBottom: 20 }}>
+        <ScrollView style={styles.body} contentContainerStyle={{ paddingBottom: 110 }}>
           {repliesLoading ? <ActivityIndicator size="small" color="#FF6B00" style={{ marginTop: 20 }} /> : (
             <>
               <View style={styles.postDetailCard}>

@@ -496,7 +496,7 @@ const styles = StyleSheet.create({
   content: {
     paddingHorizontal: 16,
     paddingTop: 24,
-    paddingBottom: 40,
+    paddingBottom: 110,
   },
   centered: {
     justifyContent: 'center',
@@ -875,7 +875,7 @@ const styles = StyleSheet.create({
   testScrollContent: {
     paddingHorizontal: 20,
     paddingTop: 8,
-    paddingBottom: 40,
+    paddingBottom: 110,
   },
   questionCard: {
     backgroundColor: '#FFFFFF',
@@ -1019,7 +1019,7 @@ const styles = StyleSheet.create({
   },
   testIntroScrollContent: {
     padding: 20,
-    paddingBottom: 40,
+    paddingBottom: 110,
   },
   introHighlightBox: {
     backgroundColor: '#FFF7ED',
@@ -1126,7 +1126,7 @@ const styles = StyleSheet.create({
   },
   resultScrollContent: {
     padding: 20,
-    paddingBottom: 40,
+    paddingBottom: 110,
   },
   scorecardMain: {
     backgroundColor: '#FFFFFF',

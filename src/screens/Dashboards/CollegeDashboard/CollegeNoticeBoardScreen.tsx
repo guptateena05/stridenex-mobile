@@ -804,7 +804,7 @@ export const CollegeNoticeBoardScreen = () => {
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: '#F8FAFC' },
-  content: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 40 },
+  content: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 110 },
   
   header: { marginBottom: 12, paddingHorizontal: 4 },
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 },

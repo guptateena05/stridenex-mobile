@@ -26,8 +26,20 @@ import {
 } from 'lucide-react-native';
 
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
+import { SharedBottomTabs, TabConfig } from './SharedBottomTabs';
 
 const Drawer = createDrawerNavigator();
+
+const CollegeTabs = () => {
+  const tabs: TabConfig[] = [
+    { name: "Overview", component: CollegeOverviewScreen, icon: LayoutDashboard },
+    { name: "Student Analytics", component: CollegeStudentsScreen, icon: Users },
+    { name: "Campus Drives", component: CollegePlacementScreen, icon: Briefcase, initialParams: { tab: 'drives' } },
+    { name: "Interventions", component: CollegeInterventionsScreen, icon: Target },
+    { name: "Notice Board", component: CollegeNoticeBoardScreen, icon: BookOpen }
+  ];
+  return <SharedBottomTabs tabs={tabs} activeTintColor="#10b981" />;
+};
 
 export const CollegeDrawerNavigator = () => {
   return (
@@ -51,20 +63,9 @@ export const CollegeDrawerNavigator = () => {
       }}
     >
       <Drawer.Screen
-        name="Overview"
-        component={CollegeOverviewScreen}
-        options={{ drawerIcon: ({ color, size }) => <LayoutDashboard color={color} size={size} /> }}
-      />
-      <Drawer.Screen
-        name="Student Analytics"
-        component={CollegeStudentsScreen}
-        options={{ drawerIcon: ({ color, size }) => <Users color={color} size={size} /> }}
-      />
-      <Drawer.Screen
-        name="Campus Drives"
-        component={CollegePlacementScreen}
-        initialParams={{ tab: 'drives' }}
-        options={{ drawerIcon: ({ color, size }) => <Briefcase color={color} size={size} /> }}
+        name="ModuleTabs"
+        component={CollegeTabs}
+        options={{ drawerItemStyle: { display: 'none' } }}
       />
       <Drawer.Screen
         name="Active Drives"
@@ -153,19 +154,9 @@ export const CollegeDrawerNavigator = () => {
 
       {/* Main Tabs cont... */}
       <Drawer.Screen
-        name="Interventions"
-        component={CollegeInterventionsScreen}
-        options={{ drawerIcon: ({ color, size }) => <Target color={color} size={size} /> }}
-      />
-      <Drawer.Screen
         name="Community"
         component={CollegeCommunityScreen}
         options={{ drawerIcon: ({ color, size }) => <Users color={color} size={size} /> }}
-      />
-      <Drawer.Screen
-        name="Notice Board"
-        component={CollegeNoticeBoardScreen}
-        options={{ drawerIcon: ({ color, size }) => <BookOpen color={color} size={size} /> }}
       />
       {/* <Drawer.Screen
         name="Reports"

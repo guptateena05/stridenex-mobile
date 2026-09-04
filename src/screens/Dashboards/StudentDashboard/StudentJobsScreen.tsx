@@ -863,7 +863,7 @@ const styles = StyleSheet.create({
   content: {
     paddingHorizontal: 16,
     paddingTop: 24,
-    paddingBottom: 40,
+    paddingBottom: 110,
   },
   header: {
     marginBottom: 16,
@@ -1175,7 +1175,7 @@ const styles = StyleSheet.create({
   modalScroll: {
     paddingHorizontal: 24,
     paddingTop: 16,
-    paddingBottom: 40,
+    paddingBottom: 110,
   },
   detailsContentContainer: {
     gap: 16,

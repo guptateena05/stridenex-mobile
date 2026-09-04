@@ -844,7 +844,7 @@ const styles = StyleSheet.create({
   emptyCardText: { fontSize: 13, color: '#64748B', fontWeight: '500' },
 
   modalOverlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.6)', justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: '#FFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 },
+  modalContent: { backgroundColor: '#FFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 110 },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
   modalTitle: { fontSize: 18, fontWeight: '800', color: '#0F172A' },
   closeBtn: { padding: 6, backgroundColor: '#F8FAFC', borderRadius: 20 },

@@ -29,8 +29,20 @@ import {
 } from 'lucide-react-native';
 import { IndustrySettingsScreen } from '@/screens/Dashboards/IndustryDashboard/IndustrySettingsScreen';
 import { IndustryProjectPipelineScreen } from '@/screens/Dashboards/IndustryDashboard/IndustryProjectPipelineScreen';
+import { SharedBottomTabs, TabConfig } from './SharedBottomTabs';
 
 const Drawer = createDrawerNavigator();
+
+const IndustryTabs = () => {
+  const tabs: TabConfig[] = [
+    { name: "Overview", component: IndustryDashboardScreen, icon: LayoutDashboard },
+    { name: "Pipeline", component: IndustryPipelineScreen, icon: Mail },
+    { name: "Projects", component: IndustryProjectsScreen, icon: FolderGit2 },
+    { name: "Internships", component: IndustryInternshipsScreen, icon: UserCheck },
+    { name: "Job Profiles", component: IndustryJobsScreen, icon: Briefcase }
+  ];
+  return <SharedBottomTabs tabs={tabs} activeTintColor={colors.purple[600]} />;
+};
 
 export const IndustryDrawerNavigator = () => {
   return (
@@ -53,48 +65,15 @@ export const IndustryDrawerNavigator = () => {
       }}
     >
       <Drawer.Screen
-        name="Overview"
-        component={IndustryDashboardScreen}
-        options={{
-          drawerIcon: ({ color, size }) => <LayoutDashboard color={color} size={size} />
-        }}
+        name="ModuleTabs"
+        component={IndustryTabs}
+        options={{ drawerItemStyle: { display: 'none' } }}
       />
       <Drawer.Screen
         name="Company Profile"
         component={IndustryCompanyProfileScreen}
         options={{
           drawerIcon: ({ color, size }) => <Building2 color={color} size={size} />
-        }}
-      />
-      <Drawer.Screen
-        name="Pipeline"
-        component={IndustryPipelineScreen}
-        options={{
-          drawerLabel: 'Application Pipeline',
-          drawerIcon: ({ color, size }) => <Mail color={color} size={size} />
-        }}
-      />
-      <Drawer.Screen
-        name="Projects"
-        component={IndustryProjectsScreen}
-        options={{
-          drawerLabel: 'Projects & R&D',
-          drawerIcon: ({ color, size }) => <FolderGit2 color={color} size={size} />
-        }}
-      />
-      <Drawer.Screen
-        name="Internships"
-        component={IndustryInternshipsScreen}
-        options={{
-          drawerLabel: 'Internship Posts',
-          drawerIcon: ({ color, size }) => <UserCheck color={color} size={size} />
-        }}
-      />
-      <Drawer.Screen
-        name="Job Profiles"
-        component={IndustryJobsScreen}
-        options={{
-          drawerIcon: ({ color, size }) => <Briefcase color={color} size={size} />
         }}
       />
       <Drawer.Screen

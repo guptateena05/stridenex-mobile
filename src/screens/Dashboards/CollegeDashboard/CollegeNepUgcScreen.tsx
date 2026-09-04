@@ -171,7 +171,7 @@ export const CollegeNepUgcScreen = ({ route }: any) => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8FAFC' },
-  content: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 40 },
+  content: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 110 },
   header: { marginBottom: 24 },
   headerBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#D1FAE5', alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 99, marginBottom: 8 },
   headerBadgeText: { fontSize: 9, fontWeight: '800', color: '#059669', letterSpacing: 0.5 },

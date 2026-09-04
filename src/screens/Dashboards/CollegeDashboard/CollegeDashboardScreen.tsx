@@ -124,7 +124,7 @@ export const CollegeDashboardScreen = () => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background.light || '#fcfcfc' },
-  content: { padding: spacing.md, paddingBottom: 40 },
+  content: { padding: spacing.md, paddingBottom: 110 },
   welcomeText: { fontSize: typography.fontSize.xl, fontWeight: typography.fontWeight.bold, color: colors.navy, marginBottom: spacing.lg, fontFamily: typography.fontFamily.display },
   gridContainer: { marginBottom: spacing.md },
   row: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: spacing.md },

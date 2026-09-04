@@ -2394,7 +2394,7 @@ export const CollegePlacementScreen = ({ route }: any) => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8FAFC' },
-  content: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 40 },
+  content: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 110 },
   
   header: { marginBottom: 16, paddingHorizontal: 4 },
   headerBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(5, 150, 105, 0.08)', alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, marginBottom: 6 },

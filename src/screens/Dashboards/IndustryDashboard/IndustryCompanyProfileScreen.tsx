@@ -1178,7 +1178,7 @@ export const IndustryCompanyProfileScreen = () => {
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: '#F8FAFC' },
   container: { flex: 1 },
-  content: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 40 },
+  content: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 110 },
 
   centerContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F8FAFC' },
   loadingText: { marginTop: 12, fontSize: 14, color: '#64748B', fontFamily: typography.fontFamily.display },
@@ -1263,7 +1263,7 @@ const styles = StyleSheet.create({
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 24, marginBottom: 24 },
   modalTitle: { fontSize: 20, fontWeight: '900', color: '#0F172A', fontFamily: typography.fontFamily.display },
   closeBtn: { padding: 4 },
-  modalScrollContent: { paddingHorizontal: 24, paddingBottom: 40 },
+  modalScrollContent: { paddingHorizontal: 24, paddingBottom: 110 },
 
   // Pipeline Styles
   pipelineContainer: { marginTop: 12, gap: 12 },

@@ -23,7 +23,20 @@ import {
   Users,
 } from 'lucide-react-native';
 
+import { SharedBottomTabs, TabConfig } from './SharedBottomTabs';
+
 const Drawer = createDrawerNavigator();
+
+const MentorTabs = () => {
+  const tabs: TabConfig[] = [
+    { name: "Overview", component: MentorDashboardScreen, icon: LayoutDashboard },
+    { name: "Schedule", component: MentorScheduleScreen, icon: Calendar },
+    { name: "Offerings", component: MentorOfferingsScreen, icon: Video },
+    { name: "Requests", component: MentorRequestsScreen, icon: Calendar },
+    { name: "Session History", component: MentorSessionHistoryScreen, icon: BookOpen }
+  ];
+  return <SharedBottomTabs tabs={tabs} activeTintColor="#4c1d95" />;
+};
 
 export const MentorDrawerNavigator = () => {
   return (
@@ -46,45 +59,15 @@ export const MentorDrawerNavigator = () => {
       }}
     >
       <Drawer.Screen
-        name="Overview"
-        component={MentorDashboardScreen}
-        options={{
-          drawerIcon: ({ color, size }) => <LayoutDashboard color={color} size={size} />
-        }}
-      />
-      <Drawer.Screen
-        name="Schedule"
-        component={MentorScheduleScreen}
-        options={{
-          drawerIcon: ({ color, size }) => <Calendar color={color} size={size} />
-        }}
-      />
-      <Drawer.Screen
-        name="Offerings"
-        component={MentorOfferingsScreen}
-        options={{
-          drawerIcon: ({ color, size }) => <Video color={color} size={size} />
-        }}
-      />
-      <Drawer.Screen
-        name="Requests"
-        component={MentorRequestsScreen}
-        options={{
-          drawerIcon: ({ color, size }) => <Calendar color={color} size={size} />
-        }}
+        name="ModuleTabs"
+        component={MentorTabs}
+        options={{ drawerItemStyle: { display: 'none' } }}
       />
       <Drawer.Screen
         name="Community"
         component={MentorCommunityScreen}
         options={{
           drawerIcon: ({ color, size }) => <Users color={color} size={size} />
-        }}
-      />
-      <Drawer.Screen
-        name="Session History"
-        component={MentorSessionHistoryScreen}
-        options={{
-          drawerIcon: ({ color, size }) => <BookOpen color={color} size={size} />
         }}
       />
       <Drawer.Screen

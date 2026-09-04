@@ -21,10 +21,18 @@ import {
   Play,
   LogOut,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  LayoutDashboard,
+  FolderGit2,
+  Award,
+  PieChart,
+  Target,
+  Mail,
+  UserCheck,
+  Video
 } from 'lucide-react-native';
 
-export const CustomDrawerContent = (props: DrawerContentComponentProps & { isIncomplete?: boolean }) => {
+export const CustomDrawerContent = (props: DrawerContentComponentProps & { isIncomplete?: boolean; hideJobs?: boolean }) => {
   const insets = useSafeAreaInsets();
   const { userFullName, role, logout } = useAuth();
 
@@ -97,6 +105,52 @@ export const CustomDrawerContent = (props: DrawerContentComponentProps & { isInc
             if (isCampusChild && !campusExpanded) return null;
 
             const isDisabled = props.isIncomplete && route.name !== 'Overview';
+            
+            if (route.name === 'ModuleTabs') {
+              const activeTabName = (route.state as any)?.routes[(route.state as any)?.index ?? 0]?.name || "Overview";
+              const manualTabs = [
+                { name: 'Overview', icon: LayoutDashboard },
+                { name: 'Student Analytics', icon: Users },
+                { name: 'Campus Drives', icon: Briefcase },
+                { name: 'Interventions', icon: Target },
+                { name: 'Notice Board', icon: BookOpen }
+              ];
+              return manualTabs.map((tab) => {
+                const isTabFocused = focused && activeTabName === tab.name;
+                const isCampusParent = tab.name === 'Campus Drives';
+                
+                return (
+                  <View key={`tab-${tab.name}`} pointerEvents={isDisabled && tab.name !== 'Overview' ? 'none' : 'auto'} style={{ opacity: isDisabled && tab.name !== 'Overview' ? 0.4 : 1 }}>
+                    <DrawerItem
+                      label={({ focused, color }) => (
+                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flex: 1, paddingRight: 4 }}>
+                          <Text style={{ color, fontSize: 14, fontWeight: '600', marginLeft: 8 }}>
+                            {tab.name}
+                          </Text>
+                          {isCampusParent && (
+                            <View style={{ opacity: 0.5 }}>
+                              {campusExpanded ? <ChevronUp size={16} color={color} /> : <ChevronDown size={16} color={color} />}
+                            </View>
+                          )}
+                        </View>
+                      )}
+                      icon={({ color, size }) => <tab.icon color={color} size={size} />}
+                      focused={isTabFocused}
+                      activeTintColor={drawerActiveTintColor || '#10b981'}
+                      inactiveTintColor={drawerInactiveTintColor || colors.text.secondary}
+                      activeBackgroundColor={drawerActiveBackgroundColor || 'rgba(16, 185, 129, 0.1)'}
+                      style={{ borderRadius: 8, marginHorizontal: 12 }}
+                      onPress={() => {
+                        if (isCampusParent) {
+                          setCampusExpanded(!campusExpanded);
+                        }
+                        props.navigation.navigate('ModuleTabs', { screen: tab.name });
+                      }}
+                    />
+                  </View>
+                );
+              });
+            }
 
             return (
               <View key={route.key} pointerEvents={isDisabled ? 'none' : 'auto'} style={{ opacity: isDisabled ? 0.5 : 1 }}>
@@ -139,7 +193,72 @@ export const CustomDrawerContent = (props: DrawerContentComponentProps & { isInc
           props.state.routes.map((route: any, i: number) => {
             const focused = i === props.state.index;
             const { title, drawerIcon, drawerActiveTintColor, drawerInactiveTintColor, drawerActiveBackgroundColor, drawerLabelStyle, drawerItemStyle } = props.descriptors[route.key].options;
-            const isDisabled = props.isIncomplete && route.name !== 'Overview';
+            const isDisabled = props.isIncomplete && route.name !== 'ModuleTabs';
+            
+            if (route.name === 'ModuleTabs') {
+              // Extract the active tab name from the nested state
+              const activeTabName = (route.state as any)?.routes[(route.state as any)?.index ?? 0]?.name || "Overview";
+              
+              let manualTabs: any[] = [];
+              const userRole = role as string;
+              
+              if (userRole === 'Student') {
+                manualTabs = [
+                  { name: 'Overview', icon: LayoutDashboard },
+                  { name: 'Skill Ledger', icon: Zap },
+                  { name: 'Projects', icon: FolderGit2 },
+                  { name: 'Internships', icon: Briefcase, hide: props.hideJobs },
+                  { name: 'Jobs', icon: Award, hide: props.hideJobs },
+                  { name: 'Habits', icon: PieChart }
+                ];
+              } else if (userRole === 'College') {
+                manualTabs = [
+                  { name: 'Overview', icon: LayoutDashboard },
+                  { name: 'Student Analytics', icon: Users },
+                  { name: 'Campus Drives', icon: Briefcase },
+                  { name: 'Interventions', icon: Target },
+                  { name: 'Notice Board', icon: BookOpen }
+                ];
+              } else if (userRole === 'Industry') {
+                manualTabs = [
+                  { name: 'Overview', icon: LayoutDashboard },
+                  { name: 'Pipeline', icon: Mail },
+                  { name: 'Projects', icon: FolderGit2 },
+                  { name: 'Internships', icon: UserCheck },
+                  { name: 'Job Profiles', icon: Briefcase }
+                ];
+              } else if (userRole === 'Mentor') {
+                manualTabs = [
+                  { name: 'Overview', icon: LayoutDashboard },
+                  { name: 'Schedule', icon: Calendar },
+                  { name: 'Offerings', icon: Video },
+                  { name: 'Requests', icon: Calendar },
+                  { name: 'Session History', icon: BookOpen }
+                ];
+              }
+
+              return manualTabs.map((tab) => {
+                if (tab.hide) return null;
+                const isTabFocused = focused && activeTabName === tab.name;
+                
+                return (
+                  <View key={`tab-${tab.name}`} pointerEvents={isDisabled && tab.name !== 'Overview' ? 'none' : 'auto'} style={{ opacity: isDisabled && tab.name !== 'Overview' ? 0.4 : 1 }}>
+                    <DrawerItem
+                      label={tab.name}
+                      icon={({ color, size }) => <tab.icon color={color} size={size} />}
+                      focused={isTabFocused}
+                      activeTintColor={drawerActiveTintColor || colors.accent.DEFAULT}
+                      inactiveTintColor={drawerInactiveTintColor || colors.text.secondary}
+                      activeBackgroundColor={drawerActiveBackgroundColor || 'rgba(255, 107, 0, 0.1)'}
+                      style={{ borderRadius: 8, marginHorizontal: 12 }}
+                      labelStyle={{ fontSize: 14, fontWeight: '600', marginLeft: 8 }}
+                      onPress={() => props.navigation.navigate('ModuleTabs', { screen: tab.name })}
+                    />
+                  </View>
+                );
+              });
+            }
+
             return (
               <View key={route.key} pointerEvents={isDisabled ? 'none' : 'auto'} style={{ opacity: isDisabled ? 0.4 : 1 }}>
                 <DrawerItem

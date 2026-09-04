@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { createDrawerNavigator } from '@react-navigation/drawer';
+import { SharedBottomTabs, TabConfig } from './SharedBottomTabs';
 import { StudentDashboardScreen } from '@/screens/Dashboards/StudentDashboard/StudentDashboardScreen';
 import { StudentSkillsScreen } from '@/screens/Dashboards/StudentDashboard/StudentSkillsScreen';
 import { CustomDrawerContent } from '@/components/dashboard/CustomDrawerContent';
 import { colors } from '@/theme/colors';
 import { typography } from '@/theme/typography';
-import { View, Text, StyleSheet, DeviceEventEmitter } from 'react-native';
+import { View, Text, StyleSheet, DeviceEventEmitter, Platform } from 'react-native';
 import { useAuth } from '@/context/AuthContext';
 import { getStudentByEmail, getDashboardStats } from '@/api/student.services';
 import {
@@ -58,6 +59,21 @@ const styles = StyleSheet.create({
   dummyText: { fontSize: 16, color: colors.text.secondary },
 });
 
+const StudentTabs = ({ route }: any) => {
+  const hideJobs = route.params?.hideJobs || false;
+  
+  const studentTabs: TabConfig[] = [
+    { name: "Overview", component: StudentDashboardScreen, icon: LayoutDashboard },
+    { name: "Skill Ledger", component: StudentSkillsScreen, icon: Zap },
+    { name: "Projects", component: StudentProjectsScreen, icon: FolderGit2 },
+    { name: "Internships", component: StudentInternshipScreen, icon: Briefcase, hide: hideJobs },
+    { name: "Jobs", component: StudentJobsScreen, icon: Award, hide: hideJobs },
+    { name: "Habits", component: StudentHabitsScreen, icon: PieChart }
+  ];
+
+  return <SharedBottomTabs tabs={studentTabs} />;
+};
+
 export const StudentDrawerNavigator = () => {
   const { userName } = useAuth();
   const [hideJobs, setHideJobs] = useState(false);
@@ -98,7 +114,7 @@ export const StudentDrawerNavigator = () => {
 
   return (
     <Drawer.Navigator
-      drawerContent={(props) => <CustomDrawerContent {...props} isIncomplete={isIncomplete} />}
+      drawerContent={(props) => <CustomDrawerContent {...props} isIncomplete={isIncomplete} hideJobs={hideJobs} />}
       screenOptions={{
         header: () => <DashboardHeader />,
         drawerActiveBackgroundColor: 'rgba(255, 107, 0, 0.1)',
@@ -116,17 +132,11 @@ export const StudentDrawerNavigator = () => {
       }}
     >
       <Drawer.Screen
-        name="Overview"
-        component={StudentDashboardScreen}
+        name="ModuleTabs"
+        component={StudentTabs}
+        initialParams={{ hideJobs }}
         options={{
-          drawerIcon: ({ color, size }) => <LayoutDashboard color={color} size={size} />,
-        }}
-      />
-      <Drawer.Screen
-        name="Skill Ledger"
-        component={StudentSkillsScreen}
-        options={{
-          drawerIcon: ({ color, size }) => <Zap color={color} size={size} />,
+          drawerItemStyle: { display: 'none' } // Hidden as CustomDrawerContent will manually inject the 6 items
         }}
       />
       <Drawer.Screen
@@ -134,36 +144,6 @@ export const StudentDrawerNavigator = () => {
         component={StudentPathScreen}
         options={{
           drawerIcon: ({ color, size }) => <Navigation color={color} size={size} />,
-        }}
-      />
-      <Drawer.Screen
-        name="Habits"
-        component={StudentHabitsScreen}
-        options={{
-          drawerIcon: ({ color, size }) => <PieChart color={color} size={size} />
-        }}
-      />
-      <Drawer.Screen
-        name="Projects"
-        component={StudentProjectsScreen}
-        options={{
-          drawerIcon: ({ color, size }) => <FolderGit2 color={color} size={size} />
-        }}
-      />
-      <Drawer.Screen
-        name="Internships"
-        component={StudentInternshipScreen}
-        options={{
-          drawerIcon: ({ color, size }) => <Briefcase color={color} size={size} />,
-          drawerItemStyle: hideJobs ? { display: 'none' } : { borderRadius: 8, marginHorizontal: 12 }
-        }}
-      />
-      <Drawer.Screen
-        name="Jobs"
-        component={StudentJobsScreen}
-        options={{
-          drawerIcon: ({ color, size }) => <Award color={color} size={size} />,
-          drawerItemStyle: hideJobs ? { display: 'none' } : { borderRadius: 8, marginHorizontal: 12 }
         }}
       />
       <Drawer.Screen
