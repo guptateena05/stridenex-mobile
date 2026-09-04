@@ -16,6 +16,7 @@ import { TrendingUp, Award, Briefcase, Bot, X, MapPin, Clock, IndianRupee, Targe
 
 import Animated, { FadeInUp, FadeInRight } from 'react-native-reanimated';
 import { getStudentByEmail, updateStudent, mapYearToWord, getSkillLedger, getDashboardStats, getStudentInternshipList, getLearningActivity, getTodaysOpportunityAlerts } from '@/api/student.services';
+import { uploadFileApi } from '@/api/api.services';
 import DynamicForm from '@/components/forms/DynamicForm';
 import { FormField } from '@/components/forms/DynamicField';
 import ProfileImageUploader from '@/components/profile/ProfileImageUploader';
@@ -292,6 +293,7 @@ export const StudentDashboardScreen = () => {
       linkedin: studentData.linkedin || "",
       github: studentData.github || "",
       cgpa: studentData.cgpa ? String(studentData.cgpa) : "",
+      marksheet: studentData.marksheet || studentData.marksheet_file || "",
     };
   }, [studentData, userName]);
 
@@ -301,6 +303,26 @@ export const StudentDashboardScreen = () => {
     if (!userName) return;
     setUpdateLoading(true);
     try {
+      let marksheetUrl = formData.marksheet;
+
+      // Handle marksheet upload if it's a new file object from DocumentPicker
+      if (formData.marksheet && typeof formData.marksheet === 'object' && formData.marksheet.uri) {
+        try {
+          const uploadRes = await uploadFileApi(
+            formData.marksheet,
+            "Student",
+            userName,
+            "marksheet"
+          );
+          marksheetUrl = uploadRes.file_url || uploadRes.file_name;
+        } catch (uploadErr) {
+          console.error("Marksheet upload failed:", uploadErr);
+          Alert.alert("Upload Error", "Failed to upload marksheet. Profile update aborted.");
+          setUpdateLoading(false);
+          return;
+        }
+      }
+
       const payload = {
         ...studentData,
         first_name: formData.first_name || studentData?.first_name || "",
@@ -319,6 +341,7 @@ export const StudentDashboardScreen = () => {
         linkedin: formData.linkedin || studentData?.linkedin || "",
         github: formData.github || studentData?.github || "",
         cgpa: formData.cgpa ? Number(formData.cgpa) : undefined,
+        marksheet: marksheetUrl || null,
       };
 
       await updateStudent(userName, payload);
@@ -458,6 +481,14 @@ export const StudentDashboardScreen = () => {
       fieldtype: 'Float',
       required: true,
       placeholder: 'Enter CGPA',
+      layout: 'full',
+    },
+    {
+      fieldname: 'marksheet',
+      label: 'Marksheet / Result',
+      fieldtype: 'File',
+      required: false,
+      placeholder: 'Upload Marksheet',
       layout: 'full',
     },
   ], []);

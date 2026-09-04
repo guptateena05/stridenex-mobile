@@ -9,7 +9,8 @@ import {
   Switch, 
   Alert,
   Modal,
-  TextInput
+  TextInput,
+  Linking
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '@/theme/colors';
@@ -43,7 +44,8 @@ import {
   RefreshCw,
   SkipForward,
   ChevronUp,
-  HelpCircle
+  HelpCircle,
+  Eye
 } from 'lucide-react-native';
 import Animated, { FadeInUp, FadeInRight } from 'react-native-reanimated';
 import { useAuth } from '@/context/AuthContext';
@@ -455,6 +457,22 @@ export const StudentPathScreen = () => {
     setActiveTestSkill(milestone.skill || milestone.milestone_title || "Unknown");
     setActiveTestLevel(milestone.required_skill_level || "Beginner");
     setIsTestModalOpen(true);
+  };
+
+  const handlePreviewReport = async () => {
+    const studentEmail = userName || "ac1@gmail.com";
+    const url = `https://devstridenex.quantcloud.in/api/method/nexedu.path_finder.app_api.get_career_path_pdf?student=${encodeURIComponent(studentEmail)}`;
+    
+    try {
+      const supported = await Linking.canOpenURL(url);
+      if (supported) {
+        await Linking.openURL(url);
+      } else {
+        Alert.alert("Error", "Don't know how to open this URL.");
+      }
+    } catch (error) {
+      Alert.alert("Error", "Failed to open preview report.");
+    }
   };
 
   // --- Data Mapping Logic ---
@@ -1042,11 +1060,17 @@ export const StudentPathScreen = () => {
               
               {/* Premium Progress Card */}
               <View style={styles.premiumCard}>
-                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
                     <Text style={styles.sectionTitle}>{activePathTitle}</Text>
-                    <TouchableOpacity onPress={() => setInWizardMode(true)} style={{ backgroundColor: '#EFF6FF', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: '#DBEAFE' }}>
-                       <Text style={{ fontSize: 10, fontWeight: 'bold', color: '#1D4ED8' }}>Switch Path</Text>
-                    </TouchableOpacity>
+                    <View style={{ flexDirection: 'row', gap: 8 }}>
+                       <TouchableOpacity onPress={handlePreviewReport} style={{ backgroundColor: '#ECFDF5', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: '#A7F3D0', flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                          <Eye size={12} color="#059669" />
+                          <Text style={{ fontSize: 10, fontWeight: 'bold', color: '#059669' }}>Preview Report</Text>
+                       </TouchableOpacity>
+                       <TouchableOpacity onPress={() => setInWizardMode(true)} style={{ backgroundColor: '#EFF6FF', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: '#DBEAFE' }}>
+                          <Text style={{ fontSize: 10, fontWeight: 'bold', color: '#1D4ED8' }}>Switch Path</Text>
+                       </TouchableOpacity>
+                    </View>
                  </View>
                  
                  <View style={{ marginVertical: 16 }}>
@@ -1091,57 +1115,76 @@ export const StudentPathScreen = () => {
               {/* Skills Analysis */}
               {pathData && (
                 <View style={{ marginBottom: 24, flexDirection: 'column', gap: 12 }}>
-                  <Text style={{ fontSize: 18, fontWeight: '800', color: '#0F172A', marginBottom: 4 }}>Skills Analysis</Text>
+                  <Text style={{ fontSize: 18, fontWeight: '800', color: '#0F172A', marginBottom: 4 }}>Skill Acquisition Journey</Text>
+                  
                   <View style={{ flexDirection: 'column', gap: 16 }}>
-                     <View style={{ backgroundColor: '#F0FDF4', padding: 16, borderRadius: 16, borderWidth: 1, borderColor: '#DCFCE7' }}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
-                           <View style={{ backgroundColor: '#DCFCE7', padding: 6, borderRadius: 8, marginRight: 8 }}>
-                             <CheckCircle2 size={18} color="#16A34A" />
+                     {/* Acquired Skills Card */}
+                     <View style={{ backgroundColor: '#FFFFFF', padding: 16, borderRadius: 16, borderWidth: 1, borderColor: '#E2E8F0', shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 }}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                              <View style={{ backgroundColor: '#DCFCE7', padding: 6, borderRadius: 8, marginRight: 8 }}>
+                                <CheckCircle2 size={16} color="#16A34A" />
+                              </View>
+                              <Text style={{ fontSize: 14, fontWeight: '800', color: '#1E293B' }}>Your Acquired Skills</Text>
                            </View>
-                           <Text style={{ fontSize: 14, fontWeight: 'bold', color: '#16A34A' }}>Acquired Skills</Text>
+                           <View style={{ backgroundColor: '#ECFDF5', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12 }}>
+                              <Text style={{ fontSize: 10, fontWeight: 'bold', color: '#059669' }}>{Array.isArray(pathData.matched_skills) ? pathData.matched_skills.length : 0} MASTERED</Text>
+                           </View>
                         </View>
                         {Array.isArray(pathData.matched_skills) && pathData.matched_skills.length > 0 ? (
-                           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                           <ScrollView style={{ maxHeight: 190 }} contentContainerStyle={{ gap: 12 }} nestedScrollEnabled={true} showsVerticalScrollIndicator={true}>
                               {pathData.matched_skills.map((matched: any, idx: number) => {
                                  const skillName = matched.skill || matched.name || "";
-                                 const skillLevel = matched.current_level || matched.level || "Beginner";
+                                 const skillLevel = (matched.current_level || matched.level || "Beginner").toUpperCase();
                                  return (
-                                   <View key={idx} style={{ backgroundColor: 'white', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12, borderWidth: 1, borderColor: '#DCFCE7', flexDirection: 'row', alignItems: 'center' }}>
-                                      <Text style={{ fontSize: 12, color: '#334155', fontWeight: '600' }}>{skillName}</Text>
-                                      <View style={{ backgroundColor: '#ECFDF5', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, marginLeft: 6 }}>
-                                        <Text style={{ fontSize: 10, color: '#059669', fontWeight: 'bold' }}>{skillLevel}</Text>
+                                   <View key={idx} style={{ backgroundColor: '#FFFFFF', paddingHorizontal: 16, paddingVertical: 12, borderRadius: 12, borderWidth: 1, borderColor: '#F1F5F9', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                        <Circle size={8} color="#10B981" fill="#10B981" style={{ marginRight: 12 }} />
+                                        <Text style={{ fontSize: 13, color: '#334155', fontWeight: '700' }}>{skillName}</Text>
+                                      </View>
+                                      <View style={{ backgroundColor: '#F8FAFC', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, borderWidth: 1, borderColor: '#F1F5F9' }}>
+                                        <Text style={{ fontSize: 9, color: '#64748B', fontWeight: '800', letterSpacing: 0.5 }}>{skillLevel}</Text>
                                       </View>
                                    </View>
                                  );
                               })}
-                           </View>
+                           </ScrollView>
                         ) : (
                            <Text style={{ fontSize: 12, color: '#94A3B8', fontStyle: 'italic', marginTop: 4 }}>No acquired skills yet</Text>
                         )}
                      </View>
 
-                     <View style={{ backgroundColor: '#FEF2F2', padding: 16, borderRadius: 16, borderWidth: 1, borderColor: '#FEE2E2' }}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
-                           <View style={{ backgroundColor: '#FEE2E2', padding: 6, borderRadius: 8, marginRight: 8 }}>
-                             <Target size={18} color="#DC2626" />
+                     {/* To Acquire Card */}
+                     <View style={{ backgroundColor: '#FFFFFF', padding: 16, borderRadius: 16, borderWidth: 1, borderColor: '#E2E8F0', shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 }}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                              <View style={{ backgroundColor: '#FEE2E2', padding: 6, borderRadius: 8, marginRight: 8 }}>
+                                <Target size={16} color="#DC2626" />
+                              </View>
+                              <Text style={{ fontSize: 14, fontWeight: '800', color: '#1E293B' }}>Skills to Acquire</Text>
                            </View>
-                           <Text style={{ fontSize: 14, fontWeight: 'bold', color: '#DC2626' }}>To Acquire</Text>
+                           <View style={{ backgroundColor: '#FEF2F2', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12 }}>
+                              <Text style={{ fontSize: 10, fontWeight: 'bold', color: '#DC2626' }}>{Array.isArray(pathData.missing_skills) ? pathData.missing_skills.length : 0} LEFT</Text>
+                           </View>
                         </View>
                         {Array.isArray(pathData.missing_skills) && pathData.missing_skills.length > 0 ? (
-                           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                           <ScrollView style={{ maxHeight: 190 }} contentContainerStyle={{ gap: 12 }} nestedScrollEnabled={true} showsVerticalScrollIndicator={true}>
                               {pathData.missing_skills.map((missing: any, idx: number) => {
                                  const skillName = missing.skill || missing.name || "";
-                                 const skillLevel = missing.required_level || missing.level || "Beginner";
+                                 const skillLevel = (missing.required_level || missing.level || "Beginner").toUpperCase();
                                  return (
-                                   <View key={idx} style={{ backgroundColor: 'white', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12, borderWidth: 1, borderColor: '#FEE2E2', flexDirection: 'row', alignItems: 'center' }}>
-                                      <Text style={{ fontSize: 12, color: '#475569', fontWeight: '600' }}>{skillName}</Text>
-                                      <View style={{ backgroundColor: '#FEF2F2', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, marginLeft: 6 }}>
-                                        <Text style={{ fontSize: 10, color: '#EF4444', fontWeight: 'bold' }}>{skillLevel}</Text>
+                                   <View key={idx} style={{ backgroundColor: '#FFFFFF', paddingHorizontal: 16, paddingVertical: 12, borderRadius: 12, borderWidth: 1, borderColor: '#F1F5F9', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                        <Circle size={8} color="#EF4444" fill="#EF4444" style={{ marginRight: 12 }} />
+                                        <Text style={{ fontSize: 13, color: '#334155', fontWeight: '700' }}>{skillName}</Text>
+                                      </View>
+                                      <View style={{ backgroundColor: '#F8FAFC', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, borderWidth: 1, borderColor: '#F1F5F9' }}>
+                                        <Text style={{ fontSize: 9, color: '#64748B', fontWeight: '800', letterSpacing: 0.5 }}>{skillLevel}</Text>
                                       </View>
                                    </View>
                                  );
                               })}
-                           </View>
+                           </ScrollView>
                         ) : (
                            <Text style={{ fontSize: 12, color: '#059669', fontStyle: 'italic', marginTop: 4 }}>🎉 All required skills acquired!</Text>
                         )}

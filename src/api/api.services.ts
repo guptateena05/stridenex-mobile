@@ -343,6 +343,49 @@ export const uploadProfilePicture = async (file: any): Promise<{ file_url: strin
   return { file_url: payload.file_url, file_name: payload.file_name };
 };
 
+export const uploadFileApi = async (
+  file: any,
+  doctype: string = "Student",
+  docname: string = "",
+  fieldname: string = "marksheet"
+): Promise<{ file_url: string; file_name: string }> => {
+  const token = await AsyncStorage.getItem("token");
+
+  const formData = new FormData();
+  formData.append("file", file);
+  if (doctype) formData.append("doctype", doctype);
+  if (docname) formData.append("docname", docname);
+  if (fieldname) formData.append("fieldname", fieldname);
+  formData.append("is_private", "0");
+
+  const response = await fetch(
+    `${BASE_URL}method/stridenex_app.api_stridenex_app.app.upload_file_api`,
+    {
+      method: "POST",
+      headers: {
+        ...(token && token !== 'dummy-token' ? { Authorization: `token ${token}` } : {}),
+      },
+      body: formData,
+    }
+  );
+
+  const data = await response.json();
+
+  if (!response.ok || data?.http_status_code >= 400) {
+    const msg = data?.message?.message || (typeof data?.message === 'string' ? data.message : null) || data?.exception || `Upload failed (HTTP ${response.status})`;
+    throw new Error(msg);
+  }
+
+  const fileUrl = data?.data?.file_url || data?.message?.file_url || data?.file_url;
+  const fileName = data?.data?.file_name || data?.message?.file_name || data?.file_name;
+
+  if (!fileUrl) {
+    throw new Error("Upload succeeded but no file URL was returned");
+  }
+
+  return { file_url: fileUrl, file_name: fileName || fileUrl };
+};
+
 export const getProfilePicture = async (): Promise<string | null> => {
   const token = await AsyncStorage.getItem("token");
   if (!token || token === 'dummy-token') return null;

@@ -2,10 +2,11 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, Modal,
   FlatList, TextInput, ActivityIndicator, ScrollView,
-  Alert, Platform, Switch
+  Alert, Platform, Switch, Linking
 } from 'react-native';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import * as DocumentPicker from '@react-native-documents/picker';
+import { UploadCloud, FileText, CheckCircle2, Trash2, Eye, Paperclip } from 'lucide-react-native';
 import { colors } from '@/theme/colors';
 import { typography } from '@/theme/typography';
 import { spacing } from '@/theme/spacing';
@@ -250,6 +251,18 @@ export default function DynamicField({ field, value, onChange, onCreateCustomVal
       lastSearchTermRef.current = '';
     }
   }, [field.apiEndpoint, value, fetchOptions, field.disabled]);
+
+  useEffect(() => {
+    if (field.fieldtype === 'File') {
+      if (typeof value === 'string' && value) {
+        setFileName(value.split('/').pop() || 'document.pdf');
+      } else if (value && value.name) {
+        setFileName(value.name);
+      } else if (!value) {
+        setFileName('');
+      }
+    }
+  }, [value, field.fieldtype]);
 
   const handleDropdownClick = () => {
     if (field.read_only || field.disabled) return;
@@ -849,37 +862,55 @@ export default function DynamicField({ field, value, onChange, onCreateCustomVal
         );
 
       case 'File':
-        return (
-          <View>
-            <TouchableOpacity
-              style={[
-                styles.inputContainer,
-                { borderColor: error ? errorColor : borderColor, backgroundColor },
-                field.read_only && { backgroundColor: '#f5f5f5', opacity: 0.6 }
-              ]}
-              onPress={handleFilePick}
-              disabled={field.read_only}
-            >
-              <Text style={[
-                styles.inputText,
-                { color: textPrimary },
-                !fileName && { color: textSecondary }
-              ]}>
-                {fileName || field.placeholder || 'Choose PDF file...'}
-              </Text>
-              <View style={[styles.browseButton, { backgroundColor: accentColor + '20' }]}>
-                <Text style={[styles.browseText, { color: accentColor }]}>Browse</Text>
-              </View>
-            </TouchableOpacity>
+        const isUrl = typeof value === 'string' && value.length > 0;
+        const fullUrl = isUrl ? (value.startsWith('http') ? value : `https://devstridenex.quantcloud.in${value}`) : null;
+        const fileSizeMB = value?.size ? (value.size / (1024 * 1024)).toFixed(2) : null;
 
+        return (
+          <View style={{ gap: 8 }}>
             {fileName ? (
-              <View style={styles.fileSelectedRow}>
-                <Text style={[styles.fileNameText, { color: successColor }]} numberOfLines={1}>{fileName}</Text>
-                <TouchableOpacity onPress={() => { setFileName(''); onChange(field.fieldname, null); }}>
-                  <Text style={[styles.removeText, { color: errorColor }]}>Remove</Text>
-                </TouchableOpacity>
+              <View style={{ backgroundColor: '#ECFDF5', padding: 12, borderRadius: 12, borderWidth: 1, borderColor: '#A7F3D0', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                  <View style={{ backgroundColor: '#D1FAE5', padding: 8, borderRadius: 8, marginRight: 10 }}>
+                    {isUrl ? <Paperclip size={18} color="#059669" /> : <FileText size={18} color="#059669" />}
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 12, fontWeight: 'bold', color: '#064E3B' }} numberOfLines={1}>{fileName}</Text>
+                    {isUrl && fullUrl ? (
+                      <TouchableOpacity onPress={() => Linking.openURL(fullUrl)} style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+                        <Text style={{ fontSize: 10, fontWeight: 'bold', color: '#059669', marginRight: 4 }}>View Current Document</Text>
+                        <Eye size={10} color="#059669" />
+                      </TouchableOpacity>
+                    ) : (
+                      <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+                        <CheckCircle2 size={10} color="#059669" style={{ marginRight: 4 }} />
+                        <Text style={{ fontSize: 10, fontWeight: 'bold', color: '#059669' }}>Ready to upload {fileSizeMB ? `(${fileSizeMB} MB)` : ''}</Text>
+                      </View>
+                    )}
+                  </View>
+                </View>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <TouchableOpacity onPress={handleFilePick} disabled={field.read_only} style={{ backgroundColor: '#FFFFFF', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: '#D1FAE5' }}>
+                    <Text style={{ fontSize: 10, fontWeight: 'bold', color: '#059669' }}>Change</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => { setFileName(''); onChange(field.fieldname, null); }} disabled={field.read_only} style={{ padding: 6 }}>
+                    <Trash2 size={16} color="#EF4444" />
+                  </TouchableOpacity>
+                </View>
               </View>
-            ) : null}
+            ) : (
+              <TouchableOpacity
+                style={[{ padding: 16, borderRadius: 12, borderWidth: 2, borderStyle: 'dashed', borderColor: '#CBD5E1', backgroundColor: '#F8FAFC', alignItems: 'center', justifyContent: 'center' }, field.read_only && { opacity: 0.6 }]}
+                onPress={handleFilePick}
+                disabled={field.read_only}
+              >
+                <View style={{ backgroundColor: '#FFFFFF', padding: 8, borderRadius: 8, borderWidth: 1, borderColor: '#E2E8F0', marginBottom: 8 }}>
+                  <UploadCloud size={20} color="#94A3B8" />
+                </View>
+                <Text style={{ fontSize: 12, fontWeight: 'bold', color: '#334155' }}>Click to attach {field.label}</Text>
+                <Text style={{ fontSize: 10, color: '#94A3B8', marginTop: 4 }}>Supports PDF (Max 5MB)</Text>
+              </TouchableOpacity>
+            )}
           </View>
         );
 
