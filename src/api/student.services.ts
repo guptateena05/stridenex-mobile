@@ -786,6 +786,20 @@ export const enrollStudentPath = async (studentEmail: string, careerPath: string
 };
 
 
+/**
+ * Fetch user entitlements
+ */
+export const getUserEntitlements = async () => {
+  try {
+    const response = await api.get(
+      "method/quantbit_billing_platform.quantbit_billing_platform.api.get_user_entitlements"
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching user entitlements:", error);
+    throw error;
+  }
+};
 
 /**
  * Fetch all success stories.

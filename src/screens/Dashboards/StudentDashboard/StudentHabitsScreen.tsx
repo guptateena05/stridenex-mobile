@@ -54,7 +54,8 @@ import {
   completeHabitPlanStatus,
   deleteHabitPlan,
   createHabitPlan,
-  getStudentBadges
+  getStudentBadges,
+  getUserEntitlements
 } from '@/api/student.services';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 
@@ -64,10 +65,10 @@ interface StatsData {
     current: number;
     longest: number;
   };
-  last30Days: {
+  todayProgress: {
     done: number;
     partial: number;
-    missed: number;
+    remaining: number;
     completionRate: number;
   };
   thisWeek: {
@@ -117,7 +118,7 @@ export const StudentHabitsScreen = () => {
 
   const [statsData, setStatsData] = useState<StatsData>({
     streak: { current: 0, longest: 0 },
-    last30Days: { done: 0, partial: 0, missed: 0, completionRate: 0 },
+    todayProgress: { done: 0, partial: 0, remaining: 0, completionRate: 0 },
     thisWeek: { completed: 0, total: 0, days: [] }
   });
   const [habitPlans, setHabitPlans] = useState<any[]>([]);
@@ -131,6 +132,7 @@ export const StudentHabitsScreen = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [completingHabit, setCompletingHabit] = useState<string | null>(null);
+  const [habitPlansEntitlement, setHabitPlansEntitlement] = useState<{ limit: number | 'Unlimited', remaining: number | 'Unlimited' } | null>(null);
 
   // Modal states
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -215,17 +217,18 @@ export const StudentHabitsScreen = () => {
     if (showLoader) setLoading(true);
 
     try {
-      const [dashboardRes, pendingRes, plansRes, streaksRes, badgesRes] = await Promise.allSettled([
+      const [dashboardRes, pendingRes, plansRes, streaksRes, badgesRes, entitlementsRes] = await Promise.allSettled([
         getStudentDashboardHabits(userName),
         getTodaysPendingHabits(userName),
         getStudentPlans(userName),
         getHabitStreaks(userName),
-        getStudentBadges(userName)
+        getStudentBadges(userName),
+        getUserEntitlements()
       ]);
 
       let finalStats = {
         streak: { current: 0, longest: 0 },
-        last30Days: { done: 0, partial: 0, missed: 0, completionRate: 0 },
+        todayProgress: { done: 0, partial: 0, remaining: 0, completionRate: 0 },
         thisWeek: { completed: 0, total: 0, days: [] as any[] }
       };
 
@@ -240,17 +243,22 @@ export const StudentHabitsScreen = () => {
           };
         }
 
-        if (data.last_30_days && Array.isArray(data.last_30_days)) {
-          const doneCount = data.last_30_days.filter((day: any) => day.status === 'done').length;
-          const partialCount = data.last_30_days.filter((day: any) => day.status === 'partial').length;
-          const missedCount = data.last_30_days.filter((day: any) => day.status === 'none' || day.status === 'missed').length;
-          const completionRate = data.last_30_days.length > 0 ? (doneCount / data.last_30_days.length) * 100 : 0;
+        if (data.today_done !== undefined) {
+          const doneCount = data.today_done || 0;
+          const partialCount = data.today_partial || 0;
+          const remainingCount = data.today_remaining || 0;
 
-          finalStats.last30Days = {
-            done: data.done_30 !== undefined ? data.done_30 : doneCount,
-            partial: data.partial_30 !== undefined ? data.partial_30 : partialCount,
-            missed: data.missed_30 !== undefined ? data.missed_30 : missedCount,
-            completionRate: data.missed_30 !== undefined ? ((data.done_30 || 0) / (data.last_30_days.length || 1)) * 100 : completionRate
+          const totalDue = doneCount + remainingCount;
+          let calculatedRate = 0;
+          if (totalDue > 0) {
+              calculatedRate = (doneCount / totalDue) * 100;
+          }
+
+          finalStats.todayProgress = {
+              done: doneCount,
+              partial: partialCount,
+              remaining: remainingCount,
+              completionRate: calculatedRate
           };
         }
 
@@ -367,6 +375,16 @@ export const StudentHabitsScreen = () => {
             }
 
             return badgesData.badges;
+          });
+        }
+      }
+
+      if (entitlementsRes.status === "fulfilled" && entitlementsRes.value?.message) {
+        const ent = entitlementsRes.value.message["create_new_habit_plan"];
+        if (ent) {
+          setHabitPlansEntitlement({
+            limit: ent.limit,
+            remaining: ent.remaining
           });
         }
       }
@@ -596,73 +614,110 @@ export const StudentHabitsScreen = () => {
         {/* Top Stats Cards */}
         <Animated.View entering={FadeInRight.delay(200)} style={styles.statsCardContainer}>
           {/* Streak Card */}
-          <View style={styles.statsCard}>
-            <View style={styles.cardHeaderRow}>
-              <Text style={styles.cardTitle}>Streak</Text>
-            </View>
-            <View style={styles.streakContent}>
-              <View style={styles.flameIconBox}>
-                <Flame size={24} color={colors.accent.DEFAULT} />
-              </View>
-              <View>
-                <View style={styles.streakValueRow}>
-                  <Text style={styles.streakValue}>{statsData.streak.current}</Text>
-                  <Text style={styles.streakUnit}>days</Text>
+          <View style={[styles.statsCard, { backgroundColor: '#FFF7ED', borderColor: '#FFEDD5', borderWidth: 1 }]}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <View style={{ gap: 4 }}>
+                <Text style={{ fontSize: 10, fontWeight: '800', color: '#94A3B8', textTransform: 'uppercase', letterSpacing: 0.5 }}>Current Streak</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4 }}>
+                  <Text style={{ fontSize: 32, fontWeight: '900', color: '#1E293B' }}>{statsData.streak.current}</Text>
+                  <Text style={{ fontSize: 13, fontWeight: '700', color: '#64748B' }}>days</Text>
                 </View>
-                <Text style={styles.streakLabel}>Longest: {statsData.streak.longest} days</Text>
+              </View>
+              <View style={{ width: 48, height: 48, borderRadius: 16, backgroundColor: '#F97316', alignItems: 'center', justifyContent: 'center' }}>
+                <Flame size={24} color="#FFF" />
+              </View>
+            </View>
+            
+            <View style={{ marginTop: 16, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#FFEDD5', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <Text style={{ fontSize: 12, fontWeight: '600', color: '#64748B' }}>Keep the fire burning!</Text>
+              <View style={{ backgroundColor: '#FFEDD5', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12 }}>
+                <Text style={{ fontSize: 10, fontWeight: '800', color: '#F97316' }}>Best: {statsData.streak.longest}d</Text>
               </View>
             </View>
           </View>
 
-          {/* Last 30 Days Card */}
-          <View style={[styles.statsCard, { marginTop: 12 }]}>
-            <View style={styles.cardHeaderRow}>
-              <Text style={styles.cardTitle}>Last 30 Days</Text>
-            </View>
-            <View style={styles.thirtyDaysRow}>
-              <View style={styles.thirtyDaysItem}>
-                <CheckCircle2 size={16} color="#10B981" />
-                <Text style={styles.thirtyDaysLabel}>Done: <Text style={styles.thirtyDaysValue}>{statsData.last30Days.done}</Text></Text>
+          {/* Today's Progress Card */}
+          <View style={[styles.statsCard, { marginTop: 12, backgroundColor: '#F0FDF4', borderColor: '#D1FAE5', borderWidth: 1 }]}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <View style={{ gap: 4 }}>
+                <Text style={{ fontSize: 10, fontWeight: '800', color: '#94A3B8', textTransform: 'uppercase', letterSpacing: 0.5 }}>Today's Progress</Text>
+                <Text style={{ fontSize: 32, fontWeight: '900', color: '#1E293B' }}>{statsData.todayProgress.completionRate.toFixed(1)}%</Text>
               </View>
-              <View style={styles.thirtyDaysItem}>
-                <Circle size={16} color={colors.accent.DEFAULT} />
-                <Text style={styles.thirtyDaysLabel}>Partial: <Text style={styles.thirtyDaysValue}>{statsData.last30Days.partial}</Text></Text>
-              </View>
-              <View style={styles.thirtyDaysItem}>
-                <Circle size={16} color="#94A3B8" />
-                <Text style={styles.thirtyDaysLabel}>Missed: <Text style={styles.thirtyDaysValue}>{statsData.last30Days.missed}</Text></Text>
+              <View style={{ width: 48, height: 48, borderRadius: 16, backgroundColor: '#10B981', alignItems: 'center', justifyContent: 'center' }}>
+                <CheckCircle2 size={24} color="#FFF" />
               </View>
             </View>
-            <View style={styles.progressContainer}>
-              <View style={styles.progressHeader}>
-                <Text style={styles.progressLabelText}>Completion rate</Text>
-                <Text style={styles.progressValueText}>{Math.round(statsData.last30Days.completionRate)}%</Text>
+            
+            <View style={{ marginTop: 12 }}>
+              <View style={{ width: '100%', height: 6, backgroundColor: '#D1FAE5', borderRadius: 3 }}>
+                <View style={{ height: '100%', width: `${statsData.todayProgress.completionRate}%`, backgroundColor: '#10B981', borderRadius: 3 }} />
               </View>
-              <View style={styles.progressBarBg}>
-                <View style={[styles.progressBarFill, { width: `${statsData.last30Days.completionRate}%` }]} />
-              </View>
+            </View>
+
+            <View style={{ marginTop: 16, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#D1FAE5', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <Text style={{ fontSize: 11, fontWeight: '700', color: '#64748B' }}>Done: <Text style={{ color: '#059669' }}>{statsData.todayProgress.done}</Text></Text>
+              <Text style={{ fontSize: 11, fontWeight: '700', color: '#64748B' }}>Partial: <Text style={{ color: '#D97706' }}>{statsData.todayProgress.partial}</Text></Text>
+              <Text style={{ fontSize: 11, fontWeight: '700', color: '#64748B' }}>Remaining: <Text style={{ color: '#E11D48' }}>{statsData.todayProgress.remaining}</Text></Text>
             </View>
           </View>
 
-          {/* This Week Card */}
+          {/* Weekly Activity Card */}
           {statsData.thisWeek.days.length > 0 && (
-            <View style={[styles.statsCard, { marginTop: 12 }]}>
-              <View style={styles.cardHeaderRow}>
-                <Text style={styles.cardTitle}>This Week</Text>
-                <Text style={styles.thisWeekCount}>{statsData.thisWeek.completed}/{statsData.thisWeek.total} days</Text>
+            <View style={[styles.statsCard, { marginTop: 12, backgroundColor: '#F5F3FF', borderColor: '#EDE9FE', borderWidth: 1 }]}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                <View style={{ gap: 4 }}>
+                  <Text style={{ fontSize: 10, fontWeight: '800', color: '#94A3B8', textTransform: 'uppercase', letterSpacing: 0.5 }}>Weekly Activity</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4 }}>
+                    <Text style={{ fontSize: 32, fontWeight: '900', color: '#1E293B' }}>{statsData.thisWeek.completed}</Text>
+                    <Text style={{ fontSize: 13, fontWeight: '700', color: '#64748B' }}>/ {statsData.thisWeek.total} days</Text>
+                  </View>
+                </View>
+                <View style={{ width: 48, height: 48, borderRadius: 16, backgroundColor: '#8B5CF6', alignItems: 'center', justifyContent: 'center' }}>
+                  <Calendar size={24} color="#FFF" />
+                </View>
               </View>
-              <View style={styles.weekDaysRow}>
+              
+              <View style={{ marginTop: 16, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#EDE9FE', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 4 }}>
                 {statsData.thisWeek.days.map((day, idx) => {
-                  const config = statusConfig[day.status as keyof typeof statusConfig] || statusConfig.missed;
+                  let dayBgColor = '#F8FAFC';
+                  let dayBorderColor = '#E2E8F0';
+                  let dayTextColor = '#94A3B8';
+                  
+                  if (day.status === 'done') {
+                    dayBgColor = '#ECFDF5'; dayBorderColor = '#A7F3D0'; dayTextColor = '#059669';
+                  } else if (day.status === 'partial') {
+                    dayBgColor = '#FFFBEB'; dayBorderColor = '#FDE68A'; dayTextColor = '#D97706';
+                  } else if (day.status === 'missed') {
+                    dayBgColor = '#FFF1F2'; dayBorderColor = '#FECDD3'; dayTextColor = '#E11D48';
+                  } else if (day.status === 'future') {
+                    dayBgColor = '#F8FAFC'; dayBorderColor = '#E2E8F0'; dayTextColor = '#94A3B8';
+                  }
+
                   return (
-                    <View key={idx} style={styles.dayCol}>
-                      <Text style={styles.dayName}>{day.day[0]}</Text>
-                      <View style={[styles.dayCircle, { backgroundColor: config.bgColor, borderColor: config.borderColor }]}>
-                        <Text style={[styles.dayIndicator, { color: config.color }]}>{config.indicator}</Text>
-                      </View>
+                    <View key={idx} style={{ flex: 1, alignItems: 'center', paddingVertical: 6, borderRadius: 6, borderWidth: 1, backgroundColor: dayBgColor, borderColor: dayBorderColor, borderStyle: day.status === 'future' ? 'dashed' : 'solid' }}>
+                      <Text style={{ fontSize: 10, fontWeight: '800', color: dayTextColor }}>{day.day[0]}</Text>
                     </View>
                   );
                 })}
+              </View>
+
+              <View style={{ marginTop: 14, paddingTop: 10, borderTopWidth: 1, borderTopColor: '#E0E7FF', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, flexWrap: 'wrap' }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                  <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#10B981' }} />
+                  <Text style={{ fontSize: 9, fontWeight: '600', color: '#64748B' }}>Done</Text>
+                </View>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                  <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#F59E0B' }} />
+                  <Text style={{ fontSize: 9, fontWeight: '600', color: '#64748B' }}>Partial</Text>
+                </View>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                  <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#EF4444' }} />
+                  <Text style={{ fontSize: 9, fontWeight: '600', color: '#64748B' }}>Missed</Text>
+                </View>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                  <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#F1F5F9', borderWidth: 1, borderColor: '#CBD5E1', borderStyle: 'dashed' }} />
+                  <Text style={{ fontSize: 9, fontWeight: '600', color: '#64748B' }}>Pending</Text>
+                </View>
               </View>
             </View>
           )}
@@ -672,9 +727,19 @@ export const StudentHabitsScreen = () => {
         <View style={[styles.sectionHeader, { marginTop: 12 }]}>
           <View style={{flexDirection: 'row', alignItems: 'center', gap: 8}}>
             <Text style={styles.sectionTitleSimple}>My Habit Plans</Text>
-            <View style={{backgroundColor: '#ECFDF5', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12, borderWidth: 1, borderColor: '#D1FAE5'}}>
-              <Text style={{fontSize: 10, fontWeight: '700', color: '#10B981'}}>{habitPlans.length} / 20</Text>
-            </View>
+            {habitPlansEntitlement ? (
+              <View style={{backgroundColor: '#ECFDF5', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12, borderWidth: 1, borderColor: '#D1FAE5'}}>
+                <Text style={{fontSize: 10, fontWeight: '700', color: '#10B981'}}>
+                  {habitPlansEntitlement.remaining === 'Unlimited' 
+                    ? 'Unlimited' 
+                    : `${habitPlansEntitlement.remaining} / ${habitPlansEntitlement.limit}`}
+                </Text>
+              </View>
+            ) : (
+              <View style={{backgroundColor: '#ECFDF5', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12, borderWidth: 1, borderColor: '#D1FAE5'}}>
+                <Text style={{fontSize: 10, fontWeight: '700', color: '#10B981'}}>{habitPlans.length} / 20</Text>
+              </View>
+            )}
           </View>
           <TouchableOpacity
             style={[styles.newHabitButton, { backgroundColor: '#FF6B00', borderColor: '#FF6B00' }]}
