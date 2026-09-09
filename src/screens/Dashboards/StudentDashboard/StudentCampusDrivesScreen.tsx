@@ -221,7 +221,7 @@ export const StudentCampusDrivesScreen = () => {
 
           <View style={styles.filtersRow}>
             <MasterDropdownModal
-              label="Skills"
+              label="Skill Name"
               placeholder="Filter by Skill"
               value={filterSkill}
               onChange={setFilterSkill}
@@ -367,35 +367,7 @@ export const StudentCampusDrivesScreen = () => {
                         </View>
                       )}
 
-                      {/* Buttons */}
-                      <View style={styles.cardActions}>
-                        <TouchableOpacity
-                          style={styles.detailsButton}
-                          onPress={() => {
-                            setSelectedDrive(drive);
-                            setShowDetailsModal(true);
-                          }}
-                        >
-                          <Text style={styles.detailsButtonText}>Details</Text>
-                        </TouchableOpacity>
 
-                        <TouchableOpacity
-                          style={[
-                            styles.applyButton,
-                            (hasApplied || isClosed || applying === drive.name) && styles.disabledButton
-                          ]}
-                          disabled={hasApplied || isClosed || applying === drive.name}
-                          onPress={() => handleApplyDrive(drive)}
-                        >
-                          {applying === drive.name ? (
-                            <ActivityIndicator size="small" color="#FFFFFF" />
-                          ) : (
-                            <Text style={styles.applyButtonText}>
-                              {hasApplied ? "Applied" : "Apply Now"}
-                            </Text>
-                          )}
-                        </TouchableOpacity>
-                      </View>
                     </View>
                   </SwipeableRow>
                 </Animated.View>
@@ -627,6 +599,7 @@ const styles = StyleSheet.create({
   filtersRow: {
     flexDirection: 'row',
     gap: 12,
+    marginBottom: 12,
   },
   emptyContainer: {
     alignItems: 'center',
@@ -649,6 +622,8 @@ const styles = StyleSheet.create({
     padding: 16,
     borderWidth: 1,
     borderColor: '#E2E8F0',
+    borderLeftWidth: 4,
+    borderLeftColor: '#FF6B00',
   },
   cardTop: {
     flexDirection: 'row',

@@ -20,6 +20,9 @@ import { uploadFileApi } from '@/api/api.services';
 import DynamicForm from '@/components/forms/DynamicForm';
 import { FormField } from '@/components/forms/DynamicField';
 import ProfileImageUploader from '@/components/profile/ProfileImageUploader';
+import PsychometricTestModal from '@/components/psychometric/PsychometricTestModal';
+import { checkOnboardingStatus } from '@/api/psychometric.services';
+import StudentGuidelineTour from '@/components/StudentGuidelineTour';
 
 const { width } = Dimensions.get('window');
 
@@ -31,6 +34,8 @@ export const StudentDashboardScreen = () => {
   const [updateLoading, setUpdateLoading] = useState(false);
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
   const [profileFormValues, setProfileFormValues] = useState<any>({});
+  const [isPsychoModalVisible, setIsPsychoModalVisible] = useState(false);
+  const [isTourActive, setIsTourActive] = useState(false);
 
   // Load cached student data on mount/username change
   useEffect(() => {
@@ -78,6 +83,23 @@ export const StudentDashboardScreen = () => {
 
   useEffect(() => {
     if (!userName) return;
+    const checkStatus = async () => {
+      try {
+        const status = await checkOnboardingStatus(userName);
+        if (status.is_first_login && !status.is_onboarded) {
+          setIsPsychoModalVisible(true);
+        } else {
+          setIsPsychoModalVisible(false);
+        }
+      } catch (err) {
+        console.error("Error checking onboarding status", err);
+      }
+    };
+    checkStatus();
+  }, [userName]);
+
+  useEffect(() => {
+    if (!userName) return;
     const fetchSkills = async () => {
       try {
         const res = await getSkillLedger(userName);
@@ -103,7 +125,7 @@ export const StudentDashboardScreen = () => {
       const data = res?.data || res?.message || res;
       if (data) {
         setStatsData(data);
-        if (Number(data.profile_completeness) < 60) {
+        if (Number(data.profile_completeness) < 90) {
           setIsIncompletePopupVisible(true);
         } else {
           setIsIncompletePopupVisible(false);
@@ -675,12 +697,7 @@ export const StudentDashboardScreen = () => {
               <Text style={styles.modalTitle}>Edit Profile Settings</Text>
               <TouchableOpacity 
                 style={styles.closeBtn} 
-                onPress={() => {
-                  setIsEditModalVisible(false);
-                  if (Number(statsData?.profile_completeness) < 60) {
-                    setIsIncompletePopupVisible(true);
-                  }
-                }}
+                onPress={() => setIsEditModalVisible(false)}
               >
                 <X size={20} color="#64748B" />
               </TouchableOpacity>
@@ -711,12 +728,18 @@ export const StudentDashboardScreen = () => {
       {isIncompletePopupVisible && (
         <View style={[StyleSheet.absoluteFill, styles.incompleteOverlay]}>
           <View style={styles.incompleteModal}>
+            <TouchableOpacity 
+              style={styles.incompleteCloseBtn}
+              onPress={() => setIsIncompletePopupVisible(false)}
+            >
+              <X size={20} color="#64748B" />
+            </TouchableOpacity>
             <View style={styles.incompleteIconContainer}>
               <AlertCircle size={32} color="#EF4444" />
             </View>
             <Text style={styles.incompleteTitle}>Profile Incomplete</Text>
             <Text style={styles.incompleteText}>
-              Your profile completeness is {statsData?.profile_completeness || 0}%. Please update your profile to at least 60% to access all platform features.
+              Your profile completeness is {statsData?.profile_completeness || 0}%. Please update your profile to at least 90% to access all platform features.
             </Text>
             <TouchableOpacity 
               style={styles.incompleteBtn}
@@ -731,6 +754,21 @@ export const StudentDashboardScreen = () => {
           </View>
         </View>
       )}
+
+      <PsychometricTestModal
+        isOpen={isPsychoModalVisible && !isTourActive}
+        onClose={() => setIsPsychoModalVisible(false)}
+        onCompleted={() => {
+          setIsPsychoModalVisible(false);
+        }}
+        studentEmail={userName || undefined}
+        isMandatory={false}
+      />
+
+      <StudentGuidelineTour 
+        studentEmail={userName || undefined} 
+        onTourStateChange={setIsTourActive} 
+      />
     </SafeAreaView>
   );
 };
@@ -940,5 +978,6 @@ const styles = StyleSheet.create({
   incompleteTitle: { fontSize: 20, fontWeight: '800', color: '#0F172A', marginBottom: 8, textAlign: 'center' },
   incompleteText: { fontSize: 14, color: '#475569', textAlign: 'center', marginBottom: 24, lineHeight: 20 },
   incompleteBtn: { backgroundColor: '#FF6B00', paddingVertical: 14, paddingHorizontal: 24, borderRadius: 12, width: '100%', alignItems: 'center' },
-  incompleteBtnText: { color: '#FFF', fontSize: 15, fontWeight: '700' }
+  incompleteBtnText: { color: '#FFF', fontSize: 15, fontWeight: '700' },
+  incompleteCloseBtn: { position: 'absolute', top: 16, right: 16, width: 32, height: 32, borderRadius: 16, backgroundColor: '#F1F5F9', justifyContent: 'center', alignItems: 'center' }
 });

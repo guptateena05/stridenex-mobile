@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, Modal, TextInput, ScrollView, ActivityIndicator, StyleSheet } from 'react-native';
 import { Search, ChevronDown, Check, X } from 'lucide-react-native';
+import { spacing } from '@/theme/spacing';
 import { colors } from '@/theme/colors';
+import { typography } from '@/theme/typography';
 
 interface MasterDropdownModalProps {
   label?: string;
@@ -99,7 +101,7 @@ export const MasterDropdownModal: React.FC<MasterDropdownModalProps> = ({
   };
 
   const displayText = Array.isArray(value) 
-    ? (value.length > 0 ? `${value.length} selected` : placeholder)
+    ? (value.length > 0 ? value.join(', ') : placeholder)
     : (value || placeholder);
 
   return (
@@ -108,9 +110,22 @@ export const MasterDropdownModal: React.FC<MasterDropdownModalProps> = ({
         style={[styles.dropdownTrigger]}
         onPress={handleOpenDropdown}
       >
-        <Text style={[styles.dropdownTriggerText, !value || (Array.isArray(value) && value.length === 0) ? styles.dropdownPlaceholder : {}]} numberOfLines={1}>
-          {displayText}
-        </Text>
+        {multiSelect && Array.isArray(value) && value.length > 0 ? (
+          <View style={styles.multiSelectContainer}>
+            {value.map((val: string) => (
+              <View key={val} style={[styles.tag, { backgroundColor: 'rgba(255, 107, 0, 0.1)' }]}>
+                <Text style={[styles.tagText, { color: '#FF6F00' }]}>{val}</Text>
+                <TouchableOpacity onPress={() => toggleSelection(val)}>
+                  <Text style={[styles.tagRemove, { color: '#FF6F00' }]}>✕</Text>
+                </TouchableOpacity>
+              </View>
+            ))}
+          </View>
+        ) : (
+          <Text style={[styles.dropdownTriggerText, !value || (Array.isArray(value) && value.length === 0) ? styles.dropdownPlaceholder : {}]} numberOfLines={1}>
+            {displayText}
+          </Text>
+        )}
         <ChevronDown size={14} color="#94A3B8" />
       </TouchableOpacity>
 
@@ -123,18 +138,17 @@ export const MasterDropdownModal: React.FC<MasterDropdownModalProps> = ({
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>{label ? `ALL ${label.toUpperCase()}` : "SELECT OPTION"}</Text>
+              <Text style={styles.modalTitle}>Select {label || "Option"}</Text>
               <TouchableOpacity onPress={() => setShowDropdown(false)} style={styles.closeBtn}>
                 <X size={20} color="#64748B" />
               </TouchableOpacity>
             </View>
 
-            <View style={styles.modalSearchContainer}>
-              <Search size={16} color="#94A3B8" style={styles.modalSearchIcon} />
+            <View style={styles.searchContainer}>
               <TextInput
-                style={styles.modalSearchInput}
-                placeholder={`Search...`}
-                placeholderTextColor="#94A3B8"
+                style={styles.searchInput}
+                placeholder="Search..."
+                placeholderTextColor="#64748b"
                 value={searchQuery}
                 onChangeText={setSearchQuery}
                 autoFocus
@@ -143,14 +157,7 @@ export const MasterDropdownModal: React.FC<MasterDropdownModalProps> = ({
 
             <View style={{ flex: 1, minHeight: 200, position: 'relative' }}>
               <ScrollView style={styles.optionsList} keyboardShouldPersistTaps="handled">
-                <TouchableOpacity
-                  style={[styles.optionItem, (!value || (Array.isArray(value) && value.length === 0)) ? styles.optionItemActive : {}]}
-                  onPress={clearSelection}
-                >
-                  <Text style={[styles.optionText, (!value || (Array.isArray(value) && value.length === 0)) ? styles.optionTextActive : {}]}>
-                    Clear Selection
-                  </Text>
-                </TouchableOpacity>
+
 
                 {options.map((option) => {
                   const isActive = multiSelect ? Array.isArray(value) && value.includes(option) : value === option;
@@ -162,7 +169,7 @@ export const MasterDropdownModal: React.FC<MasterDropdownModalProps> = ({
                     >
                       <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
                         <Text style={[styles.optionText, isActive ? styles.optionTextActive : {}]}>
-                          •  {option}
+                          {option}
                         </Text>
                       </View>
                       {isActive && <Check size={16} color={colors.primary.DEFAULT} />}
@@ -185,14 +192,14 @@ export const MasterDropdownModal: React.FC<MasterDropdownModalProps> = ({
                   onPress={() => loadData(page - 1, searchQuery)}
                   style={[
                     styles.modalPageButton, 
-                    { backgroundColor: hasPrev ? '#F1F5F9' : '#F8FAFC' }
+                    { backgroundColor: hasPrev ? '#FF6F00' : '#cbd5e1', opacity: loading ? 0.5 : 1, borderWidth: 0 }
                   ]}
                 >
-                  <Text style={[styles.modalPageButtonText, { color: hasPrev ? '#1E293B' : '#94A3B8' }]}>Previous</Text>
+                  <Text style={[styles.modalPageButtonText, { color: hasPrev ? '#ffffff' : '#64748b' }]}>Previous</Text>
                 </TouchableOpacity>
                 
                 <Text style={styles.modalPageInfoText}>
-                  PAGE {page} OF {totalPages}
+                  Page {page} of {totalPages}
                 </Text>
 
                 <TouchableOpacity
@@ -200,22 +207,14 @@ export const MasterDropdownModal: React.FC<MasterDropdownModalProps> = ({
                   onPress={() => loadData(page + 1, searchQuery)}
                   style={[
                     styles.modalPageButton, 
-                    { backgroundColor: hasNext ? '#F1F5F9' : '#F8FAFC' }
+                    { backgroundColor: hasNext ? '#FF6F00' : '#cbd5e1', opacity: loading ? 0.5 : 1, borderWidth: 0 }
                   ]}
                 >
-                  <Text style={[styles.modalPageButtonText, { color: hasNext ? '#1E293B' : '#94A3B8' }]}>Next</Text>
+                  <Text style={[styles.modalPageButtonText, { color: hasNext ? '#ffffff' : '#64748b' }]}>Next</Text>
                 </TouchableOpacity>
               </View>
             )}
 
-            <View style={styles.modalFooter}>
-              <TouchableOpacity
-                style={styles.applyButton}
-                onPress={() => setShowDropdown(false)}
-              >
-                <Text style={styles.applyButtonText}>APPLY FILTERS</Text>
-              </TouchableOpacity>
-            </View>
           </View>
         </View>
       </Modal>
@@ -234,7 +233,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
     paddingHorizontal: 16,
-    height: 48,
+    paddingVertical: 12,
+    minHeight: 48,
     elevation: 2,
     shadowColor: '#64748B',
     shadowOffset: { width: 0, height: 4 },
@@ -247,6 +247,30 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     flex: 1
   },
+  multiSelectContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingVertical: spacing.xs,
+  },
+  tag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 6,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+    marginRight: spacing.xs,
+    marginBottom: spacing.xs,
+  },
+  tagText: {
+    fontSize: typography.fontSize.xs,
+    marginRight: 4,
+    fontFamily: typography.fontFamily.display,
+  },
+  tagRemove: {
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
   dropdownPlaceholder: {
     color: '#94A3B8',
     fontWeight: '400'
@@ -258,96 +282,90 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    height: '80%',
-    paddingBottom: 20
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '90%',
+    minHeight: 400,
+    height: 550
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
+    padding: spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9'
+    borderBottomColor: '#E2E8F0'
   },
   modalTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#64748B',
-    letterSpacing: 1
+    fontSize: typography.fontSize.lg,
+    fontWeight: 'bold',
+    color: '#1E293B',
+    fontFamily: typography.fontFamily.display
   },
   closeBtn: {
-    padding: 4
+    padding: spacing.xs
   },
-  modalSearchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    margin: 20,
-    paddingHorizontal: 16,
-    height: 48,
-    backgroundColor: '#F8FAFC',
-    borderRadius: 12,
+  searchContainer: {
+    padding: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0'
+  },
+  searchInput: {
     borderWidth: 1,
-    borderColor: '#E2E8F0'
-  },
-  modalSearchIcon: {
-    marginRight: 10
-  },
-  modalSearchInput: {
-    flex: 1,
-    height: '100%',
-    color: '#1E293B',
-    fontSize: 15
+    borderColor: '#E2E8F0',
+    borderRadius: 8,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    fontSize: typography.fontSize.sm,
+    fontFamily: typography.fontFamily.display,
+    color: '#1E293B'
   },
   optionsList: {
-    paddingHorizontal: 20
+    paddingHorizontal: 0
   },
   optionItem: {
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F8FAFC',
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    justifyContent: 'space-between'
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0'
   },
   optionItemActive: {
-    backgroundColor: '#F8FAFC',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    marginHorizontal: -12
+    backgroundColor: 'rgba(249, 115, 22, 0.1)',
   },
   optionText: {
-    fontSize: 16,
-    color: '#334155',
-    fontWeight: '600'
+    fontSize: typography.fontSize.sm,
+    flex: 1,
+    color: '#1E293B',
+    fontFamily: typography.fontFamily.display
   },
   optionTextActive: {
-    color: colors.primary.DEFAULT
+    color: '#FF6F00'
   },
   modalPaginationContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
+    padding: spacing.md,
     borderTopWidth: 1,
-    borderTopColor: '#F1F5F9'
+    borderTopColor: '#E2E8F0'
   },
   modalPageButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
     borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#E2E8F0'
+    alignItems: 'center',
+    justifyContent: 'center'
   },
   modalPageButtonText: {
-    fontSize: 14,
+    fontSize: typography.fontSize.sm,
     fontWeight: '600'
   },
   modalPageInfoText: {
-    fontSize: 12,
-    color: '#000000',
-    fontWeight: '700'
+    fontSize: typography.fontSize.sm,
+    color: '#1E293B'
   },
   modalFooter: {
     paddingHorizontal: 20,

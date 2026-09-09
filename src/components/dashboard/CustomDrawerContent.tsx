@@ -104,7 +104,7 @@ export const CustomDrawerContent = (props: DrawerContentComponentProps & { isInc
             if (isNepChild && !nepExpanded) return null;
             if (isCampusChild && !campusExpanded) return null;
 
-            const isDisabled = props.isIncomplete && route.name !== 'Overview';
+            const isDisabled = false; // user requested no restriction even if profile incomplete
             
             if (route.name === 'ModuleTabs') {
               const activeTabName = (route.state as any)?.routes[(route.state as any)?.index ?? 0]?.name || "Overview";
@@ -193,7 +193,7 @@ export const CustomDrawerContent = (props: DrawerContentComponentProps & { isInc
           props.state.routes.map((route: any, i: number) => {
             const focused = i === props.state.index;
             const { title, drawerIcon, drawerActiveTintColor, drawerInactiveTintColor, drawerActiveBackgroundColor, drawerLabelStyle, drawerItemStyle } = props.descriptors[route.key].options;
-            const isDisabled = props.isIncomplete && route.name !== 'ModuleTabs';
+            const isDisabled = false; // user requested no restriction even if profile incomplete
             
             if (route.name === 'ModuleTabs') {
               // Extract the active tab name from the nested state
