@@ -27,6 +27,7 @@ export interface DynamicFormProps {
   buttonLabel?: string;
   loading?: boolean;
   onChange?: (data: any) => void;
+  onValuesChange?: (values: Record<string, any>, changedFieldName: string) => Record<string, any>;
   initialValues?: Record<string, any>;
   errors?: Record<string, string>;
   accentColor?: string;
@@ -39,6 +40,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
   buttonLabel = 'Submit',
   loading = false,
   onChange,
+  onValuesChange,
   initialValues = {},
   errors = {},
   accentColor,
@@ -58,7 +60,14 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
 
   const handleChange = (name: string, value: any) => {
     setFormData((prev) => {
-      const newData = { ...prev, [name]: value };
+      let newData = { ...prev, [name]: value };
+
+      if (onValuesChange) {
+        const sideEffects = onValuesChange(newData, name);
+        if (sideEffects) {
+          newData = { ...newData, ...sideEffects };
+        }
+      }
 
       // Automatically adjust end_date/to_date if start_date/from_date becomes later
       if (name === 'start_date' && newData.end_date) {

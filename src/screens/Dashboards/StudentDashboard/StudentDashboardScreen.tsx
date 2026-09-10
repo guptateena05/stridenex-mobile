@@ -307,6 +307,7 @@ export const StudentDashboardScreen = () => {
       college: studentData.college || "",
       department: studentData.department || "",
       stream: studentData.stream || "",
+      course_type: studentData.course_type || studentData.courses_type || "",
       course: studentData.course || "",
       semester: studentData.semester || "",
       current_year: mapYearToWord(studentData.current_year || studentData.academic_year) || "",
@@ -354,6 +355,8 @@ export const StudentDashboardScreen = () => {
         college: formData.college || studentData?.college || "",
         department: formData.department || studentData?.department || "",
         stream: formData.stream || studentData?.stream || "",
+        courses_type: formData.course_type || formData.courses_type || studentData?.course_type || studentData?.courses_type || "",
+        course_type: formData.course_type || studentData?.course_type || "",
         course: formData.course || studentData?.course || "",
         semester: formData.semester || studentData?.semester || "",
         current_year: mapYearToWord(formData.current_year) || mapYearToWord(studentData?.current_year || studentData?.academic_year) || "",
@@ -379,6 +382,8 @@ export const StudentDashboardScreen = () => {
       setUpdateLoading(false);
     }
   };
+
+  const [studentDepartmentOptions, setStudentDepartmentOptions] = useState<any[]>([]);
 
   const editFields: FormField[] = useMemo(() => [
     {
@@ -422,11 +427,17 @@ export const StudentDashboardScreen = () => {
       layout: 'full',
     },
     {
-      fieldname: 'department',
-      label: 'Department',
+      fieldname: 'course_type',
+      label: 'Course Type',
       fieldtype: 'Data',
       required: true,
-      placeholder: 'Enter Department',
+      apiEndpoint: "method/stridenex_app.api_stridenex_app.college.master.get_master_data",
+      apiParams: { doctype: "Course Type" },
+      mapOptions: (data: any) => {
+        let items = Array.isArray(data) ? data : (data?.data?.data || data?.message?.data || data?.message || data?.data || []);
+        items = Array.isArray(items) ? items : [];
+        return items.map((item: any) => ({ value: item.name || item.course_type, label: item.course_type || item.name }));
+      },
       layout: 'full',
     },
     {
@@ -434,7 +445,13 @@ export const StudentDashboardScreen = () => {
       label: 'Stream',
       fieldtype: 'Data',
       required: true,
-      placeholder: 'Enter Stream',
+      apiEndpoint: "method/stridenex_app.api_stridenex_app.college.master.get_master_data",
+      apiParams: { doctype: "Stream" },
+      mapOptions: (data: any) => {
+        let items = Array.isArray(data) ? data : (data?.data?.data || data?.message?.data || data?.message || data?.data || []);
+        items = Array.isArray(items) ? items : [];
+        return items.map((item: any) => ({ value: item.name, label: item.name }));
+      },
       layout: 'full',
     },
     {
@@ -442,7 +459,39 @@ export const StudentDashboardScreen = () => {
       label: 'Course',
       fieldtype: 'Data',
       required: true,
-      placeholder: 'Enter Course',
+      disabled: !profileFormValues.stream || !profileFormValues.course_type,
+      apiEndpoint: "method/stridenex_app.api_stridenex_app.college.master.get_courses_by_type",
+      apiParams: (profileFormValues.stream && profileFormValues.course_type) ? {
+        stream: profileFormValues.stream,
+        course_type: profileFormValues.course_type
+      } : {},
+      mapOptions: (data: any) => {
+        const courses = data?.data?.courses || data?.courses || data?.message?.data?.courses || [];
+        return courses.map((item: any) => ({ value: item.name, label: item.course_name || item.name }));
+      },
+      layout: 'full',
+    },
+    {
+      fieldname: 'department',
+      label: 'Department',
+      fieldtype: 'Data',
+      required: true,
+      disabled: !profileFormValues.course,
+      apiEndpoint: "method/stridenex_app.stridenex_app.doctype.college_department.college_department.get_departments_by_course",
+      apiParams: profileFormValues.course ? {
+        courses: profileFormValues.course
+      } : {},
+      mapOptions: (data: any) => {
+        const depts = data?.data || data?.message?.data || [];
+        const deptOptions = depts.map((d: any) => ({
+          value: d.name,
+          label: d.department_name || d.name,
+          academicYears: d.academic_years || "",
+          semester: d.semester || ""
+        }));
+        setStudentDepartmentOptions(deptOptions);
+        return deptOptions.map(({ value, label }: { value: string; label: string }) => ({ value, label }));
+      },
       layout: 'full',
     },
     {
@@ -450,7 +499,19 @@ export const StudentDashboardScreen = () => {
       label: 'Semester',
       fieldtype: 'Data',
       required: true,
-      placeholder: 'Enter Semester',
+      disabled: !profileFormValues.department,
+      apiEndpoint: "method/stridenex_app.api_stridenex_app.student.masters.get_semester",
+      apiParams: profileFormValues.department ? {
+        semester: studentDepartmentOptions.find(d => d.value === profileFormValues.department)?.semester || ""
+      } : {},
+      mapOptions: (data: any) => {
+        let semesters = Array.isArray(data) ? data : (data?.data?.data || data?.message?.data || data?.message || data?.data || []);
+        semesters = Array.isArray(semesters) ? semesters : [];
+        return semesters.map((sem: any) => ({
+          value: sem.name,
+          label: sem.name
+        }));
+      },
       layout: 'full',
     },
     {
@@ -477,7 +538,6 @@ export const StudentDashboardScreen = () => {
       label: 'Gender',
       fieldtype: 'Select',
       required: true,
-      disabled: true,
       options: ['Male', 'Female', 'Other'],
       layout: 'full',
     },
@@ -513,7 +573,7 @@ export const StudentDashboardScreen = () => {
       placeholder: 'Upload Marksheet',
       layout: 'full',
     },
-  ], []);
+  ], [profileFormValues.stream, profileFormValues.course_type, profileFormValues.course, profileFormValues.department, studentDepartmentOptions]);
 
   const bannerMetrics = useMemo(() => {
     if (!studentData) return undefined;
@@ -718,6 +778,25 @@ export const StudentDashboardScreen = () => {
                    initialValues={profileFormValues}
                    loading={updateLoading}
                    buttonLabel="Save Changes"
+                   onValuesChange={(values, changedFieldName) => {
+                     let sideEffects: Record<string, any> = {};
+                     if (changedFieldName === "stream" || changedFieldName === "course_type") {
+                       sideEffects = { course: "", department: "", semester: "" };
+                     } else if (changedFieldName === "course") {
+                       sideEffects = { department: "", semester: "" };
+                     } else if (changedFieldName === "department") {
+                       sideEffects = { semester: "" };
+                     }
+                     setProfileFormValues((prev: any) => ({
+                       ...prev,
+                       stream: values.stream || "",
+                       course_type: values.course_type || "",
+                       course: values.course || "",
+                       department: values.department || "",
+                       ...sideEffects
+                     }));
+                     return sideEffects;
+                   }}
                  />
                </View>
             </ScrollView>

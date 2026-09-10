@@ -175,19 +175,17 @@ export default function DynamicField({ field, value, onChange, onCreateCustomVal
       }
 
       let mappedOptions = [];
-      if (data.length > 0) {
-        if (currentField.mapOptions) {
-          mappedOptions = currentField.mapOptions(data);
-        } else {
-          mappedOptions = data.map((item: any) => {
-            const val = item.name || item.value || item.specialization || item.skill || item.designation || item.round || item.domain || item.sub_domain || (typeof item === 'string' ? item : '');
-            const lbl = item.label || item.name || item.specialization || item.skill || item.designation || item.round || item.domain || item.sub_domain || item.district_name || (typeof item === 'string' ? item : '');
-            return {
-              value: val,
-              label: lbl
-            };
-          });
-        }
+      if (currentField.mapOptions) {
+        mappedOptions = currentField.mapOptions(responseData || data);
+      } else if (data.length > 0) {
+        mappedOptions = data.map((item: any) => {
+          const val = item.name || item.value || item.specialization || item.skill || item.designation || item.round || item.domain || item.sub_domain || (typeof item === 'string' ? item : '');
+          const lbl = item.label || item.name || item.specialization || item.skill || item.designation || item.round || item.domain || item.sub_domain || item.district_name || (typeof item === 'string' ? item : '');
+          return {
+            value: val,
+            label: lbl
+          };
+        });
       }
 
       setOptions(mappedOptions);
@@ -681,7 +679,7 @@ export default function DynamicField({ field, value, onChange, onCreateCustomVal
             style={[
               styles.inputContainer,
               { borderColor: error ? errorColor : borderColor, backgroundColor },
-              (field.read_only || field.disabled) && { backgroundColor: '#f5f5f5', opacity: 0.6 }
+              (field.read_only || field.disabled) && { backgroundColor: '#f5f5f5' }
             ]}
             onPress={handleDropdownClick}
             disabled={field.read_only || field.disabled}
@@ -722,7 +720,7 @@ export default function DynamicField({ field, value, onChange, onCreateCustomVal
             style={[
               styles.inputContainer,
               { borderColor: error ? errorColor : borderColor, backgroundColor },
-              (field.read_only || field.disabled) && { backgroundColor: '#f5f5f5', opacity: 0.6 }
+              (field.read_only || field.disabled) && { backgroundColor: '#f5f5f5' }
             ]}
             onPress={() => setIsOpen(true)}
             disabled={field.read_only || field.disabled}
@@ -965,13 +963,13 @@ export default function DynamicField({ field, value, onChange, onCreateCustomVal
               styles.input,
               { borderColor: error ? errorColor : borderColor, backgroundColor, color: textPrimary },
               field.fieldtype === 'Long Text' && styles.textArea,
-              field.read_only && { backgroundColor: '#f5f5f5', opacity: 0.6 }
+              (field.read_only || field.disabled) && { backgroundColor: '#f5f5f5', color: textSecondary }
             ]}
             placeholder={field.placeholder}
             placeholderTextColor={textSecondary}
             value={value || ''}
             onChangeText={(val) => onChange(field.fieldname, val)}
-            editable={!field.read_only}
+            editable={!(field.read_only || field.disabled)}
             multiline={field.fieldtype === 'Long Text'}
             numberOfLines={field.fieldtype === 'Long Text' ? 4 : 1}
             maxLength={field.maxLength}
