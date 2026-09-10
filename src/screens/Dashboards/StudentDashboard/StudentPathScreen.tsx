@@ -172,6 +172,7 @@ export const StudentPathScreen = () => {
   const [collapsedChecklists, setCollapsedChecklists] = useState<Record<string, boolean>>({});
   const [revisedMilestones, setRevisedMilestones] = useState<Record<string, boolean>>({});
   const [isCertificateLoading, setIsCertificateLoading] = useState(false);
+  const [showGuideBanner, setShowGuideBanner] = useState(false);
 
   const handleGetCertificate = async () => {
     try {
@@ -607,14 +608,59 @@ export const StudentPathScreen = () => {
       </SafeAreaView>
     );
   }
+  const guideBannerComponent = showGuideBanner ? (
+    <Animated.View entering={FadeInUp.delay(50)} style={{ marginBottom: 20, backgroundColor: '#3B82F6', borderRadius: 16, overflow: 'hidden', padding: 20 }}>
+      <TouchableOpacity onPress={() => setShowGuideBanner(false)} style={{ position: 'absolute', top: 12, right: 12, zIndex: 10 }}>
+        <X size={20} color="#BFDBFE" />
+      </TouchableOpacity>
+      
+      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+        <View style={{ backgroundColor: 'rgba(255,255,255,0.2)', padding: 8, borderRadius: 10, marginRight: 12 }}>
+          <Sparkles size={20} color="#DBEAFE" />
+        </View>
+        <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#FFFFFF', flex: 1 }}>Welcome to Your AI Skill Path</Text>
+      </View>
+      
+      <Text style={{ color: '#DBEAFE', fontSize: 13, lineHeight: 20, marginBottom: 20 }}>
+        Your personalized roadmap to your dream career. The Skill Path analyzes your current abilities, identifies the gap to your target role, and provides actionable milestones to help you build a verifiable Skill Ledger.
+      </Text>
+
+      <View style={{ gap: 12 }}>
+        <View style={{ backgroundColor: 'rgba(255,255,255,0.1)', padding: 12, borderRadius: 12 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
+            <Target size={16} color="#BFDBFE" style={{ marginRight: 8 }} />
+            <Text style={{ fontSize: 14, fontWeight: 'bold', color: '#FFFFFF' }}>1. Select a Career</Text>
+          </View>
+          <Text style={{ fontSize: 12, color: '#DBEAFE', lineHeight: 18 }}>Choose a target career path. Our AI will analyze the industry requirements and map out the exact skills you need.</Text>
+        </View>
+
+        <View style={{ backgroundColor: 'rgba(255,255,255,0.1)', padding: 12, borderRadius: 12 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
+            <Compass size={16} color="#BFDBFE" style={{ marginRight: 8 }} />
+            <Text style={{ fontSize: 14, fontWeight: 'bold', color: '#FFFFFF' }}>2. Follow Milestones</Text>
+          </View>
+          <Text style={{ fontSize: 12, color: '#DBEAFE', lineHeight: 18 }}>Complete curated tasks across Foundation, Core, and Advanced levels. Learn at your own pace with a structured roadmap.</Text>
+        </View>
+
+        <View style={{ backgroundColor: 'rgba(255,255,255,0.1)', padding: 12, borderRadius: 12 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
+            <Award size={16} color="#BFDBFE" style={{ marginRight: 8 }} />
+            <Text style={{ fontSize: 14, fontWeight: 'bold', color: '#FFFFFF' }}>3. Earn Verified Skills</Text>
+          </View>
+          <Text style={{ fontSize: 12, color: '#DBEAFE', lineHeight: 18 }}>Take skill assessments to prove your competency. Build your Skill Ledger and unlock premium job opportunities.</Text>
+        </View>
+      </View>
+    </Animated.View>
+  ) : null;
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['bottom']}>
       {inWizardMode ? (
         // WIZARD FLOW
         <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+          {guideBannerComponent}
           <Animated.View entering={FadeInUp.delay(100)} style={styles.header}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <View>
                 <View style={styles.headerBadge}>
                   <Sparkles size={10} color={colors.accent.DEFAULT} />
@@ -622,11 +668,19 @@ export const StudentPathScreen = () => {
                 </View>
                 <Text style={styles.title}>Onboarding</Text>
               </View>
-              {activePath && (
-                <TouchableOpacity onPress={() => setInWizardMode(false)} style={{ backgroundColor: '#EFF6FF', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: '#DBEAFE' }}>
-                  <Text style={{ fontSize: 10, fontWeight: 'bold', color: '#1D4ED8' }}>Back to Active</Text>
-                </TouchableOpacity>
-              )}
+              <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end', gap: 4 }}>
+                {!showGuideBanner && (
+                  <TouchableOpacity onPress={() => setShowGuideBanner(true)} style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#EFF6FF', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: '#DBEAFE' }}>
+                    <Sparkles size={12} color="#2563EB" style={{ marginRight: 4 }} />
+                    <Text style={{ fontSize: 10, fontWeight: 'bold', color: '#2563EB' }}>How Skill Path Works</Text>
+                  </TouchableOpacity>
+                )}
+                {activePath && (
+                  <TouchableOpacity onPress={() => setInWizardMode(false)} style={{ backgroundColor: '#EFF6FF', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: '#DBEAFE' }}>
+                    <Text style={{ fontSize: 10, fontWeight: 'bold', color: '#1D4ED8' }}>Back to Active</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
             </View>
           </Animated.View>
 
@@ -1088,12 +1142,23 @@ export const StudentPathScreen = () => {
       ) : (
         // ACTIVE PATH VIEW
         <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-          <Animated.View entering={FadeInUp.delay(100)} style={styles.header}>
-            <View style={styles.headerBadge}>
-               <Target size={10} color={colors.accent.DEFAULT} />
-               <Text style={styles.headerBadgeText}>STRATEGIC JOURNEY</Text>
+          {guideBannerComponent}
+
+          <Animated.View entering={FadeInUp.delay(100)} style={[styles.header, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }]}>
+            <View>
+              <View style={styles.headerBadge}>
+                 <Target size={10} color={colors.accent.DEFAULT} />
+                 <Text style={styles.headerBadgeText}>STRATEGIC JOURNEY</Text>
+              </View>
+              <Text style={styles.title}>Your Path</Text>
             </View>
-            <Text style={styles.title}>Your Path</Text>
+            
+            {!showGuideBanner && (
+              <TouchableOpacity onPress={() => setShowGuideBanner(true)} style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#EFF6FF', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: '#DBEAFE', marginTop: 4 }}>
+                <Sparkles size={12} color="#2563EB" style={{ marginRight: 4 }} />
+                <Text style={{ fontSize: 10, fontWeight: 'bold', color: '#2563EB' }}>How Skill Path Works</Text>
+              </TouchableOpacity>
+            )}
           </Animated.View>
 
           {activePath && (
