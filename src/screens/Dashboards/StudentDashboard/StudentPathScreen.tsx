@@ -64,7 +64,8 @@ import {
   getStudentSkills,
   getCareerRecommendations,
   getCareerPathDetail,
-  createStudentSkill
+  createStudentSkill,
+  getStudentByEmail
 } from '@/api/student.services';
 import SkillVerificationModal from '@/components/SkillVerificationModal';
 
@@ -182,7 +183,25 @@ export const StudentPathScreen = () => {
     const studentEmail = userName || 'ac1@gmail.com';
     setLoading(true);
     try {
-      const careerRes = await getStudentCareerPath(studentEmail);
+      const [careerRes, studentDetailsRes] = await Promise.all([
+        getStudentCareerPath(studentEmail).catch(err => {
+          console.warn("getStudentCareerPath error", err);
+          return null;
+        }),
+        getStudentByEmail(studentEmail).catch(err => {
+          console.warn("getStudentByEmail error", err);
+          return null;
+        })
+      ]);
+
+      if (studentDetailsRes) {
+        const studentData = studentDetailsRes?.data || studentDetailsRes?.message?.data || studentDetailsRes?.message;
+        if (studentData) {
+          if (studentData.course_type && degree === "B.Tech") setDegree(studentData.course_type);
+          if (studentData.course && !specialisation) setSpecialisation(studentData.course);
+        }
+      }
+
       if (careerRes?.message && careerRes.message.type === 'active_plan') {
         const data = careerRes.message.data;
         if (data.has_active_plan) {
