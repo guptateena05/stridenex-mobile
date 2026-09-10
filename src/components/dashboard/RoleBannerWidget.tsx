@@ -25,7 +25,7 @@ export const RoleBannerWidget = ({ fullName, date, role, progress, theme = 'oran
   const isPurple = theme === 'purple';
   const isMentor = theme === 'mentor';
   const isCollege = theme === 'college' || role?.toLowerCase() === 'college';
-  
+
   let gradStart = '#FB923C';
   let gradEnd = '#EA580C';
   let shadowColor = '#EA580C';
@@ -63,7 +63,7 @@ export const RoleBannerWidget = ({ fullName, date, role, progress, theme = 'oran
   const displayImageUrl = buildProfileImageUrl(imageUrl);
 
   return (
-    <View 
+    <View
       style={[styles.container, { backgroundColor: gradStart, shadowColor }]}
       onLayout={(e) => setContainerHeight(e.nativeEvent.layout.height)}
     >
@@ -88,19 +88,10 @@ export const RoleBannerWidget = ({ fullName, date, role, progress, theme = 'oran
               <>
                 <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
                   <Text style={styles.titleText} numberOfLines={2}>{title}</Text>
-                  {onCreateResumePress && (
-                    <TouchableOpacity 
-                      style={styles.createResumeBtn} 
-                      onPress={onCreateResumePress}
-                      activeOpacity={0.8}
-                    >
-                      <FileText size={10} color={gradEnd} style={{ marginRight: 3 }} />
-                      <Text style={[styles.createResumeBtnText, { color: gradEnd }]}>Create Resume</Text>
-                    </TouchableOpacity>
-                  )}
+
                   {onPreviewResumePress && (
-                    <TouchableOpacity 
-                      style={styles.createResumeBtn} 
+                    <TouchableOpacity
+                      style={styles.createResumeBtn}
                       onPress={onPreviewResumePress}
                       activeOpacity={0.8}
                     >

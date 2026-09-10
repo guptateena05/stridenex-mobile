@@ -31,9 +31,6 @@ export const StudentDashboardScreen = () => {
   const { userName, userFullName, userImage, role } = useAuth();
   const [studentData, setStudentData] = useState<any>(null);
   const [loadingDetails, setLoadingDetails] = useState(true);
-  const [updateLoading, setUpdateLoading] = useState(false);
-  const [isEditModalVisible, setIsEditModalVisible] = useState(false);
-  const [profileFormValues, setProfileFormValues] = useState<any>({});
   const [isPsychoModalVisible, setIsPsychoModalVisible] = useState(false);
   const [isTourActive, setIsTourActive] = useState(false);
 
@@ -297,283 +294,7 @@ export const StudentDashboardScreen = () => {
 
 
   // Initial Form values derived from fetched profile details
-  const initialFormValues = useMemo(() => {
-    if (!studentData) return {};
-    return {
-      first_name: studentData.first_name || "",
-      last_name: studentData.last_name || "",
-      email_id: studentData.email_id || userName || "",
-      mobile_no: studentData.mobile_no || "",
-      college: studentData.college || "",
-      department: studentData.department || "",
-      stream: studentData.stream || "",
-      course_type: studentData.course_type || studentData.courses_type || "",
-      course: studentData.course || "",
-      semester: studentData.semester || "",
-      current_year: mapYearToWord(studentData.current_year || studentData.academic_year) || "",
-      date_of_birth: studentData.date_of_birth || "",
-      gender: studentData.gender || "",
-      linkedin: studentData.linkedin || "",
-      github: studentData.github || "",
-      cgpa: studentData.cgpa ? String(studentData.cgpa) : "",
-      marksheet: studentData.marksheet || studentData.marksheet_file || "",
-    };
-  }, [studentData, userName]);
 
-
-  // Submit profile updates to API
-  const handleUpdateProfile = async (formData: any) => {
-    if (!userName) return;
-    setUpdateLoading(true);
-    try {
-      let marksheetUrl = formData.marksheet;
-
-      // Handle marksheet upload if it's a new file object from DocumentPicker
-      if (formData.marksheet && typeof formData.marksheet === 'object' && formData.marksheet.uri) {
-        try {
-          const uploadRes = await uploadFileApi(
-            formData.marksheet,
-            "Student",
-            userName,
-            "marksheet"
-          );
-          marksheetUrl = uploadRes.file_url || uploadRes.file_name;
-        } catch (uploadErr) {
-          console.error("Marksheet upload failed:", uploadErr);
-          Alert.alert("Upload Error", "Failed to upload marksheet. Profile update aborted.");
-          setUpdateLoading(false);
-          return;
-        }
-      }
-
-      const payload = {
-        ...studentData,
-        first_name: formData.first_name || studentData?.first_name || "",
-        last_name: formData.last_name || studentData?.last_name || "",
-        email_id: formData.email_id || studentData?.email_id || userName || "",
-        mobile_no: formData.mobile_no || studentData?.mobile_no || "",
-        college: formData.college || studentData?.college || "",
-        department: formData.department || studentData?.department || "",
-        stream: formData.stream || studentData?.stream || "",
-        courses_type: formData.course_type || formData.courses_type || studentData?.course_type || studentData?.courses_type || "",
-        course_type: formData.course_type || studentData?.course_type || "",
-        course: formData.course || studentData?.course || "",
-        semester: formData.semester || studentData?.semester || "",
-        current_year: mapYearToWord(formData.current_year) || mapYearToWord(studentData?.current_year || studentData?.academic_year) || "",
-        academic_year: mapYearToWord(formData.current_year) || mapYearToWord(studentData?.current_year || studentData?.academic_year) || "",
-        date_of_birth: formData.date_of_birth || studentData?.date_of_birth || "",
-        gender: formData.gender || studentData?.gender || "",
-        linkedin: formData.linkedin || studentData?.linkedin || "",
-        github: formData.github || studentData?.github || "",
-        cgpa: formData.cgpa ? Number(formData.cgpa) : undefined,
-        marksheet: marksheetUrl || null,
-      };
-
-      await updateStudent(userName, payload);
-      setIsEditModalVisible(false);
-      Alert.alert("Success", "Profile updated successfully!");
-      fetchStudentData();
-      await fetchStats();
-      DeviceEventEmitter.emit('PROFILE_UPDATED');
-    } catch (err: any) {
-      console.error("Failed to update student details:", err);
-      Alert.alert("Error", err?.message || "Failed to update profile. Please try again.");
-    } finally {
-      setUpdateLoading(false);
-    }
-  };
-
-  const [studentDepartmentOptions, setStudentDepartmentOptions] = useState<any[]>([]);
-
-  const editFields: FormField[] = useMemo(() => [
-    {
-      fieldname: 'first_name',
-      label: 'First Name',
-      fieldtype: 'Data',
-      required: true,
-      disabled: true,
-      layout: 'full',
-    },
-    {
-      fieldname: 'last_name',
-      label: 'Last Name',
-      fieldtype: 'Data',
-      required: true,
-      disabled: true,
-      layout: 'full',
-    },
-    {
-      fieldname: 'email_id',
-      label: 'Email ID',
-      fieldtype: 'Data',
-      required: true,
-      disabled: true,
-      layout: 'full',
-    },
-    {
-      fieldname: 'mobile_no',
-      label: 'Mobile No',
-      fieldtype: 'Data',
-      required: true,
-      placeholder: 'Enter Mobile Number',
-      layout: 'full',
-    },
-    {
-      fieldname: 'college',
-      label: 'College',
-      fieldtype: 'Data',
-      required: true,
-      disabled: true,
-      layout: 'full',
-    },
-    {
-      fieldname: 'course_type',
-      label: 'Course Type',
-      fieldtype: 'Data',
-      required: true,
-      apiEndpoint: "method/stridenex_app.api_stridenex_app.college.master.get_master_data",
-      apiParams: { doctype: "Course Type" },
-      mapOptions: (data: any) => {
-        let items = Array.isArray(data) ? data : (data?.data?.data || data?.message?.data || data?.message || data?.data || []);
-        items = Array.isArray(items) ? items : [];
-        return items.map((item: any) => ({ value: item.name || item.course_type, label: item.course_type || item.name }));
-      },
-      layout: 'full',
-    },
-    {
-      fieldname: 'stream',
-      label: 'Stream',
-      fieldtype: 'Data',
-      required: true,
-      apiEndpoint: "method/stridenex_app.api_stridenex_app.college.master.get_master_data",
-      apiParams: { doctype: "Stream" },
-      mapOptions: (data: any) => {
-        let items = Array.isArray(data) ? data : (data?.data?.data || data?.message?.data || data?.message || data?.data || []);
-        items = Array.isArray(items) ? items : [];
-        return items.map((item: any) => ({ value: item.name, label: item.name }));
-      },
-      layout: 'full',
-    },
-    {
-      fieldname: 'course',
-      label: 'Course',
-      fieldtype: 'Data',
-      required: true,
-      disabled: !profileFormValues.stream || !profileFormValues.course_type,
-      apiEndpoint: "method/stridenex_app.api_stridenex_app.college.master.get_courses_by_type",
-      apiParams: (profileFormValues.stream && profileFormValues.course_type) ? {
-        stream: profileFormValues.stream,
-        course_type: profileFormValues.course_type
-      } : {},
-      mapOptions: (data: any) => {
-        const courses = data?.data?.courses || data?.courses || data?.message?.data?.courses || [];
-        return courses.map((item: any) => ({ value: item.name, label: item.course_name || item.name }));
-      },
-      layout: 'full',
-    },
-    {
-      fieldname: 'department',
-      label: 'Department',
-      fieldtype: 'Data',
-      required: true,
-      disabled: !profileFormValues.course,
-      apiEndpoint: "method/stridenex_app.stridenex_app.doctype.college_department.college_department.get_departments_by_course",
-      apiParams: profileFormValues.course ? {
-        courses: profileFormValues.course
-      } : {},
-      mapOptions: (data: any) => {
-        const depts = data?.data || data?.message?.data || [];
-        const deptOptions = depts.map((d: any) => ({
-          value: d.name,
-          label: d.department_name || d.name,
-          academicYears: d.academic_years || "",
-          semester: d.semester || ""
-        }));
-        setStudentDepartmentOptions(deptOptions);
-        return deptOptions.map(({ value, label }: { value: string; label: string }) => ({ value, label }));
-      },
-      layout: 'full',
-    },
-    {
-      fieldname: 'semester',
-      label: 'Semester',
-      fieldtype: 'Data',
-      required: true,
-      disabled: !profileFormValues.department,
-      apiEndpoint: "method/stridenex_app.api_stridenex_app.student.masters.get_semester",
-      apiParams: profileFormValues.department ? {
-        semester: studentDepartmentOptions.find(d => d.value === profileFormValues.department)?.semester || ""
-      } : {},
-      mapOptions: (data: any) => {
-        let semesters = Array.isArray(data) ? data : (data?.data?.data || data?.message?.data || data?.message || data?.data || []);
-        semesters = Array.isArray(semesters) ? semesters : [];
-        return semesters.map((sem: any) => ({
-          value: sem.name,
-          label: sem.name
-        }));
-      },
-      layout: 'full',
-    },
-    {
-      fieldname: 'current_year',
-      label: 'Current Year',
-      fieldtype: 'Select',
-      required: true,
-      placeholder: 'Select Current Year',
-      options: ['First Year', 'Second Year', 'Third Year', 'Final Year'],
-      layout: 'full',
-    },
-    {
-      fieldname: 'date_of_birth',
-      label: 'Date of Birth',
-      fieldtype: 'Date',
-      required: true,
-      placeholder: 'Select Date of Birth',
-      layout: 'full',
-      textTransform: 'uppercase',
-      testTransform: 'uppercase',
-    },
-    {
-      fieldname: 'gender',
-      label: 'Gender',
-      fieldtype: 'Select',
-      required: true,
-      options: ['Male', 'Female', 'Other'],
-      layout: 'full',
-    },
-    {
-      fieldname: 'linkedin',
-      label: 'LinkedIn URL',
-      fieldtype: 'Data',
-      required: false,
-      placeholder: 'Enter LinkedIn URL',
-      layout: 'full',
-    },
-    {
-      fieldname: 'github',
-      label: 'GitHub URL',
-      fieldtype: 'Data',
-      required: false,
-      placeholder: 'Enter GitHub URL',
-      layout: 'full',
-    },
-    {
-      fieldname: 'cgpa',
-      label: 'CGPA',
-      fieldtype: 'Float',
-      required: true,
-      placeholder: 'Enter CGPA',
-      layout: 'full',
-    },
-    {
-      fieldname: 'marksheet',
-      label: 'Marksheet / Result',
-      fieldtype: 'File',
-      required: false,
-      placeholder: 'Upload Marksheet',
-      layout: 'full',
-    },
-  ], [profileFormValues.stream, profileFormValues.course_type, profileFormValues.course, profileFormValues.department, studentDepartmentOptions]);
 
   const bannerMetrics = useMemo(() => {
     if (!studentData) return undefined;
@@ -615,11 +336,10 @@ export const StudentDashboardScreen = () => {
             subtitle={bannerSubtitle}
             metrics={bannerMetrics}
             onEditPress={() => {
-              setProfileFormValues(initialFormValues);
-              setIsEditModalVisible(true);
+              navigation.navigate('Resume', { tab: 'profile' });
             }}
             onCreateResumePress={() => {
-              navigation.navigate('Resume');
+              navigation.navigate('Resume', { tab: 'resume' });
             }}
             onPreviewResumePress={() => {
               navigation.navigate('ResumePreview');
@@ -749,60 +469,7 @@ export const StudentDashboardScreen = () => {
         <View style={styles.footerSpacer} />
       </ScrollView>
 
-      {/* Edit Student Profile Modal */}
-      <Modal animationType="slide" transparent={true} visible={isEditModalVisible} onRequestClose={() => setIsEditModalVisible(false)}>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Edit Profile Settings</Text>
-              <TouchableOpacity 
-                style={styles.closeBtn} 
-                onPress={() => setIsEditModalVisible(false)}
-              >
-                <X size={20} color="#64748B" />
-              </TouchableOpacity>
-            </View>
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.modalScroll}>
-               <View style={{ padding: 20 }}>
-                 <ProfileImageUploader
-                   currentImageUrl={userImage}
-                   initials={profileFormValues.full_name?.charAt(0) || userFullName?.charAt(0) || "U"}
-                   size="lg"
-                 />
-                 <DynamicForm
-                   fields={editFields}
-                   onSubmit={async (values) => {
-                     await handleUpdateProfile(values);
-                     await fetchStats();
-                   }}
-                   initialValues={profileFormValues}
-                   loading={updateLoading}
-                   buttonLabel="Save Changes"
-                   onValuesChange={(values, changedFieldName) => {
-                     let sideEffects: Record<string, any> = {};
-                     if (changedFieldName === "stream" || changedFieldName === "course_type") {
-                       sideEffects = { course: "", department: "", semester: "" };
-                     } else if (changedFieldName === "course") {
-                       sideEffects = { department: "", semester: "" };
-                     } else if (changedFieldName === "department") {
-                       sideEffects = { semester: "" };
-                     }
-                     setProfileFormValues((prev: any) => ({
-                       ...prev,
-                       stream: values.stream || "",
-                       course_type: values.course_type || "",
-                       course: values.course || "",
-                       department: values.department || "",
-                       ...sideEffects
-                     }));
-                     return sideEffects;
-                   }}
-                 />
-               </View>
-            </ScrollView>
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
+
 
       {isIncompletePopupVisible && (
         <View style={[StyleSheet.absoluteFill, styles.incompleteOverlay]}>
@@ -824,8 +491,7 @@ export const StudentDashboardScreen = () => {
               style={styles.incompleteBtn}
               onPress={() => {
                 setIsIncompletePopupVisible(false);
-                setProfileFormValues(initialFormValues);
-                setIsEditModalVisible(true);
+                navigation.navigate('Resume', { tab: 'profile' });
               }}
             >
               <Text style={styles.incompleteBtnText}>Update Profile</Text>
