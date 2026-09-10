@@ -1630,3 +1630,21 @@ export const completeStudentGuidelineStep = async (guidelineName: string, studen
     throw error;
   }
 };
+
+export const getCertificate = async (payload: {
+  student_name: string;
+  assessment_name: string;
+  sr_no: number;
+}) => {
+  try {
+    const response = await api.post(
+      "method/stridenex_app.api_stridenex_app.app.get_certificate",
+      payload
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error getting certificate:", error);
+    throw error;
+  }
+};
+

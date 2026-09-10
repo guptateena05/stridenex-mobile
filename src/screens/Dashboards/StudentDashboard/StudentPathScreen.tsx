@@ -65,7 +65,8 @@ import {
   getCareerRecommendations,
   getCareerPathDetail,
   createStudentSkill,
-  getStudentByEmail
+  getStudentByEmail,
+  getCertificate
 } from '@/api/student.services';
 import SkillVerificationModal from '@/components/SkillVerificationModal';
 
@@ -170,6 +171,27 @@ export const StudentPathScreen = () => {
   const [studentSkills, setStudentSkills] = useState<any[]>([]);
   const [collapsedChecklists, setCollapsedChecklists] = useState<Record<string, boolean>>({});
   const [revisedMilestones, setRevisedMilestones] = useState<Record<string, boolean>>({});
+  const [isCertificateLoading, setIsCertificateLoading] = useState(false);
+
+  const handleGetCertificate = async () => {
+    try {
+      setIsCertificateLoading(true);
+      const studentEmail = userName || 'ac1@gmail.com';
+      // Use the email directly as the student_name as seen in the Postman screenshot
+      
+      const pathData = activePath?.data || activePath;
+      const assessmentName = pathData?.career_path || pathData?.career_path_name || pathData?.path_name || pathData?.title || "Data Scientist";
+
+      const url = `https://devstridenex.quantcloud.in/api/method/stridenex_app.api_stridenex_app.app.get_certificate?student_name=${encodeURIComponent(studentEmail)}&assessment_name=${encodeURIComponent(assessmentName)}&sr_no=1`;
+      
+      Linking.openURL(url);
+    } catch (err: any) {
+      console.error("Error fetching certificate:", err);
+      Alert.alert("Error", "Failed to retrieve certificate");
+    } finally {
+      setIsCertificateLoading(false);
+    }
+  };
   
   useEffect(() => {
     if (!showMasterSearch) return;
@@ -1129,6 +1151,35 @@ export const StudentPathScreen = () => {
                        <Text style={{ fontSize: 12, fontWeight: 'bold', color: '#1E293B' }}>{targetRole}</Text>
                     </View>
                  </View>
+
+
+                 <TouchableOpacity 
+                    onPress={handleGetCertificate}
+                    disabled={isCertificateLoading}
+                    style={{ 
+                      marginTop: 16,
+                      backgroundColor: '#F59E0B',
+                      paddingVertical: 12,
+                      borderRadius: 8,
+                      flexDirection: 'row',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      opacity: isCertificateLoading ? 0.6 : 1
+                    }}
+                 >
+                    {isCertificateLoading ? (
+                      <ActivityIndicator size="small" color="#FFFFFF" style={{ marginRight: 8 }} />
+                    ) : (
+                      <Award size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
+                    )}
+                    <Text style={{ 
+                      color: '#FFFFFF', 
+                      fontSize: 14, 
+                      fontWeight: 'bold' 
+                    }}>
+                      Get Certification
+                    </Text>
+                 </TouchableOpacity>
               </View>
 
               {/* Skills Analysis */}
