@@ -232,7 +232,9 @@ const StudentOnboardingScreen = () => {
         doctype: "State"
       },
       mapOptions: (data) => {
-        return data.map((state: any) => ({
+        let items = Array.isArray(data) ? data : (data?.data?.data || data?.message?.data || data?.message || data?.data || []);
+        items = Array.isArray(items) ? items : [];
+        return items.map((state: any) => ({
           value: state.name,
           label: state.name
         }));
@@ -254,7 +256,9 @@ const StudentOnboardingScreen = () => {
         limit_page_length: 1000
       } : undefined,
       mapOptions: (data) => {
-        return data.map((district: any) => ({
+        let items = Array.isArray(data) ? data : (data?.data?.data || data?.message?.data || data?.message || data?.data || []);
+        items = Array.isArray(items) ? items : [];
+        return items.map((district: any) => ({
           value: district.name,
           label: district.district_name || district.name
         }));
@@ -274,7 +278,8 @@ const StudentOnboardingScreen = () => {
         limit_page_length: 1000
       },
       mapOptions: (data) => {
-        const colleges = data.data || data || [];
+        let items = Array.isArray(data) ? data : (data?.data?.data || data?.message?.data || data?.message || data?.data || []);
+        const colleges = Array.isArray(items) ? items : [];
         const options = colleges.map((college: any) => ({
           value: college.name,
           label: college.college_name || college.name
@@ -306,7 +311,8 @@ const StudentOnboardingScreen = () => {
         limit_page_length: 1000
       },
       mapOptions: (data) => {
-        const courses = data.data || data || [];
+        let items = Array.isArray(data) ? data : (data?.data?.data || data?.message?.data || data?.message || data?.data || []);
+        const courses = Array.isArray(items) ? items : [];
         return courses.map((course: any) => ({
           value: course.name || course.course_type,
           label: course.course_type || course.name
@@ -331,7 +337,8 @@ const StudentOnboardingScreen = () => {
         limit_page_length: 1000
       } : undefined,
       mapOptions: (data) => {
-        const items = data.data || data || [];
+        let items = Array.isArray(data) ? data : (data?.data?.data || data?.message?.data || data?.message || data?.data || []);
+        items = Array.isArray(items) ? items : [];
         const uniqueStreams = Array.from(new Set(items.map((item: any) => item.stream))).filter(Boolean);
         return uniqueStreams.map((stream: any) => ({
           value: stream,
@@ -359,7 +366,8 @@ const StudentOnboardingScreen = () => {
         limit_page_length: 1000
       } : undefined,
       mapOptions: (data) => {
-        const items = data.data || data || [];
+        let items = Array.isArray(data) ? data : (data?.data?.data || data?.message?.data || data?.message || data?.data || []);
+        items = Array.isArray(items) ? items : [];
         const uniqueCourses = Array.from(new Set(items.map((item: any) => item.course))).filter(Boolean);
         return uniqueCourses.map((course: any) => ({
           value: course,
@@ -397,7 +405,8 @@ const StudentOnboardingScreen = () => {
           }
         : undefined,
       mapOptions: (data) => {
-        const departments = data.data || data || [];
+        let items = Array.isArray(data) ? data : (data?.data?.data || data?.message?.data || data?.message || data?.data || []);
+        const departments = Array.isArray(items) ? items : [];
         const deptOptions = departments.map((dept: any) => ({
           value: dept.department || dept.department_name || dept.name,
           label: dept.department || dept.department_name || dept.name,
@@ -486,7 +495,8 @@ const StudentOnboardingScreen = () => {
         fields: ["skill_name"]
       },
       mapOptions: (data) => {
-        const items = data.data || data || [];
+        let items = Array.isArray(data) ? data : (data?.data?.data || data?.message?.data || data?.message || data?.data || []);
+        items = Array.isArray(items) ? items : [];
         return items.map((item: any) => ({
           value: item.name || item.skill_name,
           label: item.skill_name || item.name
@@ -506,7 +516,8 @@ const StudentOnboardingScreen = () => {
         doctype: "Student Career Interest"
       },
       mapOptions: (data) => {
-        const items = data.data || data || [];
+        let items = Array.isArray(data) ? data : (data?.data?.data || data?.message?.data || data?.message || data?.data || []);
+        items = Array.isArray(items) ? items : [];
         return items.map((item: any) => ({
           value: item.name || item.career_interest_name,
           label: item.career_interest_name || item.name

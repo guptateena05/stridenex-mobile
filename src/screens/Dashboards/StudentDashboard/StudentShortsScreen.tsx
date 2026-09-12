@@ -18,7 +18,8 @@ import {
   Platform,
   Alert,
   Clipboard,
-  Linking
+  Linking,
+  AppState
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -203,7 +204,7 @@ const VideoPlayerWebView = ({ video, isPlaying, isMuted }: { video: any, isPlayi
 // Vertical Video Card (for Shorts Tab - Reels style)
 const VerticalShortCard = ({ 
   video, 
-  isPlaying: autoPlay, 
+  isPlaying: isActive, 
   isSaved, 
   isLiked, 
   isMuted, 
@@ -218,19 +219,33 @@ const VerticalShortCard = ({
   cardHeight,
   likeCount
 }: any) => {
-   const [isPlaying, setIsPlaying] = useState(autoPlay);
+   const [isManuallyPaused, setIsManuallyPaused] = useState(false);
+   const [appState, setAppState] = useState(AppState.currentState);
    const insets = useSafeAreaInsets();
 
    useEffect(() => {
-     setIsPlaying(autoPlay);
-   }, [autoPlay]);
+     const subscription = AppState.addEventListener('change', nextAppState => {
+       setAppState(nextAppState);
+     });
+     return () => {
+       subscription.remove();
+     };
+   }, []);
+
+   useEffect(() => {
+     if (!isActive) {
+       setIsManuallyPaused(false);
+     }
+   }, [isActive]);
+
+   const actuallyPlaying = isActive && !isManuallyPaused && appState === 'active';
 
    return (
      <View style={[styles.verticalShortCard, { height: cardHeight }]}>
        {/* Background: Video Player or Poster Image */}
-       {isPlaying ? (
+       {isActive ? (
          <View style={StyleSheet.absoluteFill}>
-           <VideoPlayerWebView video={video} isPlaying={isPlaying} isMuted={isMuted} />
+           <VideoPlayerWebView video={video} isPlaying={actuallyPlaying} isMuted={isMuted} />
          </View>
        ) : (
          <ImageBackground source={{ uri: video.posterUrl }} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
@@ -240,7 +255,11 @@ const VerticalShortCard = ({
        <TouchableOpacity 
          style={StyleSheet.absoluteFillObject} 
          activeOpacity={1} 
-         onPress={() => setIsPlaying(!isPlaying)} 
+         onPress={() => {
+           if (isActive) {
+             setIsManuallyPaused(!isManuallyPaused);
+           }
+         }} 
        />
 
        {/* Top Row Controls Overlay */}
@@ -352,18 +371,13 @@ const VerticalShortCard = ({
        </View>
 
        {/* Center Play Overlay when paused */}
-       {!isPlaying && (
+       {isActive && isManuallyPaused && (
          <View style={styles.centerPlayWrapper} pointerEvents="none">
            <View style={styles.playIconCircle}>
               <Play size={32} color="#FFFFFF" fill="#FFFFFF" style={styles.centerPlayIcon} />
            </View>
          </View>
        )}
-
-       {/* Very bottom Red progress line */}
-       <View style={styles.bottomProgressBarBg}>
-          <View style={[styles.bottomProgressBarFill, { width: isPlaying ? '60%' : '15%' }]} />
-       </View>
      </View>
    );
 };
