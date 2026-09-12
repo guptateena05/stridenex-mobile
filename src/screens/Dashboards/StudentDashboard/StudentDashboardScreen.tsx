@@ -9,7 +9,7 @@ import { useAuth } from '@/context/AuthContext';
 import { RoleBannerWidget } from '@/components/dashboard/RoleBannerWidget';
 import { StatsCard } from '@/components/dashboard/StatsCard';
 import { LearningActivityGraph } from '@/components/dashboard/LearningActivityGraph';
-import { AICoachCard } from '@/components/dashboard/AICoachCard';
+import { SuccessStoriesWidget } from '@/components/dashboard/SuccessStoriesWidget';
 import { AlertsAgendaCard } from '@/components/dashboard/AlertsAgendaCard';
 import { useNavigation } from '@react-navigation/native';
 import { TrendingUp, Award, Briefcase, Bot, X, MapPin, Clock, IndianRupee, Target, ShieldCheck, Factory, FileText, ChevronRight, AlertCircle } from 'lucide-react-native';
@@ -455,15 +455,8 @@ export const StudentDashboardScreen = () => {
           )}
         </Animated.View>
 
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>AI Coach</Text>
-        </View>
-
         <Animated.View entering={FadeInUp.delay(900)}>
-          <AICoachCard 
-            message="Your SQL velocity is impressive. 🚀 You've unlocked the next 'Strategic Learning' path."
-            task="Optimize Ch.4 Joins + solving 3 advanced queries."
-          />
+          <SuccessStoriesWidget />
         </Animated.View>
         
         <View style={styles.footerSpacer} />
