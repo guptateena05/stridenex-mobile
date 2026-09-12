@@ -66,7 +66,8 @@ import {
   getCareerPathDetail,
   createStudentSkill,
   getStudentByEmail,
-  getCertificate
+  getCertificate,
+  getCompletedPaths
 } from '@/api/student.services';
 import SkillVerificationModal from '@/components/SkillVerificationModal';
 
@@ -119,6 +120,10 @@ export const StudentPathScreen = () => {
   const { userName } = useAuth();
   const [loading, setLoading] = useState(true);
   const [activePath, setActivePath] = useState<any>(null);
+
+  // Completed Paths
+  const [completedPaths, setCompletedPaths] = useState<any[]>([]);
+  const [showCompletedPathsModal, setShowCompletedPathsModal] = useState<boolean>(false);
 
   // Wizard States
   const [inWizardMode, setInWizardMode] = useState(false);
@@ -206,13 +211,17 @@ export const StudentPathScreen = () => {
     const studentEmail = userName || 'ac1@gmail.com';
     setLoading(true);
     try {
-      const [careerRes, studentDetailsRes] = await Promise.all([
-        getStudentCareerPath(studentEmail).catch(err => {
+      const [careerRes, studentDetailsRes, completedPathsRes] = await Promise.all([
+        getStudentCareerPath(studentEmail).catch((err: any) => {
           console.warn("getStudentCareerPath error", err);
           return null;
         }),
-        getStudentByEmail(studentEmail).catch(err => {
+        getStudentByEmail(studentEmail).catch((err: any) => {
           console.warn("getStudentByEmail error", err);
+          return null;
+        }),
+        getCompletedPaths(studentEmail).catch((err: any) => {
+          console.warn("getCompletedPaths error", err);
           return null;
         })
       ]);
@@ -225,7 +234,13 @@ export const StudentPathScreen = () => {
         }
       }
 
-      if (careerRes?.message && careerRes.message.type === 'active_plan') {
+      if (completedPathsRes?.message?.completed_paths) {
+        setCompletedPaths(completedPathsRes.message.completed_paths);
+      } else {
+        setCompletedPaths([]);
+      }
+
+      if (careerRes?.message && (careerRes.message.type === 'active_plan' || careerRes.message.type === 'completed_plan' || careerRes.message.type === 'completed' || careerRes.message.data?.is_completed || careerRes.message.data?.progress_percent === 100)) {
         const data = careerRes.message.data;
         if (data.has_active_plan) {
           setActivePath(data);
@@ -660,7 +675,7 @@ export const StudentPathScreen = () => {
         <ScrollView style={styles.container} contentContainerStyle={styles.content}>
           {guideBannerComponent}
           <Animated.View entering={FadeInUp.delay(100)} style={styles.header}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
               <View>
                 <View style={styles.headerBadge}>
                   <Sparkles size={10} color={colors.accent.DEFAULT} />
@@ -668,19 +683,26 @@ export const StudentPathScreen = () => {
                 </View>
                 <Text style={styles.title}>Onboarding</Text>
               </View>
-              <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end', gap: 4 }}>
-                {!showGuideBanner && (
-                  <TouchableOpacity onPress={() => setShowGuideBanner(true)} style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#EFF6FF', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: '#DBEAFE' }}>
-                    <Sparkles size={12} color="#2563EB" style={{ marginRight: 4 }} />
-                    <Text style={{ fontSize: 10, fontWeight: 'bold', color: '#2563EB' }}>How Skill Path Works</Text>
-                  </TouchableOpacity>
-                )}
-                {activePath && (
-                  <TouchableOpacity onPress={() => setInWizardMode(false)} style={{ backgroundColor: '#EFF6FF', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: '#DBEAFE' }}>
-                    <Text style={{ fontSize: 10, fontWeight: 'bold', color: '#1D4ED8' }}>Back to Active</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
+            </View>
+            
+            <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
+              {completedPaths.length > 0 && (
+                <TouchableOpacity onPress={() => setShowCompletedPathsModal(true)} style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#ECFDF5', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: '#A7F3D0' }}>
+                  <CheckCircle2 size={12} color="#059669" style={{ marginRight: 4 }} />
+                  <Text style={{ fontSize: 10, fontWeight: 'bold', color: '#059669' }}>Completed Paths ({completedPaths.length})</Text>
+                </TouchableOpacity>
+              )}
+              {!showGuideBanner && (
+                <TouchableOpacity onPress={() => setShowGuideBanner(true)} style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#EFF6FF', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: '#DBEAFE' }}>
+                  <Sparkles size={12} color="#2563EB" style={{ marginRight: 4 }} />
+                  <Text style={{ fontSize: 10, fontWeight: 'bold', color: '#2563EB' }}>How Skill Path Works</Text>
+                </TouchableOpacity>
+              )}
+              {activePath && (
+                <TouchableOpacity onPress={() => setInWizardMode(false)} style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#EFF6FF', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: '#DBEAFE' }}>
+                  <Text style={{ fontSize: 10, fontWeight: 'bold', color: '#1D4ED8' }}>Back to Active</Text>
+                </TouchableOpacity>
+              )}
             </View>
           </Animated.View>
 
@@ -1144,21 +1166,31 @@ export const StudentPathScreen = () => {
         <ScrollView style={styles.container} contentContainerStyle={styles.content}>
           {guideBannerComponent}
 
-          <Animated.View entering={FadeInUp.delay(100)} style={[styles.header, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }]}>
-            <View>
-              <View style={styles.headerBadge}>
-                 <Target size={10} color={colors.accent.DEFAULT} />
-                 <Text style={styles.headerBadgeText}>STRATEGIC JOURNEY</Text>
+          <Animated.View entering={FadeInUp.delay(100)} style={styles.header}>
+            <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+              <View>
+                <View style={styles.headerBadge}>
+                   <Target size={10} color={colors.accent.DEFAULT} />
+                   <Text style={styles.headerBadgeText}>STRATEGIC JOURNEY</Text>
+                </View>
+                <Text style={styles.title}>Your Path</Text>
               </View>
-              <Text style={styles.title}>Your Path</Text>
             </View>
             
-            {!showGuideBanner && (
-              <TouchableOpacity onPress={() => setShowGuideBanner(true)} style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#EFF6FF', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: '#DBEAFE', marginTop: 4 }}>
-                <Sparkles size={12} color="#2563EB" style={{ marginRight: 4 }} />
-                <Text style={{ fontSize: 10, fontWeight: 'bold', color: '#2563EB' }}>How Skill Path Works</Text>
-              </TouchableOpacity>
-            )}
+            <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
+              {completedPaths.length > 0 && (
+                <TouchableOpacity onPress={() => setShowCompletedPathsModal(true)} style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#ECFDF5', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: '#A7F3D0' }}>
+                  <CheckCircle2 size={12} color="#059669" style={{ marginRight: 4 }} />
+                  <Text style={{ fontSize: 10, fontWeight: 'bold', color: '#059669' }}>Completed Paths ({completedPaths.length})</Text>
+                </TouchableOpacity>
+              )}
+              {!showGuideBanner && (
+                <TouchableOpacity onPress={() => setShowGuideBanner(true)} style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#EFF6FF', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: '#DBEAFE' }}>
+                  <Sparkles size={12} color="#2563EB" style={{ marginRight: 4 }} />
+                  <Text style={{ fontSize: 10, fontWeight: 'bold', color: '#2563EB' }}>How Skill Path Works</Text>
+                </TouchableOpacity>
+              )}
+            </View>
           </Animated.View>
 
           {activePath && (
@@ -1220,10 +1252,10 @@ export const StudentPathScreen = () => {
 
                  <TouchableOpacity 
                     onPress={handleGetCertificate}
-                    disabled={isCertificateLoading}
+                    disabled={isCertificateLoading || !isPathCompleted}
                     style={{ 
                       marginTop: 16,
-                      backgroundColor: '#F59E0B',
+                      backgroundColor: isPathCompleted ? '#F59E0B' : '#F1F5F9',
                       paddingVertical: 12,
                       borderRadius: 8,
                       flexDirection: 'row',
@@ -1233,12 +1265,12 @@ export const StudentPathScreen = () => {
                     }}
                  >
                     {isCertificateLoading ? (
-                      <ActivityIndicator size="small" color="#FFFFFF" style={{ marginRight: 8 }} />
+                      <ActivityIndicator size="small" color={isPathCompleted ? "#FFFFFF" : "#94A3B8"} style={{ marginRight: 8 }} />
                     ) : (
-                      <Award size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
+                      <Award size={18} color={isPathCompleted ? "#FFFFFF" : "#94A3B8"} style={{ marginRight: 8 }} />
                     )}
                     <Text style={{ 
-                      color: '#FFFFFF', 
+                      color: isPathCompleted ? '#FFFFFF' : '#94A3B8', 
                       fontSize: 14, 
                       fontWeight: 'bold' 
                     }}>
@@ -1551,6 +1583,103 @@ export const StudentPathScreen = () => {
           }
         }}
       />
+
+      {/* Completed Paths Modal */}
+      <Modal visible={showCompletedPathsModal} transparent animationType="slide">
+        <View style={{ flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.6)', justifyContent: 'flex-end' }}>
+           <View style={{ backgroundColor: '#F8FAFC', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, height: '85%' }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                    <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: '#D1FAE5', alignItems: 'center', justifyContent: 'center' }}>
+                       <CheckCircle2 size={24} color="#059669" />
+                    </View>
+                    <View>
+                       <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#1E293B' }}>Completed Paths</Text>
+                       <Text style={{ fontSize: 12, color: '#64748B' }}>Your acquired skills & achievements</Text>
+                    </View>
+                 </View>
+                 <TouchableOpacity onPress={() => setShowCompletedPathsModal(false)} style={{ padding: 8, backgroundColor: '#F1F5F9', borderRadius: 8 }}>
+                    <Text style={{ fontSize: 14, fontWeight: 'bold', color: '#64748B' }}>Close</Text>
+                 </TouchableOpacity>
+              </View>
+
+              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
+                 {completedPaths.length === 0 ? (
+                    <View style={{ alignItems: 'center', paddingVertical: 40 }}>
+                       <View style={{ width: 64, height: 64, backgroundColor: '#F1F5F9', borderRadius: 32, alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+                          <BookOpen size={32} color="#94A3B8" />
+                       </View>
+                       <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#475569' }}>No paths completed yet</Text>
+                       <Text style={{ fontSize: 12, color: '#64748B', marginTop: 8, textAlign: 'center' }}>Keep learning and completing milestones to see your achievements here!</Text>
+                    </View>
+                 ) : (
+                    completedPaths.map((cp, idx) => (
+                       <View key={idx} style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: '#E2E8F0' }}>
+                          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' }}>
+                             <View style={{ flex: 1, paddingRight: 12 }}>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
+                                   <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#1E293B' }}>{cp.career_path}</Text>
+                                   {cp.completion_percent === 100 && (
+                                      <View style={{ backgroundColor: '#D1FAE5', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 12 }}>
+                                         <Text style={{ fontSize: 9, fontWeight: 'bold', color: '#047857', textTransform: 'uppercase' }}>Completed</Text>
+                                      </View>
+                                   )}
+                                </View>
+                                <Text style={{ fontSize: 11, color: '#64748B', marginTop: 4 }}>
+                                   Enrolled: {new Date(cp.enrolled_at).toLocaleDateString()} • Milestones: {cp.total_milestones}
+                                </Text>
+                             </View>
+                          </View>
+
+                          {cp.completion_percent === 100 && (
+                             <TouchableOpacity 
+                                onPress={async () => {
+                                  try {
+                                    setIsCertificateLoading(true);
+                                    const studentName = userName || 'Student';
+                                    const payload = {
+                                      student_name: studentName,
+                                      assessment_name: cp.career_path,
+                                      sr_no: 1
+                                    };
+                                    const params = new URLSearchParams(payload as any).toString();
+                                    const url = `https://devstridenex.quantcloud.in/api/method/stridenex_app.api_stridenex_app.app.get_certificate?${params}`;
+                                    Linking.openURL(url);
+                                  } catch (err) {
+                                    console.error("Error generating certificate", err);
+                                  } finally {
+                                    setIsCertificateLoading(false);
+                                  }
+                                }}
+                                style={{ backgroundColor: '#F97316', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 10, borderRadius: 8, marginBottom: 16 }}
+                             >
+                                <Award size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
+                                <Text style={{ color: '#FFFFFF', fontSize: 13, fontWeight: 'bold' }}>Get Certificate</Text>
+                             </TouchableOpacity>
+                          )}
+
+                          <View>
+                             <Text style={{ fontSize: 11, fontWeight: 'bold', color: '#64748B', textTransform: 'uppercase', marginBottom: 8 }}>Skills Acquired</Text>
+                             {cp.skills_acquired && cp.skills_acquired.length > 0 ? (
+                                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                                   {cp.skills_acquired.map((s: any, sIdx: number) => (
+                                      <View key={sIdx} style={{ backgroundColor: '#EFF6FF', borderWidth: 1, borderColor: '#DBEAFE', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                                         <CheckCircle2 size={10} color="#3B82F6" />
+                                         <Text style={{ fontSize: 11, fontWeight: 'bold', color: '#1D4ED8' }}>{s.skill}</Text>
+                                      </View>
+                                   ))}
+                                </View>
+                             ) : (
+                                <Text style={{ fontSize: 12, color: '#94A3B8', fontStyle: 'italic' }}>No skills recorded yet.</Text>
+                             )}
+                          </View>
+                       </View>
+                    ))
+                 )}
+              </ScrollView>
+           </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };

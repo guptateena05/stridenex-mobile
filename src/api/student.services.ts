@@ -1648,3 +1648,17 @@ export const getCertificate = async (payload: {
   }
 };
 
+/**
+ * Fetch all completed paths and acquired skills for a student
+ */
+export const getCompletedPaths = async (studentEmail: string) => {
+  try {
+    const response = await api.get(
+      `method/nexedu.path_finder.api.path_enrollment.get_completed_paths?student=${encodeURIComponent(studentEmail)}`
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching completed paths:", error);
+    throw error;
+  }
+};
