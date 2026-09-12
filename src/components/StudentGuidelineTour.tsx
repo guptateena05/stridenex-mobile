@@ -149,7 +149,7 @@ export default function StudentGuidelineTour({ studentEmail, onTourStateChange }
         onPress={handleManualOpen}
         activeOpacity={0.8}
       >
-        <Compass size={24} color="#FFF" />
+        <Compass size={20} color="#FFF" />
       </TouchableOpacity>
 
       <Modal visible={isOpen} transparent animationType="slide">
@@ -286,10 +286,10 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 110,
     right: 24,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#2563EB',
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#FF6B00',
     justifyContent: 'center',
     alignItems: 'center',
     elevation: 8,

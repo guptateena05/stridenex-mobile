@@ -8,7 +8,7 @@ import { spacing } from '@/theme/spacing';
 import { useAuth } from '@/context/AuthContext';
 import { RoleBannerWidget } from '@/components/dashboard/RoleBannerWidget';
 import { StatsCard } from '@/components/dashboard/StatsCard';
-import { LearningActivityGraph } from '@/components/dashboard/LearningActivityGraph';
+import { HabitHeatmapWidget } from '@/components/dashboard/HabitHeatmapWidget';
 import { SuccessStoriesWidget } from '@/components/dashboard/SuccessStoriesWidget';
 import { AlertsAgendaCard } from '@/components/dashboard/AlertsAgendaCard';
 import { useNavigation } from '@react-navigation/native';
@@ -137,24 +137,6 @@ export const StudentDashboardScreen = () => {
     fetchStats();
   }, [userName]);
 
-  const [learningActivityData, setLearningActivityData] = useState<any>(null);
-
-  useEffect(() => {
-    if (!userName) return;
-    const fetchLearningActivity = async () => {
-      try {
-        const res = await getLearningActivity(userName);
-        console.log("Mobile student learning activity response:", res);
-        const data = res?.data || res?.message || res;
-        if (data) {
-          setLearningActivityData(data);
-        }
-      } catch (err) {
-        console.error("Error loading mobile learning activity:", err);
-      }
-    };
-    fetchLearningActivity();
-  }, [userName]);
 
   const [opportunityAlerts, setOpportunityAlerts] = useState<any>({ newPostings: [], deadlineAlerts: [] });
 
@@ -364,7 +346,7 @@ export const StudentDashboardScreen = () => {
         </View>
 
         <Animated.View entering={FadeInUp.delay(400)}>
-          <LearningActivityGraph data={learningActivityData} />
+          <HabitHeatmapWidget studentEmail={userName || ""} />
         </Animated.View>
 
 

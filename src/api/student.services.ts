@@ -1662,3 +1662,19 @@ export const getCompletedPaths = async (studentEmail: string) => {
     throw error;
   }
 };
+
+export const getHabitCompletionHeatmap = async (studentEmail: string, year?: number) => {
+  try {
+    const params = new URLSearchParams();
+    params.append("student", studentEmail);
+    if (year) params.append("year", String(year));
+    
+    const response = await api.get(
+      `method/nexedu.habits_builder.api.get_habit_completion_heatmap?${params.toString()}`
+    );
+    return response.data?.message || response.data;
+  } catch (error) {
+    console.error("Error fetching habit completion heatmap:", error);
+    throw error;
+  }
+};

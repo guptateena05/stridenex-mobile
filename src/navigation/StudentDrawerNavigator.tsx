@@ -38,7 +38,7 @@ import { StudentCampusDrivesScreen } from '@/screens/Dashboards/StudentDashboard
 import { StudentHabitsScreen } from '@/screens/Dashboards/StudentDashboard/StudentHabitsScreen';
 import { StudentMentorsScreen } from '@/screens/Dashboards/StudentDashboard/StudentMentorsScreen';
 import { StudentEventsScreen } from '@/screens/Dashboards/StudentDashboard/StudentEventsScreen';
-import { StudentStoriesScreen } from '@/screens/Dashboards/StudentDashboard/StudentStoriesScreen';
+
 import { StudentPlansScreen } from '@/screens/Dashboards/StudentDashboard/StudentPlansScreen';
 import { StudentShortsScreen } from '@/screens/Dashboards/StudentDashboard/StudentShortsScreen';
 import { StudentProfileSettingsScreen } from '@/screens/Dashboards/StudentDashboard/StudentProfileSettingsScreen';
@@ -182,13 +182,7 @@ export const StudentDrawerNavigator = () => {
           drawerIcon: ({ color, size }) => <Calendar color={color} size={size} />,
         }}
       />
-      <Drawer.Screen
-        name="Stories"
-        component={StudentStoriesScreen}
-        options={{
-          drawerIcon: ({ color, size }) => <History color={color} size={size} />
-        }}
-      />
+
       <Drawer.Screen
         name="Plans"
         component={StudentPlansScreen}
