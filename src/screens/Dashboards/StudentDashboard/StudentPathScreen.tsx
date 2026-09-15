@@ -188,9 +188,12 @@ export const StudentPathScreen = () => {
       const pathData = activePath?.data || activePath;
       const assessmentName = pathData?.career_path || pathData?.career_path_name || pathData?.path_name || pathData?.title || "Data Scientist";
 
-      const url = `https://devstridenex.quantcloud.in/api/method/stridenex_app.api_stridenex_app.app.get_certificate?student_name=${encodeURIComponent(studentEmail)}&assessment_name=${encodeURIComponent(assessmentName)}&sr_no=1`;
+      const rawUrl = `https://devstridenex.quantcloud.in/api/method/stridenex_app.api_stridenex_app.app.get_certificate?student_name=${encodeURIComponent(studentEmail)}&assessment_name=${encodeURIComponent(assessmentName)}&sr_no=1`;
       
-      Linking.openURL(url);
+      Linking.openURL(rawUrl).catch(err => {
+        console.error("Failed to open URL:", err);
+        Alert.alert("Error", "Could not open the certificate link.");
+      });
     } catch (err: any) {
       console.error("Error fetching certificate:", err);
       Alert.alert("Error", "Failed to retrieve certificate");
@@ -1643,8 +1646,12 @@ export const StudentPathScreen = () => {
                                       sr_no: 1
                                     };
                                     const params = new URLSearchParams(payload as any).toString();
-                                    const url = `https://devstridenex.quantcloud.in/api/method/stridenex_app.api_stridenex_app.app.get_certificate?${params}`;
-                                    Linking.openURL(url);
+                                    const rawUrl = `https://devstridenex.quantcloud.in/api/method/stridenex_app.api_stridenex_app.app.get_certificate?${params}`;
+                                    
+                                    Linking.openURL(rawUrl).catch(err => {
+                                      console.error("Failed to open URL:", err);
+                                      Alert.alert("Error", "Could not open the certificate link.");
+                                    });
                                   } catch (err) {
                                     console.error("Error generating certificate", err);
                                   } finally {
