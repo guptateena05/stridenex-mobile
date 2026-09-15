@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, KeyboardAvoidingView, ScrollView, Platform, Animated, TouchableOpacity, Image } from 'react-native';
+import { View, Text, StyleSheet, Platform, Animated, TouchableOpacity, Image } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { Home } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import { colors } from '@/theme/colors';
@@ -53,8 +54,13 @@ export const AnimatedAuthLayout = ({
       
       <View style={styles.radialPatternOverlay} />
 
-      <KeyboardAvoidingView style={{ flex: 1, zIndex: 2 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+      <KeyboardAwareScrollView 
+        style={{ flex: 1, zIndex: 2 }}
+        contentContainerStyle={styles.scrollContent} 
+        keyboardShouldPersistTaps="handled"
+        enableOnAndroid={true}
+        extraScrollHeight={20}
+      >
           
           {/* <TouchableOpacity 
             style={styles.homeBtn}
@@ -86,8 +92,7 @@ export const AnimatedAuthLayout = ({
             {children}
 
           </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
+      </KeyboardAwareScrollView>
     </View>
   );
 };

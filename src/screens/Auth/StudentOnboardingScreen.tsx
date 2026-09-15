@@ -811,7 +811,7 @@ const StudentOnboardingScreen = () => {
         {success ? <Text style={styles.successText}>{success}</Text> : null}
 
         {step === 1 && (
-          <ScrollView showsVerticalScrollIndicator={false} style={styles.scrollView}>
+          <View style={styles.scrollView}>
             {/* Email Section */}
             <View style={styles.sectionContainer}>
               <Input
@@ -938,13 +938,11 @@ const StudentOnboardingScreen = () => {
             <TouchableOpacity onPress={() => navigation.navigate('Login')} style={styles.skipContainer}>
               <Text style={styles.skipTextBtn}>Skip Onboarding</Text>
             </TouchableOpacity>
-          </ScrollView>
+          </View>
         )}
 
         {step === 2 && (
-          <ScrollView
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={styles.scrollContent}
+          <View
             style={styles.scrollView}
           >
             <DynamicForm
@@ -1025,7 +1023,7 @@ const StudentOnboardingScreen = () => {
             <TouchableOpacity onPress={() => navigation.navigate('Login')} style={styles.skipContainer}>
               <Text style={styles.skipTextBtn}>Skip Onboarding</Text>
             </TouchableOpacity>
-          </ScrollView>
+          </View>
         )}
       </View>
     </AnimatedAuthLayout>
