@@ -93,6 +93,36 @@ export const verifyMobileOTP = async (mobileNo: string, otp: string, email: stri
     }
 };
 
+// ============ NEW WHATSAPP OTP APIS ============
+
+export const sendWhatsappOTP = async (mobileNo: string): Promise<OtpResponse> => {
+    try {
+        const mobile_number = mobileNo.length === 10 ? `91${mobileNo}` : mobileNo;
+        const response = await api.post(
+            `method/stridenex_app.api_stridenex_app.app.send_whatsapp`,
+            { mobile_number }
+        );
+        return response.data;
+    } catch (error) {
+        console.error("Error sending WhatsApp OTP:", error);
+        throw error;
+    }
+};
+
+export const verifyWhatsappOTP = async (mobileNo: string, otp: string): Promise<any> => {
+    try {
+        const mobile_number = mobileNo.length === 10 ? `91${mobileNo}` : mobileNo;
+        const response = await api.post(
+            `method/stridenex_app.api_stridenex_app.app.verify_otp`,
+            { mobile_number, otp }
+        );
+        return response.data;
+    } catch (error) {
+        console.error("Error verifying WhatsApp OTP:", error);
+        throw error;
+    }
+};
+
 // Send email OTP
 export const sendEmailOTP = async (email: string): Promise<EmailOtpResponse> => {
     try {

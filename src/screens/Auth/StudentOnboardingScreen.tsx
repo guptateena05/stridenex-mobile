@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity
+  View, Text, StyleSheet, TouchableOpacity
 } from 'react-native';
 import { AnimatedAuthLayout } from '@/components/layout/AnimatedAuthLayout';
 import { Input } from '@/components/Shared/Input';
 import { Button } from '@/components/Shared/Button';
 import { useNavigation } from '@react-navigation/native';
-import { sendEmailOTP, verifyEmailOTP, sendMobileOTP, verifyMobileOTP, createStudent } from '@/api/onboarding.services';
+import { sendEmailOTP, verifyEmailOTP, sendMobileOTP, verifyMobileOTP, sendWhatsappOTP, verifyWhatsappOTP, createStudent } from '@/api/onboarding.services';
 import { api } from '@/api/api.services';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors } from '@/theme/colors';
@@ -67,6 +67,7 @@ const StudentOnboardingScreen = () => {
   const [mobile, setMobile] = useState("");
   const [mobileOtp, setMobileOtp] = useState("");
   const [mobileOtpSent, setMobileOtpSent] = useState(false);
+  const [mobileOtpMethod, setMobileOtpMethod] = useState<'sms' | 'whatsapp' | null>(null);
   const [mobileVerified, setMobileVerified] = useState(false);
 
   const [firstName, setFirstName] = useState("");
@@ -192,8 +193,9 @@ const StudentOnboardingScreen = () => {
     try {
       const res = await sendMobileOTP(mobile, email);
       if (res?.message === "OTP sent successfully") {
-        setSuccess("OTP sent successfully");
+        setSuccess("OTP sent via SMS successfully");
         setMobileOtpSent(true);
+        setMobileOtpMethod('sms');
         setMobileTimer(120);
       } else {
         setError(res?.message || "Failed to send OTP");
@@ -203,16 +205,45 @@ const StudentOnboardingScreen = () => {
     } finally { setLoading(false); }
   };
 
+  const handleSendWhatsappOTP = async () => {
+    if (mobile.length !== 10) { setError("Enter 10 digit mobile number"); return; }
+    setError(""); setSuccess(""); setLoading(true);
+    try {
+      await sendWhatsappOTP(mobile);
+      setSuccess("OTP sent via WhatsApp successfully");
+      setMobileOtpSent(true);
+      setMobileOtpMethod('whatsapp');
+      setMobileTimer(120);
+    } catch (e: any) {
+      setError(e?.response?.data?.message || e?.message || "Error");
+    } finally { setLoading(false); }
+  };
+
   const handleVerifyMobile = async () => {
     setError(""); setSuccess(""); setLoading(true);
     try {
-      const res = await verifyMobileOTP(mobile, mobileOtp, email);
-      if (res?.message === "Mobile number verified successfully") {
+      let res;
+      if (mobileOtpMethod === 'whatsapp') {
+        res = await verifyWhatsappOTP(mobile, mobileOtp);
+      } else {
+        res = await verifyMobileOTP(mobile, mobileOtp, email);
+      }
+      
+      let responseMessage = res?.message;
+      let isSuccess = res?.data?.success || false;
+
+      if (typeof responseMessage === 'object' && responseMessage !== null) {
+        isSuccess = isSuccess || responseMessage.success;
+        responseMessage = responseMessage.message;
+      }
+      
+      const successMessages = ["Mobile number verified successfully", "OTP verified successfully", "OTP Verified Successfully", "success"];
+      if (successMessages.includes(responseMessage) || isSuccess) {
         setMobileVerified(true);
         setSuccess("Mobile verified successfully");
         await AsyncStorage.setItem('userMobileNo', mobile);
       } else {
-        setError(res?.message || "Invalid OTP");
+        setError(responseMessage || "Invalid OTP");
       }
     } catch (e: any) {
       setError(e?.message || e?.response?.data?.message || "Verification failed");
@@ -872,7 +903,8 @@ const StudentOnboardingScreen = () => {
                   label="Mobile Number"
                   value={mobile}
                   onChangeText={(val) => {
-                    setMobile(val);
+                    const numericValue = val.replace(/[^0-9]/g, '');
+                    setMobile(numericValue);
                     if (mobileOtpSent) {
                       setMobileOtpSent(false);
                       setMobileOtp("");
@@ -881,20 +913,46 @@ const StudentOnboardingScreen = () => {
                   keyboardType="number-pad"
                   maxLength={10}
                   editable={!mobileVerified}
+                  placeholder="Enter 10-digit mobile number"
                 />
 
                 {!mobileOtpSent && !mobileVerified && (
-                  <Button
-                    title={mobileTimer > 0 ? `Resend in ${mobileTimer}s` : "Send OTP"}
-                    onPress={handleSendMobileOTP}
-                    loading={loading}
-                    disabled={mobile.length !== 10 || mobileTimer > 0}
-                    style={styles.orangeBtn}
-                  />
+                  <View style={{ flexDirection: 'column', gap: 12, marginTop: 12 }}>
+                    <Button
+                      title={mobileTimer > 0 ? `Resend SMS in ${mobileTimer}s` : "Get OTP via SMS"}
+                      onPress={handleSendMobileOTP}
+                      loading={loading}
+                      disabled={mobile.length !== 10 || mobileTimer > 0}
+                      variant="accent"
+                    />
+                    <Button
+                      title={mobileTimer > 0 ? `Resend WhatsApp in ${mobileTimer}s` : "Get OTP via WhatsApp"}
+                      onPress={handleSendWhatsappOTP}
+                      loading={loading}
+                      disabled={mobile.length !== 10 || mobileTimer > 0}
+                      variant="secondary"
+                    />
+                  </View>
                 )}
 
                 {mobileOtpSent && !mobileVerified && (
                   <>
+                    <View style={{ flexDirection: 'column', gap: 12, marginTop: 12, marginBottom: 16 }}>
+                      <Button
+                        title={mobileTimer > 0 ? `Resend SMS in ${mobileTimer}s` : "Resend via SMS"}
+                        onPress={handleSendMobileOTP}
+                        loading={loading}
+                        disabled={mobile.length !== 10 || mobileTimer > 0}
+                        variant="accent"
+                      />
+                      <Button
+                        title={mobileTimer > 0 ? `Resend WhatsApp in ${mobileTimer}s` : "Resend via WhatsApp"}
+                        onPress={handleSendWhatsappOTP}
+                        loading={loading}
+                        disabled={mobile.length !== 10 || mobileTimer > 0}
+                        variant="secondary"
+                      />
+                    </View>
                     <Input
                       label="Mobile Verification Code"
                       value={mobileOtp}
