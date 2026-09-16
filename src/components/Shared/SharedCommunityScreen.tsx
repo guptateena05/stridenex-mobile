@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, RefreshControl, Modal, BackHandler, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Users, MessageSquare, Heart, Search, ArrowLeft, Folder, Tag, Plus, Send, X, ChevronRight, Check, Clock } from 'lucide-react-native';
+import { Users, MessageSquare, Heart, Search, ArrowLeft, Folder, Tag, Plus, Send, X, ChevronRight, Check, Clock, Trash2 } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { getCommunities, joinCommunity, leaveCommunity, getPosts, getPostDetail, postComment, createPost, createCategory, createTag, getCommunityDetail, api, toggleCommentLike, updateCommunityMemberStatus } from '@/api/api.services';
+import { getCommunities, joinCommunity, leaveCommunity, getPosts, getPostDetail, postComment, createPost, createCategory, createTag, getCommunityDetail, api, toggleCommentLike, updateCommunityMemberStatus, removeCommunityMember } from '@/api/api.services';
 
 const formatChannelNameStr = (name: string): string => {
   if (!name) return "";
@@ -137,6 +137,7 @@ export const SharedCommunityScreen = ({ userType }: SharedCommunityScreenProps) 
       }
       if (selectedChannel) {
         setSelectedChannel(null);
+        loadCommunities(false);
         return true;
       }
       return false;
@@ -214,6 +215,9 @@ export const SharedCommunityScreen = ({ userType }: SharedCommunityScreenProps) 
     }
   };
 
+  const [removeConfirmData, setRemoveConfirmData] = useState<{ visible: boolean, memberName: string }>({ visible: false, memberName: '' });
+  const [removeResultData, setRemoveResultData] = useState<{ visible: boolean, message: string, isError: boolean }>({ visible: false, message: '', isError: false });
+
   const handleApproveMember = async (memberName: string) => {
     try {
       await updateCommunityMemberStatus({ name: memberName, status: 'Approved' });
@@ -228,6 +232,30 @@ export const SharedCommunityScreen = ({ userType }: SharedCommunityScreenProps) 
     } catch (err: any) {
       Alert.alert("Error", "Could not approve member.");
     }
+  };
+
+  const executeRemoveMember = async (memberName: string) => {
+    try {
+      const response = await removeCommunityMember({ name: memberName });
+      if (response?.message?.success === false || response?.success === false) {
+         throw new Error(response?.message?.message || response?.message || "Failed to remove member");
+      }
+      setSelectedChannel((prev: any) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          members: prev.members.filter((m: any) => (m.name || m.id) !== memberName)
+        };
+      });
+      setRemoveResultData({ visible: true, message: response?.message?.message || response?.message || "Member removed successfully.", isError: false });
+    } catch (err: any) {
+      const errMsg = err?.response?.data?.message?.message || err?.response?.data?.message || err?.response?.data || err.message || "Could not remove member.";
+      setRemoveResultData({ visible: true, message: typeof errMsg === "string" ? errMsg : JSON.stringify(errMsg), isError: true });
+    }
+  };
+
+  const handleRemoveMember = (memberName: string) => {
+    setRemoveConfirmData({ visible: true, memberName });
   };
 
   const loadPosts = async (categoryName: string) => {
@@ -543,7 +571,7 @@ export const SharedCommunityScreen = ({ userType }: SharedCommunityScreenProps) 
     return (
       <View style={[styles.container]}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => setSelectedChannel(null)} style={styles.headerBack}>
+          <TouchableOpacity onPress={() => { setSelectedChannel(null); loadCommunities(false); }} style={styles.headerBack}>
             <ArrowLeft size={20} color="#334155" />
             <Text style={styles.headerBackText}>Back</Text>
           </TouchableOpacity>
@@ -612,38 +640,54 @@ export const SharedCommunityScreen = ({ userType }: SharedCommunityScreenProps) 
               <View style={styles.sectionHeader}>
                 <Text style={styles.sectionTitle}>Members ({selectedChannel?.members?.length || 0})</Text>
               </View>
-              {selectedChannel?.members?.map((member: any, idx: number) => (
-                <View key={idx} style={[styles.memberCard, { justifyContent: 'space-between' }]}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-                    <View style={styles.memberAvatar}>
-                      <Text style={styles.memberAvatarTxt}>{(member.member || member.name || '?').substring(0, 1).toUpperCase()}</Text>
-                    </View>
-                    <View style={{ flex: 1, paddingRight: 8 }}>
-                      <Text style={styles.memberName} numberOfLines={1}>{member.member || member.name}</Text>
-                      <Text style={styles.memberRole}>{member.role || 'Member'} • Joined {member.joined_on?.substring(0, 10)}</Text>
-                    </View>
-                  </View>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                    {(member.role?.toUpperCase() === 'ADMIN' || member.role?.toUpperCase() === 'MEMBER') && (
-                      <View style={[styles.statusBadge, { backgroundColor: '#F1F5F9', marginRight: 4 }]}>
-                        <Text style={[styles.statusTxt, { color: '#475569', fontSize: 10, letterSpacing: 0.5 }]}>{member.role?.toUpperCase()}</Text>
+              {selectedChannel?.members?.map((member: any, idx: number) => {
+                const memberId = member.name || member.id;
+                return (
+                  <View key={idx} style={[styles.memberCard, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, paddingRight: 10 }}>
+                      <View style={styles.memberAvatar}>
+                        <Text style={styles.memberAvatarTxt}>{(member.member || memberId || '?').substring(0, 1).toUpperCase()}</Text>
                       </View>
-                    )}
-                    <View style={[styles.statusBadge, { backgroundColor: member.status === 'Approved' ? '#ECFDF5' : '#FEF3C7', paddingHorizontal: 10 }]}>
-                      <Text style={[styles.statusTxt, { color: member.status === 'Approved' ? '#059669' : '#D97706', fontSize: 10, letterSpacing: 0.5 }]}>{member.status?.toUpperCase() || 'PENDING'}</Text>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.memberName} numberOfLines={1}>{member.member || memberId}</Text>
+                        <Text style={styles.memberRole} numberOfLines={1}>{member.role || 'Member'} • Joined {member.joined_on?.substring(0, 10)}</Text>
+                        
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                          {(member.role?.toUpperCase() === 'ADMIN' || member.role?.toUpperCase() === 'MEMBER') && (
+                            <View style={[styles.statusBadge, { backgroundColor: '#F1F5F9', margin: 0, paddingHorizontal: 8, paddingVertical: 2, height: 'auto' }]}>
+                              <Text style={[styles.statusTxt, { color: '#475569', fontSize: 9, lineHeight: 12 }]}>{member.role?.toUpperCase()}</Text>
+                            </View>
+                          )}
+                          <View style={[styles.statusBadge, { backgroundColor: member.status === 'Approved' ? '#ECFDF5' : '#FEF3C7', margin: 0, paddingHorizontal: 8, paddingVertical: 2, height: 'auto' }]}>
+                            <Text style={[styles.statusTxt, { color: member.status === 'Approved' ? '#059669' : '#D97706', fontSize: 9, lineHeight: 12 }]}>{member.status?.toUpperCase() || 'PENDING'}</Text>
+                          </View>
+                        </View>
+                      </View>
                     </View>
-                    {(member.status === 'Pending' || member.status === 'pending') && (
+                    
+                    <View style={{ alignItems: 'flex-end', gap: 6 }}>
+                      {(member.status === 'Pending' || member.status === 'pending') && (
+                        <TouchableOpacity 
+                          style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#059669', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, gap: 4 }}
+                          onPress={() => handleApproveMember(memberId)}
+                        >
+                          <Check size={14} color="#FFFFFF" strokeWidth={3} />
+                          <Text style={{ color: '#FFFFFF', fontSize: 12, fontWeight: '700' }}>Approve</Text>
+                        </TouchableOpacity>
+                      )}
+                      
                       <TouchableOpacity 
-                        style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#059669', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, gap: 4 }}
-                        onPress={() => handleApproveMember(member.name)}
+                        style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#FEF2F2', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, gap: 4, borderWidth: 1, borderColor: '#FECACA' }}
+                        onPress={() => handleRemoveMember(memberId)}
+                        activeOpacity={0.7}
                       >
-                        <Check size={14} color="#FFFFFF" strokeWidth={3} />
-                        <Text style={{ color: '#FFFFFF', fontSize: 12, fontWeight: '700' }}>Approve</Text>
+                        <Trash2 size={14} color="#DC2626" />
+                        <Text style={{ color: '#DC2626', fontSize: 12, fontWeight: '600' }}>Remove</Text>
                       </TouchableOpacity>
-                    )}
+                    </View>
                   </View>
-                </View>
-              ))}
+                );
+              })}
             </View>
           )}
         </ScrollView>
@@ -739,6 +783,64 @@ export const SharedCommunityScreen = ({ userType }: SharedCommunityScreenProps) 
                 <TouchableOpacity onPress={() => setShowCreateTagModal(false)}><Text style={styles.modalCancel}>Cancel</Text></TouchableOpacity>
                 <TouchableOpacity onPress={handleCreateTag} style={styles.modalSubmit}><Text style={styles.modalSubmitText}>Create</Text></TouchableOpacity>
               </View>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Remove Member Confirmation Modal */}
+        <Modal visible={removeConfirmData.visible} transparent animationType="fade">
+          <View style={styles.modalBg}>
+            <View style={[styles.modalContent, { padding: 24, alignItems: 'center' }]}>
+              <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: '#FEF2F2', justifyContent: 'center', alignItems: 'center', marginBottom: 16 }}>
+                <Trash2 size={24} color="#DC2626" />
+              </View>
+              <Text style={{ fontSize: 18, fontWeight: '700', color: '#0F172A', marginBottom: 8, textAlign: 'center' }}>Remove Member?</Text>
+              <Text style={{ fontSize: 14, color: '#64748B', textAlign: 'center', marginBottom: 24 }}>Are you sure you want to remove this member from the community? This action cannot be undone.</Text>
+              <View style={{ flexDirection: 'row', gap: 12, width: '100%' }}>
+                <TouchableOpacity 
+                  style={{ flex: 1, paddingVertical: 12, borderRadius: 12, backgroundColor: '#F1F5F9', alignItems: 'center' }}
+                  onPress={() => setRemoveConfirmData({ visible: false, memberName: '' })}
+                >
+                  <Text style={{ fontSize: 14, fontWeight: '600', color: '#475569' }}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={{ flex: 1, paddingVertical: 12, borderRadius: 12, backgroundColor: '#DC2626', alignItems: 'center' }}
+                  onPress={() => {
+                    const memberName = removeConfirmData.memberName;
+                    setRemoveConfirmData({ visible: false, memberName: '' });
+                    executeRemoveMember(memberName);
+                  }}
+                >
+                  <Text style={{ fontSize: 14, fontWeight: '600', color: '#FFFFFF' }}>Remove</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Remove Member Result Modal */}
+        <Modal visible={removeResultData.visible} transparent animationType="fade">
+          <View style={styles.modalBg}>
+            <View style={[styles.modalContent, { padding: 24, alignItems: 'center' }]}>
+              <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: removeResultData.isError ? '#FEF2F2' : '#ECFDF5', justifyContent: 'center', alignItems: 'center', marginBottom: 16 }}>
+                {removeResultData.isError ? (
+                  <X size={24} color="#DC2626" />
+                ) : (
+                  <Check size={24} color="#059669" />
+                )}
+              </View>
+              <Text style={{ fontSize: 18, fontWeight: '700', color: '#0F172A', marginBottom: 8, textAlign: 'center' }}>
+                {removeResultData.isError ? "Error" : "Success"}
+              </Text>
+              <Text style={{ fontSize: 14, color: '#64748B', textAlign: 'center', marginBottom: 24 }}>
+                {removeResultData.message}
+              </Text>
+              <TouchableOpacity 
+                style={{ width: '100%', paddingVertical: 12, borderRadius: 12, backgroundColor: '#0284C7', alignItems: 'center' }}
+                onPress={() => setRemoveResultData({ visible: false, message: '', isError: false })}
+              >
+                <Text style={{ fontSize: 14, fontWeight: '600', color: '#FFFFFF' }}>Close</Text>
+              </TouchableOpacity>
             </View>
           </View>
         </Modal>
@@ -872,6 +974,7 @@ export const SharedCommunityScreen = ({ userType }: SharedCommunityScreenProps) 
           </View>
         </View>
       </Modal>
+
     </View>
   );
 };

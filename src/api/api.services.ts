@@ -415,3 +415,8 @@ export const updateCommunityMemberStatus = async (params: { name: string; status
   const response = await api.post("method/stridenex_app.stridenex_app.doctype.community_member.community_member.update_community_member_status", params);
   return response.data;
 };
+
+export const removeCommunityMember = async (params: { name: string }) => {
+  const response = await api.post("method/stridenex_app.stridenex_app.doctype.community_member.community_member.remove_community_member", params);
+  return response.data;
+};

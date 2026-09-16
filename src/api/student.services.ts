@@ -515,6 +515,22 @@ export const deleteHabitPlan = async (planName: string, habitName: string, stude
 };
 
 /**
+ * Share earned badge on LinkedIn.
+ */
+export const shareBadgeOnLinkedIn = async (studentEmail: string, badgeId: string) => {
+  try {
+    const response = await api.post(
+      "method/nexedu.habits_builder.api.share_badge_on_linkedin",
+      { student: studentEmail, badge_id: badgeId }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error sharing badge on LinkedIn:", error);
+    throw error;
+  }
+};
+
+/**
  * Fetch mentor list for students.
  */
 export const getMentorList = async (page: number = 1, page_size: number = 20, search?: string) => {

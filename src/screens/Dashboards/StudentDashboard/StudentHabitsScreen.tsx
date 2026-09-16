@@ -13,7 +13,8 @@ import {
   Switch,
   RefreshControl,
   KeyboardAvoidingView,
-  Platform
+  Platform,
+  Linking
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '@/theme/colors';
@@ -38,7 +39,8 @@ import {
   Sparkles,
   Diamond,
   Edit2,
-  ChevronDown
+  ChevronDown,
+  Link
 } from 'lucide-react-native';
 import Animated, { FadeInUp, FadeInRight } from 'react-native-reanimated';
 import { useAuth } from '@/context/AuthContext';
@@ -55,7 +57,8 @@ import {
   deleteHabitPlan,
   createHabitPlan,
   getStudentBadges,
-  getUserEntitlements
+  getUserEntitlements,
+  shareBadgeOnLinkedIn
 } from '@/api/student.services';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 
@@ -128,6 +131,7 @@ export const StudentHabitsScreen = () => {
   const [badges, setBadges] = useState<BadgeItem[]>([]);
   const [newlyUnlockedBadge, setNewlyUnlockedBadge] = useState<BadgeItem | null>(null);
   const [selectedBadge, setSelectedBadge] = useState<BadgeItem | null>(null);
+  const [sharingLinkedIn, setSharingLinkedIn] = useState(false);
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -442,6 +446,23 @@ export const StudentHabitsScreen = () => {
       fetchData(false);
     } finally {
       setCompletingHabit(null);
+    }
+  };
+
+  const handleShareLinkedIn = async (badgeId: string) => {
+    if (!userName) return;
+    try {
+      setSharingLinkedIn(true);
+      const response = await shareBadgeOnLinkedIn(userName, badgeId);
+      if (response && response.message && response.message.share_url) {
+          Linking.openURL(response.message.share_url);
+      }
+      Alert.alert("Success", "Redirecting to LinkedIn...");
+    } catch (err) {
+      console.error("Error sharing badge on LinkedIn:", err);
+      Alert.alert("Error", "Failed to share badge on LinkedIn. Please try again.");
+    } finally {
+      setSharingLinkedIn(false);
     }
   };
 
@@ -1216,6 +1237,21 @@ export const StudentHabitsScreen = () => {
                 </View>
 
                 <TouchableOpacity 
+                  style={[styles.badgeModalBtn, { backgroundColor: '#0a66c2', marginBottom: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }]}
+                  onPress={() => handleShareLinkedIn(newlyUnlockedBadge.badge_id)}
+                  disabled={sharingLinkedIn}
+                >
+                  {sharingLinkedIn ? (
+                    <ActivityIndicator size="small" color="#FFF" style={{ marginRight: 8 }} />
+                  ) : (
+                    <Link size={20} color="#FFF" style={{ marginRight: 8 }} />
+                  )}
+                  <Text style={[styles.badgeModalBtnText, { color: '#FFF' }]}>
+                    {sharingLinkedIn ? 'Sharing...' : 'Share on LinkedIn'}
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
                   style={styles.badgeModalBtn}
                   onPress={() => setNewlyUnlockedBadge(null)}
                 >
@@ -1267,10 +1303,25 @@ export const StudentHabitsScreen = () => {
                 )}
 
                 <TouchableOpacity 
-                  style={[styles.badgeModalBtn, { backgroundColor: '#0F172A' }]}
+                  style={[styles.badgeModalBtn, { backgroundColor: '#0a66c2', marginBottom: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }]}
+                  onPress={() => handleShareLinkedIn(selectedBadge.badge_id)}
+                  disabled={sharingLinkedIn}
+                >
+                  {sharingLinkedIn ? (
+                    <ActivityIndicator size="small" color="#FFF" style={{ marginRight: 8 }} />
+                  ) : (
+                    <Link size={20} color="#FFF" style={{ marginRight: 8 }} />
+                  )}
+                  <Text style={[styles.badgeModalBtnText, { color: '#FFF' }]}>
+                    {sharingLinkedIn ? 'Sharing...' : 'Share on LinkedIn'}
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                  style={[styles.badgeModalBtn, { backgroundColor: '#F1F5F9' }]}
                   onPress={() => setSelectedBadge(null)}
                 >
-                  <Text style={styles.badgeModalBtnText}>Close View</Text>
+                  <Text style={[styles.badgeModalBtnText, { color: '#334155' }]}>Close View</Text>
                 </TouchableOpacity>
               </>
             )}
