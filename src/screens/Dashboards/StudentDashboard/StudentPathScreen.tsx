@@ -1647,8 +1647,9 @@ export const StudentPathScreen = () => {
                                     };
                                     const params = new URLSearchParams(payload as any).toString();
                                     const rawUrl = `https://devstridenex.quantcloud.in/api/method/stridenex_app.api_stridenex_app.app.get_certificate?${params}`;
+                                    const viewerUrl = `https://mozilla.github.io/pdf.js/web/viewer.html?file=${encodeURIComponent(rawUrl)}`;
                                     
-                                    Linking.openURL(rawUrl).catch(err => {
+                                    Linking.openURL(viewerUrl).catch(err => {
                                       console.error("Failed to open URL:", err);
                                       Alert.alert("Error", "Could not open the certificate link.");
                                     });

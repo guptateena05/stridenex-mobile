@@ -1,4 +1,7 @@
 {
   "name": "stridenexMobile",
-  "displayName": "stridenexMobile"
+  "displayName": "stridenexMobile",
+  "plugins": [
+    "expo-web-browser"
+  ]
 }

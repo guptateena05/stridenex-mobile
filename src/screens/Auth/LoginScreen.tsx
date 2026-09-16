@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Modal } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Input } from '@/components/Shared/Input';
 import { Button } from '@/components/Shared/Button';
@@ -11,6 +11,7 @@ import { colors } from '@/theme/colors';
 import { typography } from '@/theme/typography';
 import { spacing } from '@/theme/spacing';
 import { useNavigation } from '@react-navigation/native';
+import { X, Check } from 'lucide-react-native';
 
 export const LoginScreen = () => {
   const [username, setUsername] = useState('');
@@ -18,8 +19,57 @@ export const LoginScreen = () => {
   const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  
+  const [showForgotPasswordModal, setShowForgotPasswordModal] = useState(false);
+  const [forgotPasswordEmail, setForgotPasswordEmail] = useState('');
+  const [forgotPasswordLoading, setForgotPasswordLoading] = useState(false);
+  const [forgotPasswordError, setForgotPasswordError] = useState('');
+  const [forgotPasswordSuccess, setForgotPasswordSuccess] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
+
   const { login } = useAuth();
   const navigation = useNavigation();
+
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout>;
+    if (resendCooldown > 0) {
+      timer = setTimeout(() => {
+        setResendCooldown((prev) => prev - 1);
+      }, 1000);
+    }
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, [resendCooldown]);
+
+  const handleForgotPassword = async () => {
+    if (!forgotPasswordEmail || !/^\S+@\S+\.\S+$/.test(forgotPasswordEmail)) {
+      setForgotPasswordError('Please enter a valid email address.');
+      return;
+    }
+
+    setForgotPasswordLoading(true);
+    setForgotPasswordError('');
+    setForgotPasswordSuccess(false);
+
+    try {
+      const response = await api.post('method/stridenex_app.api_stridenex_app.app.forgot_password', {
+        email: forgotPasswordEmail
+      });
+
+      const data = response.data;
+      if (data?.message === "Password reset instructions have been sent to your email" || data?.message) {
+        setForgotPasswordSuccess(true);
+        setResendCooldown(300);
+      } else {
+        setForgotPasswordError(data?.message || 'Failed to send password reset email.');
+      }
+    } catch (err: any) {
+      setForgotPasswordError(err?.response?.data?.message || err?.message || 'An error occurred.');
+    } finally {
+      setForgotPasswordLoading(false);
+    }
+  };
 
   const handleLogin = async () => {
     if (!username || !password) {
@@ -185,7 +235,12 @@ export const LoginScreen = () => {
           <Button
             title="Forgot password?"
             variant="link"
-            onPress={() => { }}
+            onPress={() => {
+              if (username) {
+                setForgotPasswordEmail(username);
+              }
+              setShowForgotPasswordModal(true);
+            }}
             style={styles.forgotBtn}
           />
         </View>
@@ -205,6 +260,91 @@ export const LoginScreen = () => {
           </TouchableOpacity>
         </View>
       </View>
+
+      <Modal
+        visible={showForgotPasswordModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => !forgotPasswordLoading && setShowForgotPasswordModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Reset Password</Text>
+              <TouchableOpacity
+                onPress={() => setShowForgotPasswordModal(false)}
+                disabled={forgotPasswordLoading}
+                style={styles.closeButton}
+              >
+                <X size={24} color={colors.text.secondary} />
+              </TouchableOpacity>
+            </View>
+            
+            <View style={styles.modalBody}>
+              {forgotPasswordSuccess ? (
+                <View style={styles.successContainer}>
+                  <View style={styles.successIconContainer}>
+                    <Check size={28} color={colors.success} />
+                  </View>
+                  <Text style={styles.successTitle}>Email Sent!</Text>
+                  <Text style={styles.successText}>
+                    We've sent a password reset link to <Text style={{ fontWeight: 'bold' }}>{forgotPasswordEmail}</Text>. Please check your inbox.
+                  </Text>
+                  {forgotPasswordError ? (
+                    <Text style={styles.modalErrorText}>{forgotPasswordError}</Text>
+                  ) : null}
+                  
+                  <View style={styles.modalActionsRow}>
+                    <Button
+                      title="Close"
+                      variant="secondary"
+                      size="sm"
+                      onPress={() => setShowForgotPasswordModal(false)}
+                      style={styles.flexButton}
+                    />
+                    <Button
+                      title={resendCooldown > 0 ? `Resend in ${Math.floor(resendCooldown / 60)}:${(resendCooldown % 60).toString().padStart(2, '0')}` : "Resend Email"}
+                      variant="accent"
+                      size="sm"
+                      disabled={resendCooldown > 0 || forgotPasswordLoading}
+                      loading={forgotPasswordLoading}
+                      onPress={handleForgotPassword}
+                      style={styles.flexButton}
+                    />
+                  </View>
+                </View>
+              ) : (
+                <View style={styles.forgotFormContainer}>
+                  <Text style={styles.modalInstructionText}>
+                    Enter your email address and we'll send you a link to reset your password.
+                  </Text>
+                  <Input
+                    label="Email Address"
+                    placeholder="you@example.com"
+                    value={forgotPasswordEmail}
+                    onChangeText={setForgotPasswordEmail}
+                    autoCapitalize="none"
+                    keyboardType="email-address"
+                  />
+                  {forgotPasswordError ? (
+                    <Text style={styles.modalErrorText}>{forgotPasswordError}</Text>
+                  ) : null}
+                  
+                  <Button
+                    title="Send Reset Link"
+                    variant="accent"
+                    size="sm"
+                    loading={forgotPasswordLoading}
+                    disabled={forgotPasswordLoading}
+                    onPress={handleForgotPassword}
+                    style={{ marginTop: spacing.sm }}
+                  />
+                </View>
+              )}
+            </View>
+          </View>
+        </View>
+      </Modal>
     </AnimatedAuthLayout>
   );
 };
@@ -247,5 +387,91 @@ const styles = StyleSheet.create({
     fontSize: typography.fontSize.sm,
     color: colors.accent.DEFAULT,
     fontWeight: 'bold',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.lg,
+  },
+  modalContent: {
+    backgroundColor: colors.background.light,
+    borderRadius: 16,
+    width: '100%',
+    maxWidth: 400,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: spacing.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  modalTitle: {
+    fontSize: typography.fontSize.xl,
+    fontWeight: 'bold',
+    color: colors.text.primary,
+  },
+  closeButton: {
+    padding: spacing.xs,
+  },
+  modalBody: {
+    padding: spacing.lg,
+  },
+  successContainer: {
+    alignItems: 'center',
+  },
+  successIconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: 'rgba(34, 197, 94, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
+  successTitle: {
+    fontSize: typography.fontSize.lg,
+    fontWeight: 'bold',
+    color: colors.text.primary,
+    marginBottom: spacing.xs,
+  },
+  successText: {
+    fontSize: typography.fontSize.sm,
+    color: colors.text.secondary,
+    textAlign: 'center',
+    marginBottom: spacing.md,
+  },
+  modalErrorText: {
+    color: colors.error,
+    fontSize: typography.fontSize.sm,
+    marginTop: spacing.xs,
+    marginBottom: spacing.sm,
+    textAlign: 'center',
+  },
+  modalActionsRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    width: '100%',
+    marginTop: spacing.md,
+  },
+  flexButton: {
+    flex: 1,
+  },
+  forgotFormContainer: {
+    width: '100%',
+  },
+  modalInstructionText: {
+    fontSize: typography.fontSize.sm,
+    color: colors.text.secondary,
+    marginBottom: spacing.md,
   }
 });

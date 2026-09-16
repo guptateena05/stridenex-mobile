@@ -1,6 +1,7 @@
 export type RootStackParamList = {
   Auth: undefined;
   Dashboard: undefined;
+  CertificateVerify: { id: string };
 };
 
 export type AuthStackParamList = {
