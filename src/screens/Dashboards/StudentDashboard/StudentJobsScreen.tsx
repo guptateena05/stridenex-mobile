@@ -21,7 +21,9 @@ import {
   Info,
   TrendingUp,
   IndianRupee,
-  FileText
+  FileText,
+  ChevronDown,
+  Calendar
 } from 'lucide-react-native';
 import Animated, { FadeInUp, FadeInRight } from 'react-native-reanimated';
 import { getJobProfiles, applyOpportunity, getStudentApplications, updateApplicationStatus } from '@/api/student.services';
@@ -42,6 +44,10 @@ export const StudentJobsScreen = () => {
   const [successfullyApplied, setSuccessfullyApplied] = useState<string[]>([]);
   const [selectedJob, setSelectedJob] = useState<any>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [employmentTypeFilter, setEmploymentTypeFilter] = useState("All");
+  const [showDropdownModal, setShowDropdownModal] = useState(false);
+
+  const EMPLOYMENT_TYPES = ["All", "Full Time", "Part Time", "Contract", "Work From Home", "Hybrid"];
 
   // Offer Letter Modal State
   const [showOfferModal, setShowOfferModal] = useState(false);
@@ -221,7 +227,7 @@ export const StudentJobsScreen = () => {
         }
       }
 
-      const response = await getJobProfiles(userName || undefined);
+      const response = await getJobProfiles(userName || undefined, employmentTypeFilter);
       const dataObj = response?.data || response?.message?.data || response?.message || response || [];
       let list = [];
       if (Array.isArray(dataObj)) {
@@ -245,7 +251,7 @@ export const StudentJobsScreen = () => {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [userName]);
+  }, [userName, employmentTypeFilter]);
 
   const loadAppliedJobs = async () => {
     try {
@@ -385,6 +391,19 @@ export const StudentJobsScreen = () => {
             placeholderTextColor="#94A3B8"
             style={styles.searchInput}
           />
+        </Animated.View>
+
+        {/* Filter Dropdown */}
+        <Animated.View entering={FadeInUp.delay(300)} style={{ marginBottom: 4, zIndex: 10 }}>
+          <TouchableOpacity
+            style={styles.filterDropdownContainer}
+            onPress={() => setShowDropdownModal(true)}
+          >
+            <Text style={styles.filterDropdownText}>
+              {employmentTypeFilter === "All" ? "All Job Types" : employmentTypeFilter}
+            </Text>
+            <ChevronDown size={20} color="#64748B" />
+          </TouchableOpacity>
         </Animated.View>
 
         {/* Section Header */}
@@ -542,6 +561,14 @@ export const StudentJobsScreen = () => {
                             </Text>
                           </View>
                         ) : null}
+                        {job.application_deadline ? (
+                          <View style={[styles.infoBadge, { backgroundColor: '#FFF7ED', borderColor: '#FFEDD5' }]}>
+                            <Calendar size={10} color="#EA580C" />
+                            <Text style={[styles.badgeText, { color: '#EA580C', fontWeight: '700' }]}>
+                              Apply By: {new Date(job.application_deadline).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                            </Text>
+                          </View>
+                        ) : null}
                       </View>
 
                       {/* Skills Tags */}
@@ -658,6 +685,20 @@ export const StudentJobsScreen = () => {
                         </Text>
                       </View>
                     </View>
+
+                    {selectedJob?.application_deadline && (
+                      <View style={styles.metaItem}>
+                        <View style={[styles.metaIconWrap, { backgroundColor: '#FFF7ED' }]}>
+                          <Calendar size={14} color="#EA580C" />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.metaLabelText}>DEADLINE</Text>
+                          <Text style={styles.metaValText} numberOfLines={1}>
+                            {new Date(selectedJob.application_deadline).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                          </Text>
+                        </View>
+                      </View>
+                    )}
                   </View>
                 </View>
 
@@ -848,6 +889,56 @@ export const StudentJobsScreen = () => {
         onAccept={() => selectedOfferApp && handleAcceptOffer(selectedOfferApp.item, selectedOfferApp.type)}
         onReject={() => selectedOfferApp && handleRejectOffer(selectedOfferApp.item, selectedOfferApp.type)}
       />
+
+      {/* Dropdown Modal */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={showDropdownModal}
+        onRequestClose={() => setShowDropdownModal(false)}
+      >
+        <TouchableOpacity 
+          style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }} 
+          activeOpacity={1} 
+          onPress={() => setShowDropdownModal(false)}
+        >
+          <View style={{ backgroundColor: '#FFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <Text style={{ fontSize: 18, fontWeight: '800', color: '#0F172A' }}>Select Job Type</Text>
+              <TouchableOpacity onPress={() => setShowDropdownModal(false)} style={{ padding: 4 }}>
+                <X size={24} color="#64748B" />
+              </TouchableOpacity>
+            </View>
+            
+            {EMPLOYMENT_TYPES.map((type) => (
+              <TouchableOpacity
+                key={type}
+                style={{
+                  paddingVertical: 16,
+                  borderBottomWidth: 1,
+                  borderBottomColor: '#F1F5F9',
+                  flexDirection: 'row',
+                  justifyContent: 'space-between',
+                  alignItems: 'center'
+                }}
+                onPress={() => {
+                  setEmploymentTypeFilter(type);
+                  setShowDropdownModal(false);
+                }}
+              >
+                <Text style={{ 
+                  fontSize: 15, 
+                  color: employmentTypeFilter === type ? colors.accent.DEFAULT : '#334155',
+                  fontWeight: employmentTypeFilter === type ? '700' : '500'
+                }}>
+                  {type === "All" ? "All Job Types" : type}
+                </Text>
+                {employmentTypeFilter === type && <CheckCircle2 size={20} color={colors.accent.DEFAULT} />}
+              </TouchableOpacity>
+            ))}
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -920,6 +1011,28 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.02,
     shadowRadius: 8,
     elevation: 2,
+  },
+  filterDropdownContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 16,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: '#F1F5F9',
+    height: 48,
+    marginBottom: 20,
+    shadowColor: '#64748B',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.02,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  filterDropdownText: {
+    fontSize: 14,
+    color: '#1E293B',
+    fontWeight: '600',
   },
   searchIcon: {
     marginRight: 10,

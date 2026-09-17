@@ -197,20 +197,28 @@ export const getStudentInternshipList = async (
   course?: string | null,
   department?: string | null,
   academicYear?: string | null,
-  search?: string
+  search?: string,
+  workMode?: string | null
 ) => {
   try {
     const yearWord = mapYearToWord(academicYear);
+    
+    const queryParams: any = {
+      student: studentEmail || "",
+      course: course || "null",
+      department: department || "null",
+      current_year: yearWord || "null",
+      search: search || ""
+    };
+
+    if (workMode && workMode !== "All") {
+      queryParams.work_mode = workMode.toLowerCase();
+    }
+
     const response = await api.get(
       "method/stridenex_app.stridenex_app.doctype.internship.internship.get_internship_list",
       {
-        params: {
-          student: studentEmail || "",
-          course: course || "null",
-          department: department || "null",
-          current_year: yearWord || "null",
-          search: search || ""
-        }
+        params: queryParams
       }
     );
     return response.data;
@@ -1304,11 +1312,15 @@ export const verifySessionPayment = async (payload: {
   }
 };
 
-export const getJobProfiles = async (studentEmail?: string) => {
+export const getJobProfiles = async (studentEmail?: string, employmentType?: string) => {
   try {
+    const params: any = {};
+    if (studentEmail) params.student = studentEmail;
+    if (employmentType && employmentType !== "All") params.employment_type = employmentType;
+
     const response = await api.get(
       'method/stridenex_app.stridenex_app.doctype.student_job_applications.student_job_applications.get_job_profile_list',
-      { params: studentEmail ? { student: studentEmail } : {} }
+      { params }
     );
     return response.data;
   } catch (error) {

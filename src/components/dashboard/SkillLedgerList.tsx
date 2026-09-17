@@ -14,7 +14,6 @@ export interface SkillRow {
   evidence: number;
   endorsements: number;
   aiVerified: boolean;
-  lastDemo: string;
 }
 
 const getCategoryStyle = (category: string) => {
@@ -94,11 +93,6 @@ export const SkillLedgerList: React.FC<SkillLedgerListProps> = ({ skills, onSkil
             <Star size={11} color="#F59E0B" fill="#F59E0B" />
             <Text style={styles.gridLabel}>Endorsed:</Text>
             <Text style={styles.gridValue}>{item.endorsements}</Text>
-          </View>
-          <View style={[styles.gridItem, { width: '100%', marginTop: 6 }]}>
-            <Clock size={11} color="#64748B" />
-            <Text style={styles.gridLabel}>Last Demo:</Text>
-            <Text style={styles.gridValue}>{item.lastDemo || '-'}</Text>
           </View>
         </View>
       </TouchableOpacity>

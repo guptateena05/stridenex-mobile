@@ -92,8 +92,7 @@ export const StudentSkillsScreen = () => {
             levelType: (s.current_level as any) || "Beginner",
             evidence: s.evidence_count || 0,
             endorsements: s.endorsement_count || 0,
-            aiVerified: !!s.ai_verified,
-            lastDemo: s.last_demo || "-"
+            aiVerified: !!s.ai_verified
           }));
           setSkills(mappedRows);
         } else {

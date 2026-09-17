@@ -87,7 +87,9 @@ export const StudentDrawerNavigator = () => {
         const data = response?.data || response?.message?.data || response?.message || response;
         if (data && data.current_year) {
           const year = data.current_year.toLowerCase();
-          if (year.includes('first') || year.includes('1st') || year.includes('second') || year.includes('2nd') || year === '1' || year === '2') {
+          const courseType = String(data.course_type || "").trim().toLowerCase();
+          
+          if (courseType === "ug" && (year.includes('first') || year.includes('1st') || year.includes('second') || year.includes('2nd') || year === '1' || year === '2')) {
             setHideJobs(true);
           } else {
             setHideJobs(false);

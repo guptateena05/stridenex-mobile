@@ -31,7 +31,8 @@ import {
   Trophy,
   GraduationCap,
   Info,
-  Search
+  Search,
+  ChevronDown
 } from 'lucide-react-native';
 import Animated, { FadeInUp, FadeInRight } from 'react-native-reanimated';
 import { StatsCard } from '@/components/dashboard/StatsCard';
@@ -59,6 +60,9 @@ export const StudentInternshipScreen = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [applying, setApplying] = useState<string | null>(null);
   const [successfullyApplied, setSuccessfullyApplied] = useState<string[]>([]);
+  const [workModeFilter, setWorkModeFilter] = useState("All");
+  const [showDropdownModal, setShowDropdownModal] = useState(false);
+  const WORK_MODES = ["All", "Remote", "Hybrid", "Onsite"];
   
   // Details Modal
   const [selectedInternship, setSelectedInternship] = useState<any>(null);
@@ -241,7 +245,8 @@ export const StudentInternshipScreen = () => {
         profile.course || null,
         profile.department || null,
         profile.current_year || profile.academic_year || null,
-        searchVal !== undefined ? searchVal : search
+        searchVal !== undefined ? searchVal : search,
+        workModeFilter
       );
       const dataContainer = (response?.data && typeof response.data === 'object' && !Array.isArray(response.data)) ? response : (response?.message && typeof response.message === 'object' ? response.message : response);
       const data = dataContainer?.data?.internships || dataContainer?.internships || [];
@@ -263,7 +268,7 @@ export const StudentInternshipScreen = () => {
     } catch (err) {
       console.error("Error fetching internships:", err);
     }
-  }, [userName, studentProfile, search]);
+  }, [userName, studentProfile, search, workModeFilter]);
 
   // Load all data
   const loadData = useCallback(async (showIndicator = true) => {
@@ -291,7 +296,7 @@ export const StudentInternshipScreen = () => {
     }, 500);
 
     return () => clearTimeout(delayDebounceFn);
-  }, [search]);
+  }, [search, workModeFilter]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -422,6 +427,19 @@ export const StudentInternshipScreen = () => {
           />
         </Animated.View>
 
+        {/* Filter Dropdown */}
+        <Animated.View entering={FadeInUp.delay(300)} style={{ marginBottom: 4, zIndex: 10 }}>
+          <TouchableOpacity
+            style={styles.filterDropdownContainer}
+            onPress={() => setShowDropdownModal(true)}
+          >
+            <Text style={styles.filterDropdownText}>
+              {workModeFilter === "All" ? "All Modes" : workModeFilter}
+            </Text>
+            <ChevronDown size={20} color="#64748B" />
+          </TouchableOpacity>
+        </Animated.View>
+
         {/* Matching Header */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitleSimple}>Open Openings</Text>
@@ -543,8 +561,14 @@ export const StudentInternshipScreen = () => {
                       <View style={styles.badgeRow}>
                         <View style={styles.infoBadge}>
                           <MapPin size={10} color="#64748B" />
-                          <Text style={styles.badgeText}>{internship.work_mode || internship.location || "Remote"}</Text>
+                          <Text style={styles.badgeText}>{internship.location || "Remote"}</Text>
                         </View>
+                        {internship.work_mode ? (
+                          <View style={styles.infoBadge}>
+                            <Briefcase size={10} color="#64748B" />
+                            <Text style={styles.badgeText}>{internship.work_mode}</Text>
+                          </View>
+                        ) : null}
                         <View style={styles.infoBadge}>
                           <Clock size={10} color="#64748B" />
                           <Text style={styles.badgeText}>{internship.duration ? `${internship.duration} Days` : "3 Months"}</Text>
@@ -559,6 +583,14 @@ export const StudentInternshipScreen = () => {
                           <View style={[styles.infoBadge, { backgroundColor: '#EFF6FF', borderColor: '#DBEAFE' }]}>
                             <Text style={[styles.badgeText, { color: '#2563EB', fontWeight: '700' }]}>
                               {internship.openings} Opening{internship.openings !== 1 ? 's' : ''}
+                            </Text>
+                          </View>
+                        ) : null}
+                        {internship.application_deadline ? (
+                          <View style={[styles.infoBadge, { backgroundColor: '#FFF7ED', borderColor: '#FFEDD5' }]}>
+                            <Calendar size={10} color="#EA580C" />
+                            <Text style={[styles.badgeText, { color: '#EA580C', fontWeight: '700' }]}>
+                              Apply By: {new Date(internship.application_deadline).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
                             </Text>
                           </View>
                         ) : null}
@@ -640,6 +672,18 @@ export const StudentInternshipScreen = () => {
                     </View>
                   </View>
 
+                  {selectedInternship?.work_mode && (
+                    <View style={styles.metaItem}>
+                      <View style={[styles.metaIconWrap, { backgroundColor: '#F3E8FF' }]}>
+                        <Briefcase size={16} color="#9333EA" />
+                      </View>
+                      <View>
+                        <Text style={styles.metaLabelText}>WORK MODE</Text>
+                        <Text style={styles.metaValText}>{selectedInternship.work_mode}</Text>
+                      </View>
+                    </View>
+                  )}
+
                   <View style={styles.metaItem}>
                     <View style={[styles.metaIconWrap, { backgroundColor: '#ECFDF5' }]}>
                       <IndianRupee size={16} color="#059669" />
@@ -661,6 +705,20 @@ export const StudentInternshipScreen = () => {
                       </Text>
                     </View>
                   </View>
+
+                  {selectedInternship?.application_deadline && (
+                    <View style={styles.metaItem}>
+                      <View style={[styles.metaIconWrap, { backgroundColor: '#FFF7ED' }]}>
+                        <Calendar size={16} color="#EA580C" />
+                      </View>
+                      <View>
+                        <Text style={styles.metaLabelText}>DEADLINE</Text>
+                        <Text style={styles.metaValText}>
+                          {new Date(selectedInternship.application_deadline).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                        </Text>
+                      </View>
+                    </View>
+                  )}
                 </View>
 
                 {/* About description */}
@@ -764,6 +822,56 @@ export const StudentInternshipScreen = () => {
         onReject={() => selectedOfferApp && handleRejectOffer(selectedOfferApp.item, selectedOfferApp.type)}
       />
 
+      {/* Filter Dropdown Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={showDropdownModal}
+        onRequestClose={() => setShowDropdownModal(false)}
+      >
+        <TouchableOpacity
+          style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}
+          activeOpacity={1}
+          onPress={() => setShowDropdownModal(false)}
+        >
+          <View style={{ backgroundColor: '#FFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <Text style={{ fontSize: 18, fontWeight: '800', color: '#0F172A' }}>Select Work Mode</Text>
+              <TouchableOpacity onPress={() => setShowDropdownModal(false)} style={{ padding: 4 }}>
+                <X size={24} color="#64748B" />
+              </TouchableOpacity>
+            </View>
+            
+            {WORK_MODES.map((type) => (
+              <TouchableOpacity
+                key={type}
+                style={{
+                  paddingVertical: 16,
+                  borderBottomWidth: 1,
+                  borderBottomColor: '#F1F5F9',
+                  flexDirection: 'row',
+                  justifyContent: 'space-between',
+                  alignItems: 'center'
+                }}
+                onPress={() => {
+                  setWorkModeFilter(type);
+                  setShowDropdownModal(false);
+                }}
+              >
+                <Text style={{ 
+                  fontSize: 15, 
+                  color: workModeFilter === type ? colors.accent.DEFAULT : '#334155',
+                  fontWeight: workModeFilter === type ? '700' : '500'
+                }}>
+                  {type === "All" ? "All Modes" : type}
+                </Text>
+                {workModeFilter === type && <CheckCircle2 size={20} color={colors.accent.DEFAULT} />}
+              </TouchableOpacity>
+            ))}
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
     </SafeAreaView>
   );
 };
@@ -829,7 +937,29 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingVertical: 4,
-    marginBottom: 24,
+    padding: 0,
+  },
+  filterDropdownContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 16,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: '#F1F5F9',
+    height: 48,
+    marginBottom: 20,
+    shadowColor: '#64748B',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.02,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  filterDropdownText: {
+    fontSize: 14,
+    color: '#1E293B',
+    fontWeight: '600',
   },
   sectionHeader: {
     flexDirection: 'row',
