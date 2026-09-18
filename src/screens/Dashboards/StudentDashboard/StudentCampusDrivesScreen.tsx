@@ -319,6 +319,12 @@ export const StudentCampusDrivesScreen = () => {
                         </View>
                       </View>
 
+                      {!!drive.description && (
+                        <Text style={styles.driveDescription} numberOfLines={2}>
+                          {drive.description.replace(/<[^>]*>/g, '')}
+                        </Text>
+                      )}
+
                       {/* Status Badges */}
                       <View style={styles.statusBadgesRow}>
                         <View style={[styles.statusTag, isClosed ? styles.statusClosed : styles.statusActive]}>
@@ -463,6 +469,18 @@ export const StudentCampusDrivesScreen = () => {
                     {selectedDrive.criteria || "All students are eligible to register for this placement drive."}
                   </Text>
                 </View>
+
+                {/* Description */}
+                {!!selectedDrive.description && (
+                  <>
+                    <Text style={styles.modalSectionLabel}>Description</Text>
+                    <View style={[styles.descCard, { backgroundColor: '#EFF6FF', borderColor: '#DBEAFE' }]}>
+                      <Text style={[styles.descCardText, { color: '#1E3A8A' }]}>
+                        {selectedDrive.description.replace(/<[^>]*>/g, '')}
+                      </Text>
+                    </View>
+                  </>
+                )}
 
                 {/* Required Skills */}
                 {selectedDrive.required_skill && (
@@ -659,6 +677,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#64748B',
     marginTop: 1,
+  },
+  driveDescription: {
+    fontSize: 12,
+    color: '#64748B',
+    marginBottom: 12,
+    lineHeight: 18,
   },
   statusBadgesRow: {
     flexDirection: 'row',

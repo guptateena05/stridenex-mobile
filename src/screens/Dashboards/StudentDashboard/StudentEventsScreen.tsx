@@ -123,7 +123,7 @@ export const StudentEventsScreen = () => {
     try {
       const response = await getMasterData("College Notice", {
         filters: { college: college },
-        fields: ["college", "notice", "notice_type", "date"]
+        fields: ["college", "notice", "notice_type", "date", "description"]
       });
 
       const apiData = response?.data || response?.message || [];
@@ -136,7 +136,8 @@ export const StudentEventsScreen = () => {
             category: item.notice_type || "General",
             date: item.date || "",
             icon: styles.icon,
-            color: styles.color
+            color: styles.color,
+            description: item.description || ""
           };
         });
         setNotices(mappedNotices);
@@ -510,6 +511,9 @@ export const StudentEventsScreen = () => {
                       </View>
                       <View style={styles.noticeContent}>
                         <Text style={styles.noticeTitle} numberOfLines={2}>{notice.title}</Text>
+                        {!!notice.description && (
+                          <Text style={styles.noticeDescription} numberOfLines={2}>{notice.description.replace(/<[^>]*>/g, '')}</Text>
+                        )}
                         <View style={styles.noticeMetaRow}>
                           <View style={styles.noticeBadge}>
                             <Text style={styles.noticeBadgeText}>{notice.category}</Text>
@@ -613,6 +617,7 @@ const styles = StyleSheet.create({
   noticeIconBox: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   noticeContent: { flex: 1 },
   noticeTitle: { fontSize: 13, fontWeight: '700', color: '#1E293B', marginBottom: 6 },
+  noticeDescription: { fontSize: 11, color: '#64748B', marginBottom: 6, lineHeight: 16 },
   noticeMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   noticeBadge: { backgroundColor: '#F8FAFC', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6, borderWidth: 1, borderColor: '#F1F5F9' },
   noticeBadgeText: { fontSize: 9, fontWeight: '600', color: '#64748B' },
