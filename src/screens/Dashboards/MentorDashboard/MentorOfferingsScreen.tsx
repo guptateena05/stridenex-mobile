@@ -124,7 +124,7 @@ export const MentorOfferingsScreen = () => {
         label: "Offering Type",
         fieldtype: "Select",
         required: true,
-        options: ["1:1 Mentorship", "Group Session", "Async Review", "Workshop"],
+        options: ["1:1 Mentorship", "Group Session", "Workshop"],
         placeholder: "Select Type",
       },
       {
@@ -263,7 +263,7 @@ export const MentorOfferingsScreen = () => {
                   try {
                     setLoading(true);
                     const batchRes = await createLmsBatchForOffering(createdName);
-                    
+
                     if (batchRes && batchRes.exc_type) {
                       let errMsg = "Failed to create LMS batch. Please try again.";
                       if (batchRes._server_messages) {
@@ -426,80 +426,80 @@ export const MentorOfferingsScreen = () => {
               const borderLeftColor = isLive ? '#7C3AED' : '#94A3B8';
 
               const swipeActions: SwipeAction[] = [
-                 {
-                   label: 'Edit',
-                   icon: Edit2,
-                   color: '#7C3AED',
-                   bgColor: '#f5f3ff',
-                   onPress: () => handleEditOffering(pkg)
-                 },
-                 {
-                   label: isLive ? 'Pause' : 'Activate',
-                   icon: isLive ? Pause : Play,
-                   color: isLive ? '#D97706' : '#10B981',
-                   bgColor: isLive ? '#FFFBEB' : '#ECFDF5',
-                   onPress: () => handleStatusToggle(pkg)
-                 }
-               ];
+                {
+                  label: 'Edit',
+                  icon: Edit2,
+                  color: '#7C3AED',
+                  bgColor: '#f5f3ff',
+                  onPress: () => handleEditOffering(pkg)
+                },
+                {
+                  label: isLive ? 'Pause' : 'Activate',
+                  icon: isLive ? Pause : Play,
+                  color: isLive ? '#D97706' : '#10B981',
+                  bgColor: isLive ? '#FFFBEB' : '#ECFDF5',
+                  onPress: () => handleStatusToggle(pkg)
+                }
+              ];
 
-               return (
-                 <SwipeableRow
-                   key={pkg.name || i}
-                   actions={swipeActions}
-                 >
-                   <Animated.View
-                     entering={FadeInUp.delay(150 + i * 50)}
-                     style={[styles.card, !isLive && styles.cardInactive, { borderLeftWidth: 4, borderLeftColor, marginBottom: 0 }]}
-                   >
-                     <View style={styles.cardHeader}>
-                       <Text style={styles.pkgTitle} numberOfLines={1}>{pkg.title}</Text>
-                       <View style={[styles.statusBadge, {
-                         backgroundColor: isLive ? '#ECFDF5' : pkg.status === 'Paused' ? '#FFFBEB' : '#F1F5F9',
-                         borderColor: isLive ? '#D1FAE5' : pkg.status === 'Paused' ? '#FEF3C7' : '#E2E8F0'
-                       }]}>
-                         <View style={[styles.statusDot, { backgroundColor: isLive ? '#10B981' : pkg.status === 'Paused' ? '#F59E0B' : '#94A3B8' }]} />
-                         <Text style={[styles.statusText, { color: isLive ? '#059669' : pkg.status === 'Paused' ? '#D97706' : '#64748B' }]}>
-                           {pkg.status ? pkg.status.toUpperCase() : 'DRAFT'}
-                         </Text>
-                       </View>
-                     </View>
+              return (
+                <SwipeableRow
+                  key={pkg.name || i}
+                  actions={swipeActions}
+                >
+                  <Animated.View
+                    entering={FadeInUp.delay(150 + i * 50)}
+                    style={[styles.card, !isLive && styles.cardInactive, { borderLeftWidth: 4, borderLeftColor, marginBottom: 0 }]}
+                  >
+                    <View style={styles.cardHeader}>
+                      <Text style={styles.pkgTitle} numberOfLines={1}>{pkg.title}</Text>
+                      <View style={[styles.statusBadge, {
+                        backgroundColor: isLive ? '#ECFDF5' : pkg.status === 'Paused' ? '#FFFBEB' : '#F1F5F9',
+                        borderColor: isLive ? '#D1FAE5' : pkg.status === 'Paused' ? '#FEF3C7' : '#E2E8F0'
+                      }]}>
+                        <View style={[styles.statusDot, { backgroundColor: isLive ? '#10B981' : pkg.status === 'Paused' ? '#F59E0B' : '#94A3B8' }]} />
+                        <Text style={[styles.statusText, { color: isLive ? '#059669' : pkg.status === 'Paused' ? '#D97706' : '#64748B' }]}>
+                          {pkg.status ? pkg.status.toUpperCase() : 'DRAFT'}
+                        </Text>
+                      </View>
+                    </View>
 
-                     <View style={styles.badgesRow}>
-                       <View style={styles.typeBadge}>
-                         <Text style={styles.typeBadgeText}>{pkg.offering_type || '1:1 Mentorship'}</Text>
-                       </View>
-                       <View style={styles.durationBadge}>
-                         <Clock size={14} color="#64748B" />
-                         <Text style={styles.durationText}>{pkg.duration_minutes ? `${pkg.duration_minutes} min` : '60 min'}</Text>
-                       </View>
-                       <Text style={[styles.categoryText, { color: pkg.category === 'Technical' ? '#EA580C' : '#2563EB' }]}>
-                         {pkg.category || 'General'}
-                       </Text>
-                     </View>
+                    <View style={styles.badgesRow}>
+                      <View style={styles.typeBadge}>
+                        <Text style={styles.typeBadgeText}>{pkg.offering_type || '1:1 Mentorship'}</Text>
+                      </View>
+                      <View style={styles.durationBadge}>
+                        <Clock size={14} color="#64748B" />
+                        <Text style={styles.durationText}>{pkg.duration_minutes ? `${pkg.duration_minutes} min` : '60 min'}</Text>
+                      </View>
+                      <Text style={[styles.categoryText, { color: pkg.category === 'Technical' ? '#EA580C' : '#2563EB' }]}>
+                        {pkg.category || 'General'}
+                      </Text>
+                    </View>
 
-                     <View style={styles.statsContainer}>
-                       <View style={styles.statColumn}>
-                         <Text style={styles.statValue}>₹{pkg.price_per_session || '0'}</Text>
-                         <Text style={styles.statLabel}>Per Session</Text>
-                       </View>
-                       <View style={styles.columnDivider} />
-                       <View style={styles.statColumn}>
-                         <Text style={styles.statValue}>{pkg.total_bookings || 0}</Text>
-                         <Text style={styles.statLabel}>Bookings</Text>
-                       </View>
-                       <View style={styles.columnDivider} />
-                       <View style={styles.statColumn}>
-                         <View style={styles.ratingRow}>
-                           <Star size={14} color="#EAB308" fill="#EAB308" />
-                           <Text style={[styles.statValue, { marginLeft: 4 }]}>
-                             {Number(pkg.avg_rating || 0).toFixed(0)}
-                           </Text>
-                         </View>
-                         <Text style={styles.statLabel}>Rating</Text>
-                       </View>
-                     </View>
-                   </Animated.View>
-                 </SwipeableRow>
+                    <View style={styles.statsContainer}>
+                      <View style={styles.statColumn}>
+                        <Text style={styles.statValue}>₹{pkg.price_per_session || '0'}</Text>
+                        <Text style={styles.statLabel}>Per Session</Text>
+                      </View>
+                      <View style={styles.columnDivider} />
+                      <View style={styles.statColumn}>
+                        <Text style={styles.statValue}>{pkg.total_bookings || 0}</Text>
+                        <Text style={styles.statLabel}>Bookings</Text>
+                      </View>
+                      <View style={styles.columnDivider} />
+                      <View style={styles.statColumn}>
+                        <View style={styles.ratingRow}>
+                          <Star size={14} color="#EAB308" fill="#EAB308" />
+                          <Text style={[styles.statValue, { marginLeft: 4 }]}>
+                            {Number(pkg.avg_rating || 0).toFixed(0)}
+                          </Text>
+                        </View>
+                        <Text style={styles.statLabel}>Rating</Text>
+                      </View>
+                    </View>
+                  </Animated.View>
+                </SwipeableRow>
               );
             })}
           </View>
