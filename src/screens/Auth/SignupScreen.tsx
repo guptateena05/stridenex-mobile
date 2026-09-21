@@ -29,6 +29,8 @@ export const SignupScreen = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [selectedRole, setSelectedRole] = useState<UserRole | null>(null);
   const [acceptTerms, setAcceptTerms] = useState(false);
+  const [hasReferral, setHasReferral] = useState(false);
+  const [referralCode, setReferralCode] = useState('');
 
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -95,6 +97,10 @@ export const SignupScreen = () => {
       newErrors.acceptTerms = "You must accept the Terms of Service and Privacy Policy";
     }
 
+    if (hasReferral && !referralCode) {
+      newErrors.referralCode = "Referral code is required";
+    }
+
     if (!selectedRole) {
       newErrors.selectedRole = "Please select a role to continue";
       triggerShake();
@@ -123,6 +129,7 @@ export const SignupScreen = () => {
           email,
           password,
           role: rolePayload,
+          partner_referal: hasReferral ? referralCode : undefined,
         }
       );
 
@@ -263,6 +270,20 @@ export const SignupScreen = () => {
           })}
         </Animated.View>
         {errors.selectedRole && <Text style={styles.errorText}>{errors.selectedRole}</Text>}
+
+        <View style={[styles.termsRow, { marginBottom: spacing.sm }]}>
+          <Checkbox checked={hasReferral} onCheckedChange={(val) => handleFieldChange('hasReferral', val, setHasReferral)} />
+          <Text style={styles.termsText}>Do you have any referral code?</Text>
+        </View>
+        {hasReferral && (
+          <Input 
+            label="Referral Code" 
+            placeholder="Enter referral code" 
+            value={referralCode} 
+            onChangeText={(val) => handleFieldChange('referralCode', val, setReferralCode)} 
+            error={errors.referralCode}
+          />
+        )}
 
         <View style={[styles.termsRow, errors.acceptTerms ? { marginBottom: spacing.xs } : null]}>
           <Checkbox checked={acceptTerms} onCheckedChange={(val) => handleFieldChange('acceptTerms', val, setAcceptTerms)} />
