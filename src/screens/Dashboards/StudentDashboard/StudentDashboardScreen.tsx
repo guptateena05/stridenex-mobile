@@ -11,6 +11,7 @@ import { StatsCard } from '@/components/dashboard/StatsCard';
 import { HabitHeatmapWidget } from '@/components/dashboard/HabitHeatmapWidget';
 import { SuccessStoriesWidget } from '@/components/dashboard/SuccessStoriesWidget';
 import { AlertsAgendaCard } from '@/components/dashboard/AlertsAgendaCard';
+import { ReferralCardWidget } from '@/components/dashboard/ReferralCardWidget';
 import { useNavigation } from '@react-navigation/native';
 import { TrendingUp, Award, Briefcase, Bot, X, MapPin, Clock, IndianRupee, Target, ShieldCheck, Factory, FileText, ChevronRight, AlertCircle } from 'lucide-react-native';
 
@@ -440,6 +441,14 @@ export const StudentDashboardScreen = () => {
         <Animated.View entering={FadeInUp.delay(900)}>
           <SuccessStoriesWidget />
         </Animated.View>
+        
+        {studentData?.referal_code && (
+          <Animated.View entering={FadeInUp.delay(1000)}>
+            <View style={{ paddingHorizontal: 16, marginTop: 16 }}>
+              <ReferralCardWidget referalCode={studentData.referal_code} />
+            </View>
+          </Animated.View>
+        )}
         
         <View style={styles.footerSpacer} />
       </ScrollView>

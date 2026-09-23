@@ -420,3 +420,11 @@ export const removeCommunityMember = async (params: { name: string }) => {
   const response = await api.post("method/stridenex_app.stridenex_app.doctype.community_member.community_member.remove_community_member", params);
   return response.data;
 };
+
+export const getReferenceCard = async (payload: { reference_code: string; module: string }) => {
+  const response = await api.post(
+    "method/stridenex_app.stridenex_app.doctype.stridenex_partner.stridenex_partner.get_reference_card",
+    payload
+  );
+  return response.data;
+};

@@ -24,6 +24,7 @@ import {
 import Animated, { FadeInUp, FadeInRight } from 'react-native-reanimated';
 import { useNavigation } from '@react-navigation/native';
 import { StatsCard } from '@/components/dashboard/StatsCard';
+import { ReferralCardWidget } from '@/components/dashboard/ReferralCardWidget';
 import { useIndustry } from '@/context/IndustryContext';
 import { getApplicationStatusCount } from '@/api/industry.services';
 
@@ -211,6 +212,15 @@ export const IndustryDashboardScreen = () => {
             </View>
           </Animated.View>
         </View>
+
+        {/* Referral Card */}
+        {((industryData as any)?.user_details?.referal_code || (industryData as any)?.referal_code) && (
+          <Animated.View entering={FadeInUp.delay(300)}>
+            <View style={{ paddingHorizontal: 16, marginBottom: 24 }}>
+              <ReferralCardWidget referalCode={(industryData as any)?.user_details?.referal_code || (industryData as any)?.referal_code} role="industry" />
+            </View>
+          </Animated.View>
+        )}
 
         <View style={styles.footerSpacer} />
       </ScrollView>

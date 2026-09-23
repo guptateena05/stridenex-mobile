@@ -16,6 +16,7 @@ import { colors } from '@/theme/colors';
 import { typography } from '@/theme/typography';
 import { useAuth } from '@/context/AuthContext';
 import { RoleBannerWidget } from '@/components/dashboard/RoleBannerWidget';
+import { ReferralCardWidget } from '@/components/dashboard/ReferralCardWidget';
 import {
   GraduationCap,
   Calendar,
@@ -635,6 +636,15 @@ export const MentorDashboardScreen = () => {
               ))}
             </View>
           </Animated.View>
+
+          {/* Referral Card */}
+          {(mentorData?.user_details?.referal_code || mentorData?.referal_code) && (
+            <Animated.View entering={FadeInUp.delay(350)}>
+              <View style={{ marginTop: 16 }}>
+                <ReferralCardWidget referalCode={mentorData?.user_details?.referal_code || mentorData?.referal_code} role="mentor" />
+              </View>
+            </Animated.View>
+          )}
 
         </View>
         <View style={styles.footerSpacer} />
