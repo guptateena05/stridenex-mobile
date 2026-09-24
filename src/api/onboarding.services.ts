@@ -99,7 +99,7 @@ export const sendWhatsappOTP = async (mobileNo: string): Promise<OtpResponse> =>
     try {
         const mobile_number = mobileNo.length === 10 ? `91${mobileNo}` : mobileNo;
         const response = await api.post(
-            `method/stridenex_app.api_stridenex_app.app.send_whatsapp`,
+            `method/stridenex_app.api_stridenex_app.whatspp.send_verification_otp`,
             { mobile_number }
         );
         return response.data;
@@ -113,7 +113,7 @@ export const verifyWhatsappOTP = async (mobileNo: string, otp: string): Promise<
     try {
         const mobile_number = mobileNo.length === 10 ? `91${mobileNo}` : mobileNo;
         const response = await api.post(
-            `method/stridenex_app.api_stridenex_app.app.verify_otp`,
+            `method/stridenex_app.api_stridenex_app.whatspp.verify_verification_otp`,
             { mobile_number, otp }
         );
         return response.data;
