@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, Modal, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Alert, SafeAreaView } from 'react-native';
-import { X, Check, Award, AlertCircle, Zap, Shield, CheckCircle, Lightbulb } from 'lucide-react-native';
+import { X, Check, Award, AlertCircle, Zap, Shield, CheckCircle, Lightbulb, Flag } from 'lucide-react-native';
 import { getSkillTestQuestions, submitSkillTest } from '../api/student.services';
 import ConfettiCannon from 'react-native-confetti-cannon';
+import { ReportQuestionModal } from './ReportQuestionModal';
 
 interface SkillVerificationModalProps {
   visible: boolean;
@@ -27,6 +28,9 @@ const SkillVerificationModal: React.FC<SkillVerificationModalProps> = ({
   const [currentTestAnswers, setCurrentTestAnswers] = useState<Record<string, string>>({});
   const [testLoading, setTestLoading] = useState(false);
   const [testResult, setTestResult] = useState<any>(null);
+  const [reportedQuestions, setReportedQuestions] = useState<Set<string>>(new Set());
+  const [reportModalVisible, setReportModalVisible] = useState(false);
+  const [questionToReport, setQuestionToReport] = useState<string | null>(null);
 
   // Reset state when modal opens for a new skill
   useEffect(() => {
@@ -37,6 +41,9 @@ const SkillVerificationModal: React.FC<SkillVerificationModalProps> = ({
       setCurrentTestAnswers({});
       setTestResult(null);
       setTestLoading(false);
+      setReportedQuestions(new Set());
+      setReportModalVisible(false);
+      setQuestionToReport(null);
     }
   }, [visible, skillName, skillLevel]);
 
@@ -198,8 +205,26 @@ const SkillVerificationModal: React.FC<SkillVerificationModalProps> = ({
 
               <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 40 }}>
                 <View style={{ backgroundColor: '#FFFFFF', borderRadius: 20, padding: 20, borderWidth: 1.5, borderColor: '#F1F5F9', marginBottom: 20 }}>
-                  <View style={{ alignSelf: 'flex-start', backgroundColor: 'rgba(255, 107, 0, 0.08)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, marginBottom: 12 }}>
-                    <Text style={{ fontSize: 9, fontWeight: '800', color: '#F97316', letterSpacing: 0.5 }}>{testQuestions[currentQuestionIndex]?.difficulty?.toUpperCase() || 'EASY'}</Text>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+                    <View style={{ backgroundColor: 'rgba(255, 107, 0, 0.08)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }}>
+                      <Text style={{ fontSize: 9, fontWeight: '800', color: '#F97316', letterSpacing: 0.5 }}>{testQuestions[currentQuestionIndex]?.difficulty?.toUpperCase() || 'EASY'}</Text>
+                    </View>
+                    
+                    {testQuestions[currentQuestionIndex]?.source === 'bank' && testQuestions[currentQuestionIndex]?.question_bank_id && (
+                      <TouchableOpacity
+                        disabled={reportedQuestions.has(testQuestions[currentQuestionIndex].question_bank_id)}
+                        onPress={() => {
+                          setQuestionToReport(testQuestions[currentQuestionIndex].question_bank_id);
+                          setReportModalVisible(true);
+                        }}
+                        style={{ flexDirection: 'row', alignItems: 'center', gap: 4, opacity: reportedQuestions.has(testQuestions[currentQuestionIndex].question_bank_id) ? 0.5 : 1 }}
+                      >
+                        <Flag size={12} color={reportedQuestions.has(testQuestions[currentQuestionIndex].question_bank_id) ? "#94A3B8" : "#F43F5E"} />
+                        <Text style={{ fontSize: 10, fontWeight: '700', color: reportedQuestions.has(testQuestions[currentQuestionIndex].question_bank_id) ? "#94A3B8" : "#F43F5E" }}>
+                          {reportedQuestions.has(testQuestions[currentQuestionIndex].question_bank_id) ? 'Reported' : 'Report'}
+                        </Text>
+                      </TouchableOpacity>
+                    )}
                   </View>
                   <Text style={{ fontSize: 16, fontWeight: '700', color: '#1E293B', lineHeight: 22 }}>{testQuestions[currentQuestionIndex]?.question}</Text>
                 </View>
@@ -443,6 +468,22 @@ const SkillVerificationModal: React.FC<SkillVerificationModalProps> = ({
              </ScrollView>
            </View>
         )}
+
+        <ReportQuestionModal
+          visible={reportModalVisible}
+          onClose={() => {
+            setReportModalVisible(false);
+            setQuestionToReport(null);
+          }}
+          questionBankId={questionToReport || ""}
+          onReported={(id) => {
+            setReportedQuestions(prev => {
+              const newSet = new Set(prev);
+              newSet.add(id);
+              return newSet;
+            });
+          }}
+        />
       </SafeAreaView>
     </Modal>
   );

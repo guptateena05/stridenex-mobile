@@ -1707,3 +1707,23 @@ export const getHabitCompletionHeatmap = async (studentEmail: string, year?: num
     throw error;
   }
 };
+
+/**
+ * Report a question.
+ */
+export const reportQuestion = async (payload: {
+  question_bank_id: string;
+  reason: "wrong_answer" | "unclear_question" | "outdated_content" | "duplicate_question" | "other" | string;
+  details?: string;
+}) => {
+  try {
+    const response = await api.post(
+      `method/nexedu.api.skill_assessment_ai.report_question`,
+      payload
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error reporting question:", error);
+    throw error;
+  }
+};

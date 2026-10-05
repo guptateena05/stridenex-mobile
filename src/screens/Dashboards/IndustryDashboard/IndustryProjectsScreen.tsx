@@ -299,7 +299,9 @@ export const IndustryProjectsScreen = () => {
       apiEndpoint: 'method/stridenex_app.api_stridenex_app.college.master.get_master_data',
       apiParams: { doctype: 'Courses' },
       mapOptions: (data: any) => {
-        return data.map((item: any) => {
+        let items = Array.isArray(data) ? data : (data?.data?.data || data?.message?.data || data?.message || data?.data || []);
+        items = Array.isArray(items) ? items : [];
+        return items.map((item: any) => {
           const val = item.name || item.value || (typeof item === 'string' ? item : '');
           const lbl = item.label || item.name || (typeof item === 'string' ? item : '');
           return { value: val, label: lbl };

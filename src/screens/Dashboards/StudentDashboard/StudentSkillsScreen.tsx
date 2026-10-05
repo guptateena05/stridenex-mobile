@@ -158,7 +158,8 @@ export const StudentSkillsScreen = () => {
       apiEndpoint: 'method/stridenex_app.api_stridenex_app.college.master.get_master_data',
       apiParams: { doctype: 'Skill', fields: ['skill_name'] },
       mapOptions: (data: any) => {
-        const items = data.data || data || [];
+        let items = Array.isArray(data) ? data : (data?.data?.data || data?.message?.data || data?.message || data?.data || []);
+        items = Array.isArray(items) ? items : [];
         return items.map((item: any) => ({
           value: item.name || item.skill_name,
           label: item.skill_name || item.name,
