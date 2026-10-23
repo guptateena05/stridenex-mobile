@@ -529,15 +529,9 @@ export const SharedCommunityScreen = ({ userType }: SharedCommunityScreenProps) 
                   </View>
                   <Text style={styles.postCardContent} numberOfLines={3}>{post.content}</Text>
                   
-                  <View style={styles.postDivider} />
-                  
-                  <View style={styles.postCardActions}>
+                  <View style={styles.postCardFooter}>
                     <View style={styles.postActionBadge}>
-                      <Heart size={14} color="#64748B" />
-                      <Text style={styles.postActionTxt}>{post.like_count || 0}</Text>
-                    </View>
-                    <View style={styles.postActionBadge}>
-                      <MessageSquare size={14} color="#64748B" />
+                      <MessageSquare size={13} color="#64748B" />
                       <Text style={styles.postActionTxt}>{post.comment_count || 0}</Text>
                     </View>
                   </View>
@@ -557,7 +551,7 @@ export const SharedCommunityScreen = ({ userType }: SharedCommunityScreenProps) 
             multiline
           />
           <TouchableOpacity style={styles.sendButton} onPress={handleCreateTopic}>
-            <Send size={18} color="#FFFFFF" />
+            <Send size={16} color="#FFFFFF" />
           </TouchableOpacity>
         </View>
       </View>
@@ -596,11 +590,7 @@ export const SharedCommunityScreen = ({ userType }: SharedCommunityScreenProps) 
                 <TouchableOpacity 
                   style={styles.addBtn} 
                   onPress={() => {
-                    if (userType !== 'student') {
-                      setShowCategoryOptionsModal(true);
-                    } else {
-                      setShowCreateCategoryModal(true);
-                    }
+                    setShowCategoryOptionsModal(true);
                   }}
                 >
                   <Plus size={14} color="#FF6B00" />
@@ -696,7 +686,15 @@ export const SharedCommunityScreen = ({ userType }: SharedCommunityScreenProps) 
         <Modal visible={showCreateCategoryModal} transparent animationType="fade">
           <View style={styles.modalBg}>
             <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>New Category</Text>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <Folder size={20} color="#0F172A" />
+                  <Text style={[styles.modalTitle, { marginBottom: 0 }]}>New Custom Category</Text>
+                </View>
+                <TouchableOpacity onPress={() => setShowCreateCategoryModal(false)}>
+                  <X size={20} color="#94A3B8" />
+                </TouchableOpacity>
+              </View>
               <TextInput style={styles.modalInput} placeholder="Category Name" placeholderTextColor="#94A3B8" value={newCatName} onChangeText={setNewCatName} />
               <TextInput style={[styles.modalInput, { height: 60 }]} placeholder="Description" placeholderTextColor="#94A3B8" value={newCatDesc} onChangeText={setNewCatDesc} multiline />
               <View style={styles.modalActions}>
@@ -749,9 +747,10 @@ export const SharedCommunityScreen = ({ userType }: SharedCommunityScreenProps) 
                 </View>
               </ScrollView>
 
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 20, gap: 12 }}>
+              <View style={styles.modalActionRow}>
                 <TouchableOpacity 
                   style={styles.customBtn}
+                  activeOpacity={0.7}
                   onPress={() => {
                     setShowCategoryOptionsModal(false);
                     setShowCreateCategoryModal(true);
@@ -762,6 +761,7 @@ export const SharedCommunityScreen = ({ userType }: SharedCommunityScreenProps) 
 
                 <TouchableOpacity 
                   style={[styles.suggestedBtn, !selectedSuggestedCategory && styles.suggestedBtnDisabled]}
+                  activeOpacity={0.8}
                   onPress={handleCreateSuggestedCategory}
                   disabled={!selectedSuggestedCategory}
                 >
@@ -1023,18 +1023,17 @@ const styles = StyleSheet.create({
   tagsContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   tagBadge: { backgroundColor: '#F0F9FF', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 24, borderWidth: 1, borderColor: '#BAE6FD' },
   tagText: { fontSize: 13, fontWeight: '700' },
-  postCard: { backgroundColor: '#FFFFFF', borderRadius: 16, marginBottom: 16, borderWidth: 1, borderColor: '#E2E8F0', shadowColor: '#64748B', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.08, shadowRadius: 12, elevation: 4, overflow: 'hidden' },
-  postCardInner: { padding: 16, borderLeftWidth: 4, borderLeftColor: '#FF6B00' },
-  postHeaderRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
-  postAvatar: { width: 42, height: 42, borderRadius: 21, backgroundColor: '#FFF7ED', alignItems: 'center', justifyContent: 'center', marginRight: 12, borderWidth: 1, borderColor: '#FFEDD5' },
-  postAvatarTxt: { fontSize: 16, fontWeight: '800', color: '#FF6B00' },
-  postCardAuthor: { fontSize: 16, fontWeight: '700', color: '#0F172A' },
-  postCardTime: { fontSize: 12, color: '#94A3B8', marginTop: 2, fontWeight: '500' },
-  postCardContent: { fontSize: 15, color: '#334155', lineHeight: 24, marginBottom: 16 },
-  postDivider: { height: 1, backgroundColor: '#F1F5F9', marginBottom: 12 },
-  postCardActions: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  postActionBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8FAFC', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, gap: 6, borderWidth: 1, borderColor: '#F1F5F9' },
-  postActionTxt: { fontSize: 13, color: '#64748B', fontWeight: '700' },
+  postCard: { backgroundColor: '#FFFFFF', borderRadius: 14, marginBottom: 10, borderWidth: 1, borderColor: '#E2E8F0', shadowColor: '#64748B', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 6, elevation: 2, overflow: 'hidden' },
+  postCardInner: { padding: 12, borderLeftWidth: 3, borderLeftColor: '#FF6B00' },
+  postHeaderRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
+  postAvatar: { width: 34, height: 34, borderRadius: 17, backgroundColor: '#FFF7ED', alignItems: 'center', justifyContent: 'center', marginRight: 10, borderWidth: 1, borderColor: '#FFEDD5' },
+  postAvatarTxt: { fontSize: 14, fontWeight: '800', color: '#FF6B00' },
+  postCardAuthor: { fontSize: 14, fontWeight: '700', color: '#0F172A' },
+  postCardTime: { fontSize: 11, color: '#94A3B8', marginTop: 1, fontWeight: '500' },
+  postCardContent: { fontSize: 14, color: '#334155', lineHeight: 20, marginBottom: 8 },
+  postCardFooter: { flexDirection: 'row', alignItems: 'center', paddingTop: 6, borderTopWidth: 1, borderTopColor: '#F8FAFC' },
+  postActionBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8FAFC', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, gap: 5, borderWidth: 1, borderColor: '#F1F5F9' },
+  postActionTxt: { fontSize: 12, color: '#64748B', fontWeight: '700' },
   emptyText: { fontSize: 14, color: '#64748B', textAlign: 'center', marginTop: 20 },
   modalBg: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center', padding: 20 },
   modalContent: { width: '100%', backgroundColor: '#FFFFFF', borderRadius: 16, padding: 20 },
@@ -1048,22 +1047,22 @@ const styles = StyleSheet.create({
   modalCancel: { fontSize: 15, fontWeight: '600', color: '#64748B', padding: 12 },
   modalSubmit: { backgroundColor: '#FF6B00', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12 },
   modalSubmitText: { fontSize: 15, fontWeight: '700', color: '#FFFFFF' },
-  postDetailCard: { backgroundColor: '#FFFFFF', padding: 20, borderRadius: 16, marginBottom: 24, shadowColor: '#FF6B00', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 12, elevation: 3, borderTopWidth: 4, borderTopColor: '#FF6B00' },
-  postDetailHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 },
-  postDetailAuthor: { fontSize: 16, fontWeight: '700', color: '#0F172A' },
-  postDetailTime: { fontSize: 13, color: '#94A3B8', marginTop: 2 },
-  postDetailContent: { fontSize: 16, color: '#334155', lineHeight: 26 },
-  repliesTitle: { fontSize: 18, fontWeight: '800', color: '#0F172A', marginBottom: 16, marginLeft: 4 },
-  replyCard: { marginBottom: 16 },
-  replyBubble: { backgroundColor: '#F1F5F9', padding: 16, borderRadius: 16, borderTopLeftRadius: 4, marginLeft: 12 },
-  replyContentText: { fontSize: 15, color: '#334155', marginTop: 4, lineHeight: 22 },
-  replyFooter: { flexDirection: 'row', alignItems: 'center', marginTop: 8, paddingLeft: 16, gap: 16 },
-  replyTime: { fontSize: 12, color: '#94A3B8', fontWeight: '500' },
+  postDetailCard: { backgroundColor: '#FFFFFF', padding: 16, borderRadius: 14, marginBottom: 20, shadowColor: '#FF6B00', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 12, elevation: 3, borderLeftWidth: 3, borderLeftColor: '#FF6B00' },
+  postDetailHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
+  postDetailAuthor: { fontSize: 15, fontWeight: '700', color: '#0F172A' },
+  postDetailTime: { fontSize: 12, color: '#94A3B8', marginTop: 2 },
+  postDetailContent: { fontSize: 15, color: '#334155', lineHeight: 22 },
+  repliesTitle: { fontSize: 16, fontWeight: '800', color: '#0F172A', marginBottom: 12, marginLeft: 4 },
+  replyCard: { marginBottom: 12 },
+  replyBubble: { backgroundColor: '#F1F5F9', padding: 12, borderRadius: 14, borderTopLeftRadius: 4, marginLeft: 10 },
+  replyContentText: { fontSize: 14, color: '#334155', marginTop: 4, lineHeight: 20 },
+  replyFooter: { flexDirection: 'row', alignItems: 'center', marginTop: 6, paddingLeft: 14, gap: 14 },
+  replyTime: { fontSize: 11, color: '#94A3B8', fontWeight: '500' },
   replyLikeBtn: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  replyLikeTxt: { fontSize: 13, color: '#64748B', fontWeight: '700' },
-  replyInputWrapper: { flexDirection: 'row', alignItems: 'center', padding: 16, paddingBottom: 24, backgroundColor: '#FFFFFF', borderTopWidth: 1, borderTopColor: '#F1F5F9' },
-  replyInput: { flex: 1, backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 24, paddingHorizontal: 20, paddingTop: 12, paddingBottom: 12, maxHeight: 120, fontSize: 15, color: '#0F172A', marginRight: 12 },
-  sendButton: { width: 48, height: 48, borderRadius: 24, backgroundColor: '#FF6B00', alignItems: 'center', justifyContent: 'center', shadowColor: '#FF6B00', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 },
+  replyLikeTxt: { fontSize: 12, color: '#64748B', fontWeight: '700' },
+  replyInputWrapper: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingTop: 10, paddingBottom: 14, backgroundColor: '#FFFFFF', borderTopWidth: 1, borderTopColor: '#F1F5F9' },
+  replyInput: { flex: 1, backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8, minHeight: 40, maxHeight: 100, fontSize: 14, color: '#0F172A', marginRight: 10 },
+  sendButton: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#FF6B00', alignItems: 'center', justifyContent: 'center', shadowColor: '#FF6B00', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 4, elevation: 3 },
   memberCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', padding: 16, borderRadius: 16, marginBottom: 12, shadowColor: '#94A3B8', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 1, borderWidth: 1, borderColor: '#F8FAFC' },
   memberAvatar: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#F0F9FF', alignItems: 'center', justifyContent: 'center', marginRight: 12 },
   memberAvatarTxt: { fontSize: 16, fontWeight: '700', color: '#0369A1' },
@@ -1071,12 +1070,68 @@ const styles = StyleSheet.create({
   memberRole: { fontSize: 12, color: '#64748B', marginTop: 2 },
   statusBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
   statusTxt: { fontSize: 11, fontWeight: '700' },
+  modalActionRow: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    justifyContent: 'space-between',
+    gap: 12,
+    marginTop: 18,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+  },
   suggestedCard: { width: '48%', backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, padding: 12, marginBottom: 12 },
   suggestedCardActive: { borderColor: '#FF6B00', backgroundColor: '#FFF7ED' },
-  customBtn: { flex: 1, paddingVertical: 12, borderRadius: 12, borderWidth: 1, borderColor: '#FF6B00', alignItems: 'center', justifyContent: 'center' },
-  customBtnText: { color: '#FF6B00', fontSize: 14, fontWeight: '700' },
-  suggestedBtn: { flex: 1, paddingVertical: 12, borderRadius: 12, backgroundColor: '#FF6B00', alignItems: 'center', justifyContent: 'center' },
-  suggestedBtnDisabled: { backgroundColor: '#F1F5F9' },
-  suggestedBtnText: { color: '#FFFFFF', fontSize: 14, fontWeight: '700', textAlign: 'center' },
-  suggestedBtnTextDisabled: { color: '#94A3B8' }
+  customBtn: {
+    flex: 1,
+    minHeight: 48,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: '#FF6B00',
+    backgroundColor: '#FFF7ED',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  customBtnText: {
+    color: '#EA580C',
+    fontSize: 13,
+    fontWeight: '700',
+    textAlign: 'center',
+    lineHeight: 18,
+  },
+  suggestedBtn: {
+    flex: 1,
+    minHeight: 48,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    borderRadius: 12,
+    backgroundColor: '#FF6B00',
+    borderWidth: 1.5,
+    borderColor: '#FF6B00',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#FF6B00',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  suggestedBtnDisabled: {
+    backgroundColor: '#F1F5F9',
+    borderColor: '#E2E8F0',
+    shadowOpacity: 0,
+    elevation: 0,
+  },
+  suggestedBtnText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
+    textAlign: 'center',
+    lineHeight: 18,
+  },
+  suggestedBtnTextDisabled: {
+    color: '#94A3B8',
+  },
 });
