@@ -1,12 +1,12 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  ScrollView, 
-  TouchableOpacity, 
-  Modal, 
-  KeyboardAvoidingView, 
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Modal,
+  KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
   Alert,
@@ -15,10 +15,10 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '@/theme/colors';
 import { typography } from '@/theme/typography';
-import { 
-  UserCircle, 
-  MapPin, 
-  Briefcase, 
+import {
+  UserCircle,
+  MapPin,
+  Briefcase,
   Edit2,
   CheckCircle2,
   Shield,
@@ -221,7 +221,7 @@ export const MentorProfileScreen = () => {
       label: 'Willing to Travel',
       fieldtype: 'Select',
       required: false,
-      options: ['Yes', 'No', 'Maybe'],
+      options: ['Yes', 'No'],
       placeholder: 'Select'
     },
     {
@@ -330,27 +330,27 @@ export const MentorProfileScreen = () => {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-      <ScrollView 
-        style={styles.container} 
-        showsVerticalScrollIndicator={false} 
+      <ScrollView
+        style={styles.container}
+        showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.content}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#4c1d95"]} />
         }
       >
-        
+
         {/* Header */}
         <Animated.View entering={FadeInUp.delay(50)} style={styles.header}>
           <View style={styles.headerRow}>
             <View style={styles.headerTitleGroup}>
-               <Text style={styles.title}>My Profile</Text>
-               <View style={styles.headerBadge}>
-                 <UserCircle size={10} color="#4c1d95" />
-                 <Text style={styles.headerBadgeText}>PUBLIC PROFILE</Text>
-               </View>
+              <Text style={styles.title}>My Profile</Text>
+              <View style={styles.headerBadge}>
+                <UserCircle size={10} color="#4c1d95" />
+                <Text style={styles.headerBadgeText}>PUBLIC PROFILE</Text>
+              </View>
             </View>
-            <TouchableOpacity 
-              style={styles.editBtnBox} 
+            <TouchableOpacity
+              style={styles.editBtnBox}
               onPress={() => {
                 setProfileFormValues(initialFormValues);
                 setIsEditModalVisible(true);
@@ -368,29 +368,29 @@ export const MentorProfileScreen = () => {
             <View style={styles.avatarMain}>
               <Text style={styles.avatarMainTxt}>{initials}</Text>
               <View style={styles.verifyPip}>
-                <Text style={{fontSize: 8}}>✨</Text>
+                <Text style={{ fontSize: 8 }}>✨</Text>
               </View>
             </View>
             <View style={{ flex: 1 }}>
-               <View style={styles.nameRow}>
-                 <Text style={styles.nameTxt}>{fullName}</Text>
-                 <View style={styles.proTag}>
-                   <Shield size={10} color="#2563EB" />
-                   <Text style={styles.proTagTxt}>{mentorData?.approved_status || 'Mentor'}</Text>
-                 </View>
-               </View>
-               <Text style={styles.roleSubTxt}>
-                 {mentorData?.role || 'No role set'}
-                 {mentorData?.experience ? ` • ${mentorData.experience} years exp` : ''}
-                 {mentorData?.type ? ` • ${mentorData.type}` : ''}
-               </Text>
-               {domains.length > 0 && (
-                 <View style={styles.tagsRow}>
-                   {domains.map((d: string, idx: number) => (
-                     <Text key={idx} style={[styles.tagLbl, { backgroundColor: '#FFF7ED', color: '#C2410C', borderColor: '#FFEDD5' }]}>{d}</Text>
-                   ))}
-                 </View>
-               )}
+              <View style={styles.nameRow}>
+                <Text style={styles.nameTxt}>{fullName}</Text>
+                <View style={styles.proTag}>
+                  <Shield size={10} color="#2563EB" />
+                  <Text style={styles.proTagTxt}>{mentorData?.approved_status || 'Mentor'}</Text>
+                </View>
+              </View>
+              <Text style={styles.roleSubTxt}>
+                {mentorData?.role || 'No role set'}
+                {mentorData?.experience ? ` • ${mentorData.experience} years exp` : ''}
+                {mentorData?.type ? ` • ${mentorData.type}` : ''}
+              </Text>
+              {domains.length > 0 && (
+                <View style={styles.tagsRow}>
+                  {domains.map((d: string, idx: number) => (
+                    <Text key={idx} style={[styles.tagLbl, { backgroundColor: '#FFF7ED', color: '#C2410C', borderColor: '#FFEDD5' }]}>{d}</Text>
+                  ))}
+                </View>
+              )}
             </View>
           </View>
         </Animated.View>
@@ -469,94 +469,94 @@ export const MentorProfileScreen = () => {
           </View>
 
           <View style={styles.verifyMainBox}>
-             <View style={styles.verifyCenter}>
-               <View style={[styles.verifyIconBox, { backgroundColor: mentorData?.approved_status === 'Approved' ? '#ECFDF5' : '#EFF6FF' }]}>
-                 <Shield size={24} color={mentorData?.approved_status === 'Approved' ? '#10B981' : '#3B82F6'} />
-               </View>
-               <Text style={[styles.verifyMainTxt, { color: mentorData?.approved_status === 'Approved' ? '#10B981' : '#3B82F6' }]}>
-                 {mentorData?.approved_status || "Pending Verification"}
-               </Text>
-               <Text style={styles.verifySubTxt}>
-                 {mentorData?.is_active ? "Profile active & visible to students" : "Profile is hidden from students"}
-               </Text>
-             </View>
+            <View style={styles.verifyCenter}>
+              <View style={[styles.verifyIconBox, { backgroundColor: mentorData?.approved_status === 'Approved' ? '#ECFDF5' : '#EFF6FF' }]}>
+                <Shield size={24} color={mentorData?.approved_status === 'Approved' ? '#10B981' : '#3B82F6'} />
+              </View>
+              <Text style={[styles.verifyMainTxt, { color: mentorData?.approved_status === 'Approved' ? '#10B981' : '#3B82F6' }]}>
+                {mentorData?.approved_status || "Pending Verification"}
+              </Text>
+              <Text style={styles.verifySubTxt}>
+                {mentorData?.is_active ? "Profile active & visible to students" : "Profile is hidden from students"}
+              </Text>
+            </View>
 
-             <View style={styles.verifyList}>
-               {(mentorData?.mentor_verification || []).length > 0 ? (
-                 mentorData.mentor_verification.map((item: any, idx: number) => (
-                   <View key={idx} style={styles.verifyListItem}>
-                     <View style={styles.verifyListItemLeft}>
-                       <CheckCircle2 size={16} color={item.status === 'Verified' ? '#10B981' : '#F59E0B'} />
-                       <Text style={styles.verifyListItemTxt}>{item.verification}</Text>
-                     </View>
-                     <View style={[styles.verifyPillBg, { backgroundColor: item.status === 'Verified' ? '#ECFDF5' : '#FFFBEB', borderColor: item.status === 'Verified' ? '#D1FAE5' : '#FEF3C7' }]}>
-                       <Text style={[styles.verifyPillTxt, { color: item.status === 'Verified' ? '#059669' : '#D97706' }]}>{item.status}</Text>
-                     </View>
-                   </View>
-                 ))
-               ) : (
-                 <View style={{ alignItems: 'center', paddingVertical: 12 }}>
-                   <Text style={styles.verifySubTxt}>No verification records found</Text>
-                 </View>
-               )}
-             </View>
+            <View style={styles.verifyList}>
+              {(mentorData?.mentor_verification || []).length > 0 ? (
+                mentorData.mentor_verification.map((item: any, idx: number) => (
+                  <View key={idx} style={styles.verifyListItem}>
+                    <View style={styles.verifyListItemLeft}>
+                      <CheckCircle2 size={16} color={item.status === 'Verified' ? '#10B981' : '#F59E0B'} />
+                      <Text style={styles.verifyListItemTxt}>{item.verification}</Text>
+                    </View>
+                    <View style={[styles.verifyPillBg, { backgroundColor: item.status === 'Verified' ? '#ECFDF5' : '#FFFBEB', borderColor: item.status === 'Verified' ? '#D1FAE5' : '#FEF3C7' }]}>
+                      <Text style={[styles.verifyPillTxt, { color: item.status === 'Verified' ? '#059669' : '#D97706' }]}>{item.status}</Text>
+                    </View>
+                  </View>
+                ))
+              ) : (
+                <View style={{ alignItems: 'center', paddingVertical: 12 }}>
+                  <Text style={styles.verifySubTxt}>No verification records found</Text>
+                </View>
+              )}
+            </View>
           </View>
         </Animated.View>
 
         {/* Student Facing Preview */}
         <Animated.View entering={FadeInUp.delay(200)} style={styles.sectionContainer}>
-           <View style={styles.sectionHeaderLine}>
-             <Eye size={16} color="#D97706" />
-             <Text style={styles.sectionHeaderTitle}>Student-Facing Public Profile</Text>
-           </View>
+          <View style={styles.sectionHeaderLine}>
+            <Eye size={16} color="#D97706" />
+            <Text style={styles.sectionHeaderTitle}>Student-Facing Public Profile</Text>
+          </View>
 
-           <View style={styles.previewContainer}>
-             <Text style={styles.previewInfo}>This is how students see your profile card:</Text>
-             
-             <View style={styles.previewCard}>
-                <View style={styles.pCardTop}>
-                   <View style={styles.pCardAvatar}>
-                     <Text style={styles.pCardAvatarTxt}>{initials}</Text>
-                   </View>
-                   <View style={{ flex: 1 }}>
-                     <View style={styles.pCardNameRow}>
-                        <Text style={styles.pCardName}>{fullName}</Text>
-                        <View style={[styles.proTagSmall, { backgroundColor: mentorData?.approved_status === 'Approved' ? '#ECFDF5' : '#EFF6FF', borderColor: mentorData?.approved_status === 'Approved' ? '#A7F3D0' : '#BFDBFE' }]}>
-                          <Shield size={8} color={mentorData?.approved_status === 'Approved' ? '#059669' : '#2563EB'} />
-                          <Text style={[styles.proTagSmallTxt, { color: mentorData?.approved_status === 'Approved' ? '#059669' : '#1D4ED8' }]}>
-                            {mentorData?.approved_status === 'Approved' ? 'VERIFIED' : 'PENDING'}
-                          </Text>
-                        </View>
-                     </View>
-                     <Text style={styles.pCardRole} numberOfLines={1}>{mentorData?.role || 'No role set'}</Text>
-                     {mentorData?.type ? (
-                       <Text style={styles.pCardType} numberOfLines={1}>{mentorData.type}</Text>
-                     ) : null}
-                   </View>
+          <View style={styles.previewContainer}>
+            <Text style={styles.previewInfo}>This is how students see your profile card:</Text>
+
+            <View style={styles.previewCard}>
+              <View style={styles.pCardTop}>
+                <View style={styles.pCardAvatar}>
+                  <Text style={styles.pCardAvatarTxt}>{initials}</Text>
                 </View>
-
-                <View style={styles.pCardStatsRow}>
-                  <View style={styles.pCardStatCol}>
-                     <Text style={styles.pCardStatLbl}>RATING</Text>
-                     <Text style={styles.pCardStatVal}>⭐ {mentorData?.avg_rating > 0 ? Number(mentorData.avg_rating).toFixed(1) : 'New'}</Text>
+                <View style={{ flex: 1 }}>
+                  <View style={styles.pCardNameRow}>
+                    <Text style={styles.pCardName}>{fullName}</Text>
+                    <View style={[styles.proTagSmall, { backgroundColor: mentorData?.approved_status === 'Approved' ? '#ECFDF5' : '#EFF6FF', borderColor: mentorData?.approved_status === 'Approved' ? '#A7F3D0' : '#BFDBFE' }]}>
+                      <Shield size={8} color={mentorData?.approved_status === 'Approved' ? '#059669' : '#2563EB'} />
+                      <Text style={[styles.proTagSmallTxt, { color: mentorData?.approved_status === 'Approved' ? '#059669' : '#1D4ED8' }]}>
+                        {mentorData?.approved_status === 'Approved' ? 'VERIFIED' : 'PENDING'}
+                      </Text>
+                    </View>
                   </View>
-                  <View style={styles.pCardDiv} />
-                  <View style={styles.pCardStatCol}>
-                     <Text style={styles.pCardStatLbl}>SESSIONS</Text>
-                     <Text style={styles.pCardStatVal}>{mentorData?.total_sessions ?? 0}</Text>
-                  </View>
-                  <View style={styles.pCardDiv} />
-                  <View style={styles.pCardStatCol}>
-                     <Text style={styles.pCardStatLbl}>HOURS</Text>
-                     <Text style={styles.pCardStatVal}>{Number(mentorData?.total_hours ?? 0).toFixed(1)}</Text>
-                  </View>
+                  <Text style={styles.pCardRole} numberOfLines={1}>{mentorData?.role || 'No role set'}</Text>
+                  {mentorData?.type ? (
+                    <Text style={styles.pCardType} numberOfLines={1}>{mentorData.type}</Text>
+                  ) : null}
                 </View>
+              </View>
 
-                <TouchableOpacity style={styles.pCardBtn} disabled>
-                  <Text style={styles.pCardBtnTxt}>Book Session</Text>
-                </TouchableOpacity>
-             </View>
-           </View>
+              <View style={styles.pCardStatsRow}>
+                <View style={styles.pCardStatCol}>
+                  <Text style={styles.pCardStatLbl}>RATING</Text>
+                  <Text style={styles.pCardStatVal}>⭐ {mentorData?.avg_rating > 0 ? Number(mentorData.avg_rating).toFixed(1) : 'New'}</Text>
+                </View>
+                <View style={styles.pCardDiv} />
+                <View style={styles.pCardStatCol}>
+                  <Text style={styles.pCardStatLbl}>SESSIONS</Text>
+                  <Text style={styles.pCardStatVal}>{mentorData?.total_sessions ?? 0}</Text>
+                </View>
+                <View style={styles.pCardDiv} />
+                <View style={styles.pCardStatCol}>
+                  <Text style={styles.pCardStatLbl}>HOURS</Text>
+                  <Text style={styles.pCardStatVal}>{Number(mentorData?.total_hours ?? 0).toFixed(1)}</Text>
+                </View>
+              </View>
+
+              <TouchableOpacity style={styles.pCardBtn} disabled>
+                <Text style={styles.pCardBtnTxt}>Book Session</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         </Animated.View>
 
         <View style={styles.footerSpacer} />
@@ -573,20 +573,20 @@ export const MentorProfileScreen = () => {
               </TouchableOpacity>
             </View>
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.modalScroll}>
-               <ProfileImageUploader
-                 currentImageUrl={userImage}
-                 initials={profileFormValues.first_name?.charAt(0) || userFullName?.charAt(0) || "M"}
-                 size="lg"
-               />
-               <DynamicForm
-                 fields={editFields}
-                 onSubmit={handleUpdateProfile}
-                 initialValues={profileFormValues}
-                 onChange={handleFormChange}
-                 loading={updateLoading}
-                 buttonLabel="Save Changes"
-                 accentColor={colors.violet[600]}
-               />
+              <ProfileImageUploader
+                currentImageUrl={userImage}
+                initials={profileFormValues.first_name?.charAt(0) || userFullName?.charAt(0) || "M"}
+                size="lg"
+              />
+              <DynamicForm
+                fields={editFields}
+                onSubmit={handleUpdateProfile}
+                initialValues={profileFormValues}
+                onChange={handleFormChange}
+                loading={updateLoading}
+                buttonLabel="Save Changes"
+                accentColor={colors.violet[600]}
+              />
             </ScrollView>
           </Animated.View>
         </KeyboardAvoidingView>
@@ -600,7 +600,7 @@ const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: '#F8FAFC' },
   container: { flex: 1 },
   content: { paddingHorizontal: 16, paddingTop: 16 },
-  
+
   header: { marginBottom: 12, paddingHorizontal: 4 },
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 },
   headerTitleGroup: { flexDirection: 'row', alignItems: 'center', gap: 10 },
@@ -615,13 +615,13 @@ const styles = StyleSheet.create({
   avatarMain: { width: 60, height: 60, borderRadius: 30, backgroundColor: '#F97316', alignItems: 'center', justifyContent: 'center', position: 'relative' },
   avatarMainTxt: { fontSize: 22, fontWeight: '900', color: '#FFF' },
   verifyPip: { position: 'absolute', bottom: -2, right: -2, backgroundColor: '#FFF', padding: 2, borderRadius: 10, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 2, elevation: 1 },
-  
+
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 2 },
   nameTxt: { fontSize: 18, fontWeight: '800', color: '#0F172A' },
   proTag: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#EFF6FF', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, borderWidth: 1, borderColor: '#BFDBFE' },
   proTagTxt: { fontSize: 8, fontWeight: '900', color: '#1D4ED8', textTransform: 'uppercase' },
   roleSubTxt: { fontSize: 11, color: '#64748B', fontWeight: '500', marginBottom: 10 },
-  
+
   tagsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   tagLbl: { fontSize: 10, fontWeight: '800', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, borderWidth: 1, overflow: 'hidden' },
 
@@ -673,7 +673,7 @@ const styles = StyleSheet.create({
   proTagSmallTxt: { fontSize: 8, fontWeight: '900' },
   pCardRole: { fontSize: 10, color: '#64748B', fontWeight: '500' },
   pCardType: { fontSize: 10, color: '#94A3B8', fontWeight: '600', marginTop: 2 },
-  
+
   pCardStatsRow: { flexDirection: 'row', justifyContent: 'center', backgroundColor: '#F8FAFC', paddingVertical: 12, borderRadius: 12, borderWidth: 1, borderColor: '#F1F5F9', marginBottom: 16 },
   pCardStatCol: { flex: 1, alignItems: 'center' },
   pCardStatLbl: { fontSize: 9, fontWeight: '800', color: '#94A3B8', letterSpacing: 0.5, marginBottom: 4 },

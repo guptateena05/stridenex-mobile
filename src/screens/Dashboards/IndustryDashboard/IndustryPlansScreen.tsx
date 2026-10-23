@@ -82,9 +82,19 @@ async function handleSelectPlan(
   setRedirectingPlan(plan.package_name);
   try {
     const fromSite = "devstridenex.quantcloud.in";
-    const billingUrl = await getBillingUrl(fromSite);
-    
-    if (!billingUrl) throw new Error("Billing URL not returned from server");
+    let billingOrigin = "https://uat-dev.stridenex.ai";
+    try {
+      const billingUrl = await getBillingUrl(fromSite);
+      if (billingUrl) {
+        const fullUrl = billingUrl.startsWith("http") ? billingUrl : `https://${billingUrl}`;
+        const parsed = new URL(fullUrl);
+        if (parsed.origin && parsed.origin !== "null") {
+          billingOrigin = parsed.origin;
+        }
+      }
+    } catch (e) {
+      console.warn("Failed to get billing URL from server, falling back to default:", e);
+    }
 
     const isInclusive = plan.is_tax_inclusive === 1 || plan.is_tax_inclusive === true;
 
@@ -103,9 +113,7 @@ async function handleSelectPlan(
       is_tax_inclusive: isInclusive ? "1" : "0",
     });
 
-    // Use standard URL constructor to correctly resolve page path relative to base billing domain
-    const proceedPaymentUrlObj = new URL("proceedpayment.html", billingUrl);
-    const proceedPaymentUrl = `${proceedPaymentUrlObj.origin}${proceedPaymentUrlObj.pathname}?${paymentParams.toString()}`;
+    const proceedPaymentUrl = `${billingOrigin}/proceedpayment.html?${paymentParams.toString()}`;
 
     console.log("Proceeding to payment URL on mobile for industry:", proceedPaymentUrl);
 
