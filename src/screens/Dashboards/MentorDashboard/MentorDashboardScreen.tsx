@@ -37,6 +37,7 @@ import {
 import Animated, { FadeInUp, FadeInRight } from 'react-native-reanimated';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import { StatsCard } from '@/components/dashboard/StatsCard';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   getMentorByEmail,
   getMentorDashboardStats,
@@ -44,11 +45,12 @@ import {
   getPendingRequests,
   getMentorPendingVerifications,
   rescheduleSession,
-  getMentorDashboardData
+  getMentorDashboardData,
+  updateMentor
 } from '@/api/mentor.services';
 
 export const MentorDashboardScreen = () => {
-  const { userFullName, userName, userImage } = useAuth();
+  const { userFullName, userName, userImage, updateUserFullName } = useAuth();
   const navigation = useNavigation<any>();
 
   // Overview data states
@@ -94,7 +96,17 @@ export const MentorDashboardScreen = () => {
       ]);
 
       if (profileRes?.message?.data || profileRes?.message) {
-        setMentorData(profileRes.message.data || profileRes.message);
+        const mData = profileRes.message.data || profileRes.message;
+        const storedFirst = await AsyncStorage.getItem('userFirstName');
+        const storedLast = await AsyncStorage.getItem('userLastName');
+        if (storedFirst && storedFirst !== 'Test' && (!mData.first_name || mData.first_name === 'Test')) {
+          mData.first_name = storedFirst;
+          if (storedLast && storedLast !== 'User') mData.last_name = storedLast;
+          const realFullName = `${storedFirst} ${mData.last_name || ''}`.trim();
+          updateUserFullName(realFullName);
+          updateMentor(email, { first_name: storedFirst, last_name: mData.last_name || '' }).catch(() => {});
+        }
+        setMentorData(mData);
       }
       if (statsRes?.message) {
         setDashboardStats(statsRes.message);
@@ -400,7 +412,12 @@ export const MentorDashboardScreen = () => {
           {/* Banner */}
           <Animated.View entering={FadeInUp.delay(100)} style={{ marginBottom: 12 }}>
             <RoleBannerWidget
-              fullName={mentorData ? `${mentorData.first_name || ""} ${mentorData.last_name || ""}`.trim() : (userFullName || 'Mentorship Team')}
+              fullName={(() => {
+                const mentorName = mentorData ? `${mentorData.first_name || ""} ${mentorData.last_name || ""}`.trim() : "";
+                if (mentorName && mentorName !== "Test User") return mentorName;
+                if (userFullName && userFullName !== "Test User") return userFullName;
+                return 'Mentorship Team';
+              })()}
               date={getFormattedDate()}
               role={mentorData?.role || 'Verified Mentor'}
               imageUrl={userImage}

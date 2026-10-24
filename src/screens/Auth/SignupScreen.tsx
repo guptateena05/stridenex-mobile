@@ -164,6 +164,9 @@ export const SignupScreen = () => {
                   email: email,
                   isOnboarded: String(loginData.is_onboarded ?? '0'),
                   fullName: loginData.full_name || `${firstName} ${lastName}`.trim(),
+                  firstName: firstName,
+                  lastName: lastName,
+                  userPassword: password,
                   role: selectedRole,
                 }
               });
@@ -176,7 +179,15 @@ export const SignupScreen = () => {
           const webOnboardingUrl = `https://testwebstridenex.quantcloud.in/onboarding/${selectedRole}?source=mobile`;
           navigation.navigate('WebOnboarding', {
             url: webOnboardingUrl,
-            email: email
+            email: email,
+            sessionData: {
+              email: email,
+              fullName: `${firstName} ${lastName}`.trim(),
+              firstName: firstName,
+              lastName: lastName,
+              userPassword: password,
+              role: selectedRole,
+            }
           });
         }
       } else {

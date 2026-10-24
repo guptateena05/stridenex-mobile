@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, Alert, Modal, ActivityIndicator } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DrawerContentComponentProps, DrawerItemList, DrawerItem } from '@react-navigation/drawer';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '@/theme/colors';
@@ -35,6 +36,26 @@ import {
 export const CustomDrawerContent = (props: DrawerContentComponentProps & { isIncomplete?: boolean; hideJobs?: boolean }) => {
   const insets = useSafeAreaInsets();
   const { userFullName, role, logout } = useAuth();
+
+  const [displayName, setDisplayName] = useState<string>(userFullName && userFullName !== 'Test User' ? userFullName : '');
+
+  useEffect(() => {
+    let isMounted = true;
+    const resolveDisplayName = async () => {
+      if (!userFullName || userFullName === 'Test User') {
+        const storedFirst = await AsyncStorage.getItem('userFirstName');
+        const storedLast = await AsyncStorage.getItem('userLastName');
+        if (storedFirst && storedFirst !== 'Test') {
+          const name = `${storedFirst} ${storedLast || ''}`.trim();
+          if (isMounted) setDisplayName(name);
+          return;
+        }
+      }
+      if (isMounted) setDisplayName(userFullName && userFullName !== 'Test User' ? userFullName : '');
+    };
+    resolveDisplayName();
+    return () => { isMounted = false; };
+  }, [userFullName]);
 
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
@@ -83,7 +104,7 @@ export const CustomDrawerContent = (props: DrawerContentComponentProps & { isInc
             <Image source={circularLogo} style={styles.avatarImage} />
           </View>
           <View style={styles.profileInfo}>
-            <Text style={styles.name} numberOfLines={1}>{userFullName || 'John Smith'}</Text>
+            <Text style={styles.name} numberOfLines={1}>{displayName || (userFullName && userFullName !== 'Test User' ? userFullName : '') || 'User'}</Text>
             <View style={styles.roleBadge}>
               <Text style={styles.roleText}>{(role as string)?.toUpperCase() || 'STUDENT'}</Text>
             </View>

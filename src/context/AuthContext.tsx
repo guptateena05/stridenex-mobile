@@ -14,6 +14,7 @@ interface AuthContextType {
   loading: boolean;
   userImage: string | null;
   updateUserImage: (url: string) => Promise<void>;
+  updateUserFullName: (name: string) => Promise<void>;
 }
 
 export const AuthContext = createContext<AuthContextType>({} as AuthContextType);
@@ -37,7 +38,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         if (token && storedRole) {
           setIsAuthenticated(true);
           setRole(storedRole as Role);
-          setUserFullName(storedFullName);
+
+          let effectiveFullName = storedFullName;
+          if (!effectiveFullName || effectiveFullName === 'Test User') {
+            const storedFirst = await AsyncStorage.getItem('userFirstName');
+            const storedLast = await AsyncStorage.getItem('userLastName');
+            if (storedFirst && storedFirst !== 'Test') {
+              effectiveFullName = `${storedFirst} ${storedLast || ''}`.trim();
+              await AsyncStorage.setItem('userFullName', effectiveFullName);
+            }
+          }
+
+          setUserFullName(effectiveFullName);
           setUserName(storedUserName);
           setUserImage(storedUserImage);
 
@@ -65,8 +77,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         await AsyncStorage.setItem('role', newRole);
       }
       if (userDetails?.full_name) {
-        await AsyncStorage.setItem('userFullName', userDetails.full_name);
-        setUserFullName(userDetails.full_name);
+        let nameToStore = userDetails.full_name;
+        if (nameToStore === 'Test User') {
+          const storedFirst = await AsyncStorage.getItem('userFirstName');
+          const storedLast = await AsyncStorage.getItem('userLastName');
+          if (storedFirst && storedFirst !== 'Test') {
+            nameToStore = `${storedFirst} ${storedLast || ''}`.trim();
+          }
+        }
+        await AsyncStorage.setItem('userFullName', nameToStore);
+        setUserFullName(nameToStore);
       }
       if (userDetails?.username) {
         await AsyncStorage.setItem('userName', userDetails.username);
@@ -88,6 +108,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setIsAuthenticated(true);
     } catch (e) {
       console.error("Failed to save auth state", e);
+    }
+  };
+
+  const updateUserFullName = async (name: string) => {
+    try {
+      await AsyncStorage.setItem('userFullName', name);
+      setUserFullName(name);
+    } catch (e) {
+      console.error("Failed to save user full name", e);
     }
   };
 
@@ -132,7 +161,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ role, userFullName, userName, userImage, isAuthenticated, login, logout, updateUserImage, loading }}>
+    <AuthContext.Provider value={{ role, userFullName, userName, userImage, isAuthenticated, login, logout, updateUserImage, updateUserFullName, loading }}>
       {children}
     </AuthContext.Provider>
   );

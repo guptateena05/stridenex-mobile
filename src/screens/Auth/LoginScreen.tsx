@@ -103,8 +103,22 @@ export const LoginScreen = () => {
         const userEmail = data.user || username;
         await AsyncStorage.setItem("userEmail", userEmail);
 
+        const storedFirstName = await AsyncStorage.getItem('userFirstName');
+        const storedLastName = await AsyncStorage.getItem('userLastName');
+        const storedPassword = await AsyncStorage.getItem('userPassword');
+        const nameParts = (data.full_name || '').trim().split(/\s+/);
+        const resolvedFirst = (storedFirstName && storedFirstName !== 'Test') ? storedFirstName : (nameParts[0] || '');
+        const resolvedLast = (storedLastName && storedLastName !== 'User') ? storedLastName : (nameParts.length > 1 ? nameParts.slice(1).join(' ') : '') || '';
+        const resolvedPassword = storedPassword || password || '';
+
+        // Avoid overwriting with "Test User" if registered name exists
+        let effectiveFullName = data.full_name || '';
+        if ((!effectiveFullName || effectiveFullName === 'Test User') && resolvedFirst) {
+          effectiveFullName = `${resolvedFirst} ${resolvedLast}`.trim();
+        }
+
         const userDetails = {
-          full_name: data.full_name || '',
+          full_name: effectiveFullName,
           username: username
         };
 
@@ -121,7 +135,10 @@ export const LoginScreen = () => {
                 apiSecret: api_secret || '',
                 email: userEmail,
                 isOnboarded: String(isOnboardedVal),
-                fullName: data.full_name || '',
+                fullName: effectiveFullName,
+                firstName: resolvedFirst,
+                lastName: resolvedLast,
+                userPassword: resolvedPassword,
                 role: 'industry',
               }
             });
@@ -142,7 +159,10 @@ export const LoginScreen = () => {
                 apiSecret: api_secret || '',
                 email: userEmail,
                 isOnboarded: String(isOnboardedVal),
-                fullName: data.full_name || '',
+                fullName: effectiveFullName,
+                firstName: resolvedFirst,
+                lastName: resolvedLast,
+                userPassword: resolvedPassword,
                 role: 'mentor',
               }
             });
@@ -163,7 +183,10 @@ export const LoginScreen = () => {
                 apiSecret: api_secret || '',
                 email: userEmail,
                 isOnboarded: String(isOnboardedVal),
-                fullName: data.full_name || '',
+                fullName: effectiveFullName,
+                firstName: resolvedFirst,
+                lastName: resolvedLast,
+                userPassword: resolvedPassword,
                 role: 'college',
               }
             });
