@@ -12,7 +12,7 @@ import { HabitHeatmapWidget } from '@/components/dashboard/HabitHeatmapWidget';
 import { SuccessStoriesWidget } from '@/components/dashboard/SuccessStoriesWidget';
 import { AlertsAgendaCard } from '@/components/dashboard/AlertsAgendaCard';
 import { useNavigation } from '@react-navigation/native';
-import { TrendingUp, Award, Briefcase, Bot, X, MapPin, Clock, IndianRupee, Target, ShieldCheck, Factory, FileText, ChevronRight, AlertCircle } from 'lucide-react-native';
+import { TrendingUp, Award, Briefcase, Bot, X, MapPin, Clock, IndianRupee, Target, ShieldCheck, Factory, FileText, ChevronRight, AlertCircle, Sparkles, History } from 'lucide-react-native';
 
 import Animated, { FadeInUp, FadeInRight } from 'react-native-reanimated';
 import { getStudentByEmail, updateStudent, mapYearToWord, getSkillLedger, getDashboardStats, getStudentInternshipList, getLearningActivity, getTodaysOpportunityAlerts } from '@/api/student.services';
@@ -21,6 +21,7 @@ import DynamicForm from '@/components/forms/DynamicForm';
 import { FormField } from '@/components/forms/DynamicField';
 import ProfileImageUploader from '@/components/profile/ProfileImageUploader';
 import PsychometricTestModal from '@/components/psychometric/PsychometricTestModal';
+import PsychometricHistoryModal from '@/components/psychometric/PsychometricHistoryModal';
 import { checkOnboardingStatus } from '@/api/psychometric.services';
 import StudentGuidelineTour from '@/components/StudentGuidelineTour';
 
@@ -32,6 +33,7 @@ export const StudentDashboardScreen = () => {
   const [studentData, setStudentData] = useState<any>(null);
   const [loadingDetails, setLoadingDetails] = useState(true);
   const [isPsychoModalVisible, setIsPsychoModalVisible] = useState(false);
+  const [isHistoryModalVisible, setIsHistoryModalVisible] = useState(false);
   const [isTourActive, setIsTourActive] = useState(false);
 
   // Load cached student data on mount/username change
@@ -341,6 +343,38 @@ export const StudentDashboardScreen = () => {
           ))}
         </Animated.View>
 
+        {/* Psychometric Assessment CTA Banner */}
+        <Animated.View entering={FadeInUp.delay(350)} style={styles.psychoBanner}>
+          <View style={styles.psychoBannerHeader}>
+            <View style={styles.psychoBannerIcon}>
+              <Sparkles size={22} color="#4F46E5" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.psychoBannerTitle}>Discover Your Ideal Career Path</Text>
+              <Text style={styles.psychoBannerSubtitle}>
+                Take the psychometric assessment to get personalized career and skill recommendations.
+              </Text>
+            </View>
+          </View>
+          <View style={styles.psychoBannerActions}>
+            <TouchableOpacity 
+              style={styles.psychoHistoryBtn}
+              onPress={() => setIsHistoryModalVisible(true)}
+              activeOpacity={0.7}
+            >
+              <History size={15} color="#475569" style={{ marginRight: 6 }} />
+              <Text style={styles.psychoHistoryBtnText}>View History</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.psychoTakeBtn}
+              onPress={() => setIsPsychoModalVisible(true)}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.psychoTakeBtnText}>Retake Assessment</Text>
+            </TouchableOpacity>
+          </View>
+        </Animated.View>
+
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Strategic Learning</Text>
         </View>
@@ -483,6 +517,12 @@ export const StudentDashboardScreen = () => {
         }}
         studentEmail={userName || undefined}
         isMandatory={false}
+      />
+
+      <PsychometricHistoryModal
+        isOpen={isHistoryModalVisible}
+        onClose={() => setIsHistoryModalVisible(false)}
+        studentEmail={userName || undefined}
       />
 
       <StudentGuidelineTour 
@@ -699,5 +739,81 @@ const styles = StyleSheet.create({
   incompleteText: { fontSize: 14, color: '#475569', textAlign: 'center', marginBottom: 24, lineHeight: 20 },
   incompleteBtn: { backgroundColor: '#FF6B00', paddingVertical: 14, paddingHorizontal: 24, borderRadius: 12, width: '100%', alignItems: 'center' },
   incompleteBtnText: { color: '#FFF', fontSize: 15, fontWeight: '700' },
-  incompleteCloseBtn: { position: 'absolute', top: 16, right: 16, width: 32, height: 32, borderRadius: 16, backgroundColor: '#F1F5F9', justifyContent: 'center', alignItems: 'center' }
+  incompleteCloseBtn: { position: 'absolute', top: 16, right: 16, width: 32, height: 32, borderRadius: 16, backgroundColor: '#F1F5F9', justifyContent: 'center', alignItems: 'center' },
+  psychoBanner: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 16,
+    marginBottom: 20,
+    borderWidth: 1.5,
+    borderColor: '#E0E7FF',
+    shadowColor: '#4F46E5',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 3,
+  },
+  psychoBannerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 14,
+  },
+  psychoBannerIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: '#EEF2FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  psychoBannerTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#1E293B',
+    marginBottom: 2,
+  },
+  psychoBannerSubtitle: {
+    fontSize: 12,
+    color: '#64748B',
+    lineHeight: 16,
+  },
+  psychoBannerActions: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  psychoHistoryBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 12,
+    paddingVertical: 10,
+  },
+  psychoHistoryBtnText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#475569',
+  },
+  psychoTakeBtn: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#4F46E5',
+    borderRadius: 12,
+    paddingVertical: 10,
+    shadowColor: '#4F46E5',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  psychoTakeBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
 });

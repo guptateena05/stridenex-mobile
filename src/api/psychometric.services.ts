@@ -30,6 +30,8 @@ export interface QuestionData {
     no_of_options?: string;
     saved_response?: string | null;
     completed?: boolean;
+    total_questions?: number;   // dynamic count from backend (Psychometric Settings)
+    current_index?: number;     // 0-based index of the current question
 }
 
 export interface SubmitTestResult {
@@ -37,10 +39,36 @@ export interface SubmitTestResult {
     result: string;
     job_score: number;
     startup_score: number;
+    entrepreneurship_score?: number;
     higher_ed_score: number;
     subject_scores: Record<string, number>;
     ai_result?: string | null;
 }
+
+export interface PsychometricHistoryItem {
+    name: string;
+    psychometric_test?: string;
+    profile_type?: string | null;
+    score?: number;
+    percentage?: number;
+    job_score?: number;
+    entrepreneurship_score?: number;
+    higher_education_score?: number;
+    raw_job_score?: number;
+    raw_entrepreneurship_score?: number;
+    raw_higher_education_score?: number;
+    creation: string;
+    modified?: string;
+}
+
+const extractSessionId = (val: any): string => {
+    if (!val) return "";
+    if (typeof val === "string") return val;
+    if (typeof val === "object") {
+        return val.screen_name || val.test_screen || val.name || "";
+    }
+    return String(val);
+};
 
 export const checkOnboardingStatus = async (email?: string): Promise<OnboardingStatusResponse> => {
     try {
@@ -75,41 +103,48 @@ export const getTests = async (): Promise<Array<{ name: string }>> => {
     }
 };
 
-export const startNewTest = async (testType: string, email?: string): Promise<string> => {
+export const startNewTest = async (testType: string, email?: string): Promise<any> => {
     const res = await api.post('method/nexedu.api.start_new_test', {
         test_type: testType,
         email
     });
-    return res.data.message;
+    return res.data.message !== undefined ? res.data.message : res.data;
 };
 
-export const loadQuestion = async (screenName: string): Promise<QuestionData> => {
+export const loadQuestion = async (screenName: any): Promise<QuestionData> => {
+    const cleanId = extractSessionId(screenName);
     const res = await api.post('method/nexedu.api.load_question', {
-        screen_name: screenName
+        screen_name: cleanId
     });
     return res.data.message;
 };
 
 export const nextQuestion = async (params: {
-    screen_name: string;
+    screen_name: any;
     selected_option?: string | string[];
     user_input?: string;
     open_ended?: string;
 }): Promise<QuestionData> => {
-    const res = await api.post('method/nexedu.api.next_question', params);
-    return res.data.message;
-};
-
-export const previousQuestion = async (screenName: string): Promise<QuestionData> => {
-    const res = await api.post('method/nexedu.api.previous_question', {
-        screen_name: screenName
+    const cleanId = extractSessionId(params.screen_name);
+    const res = await api.post('method/nexedu.api.next_question', {
+        ...params,
+        screen_name: cleanId
     });
     return res.data.message;
 };
 
-export const submitTest = async (screenName: string, email?: string): Promise<SubmitTestResult> => {
+export const previousQuestion = async (screenName: any): Promise<QuestionData> => {
+    const cleanId = extractSessionId(screenName);
+    const res = await api.post('method/nexedu.api.previous_question', {
+        screen_name: cleanId
+    });
+    return res.data.message;
+};
+
+export const submitTest = async (screenName: any, email?: string): Promise<SubmitTestResult> => {
+    const cleanId = extractSessionId(screenName);
     const res = await api.post('method/nexedu.api.submit_test', {
-        name: screenName,
+        name: cleanId,
         email
     });
     
@@ -118,4 +153,17 @@ export const submitTest = async (screenName: string, email?: string): Promise<Su
     }
     
     return res.data.message;
+};
+
+export const getStudentPsychometricResults = async (email?: string): Promise<{ status: string; data: PsychometricHistoryItem[] }> => {
+    try {
+        const url = email
+            ? `method/nexedu.api.get_student_psychometric_results?email=${encodeURIComponent(email)}`
+            : `method/nexedu.api.get_student_psychometric_results`;
+        const res = await api.get(url);
+        return res.data;
+    } catch (err) {
+        console.error("Failed to get student psychometric results", err);
+        return { status: "error", data: [] };
+    }
 };

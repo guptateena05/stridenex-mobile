@@ -12,7 +12,7 @@ import {
     KeyboardAvoidingView,
     Platform
 } from 'react-native';
-import { X, ChevronLeft, ChevronRight, BrainCircuit, CheckCircle2 } from 'lucide-react-native';
+import { X, ChevronLeft, ChevronRight, BrainCircuit, CheckCircle2, Sparkles, Briefcase, Rocket, GraduationCap, HelpCircle } from 'lucide-react-native';
 import { 
     getTests, 
     startNewTest, 
@@ -25,7 +25,7 @@ import {
 } from '@/api/psychometric.services';
 import { colors } from '@/theme/colors';
 
-const { width, height } = Dimensions.get('window');
+const { width } = Dimensions.get('window');
 
 interface PsychometricTestModalProps {
     isOpen: boolean;
@@ -35,19 +35,127 @@ interface PsychometricTestModalProps {
     isMandatory?: boolean;
 }
 
+// Maps backend result strings to our self-assessment keys for comparison
+const RESULT_CATEGORY_MAP: Record<string, string> = {
+    job: "job",
+    "job oriented": "job",
+    "job-oriented": "job",
+    startup: "startup",
+    "startup oriented": "startup",
+    "startup-oriented": "startup",
+    entrepreneur: "startup",
+    entrepreneurship: "startup",
+    "higher education": "higher_ed",
+    "higher ed": "higher_ed",
+    "higher education oriented": "higher_ed",
+    academic: "higher_ed",
+};
+
+const SELF_ASSESSMENT_OPTIONS = [
+    {
+        id: "job",
+        emoji: "💼",
+        label: "Job Oriented",
+        desc: "I thrive in structured environments, working for a company with clear goals and stability.",
+        color: "#2563EB",
+        bg: "#EFF6FF",
+        border: "#93C5FD",
+        badge: "#3B82F6",
+        textColor: "#1D4ED8"
+    },
+    {
+        id: "startup",
+        emoji: "🚀",
+        label: "Startup / Entrepreneur",
+        desc: "I love building things from scratch, taking risks, and turning ideas into reality.",
+        color: "#EA580C",
+        bg: "#FFF7ED",
+        border: "#FDBA74",
+        badge: "#F97316",
+        textColor: "#C2410C"
+    },
+    {
+        id: "higher_ed",
+        emoji: "🎓",
+        label: "Higher Education",
+        desc: "I'm passionate about research, academia, or deepening expertise through advanced studies.",
+        color: "#7C3AED",
+        bg: "#F5F3FF",
+        border: "#C4B5FD",
+        badge: "#8B5CF6",
+        textColor: "#6D28D9"
+    },
+    {
+        id: "unsure",
+        emoji: "🤔",
+        label: "Not Sure Yet",
+        desc: "I'm still figuring it out — that's exactly why I'm here!",
+        color: "#475569",
+        bg: "#F8FAFC",
+        border: "#CBD5E1",
+        badge: "#64748B",
+        textColor: "#334155"
+    },
+];
+
+function getResultCategory(result: string): string {
+    const lower = (result || "").toLowerCase().replace(/[^a-z\s-]/g, "").trim();
+    for (const [key, val] of Object.entries(RESULT_CATEGORY_MAP)) {
+        if (lower.includes(key)) return val;
+    }
+    return "unknown";
+}
+
+function buildComparisonMessage(
+    selfId: string,
+    resultCategory: string,
+    resultLabel: string
+): { matched: boolean; headline: string; body: string } {
+    const selfOption = SELF_ASSESSMENT_OPTIONS.find((o) => o.id === selfId);
+    const selfLabel = selfOption?.label || "your choice";
+
+    if (selfId === "unsure") {
+        return {
+            matched: false,
+            headline: "Mystery solved! 🎯",
+            body: `You said you weren't sure — and now you have your answer. The assessment reveals you are most aligned with ${resultLabel}. Now you know where your strengths truly lie!`,
+        };
+    }
+
+    const matched = selfId === resultCategory;
+
+    if (matched) {
+        return {
+            matched: true,
+            headline: "You nailed it! 🎉",
+            body: `You called it! Before the test, you believed you were ${selfLabel} — and the assessment agrees. Your instincts about yourself are spot on. Trust that!`,
+        };
+    }
+
+    return {
+        matched: false,
+        headline: "Interesting twist! 🔍",
+        body: `You came in thinking you were ${selfLabel}, but the assessment tells a different story — you're actually most aligned with ${resultLabel}. That's not a bad thing; it's a powerful insight. Sometimes we surprise ourselves!`,
+    };
+}
+
 export default function PsychometricTestModal({
     isOpen,
     onClose,
     onCompleted,
     studentEmail,
-    isMandatory = true
+    isMandatory = false
 }: PsychometricTestModalProps) {
+    // Screen flow: "intro" → "test" → (results shown inline)
+    const [step, setStep] = useState<"intro" | "test">("intro");
+    const [selfAssessment, setSelfAssessment] = useState<string | null>(null);
+
     const [screenName, setScreenName] = useState<string | null>(null);
-    const [loading, setLoading] = useState<boolean>(true);
+    const [loading, setLoading] = useState<boolean>(false);
     const [submitting, setSubmitting] = useState<boolean>(false);
     const [question, setQuestion] = useState<QuestionData | null>(null);
     const [questionNumber, setQuestionNumber] = useState<number>(1);
-    const [totalEstimated] = useState<number>(10); // Approximation as per web
+    const [totalEstimated, setTotalEstimated] = useState<number | null>(null);
 
     // Selection states
     const [selectedOption, setSelectedOption] = useState<string | string[]>("");
@@ -60,10 +168,24 @@ export default function PsychometricTestModal({
     const [testResult, setTestResult] = useState<SubmitTestResult | null>(null);
 
     useEffect(() => {
-        if (isOpen && !screenName) {
-            initTest();
+        if (isOpen) {
+            setStep("intro");
+            setSelfAssessment(null);
+            setScreenName(null);
+            setQuestion(null);
+            setQuestionNumber(1);
+            setTotalEstimated(null);
+            setIsFinished(false);
+            setTestResult(null);
+            clearSelections();
         }
     }, [isOpen]);
+
+    const handleBeginTest = async (selfId: string) => {
+        setSelfAssessment(selfId);
+        setStep("test");
+        await initTest();
+    };
 
     const initTest = async () => {
         try {
@@ -71,14 +193,33 @@ export default function PsychometricTestModal({
             setErrorMessage("");
 
             const tests = await getTests();
-            const testName = tests && tests.length > 0 ? tests[0].name : "Demo psy 1";
+            const testName = tests && tests.length > 0 ? tests[0].name : "Psychometric Career Assessment";
 
-            const sid = await startNewTest(testName, studentEmail);
+            const response = await startNewTest(testName, studentEmail);
+            
+            if (response?.status === "quota_exceeded") {
+                setErrorMessage(response.message || "You have exceeded your psychometric test limit. Please upgrade your plan.");
+                setLoading(false);
+                return;
+            }
+
+            // Extract string session ID safely (matches web)
+            const sid = response?.test_screen || response?.name || response?.screen_name || (typeof response === "string" ? response : null);
+            if (!sid || typeof sid !== "string") {
+                throw new Error("Invalid session ID returned");
+            }
             setScreenName(sid);
 
             const qData = await loadQuestion(sid);
+            if (!qData) throw new Error("No question data returned");
+
             setQuestion(qData);
             setQuestionNumber(1);
+            if (qData.total_questions) {
+                setTotalEstimated(qData.total_questions);
+            } else {
+                setTotalEstimated(15);
+            }
         } catch (err: any) {
             console.error("Failed to initialize psychometric test:", err);
             setErrorMessage("Could not load test session. Please try again.");
@@ -124,6 +265,9 @@ export default function PsychometricTestModal({
 
             setQuestion(res);
             setQuestionNumber((prev) => prev + 1);
+            if (res.total_questions) {
+                setTotalEstimated(res.total_questions);
+            }
             clearSelections();
         } catch (err: any) {
             console.error("Error advancing question:", err);
@@ -184,8 +328,20 @@ export default function PsychometricTestModal({
 
     if (!isOpen) return null;
 
+    const totalCount = totalEstimated || 15;
+    const isLastQuestion = questionNumber === totalCount || (question && question.is_last);
+
+    // Derived comparison message for results
+    const comparison = isFinished && testResult && selfAssessment
+        ? buildComparisonMessage(
+            selfAssessment,
+            getResultCategory(testResult.result || ""),
+            testResult.result || ""
+        )
+        : null;
+
     const renderProgressBar = () => {
-        const progress = Math.min(100, (questionNumber / totalEstimated) * 100);
+        const progress = Math.min(100, (questionNumber / totalCount) * 100);
         return (
             <View style={styles.progressBarContainer}>
                 <View style={[styles.progressBarFill, { width: `${progress}%` }]} />
@@ -193,86 +349,172 @@ export default function PsychometricTestModal({
         );
     };
 
-    const renderResults = () => {
+    // ─── INTRO VIEW ──────────────────────────────────────────────────────────
+    const renderIntroView = () => (
+        <ScrollView contentContainerStyle={styles.introContainer} showsVerticalScrollIndicator={false}>
+            <View style={styles.introHero}>
+                <Text style={styles.introHeroEmoji}>🌟</Text>
+                <Text style={styles.introHeroTitle}>Before we begin...</Text>
+                <Text style={styles.introHeroSubtitle}>
+                    Every great story starts with a hunch. What do you think your career personality is?
+                </Text>
+                <Text style={styles.introHeroHighlight}>Pick one — we'll see if the test agrees!</Text>
+            </View>
+
+            <View style={styles.introOptionsGrid}>
+                {SELF_ASSESSMENT_OPTIONS.map((opt) => {
+                    const isSelected = selfAssessment === opt.id;
+                    return (
+                        <TouchableOpacity
+                            key={opt.id}
+                            style={[
+                                styles.introOptionCard,
+                                { backgroundColor: opt.bg, borderColor: isSelected ? opt.color : '#E2E8F0' },
+                                isSelected && { borderWidth: 2, shadowColor: opt.color, shadowOpacity: 0.2, elevation: 4 }
+                            ]}
+                            onPress={() => setSelfAssessment(opt.id)}
+                            activeOpacity={0.8}
+                        >
+                            <View style={styles.introOptionTop}>
+                                <Text style={styles.introOptionEmoji}>{opt.emoji}</Text>
+                                {isSelected && (
+                                    <View style={[styles.introCheckBadge, { backgroundColor: opt.badge }]}>
+                                        <Text style={styles.introCheckText}>✓</Text>
+                                    </View>
+                                )}
+                            </View>
+                            <Text style={[styles.introOptionLabel, { color: isSelected ? opt.textColor : '#1E293B' }]}>
+                                {opt.label}
+                            </Text>
+                            <Text style={styles.introOptionDesc}>{opt.desc}</Text>
+                        </TouchableOpacity>
+                    );
+                })}
+            </View>
+
+            <TouchableOpacity
+                style={[
+                    styles.beginTestBtn,
+                    !selfAssessment && styles.beginTestBtnDisabled
+                ]}
+                disabled={!selfAssessment}
+                onPress={() => selfAssessment && handleBeginTest(selfAssessment)}
+                activeOpacity={0.8}
+            >
+                <Text style={styles.beginTestBtnText}>✨ Lock In My Answer & Start Test</Text>
+            </TouchableOpacity>
+
+            <Text style={styles.introFooterNote}>
+                Your answer won't affect the test — only the final reveal! 🎭
+            </Text>
+        </ScrollView>
+    );
+
+    // ─── RESULTS VIEW ────────────────────────────────────────────────────────
+    const renderResultsView = () => {
         if (!testResult) return null;
+
+        const jobScore = Math.round(testResult.job_score || 0);
+        const startupScore = Math.round(testResult.startup_score || testResult.entrepreneurship_score || 0);
+        const higherEdScore = Math.round(testResult.higher_ed_score || 0);
 
         return (
             <ScrollView contentContainerStyle={styles.resultsContainer} showsVerticalScrollIndicator={false}>
+                {/* Comparison Card */}
+                {comparison && (
+                    <View style={[
+                        styles.comparisonCard,
+                        comparison.matched ? styles.comparisonCardMatched : styles.comparisonCardDifferent
+                    ]}>
+                        <Text style={[
+                            styles.comparisonHeadline,
+                            { color: comparison.matched ? '#15803D' : '#B45309' }
+                        ]}>
+                            {comparison.headline}
+                        </Text>
+                        <Text style={styles.comparisonBody}>{comparison.body}</Text>
+                    </View>
+                )}
+
+                {/* Main Result Card */}
                 <View style={styles.congratsBanner}>
                     <View style={styles.completedBadge}>
                         <CheckCircle2 size={14} color="#059669" />
                         <Text style={styles.completedBadgeText}>EVALUATION COMPLETED</Text>
                     </View>
-                    <Text style={styles.resultTitle}>{testResult.result || "🚀 Startup Oriented"}</Text>
+                    <Text style={styles.resultTitle}>{testResult.result || "Career Pathway Computed"}</Text>
                     <Text style={styles.resultDescription}>
-                        Great job! Your responses have been processed to calculate your primary orientation score and personality traits.
+                        Your responses have been processed to calculate your primary orientation and personality traits.
                     </Text>
                 </View>
 
+                {/* Scores Grid */}
                 <View style={styles.scoresGrid}>
                     <View style={styles.scoreCard}>
                         <View style={styles.scoreHeader}>
                             <Text style={styles.scoreLabel}>💼 Job Score</Text>
-                            <Text style={[styles.scoreValue, { color: '#4F46E5' }]}>{testResult.job_score}%</Text>
+                            <Text style={[styles.scoreValue, { color: '#2563EB' }]}>{jobScore}%</Text>
                         </View>
                         <View style={styles.scoreBarBg}>
-                            <View style={[styles.scoreBarFill, { backgroundColor: '#4F46E5', width: `${Math.min(100, testResult.job_score)}%` }]} />
+                            <View style={[styles.scoreBarFill, { backgroundColor: '#2563EB', width: `${Math.min(100, jobScore)}%` }]} />
                         </View>
                     </View>
 
                     <View style={styles.scoreCard}>
                         <View style={styles.scoreHeader}>
                             <Text style={styles.scoreLabel}>🚀 Startup Score</Text>
-                            <Text style={[styles.scoreValue, { color: '#EA580C' }]}>{testResult.startup_score}%</Text>
+                            <Text style={[styles.scoreValue, { color: '#EA580C' }]}>{startupScore}%</Text>
                         </View>
                         <View style={styles.scoreBarBg}>
-                            <View style={[styles.scoreBarFill, { backgroundColor: '#EA580C', width: `${Math.min(100, testResult.startup_score)}%` }]} />
+                            <View style={[styles.scoreBarFill, { backgroundColor: '#EA580C', width: `${Math.min(100, startupScore)}%` }]} />
                         </View>
                     </View>
 
                     <View style={styles.scoreCard}>
                         <View style={styles.scoreHeader}>
                             <Text style={styles.scoreLabel}>🎓 Higher Ed Score</Text>
-                            <Text style={[styles.scoreValue, { color: '#9333EA' }]}>{testResult.higher_ed_score}%</Text>
+                            <Text style={[styles.scoreValue, { color: '#7C3AED' }]}>{higherEdScore}%</Text>
                         </View>
                         <View style={styles.scoreBarBg}>
-                            <View style={[styles.scoreBarFill, { backgroundColor: '#9333EA', width: `${Math.min(100, testResult.higher_ed_score)}%` }]} />
+                            <View style={[styles.scoreBarFill, { backgroundColor: '#7C3AED', width: `${Math.min(100, higherEdScore)}%` }]} />
                         </View>
                     </View>
                 </View>
 
+                {/* Traits Breakdown */}
                 {testResult.subject_scores && Object.keys(testResult.subject_scores).length > 0 && (
                     <View style={styles.traitsContainer}>
                         <Text style={styles.traitsTitle}>PERSONALITY TRAIT BREAKDOWN</Text>
                         <View style={styles.traitsGrid}>
                             {Object.entries(testResult.subject_scores).map(([subj, score], i) => (
                                 <View key={i} style={styles.traitRow}>
-                                    <Text style={styles.traitLabel}>{subj}</Text>
-                                    <Text style={styles.traitValue}>{score}%</Text>
+                                    <Text style={styles.traitLabel} numberOfLines={1}>{subj}</Text>
+                                    <Text style={styles.traitValue}>{Math.round(score)}%</Text>
                                 </View>
                             ))}
                         </View>
                     </View>
                 )}
                 
-                <TouchableOpacity style={styles.finishButton} onPress={handleFinishAndClose}>
+                <TouchableOpacity style={styles.finishButton} onPress={handleFinishAndClose} activeOpacity={0.8}>
                     <Text style={styles.finishButtonText}>🚀 Explore Dashboard & Close</Text>
                 </TouchableOpacity>
             </ScrollView>
         );
     };
 
-    const renderQuestion = () => {
+    // ─── ACTIVE QUESTION VIEW ────────────────────────────────────────────────
+    const renderQuestionView = () => {
         if (!question) return null;
 
         return (
             <ScrollView contentContainerStyle={styles.questionContainer} showsVerticalScrollIndicator={false}>
                 <View style={styles.questionHeader}>
                     <View style={styles.subjectBadge}>
-                        <Text style={styles.subjectText}>{question.subject || "General Trait Assessment"}</Text>
+                        <Text style={styles.subjectText}>{question.subject || "Career Inclination Assessment"}</Text>
                     </View>
                     <Text style={styles.questionCount}>
-                        Question <Text style={styles.questionCountHighlight}>{questionNumber}</Text> / {totalEstimated}
+                        Question <Text style={styles.questionCountHighlight}>{questionNumber}</Text> / {totalCount}
                     </Text>
                 </View>
 
@@ -351,8 +593,8 @@ export default function PsychometricTestModal({
     };
 
     return (
-        <Modal visible={isOpen} transparent animationType="fade">
-            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
+        <Modal visible={isOpen} transparent animationType="fade" onRequestClose={handleFinishAndClose}>
+            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalOverlay}>
                 <View style={styles.modalContent}>
                     
                     {/* Header */}
@@ -364,41 +606,43 @@ export default function PsychometricTestModal({
                             <View>
                                 <View style={styles.headerTitleRow}>
                                     <Text style={styles.headerTitle}>Psychometric Assessment</Text>
-                                    {isMandatory && (
-                                        <View style={styles.mandatoryBadge}>
-                                            <Text style={styles.mandatoryText}>MANDATORY</Text>
-                                        </View>
-                                    )}
+                                    <View style={styles.mandatoryBadge}>
+                                        <Text style={styles.mandatoryText}>MANDATORY</Text>
+                                    </View>
                                 </View>
-                                <Text style={styles.headerSubtitle}>Personalized Career Pathway Evaluation</Text>
+                                <Text style={styles.headerSubtitle}>
+                                    {step === "intro" 
+                                        ? "Let's start with a quick self-check" 
+                                        : "Personalized Career Pathway Evaluation"}
+                                </Text>
                             </View>
                         </View>
-                        {!isMandatory && (
-                            <TouchableOpacity style={styles.closeBtn} onPress={handleFinishAndClose}>
-                                <X size={20} color="#64748B" />
-                            </TouchableOpacity>
-                        )}
+                        <TouchableOpacity style={styles.closeBtn} onPress={handleFinishAndClose}>
+                            <X size={18} color="#64748B" />
+                        </TouchableOpacity>
                     </View>
 
-                    {/* Progress Bar */}
-                    {!isFinished && !loading && renderProgressBar()}
+                    {/* Progress Bar — only during active test */}
+                    {step === "test" && !isFinished && !loading && renderProgressBar()}
 
                     {/* Body */}
                     <View style={styles.body}>
-                        {loading ? (
+                        {step === "intro" ? (
+                            renderIntroView()
+                        ) : loading ? (
                             <View style={styles.loadingContainer}>
                                 <ActivityIndicator size="large" color="#2563EB" />
-                                <Text style={styles.loadingText}>Loading your psychometric test session...</Text>
+                                <Text style={styles.loadingText}>Preparing your personalized test session...</Text>
                             </View>
                         ) : isFinished ? (
-                            renderResults()
+                            renderResultsView()
                         ) : (
-                            renderQuestion()
+                            renderQuestionView()
                         )}
                     </View>
 
-                    {/* Footer Controls */}
-                    {!loading && !isFinished && (
+                    {/* Footer Controls — only during active question answering */}
+                    {step === "test" && !loading && !isFinished && question && (
                         <View style={styles.footerControls}>
                             <TouchableOpacity 
                                 style={[styles.controlBtn, questionNumber <= 1 && styles.controlBtnDisabled]} 
@@ -416,6 +660,11 @@ export default function PsychometricTestModal({
                             >
                                 {submitting ? (
                                     <ActivityIndicator size="small" color="#FFF" style={{ marginRight: 8 }} />
+                                ) : isLastQuestion ? (
+                                    <>
+                                        <Text style={styles.nextBtnText}>Submit Test</Text>
+                                        <CheckCircle2 size={16} color="#FFF" />
+                                    </>
                                 ) : (
                                     <>
                                         <Text style={styles.nextBtnText}>Next Question</Text>
@@ -434,7 +683,7 @@ export default function PsychometricTestModal({
 const styles = StyleSheet.create({
     modalOverlay: {
         flex: 1,
-        backgroundColor: 'rgba(15, 23, 42, 0.5)',
+        backgroundColor: 'rgba(15, 23, 42, 0.6)',
         justifyContent: 'center',
         alignItems: 'center',
         padding: 16
@@ -442,37 +691,44 @@ const styles = StyleSheet.create({
     modalContent: {
         width: '100%',
         maxWidth: 500,
-        backgroundColor: '#F8FAFC',
+        backgroundColor: '#FFFFFF',
         borderRadius: 24,
         maxHeight: '90%',
         overflow: 'hidden',
         elevation: 10,
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.15,
-        shadowRadius: 12
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.2,
+        shadowRadius: 20
     },
     header: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        padding: 16,
+        paddingHorizontal: 20,
+        paddingVertical: 16,
         borderBottomWidth: 1,
-        borderBottomColor: '#E2E8F0',
+        borderBottomColor: '#F1F5F9',
         backgroundColor: '#FFFFFF'
     },
     headerLeft: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 12
+        gap: 12,
+        flex: 1
     },
     headerIconContainer: {
         width: 40,
         height: 40,
-        borderRadius: 12,
-        backgroundColor: '#4F46E5',
+        borderRadius: 14,
+        backgroundColor: '#2563EB',
         justifyContent: 'center',
-        alignItems: 'center'
+        alignItems: 'center',
+        shadowColor: '#2563EB',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 6,
+        elevation: 4
     },
     headerTitleRow: {
         flexDirection: 'row',
@@ -485,82 +741,185 @@ const styles = StyleSheet.create({
         color: '#0F172A'
     },
     mandatoryBadge: {
-        backgroundColor: '#EEF2FF',
-        borderWidth: 1,
-        borderColor: '#C7D2FE',
-        paddingHorizontal: 8,
+        backgroundColor: '#EFF6FF',
+        paddingHorizontal: 6,
         paddingVertical: 2,
-        borderRadius: 12
+        borderRadius: 6,
+        borderWidth: 1,
+        borderColor: '#DBEAFE'
     },
     mandatoryText: {
         fontSize: 9,
         fontWeight: '700',
-        color: '#4F46E5'
+        color: '#2563EB',
+        letterSpacing: 0.5
     },
     headerSubtitle: {
-        fontSize: 11,
+        fontSize: 12,
         color: '#64748B',
-        marginTop: 2,
-        fontWeight: '500'
+        marginTop: 2
     },
     closeBtn: {
         width: 32,
         height: 32,
         borderRadius: 16,
-        backgroundColor: '#F1F5F9',
-        justifyContent: 'center',
-        alignItems: 'center',
+        backgroundColor: '#F8FAFC',
         borderWidth: 1,
-        borderColor: '#E2E8F0'
+        borderColor: '#E2E8F0',
+        justifyContent: 'center',
+        alignItems: 'center'
     },
     progressBarContainer: {
-        height: 4,
-        backgroundColor: '#E0E7FF',
-        width: '100%'
+        width: '100%',
+        height: 5,
+        backgroundColor: '#F1F5F9'
     },
     progressBarFill: {
         height: '100%',
-        backgroundColor: '#4F46E5'
+        backgroundColor: '#2563EB',
+        borderRadius: 3
     },
     body: {
         flexShrink: 1,
-        width: '100%'
+        maxHeight: 520
     },
     loadingContainer: {
-        justifyContent: 'center',
+        paddingVertical: 60,
         alignItems: 'center',
-        padding: 40,
-        minHeight: 300
+        justifyContent: 'center',
+        gap: 12
     },
     loadingText: {
-        marginTop: 16,
         fontSize: 14,
+        color: '#64748B',
+        fontWeight: '500'
+    },
+
+    // ── Intro Styles ──
+    introContainer: {
+        padding: 20
+    },
+    introHero: {
+        alignItems: 'center',
+        textAlign: 'center',
+        marginBottom: 16
+    },
+    introHeroEmoji: {
+        fontSize: 32,
+        marginBottom: 6
+    },
+    introHeroTitle: {
+        fontSize: 20,
+        fontWeight: '800',
+        color: '#0F172A',
+        letterSpacing: -0.3
+    },
+    introHeroSubtitle: {
+        fontSize: 13,
+        color: '#64748B',
+        textAlign: 'center',
+        marginTop: 6,
+        lineHeight: 18,
+        paddingHorizontal: 12
+    },
+    introHeroHighlight: {
+        fontSize: 12,
         fontWeight: '600',
-        color: '#64748B'
+        color: '#2563EB',
+        marginTop: 4
     },
-    questionContainer: {
-        padding: 20,
-        paddingBottom: 40
+    introOptionsGrid: {
+        gap: 10,
+        marginBottom: 16
     },
-    questionHeader: {
+    introOptionCard: {
+        borderRadius: 16,
+        borderWidth: 1.5,
+        padding: 14
+    },
+    introOptionTop: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
+        marginBottom: 6
+    },
+    introOptionEmoji: {
+        fontSize: 22
+    },
+    introCheckBadge: {
+        width: 20,
+        height: 20,
+        borderRadius: 10,
+        alignItems: 'center',
+        justifyContent: 'center'
+    },
+    introCheckText: {
+        color: '#FFF',
+        fontSize: 11,
+        fontWeight: 'bold'
+    },
+    introOptionLabel: {
+        fontSize: 14,
+        fontWeight: '700',
+        marginBottom: 3
+    },
+    introOptionDesc: {
+        fontSize: 12,
+        color: '#64748B',
+        lineHeight: 16
+    },
+    beginTestBtn: {
+        backgroundColor: '#2563EB',
+        paddingVertical: 14,
+        borderRadius: 14,
+        alignItems: 'center',
+        justifyContent: 'center',
+        shadowColor: '#2563EB',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.25,
+        shadowRadius: 8,
+        elevation: 4
+    },
+    beginTestBtnDisabled: {
+        backgroundColor: '#94A3B8',
+        shadowOpacity: 0,
+        elevation: 0
+    },
+    beginTestBtnText: {
+        color: '#FFF',
+        fontSize: 14,
+        fontWeight: '700'
+    },
+    introFooterNote: {
+        fontSize: 11,
+        color: '#94A3B8',
+        textAlign: 'center',
+        marginTop: 10
+    },
+
+    // ── Question Styles ──
+    questionContainer: {
+        padding: 20
+    },
+    questionHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
         marginBottom: 16
     },
     subjectBadge: {
-        backgroundColor: '#EEF2FF',
-        borderWidth: 1,
-        borderColor: '#C7D2FE',
-        paddingHorizontal: 12,
+        backgroundColor: '#EFF6FF',
+        paddingHorizontal: 10,
         paddingVertical: 4,
-        borderRadius: 16
+        borderRadius: 20,
+        borderWidth: 1,
+        borderColor: '#DBEAFE',
+        maxWidth: '65%'
     },
     subjectText: {
-        fontSize: 10,
+        fontSize: 11,
         fontWeight: '700',
-        color: '#4F46E5',
-        textTransform: 'uppercase'
+        color: '#2563EB'
     },
     questionCount: {
         fontSize: 12,
@@ -568,71 +927,73 @@ const styles = StyleSheet.create({
         color: '#64748B'
     },
     questionCountHighlight: {
-        color: '#4F46E5',
+        color: '#2563EB',
         fontWeight: '700'
     },
     questionTitle: {
-        fontSize: 20,
+        fontSize: 17,
         fontWeight: '700',
         color: '#0F172A',
-        lineHeight: 28,
-        marginBottom: 20
+        lineHeight: 24,
+        marginBottom: 16
     },
     errorBanner: {
         backgroundColor: '#FEF2F2',
         borderWidth: 1,
-        borderColor: '#FECACA',
-        padding: 12,
+        borderColor: '#FEE2E2',
         borderRadius: 12,
-        marginBottom: 16,
-        flexDirection: 'row',
-        alignItems: 'center'
+        padding: 10,
+        marginBottom: 16
     },
     errorText: {
-        color: '#B91C1C',
         fontSize: 12,
+        color: '#DC2626',
         fontWeight: '500'
     },
     optionsContainer: {
-        gap: 12
+        gap: 10
     },
     optionButton: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        padding: 16,
-        borderRadius: 16,
-        borderWidth: 1,
+        padding: 14,
+        borderRadius: 14,
+        backgroundColor: '#FFFFFF',
+        borderWidth: 1.5,
         borderColor: '#E2E8F0',
-        backgroundColor: '#FFFFFF'
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.04,
+        shadowRadius: 2,
+        elevation: 1
     },
     optionButtonSelected: {
-        borderColor: '#4F46E5',
-        backgroundColor: '#EEF2FF'
+        borderColor: '#2563EB',
+        backgroundColor: '#EFF6FF'
     },
     optionRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        flex: 1,
-        paddingRight: 12
+        gap: 12,
+        flex: 1
     },
     optionIcon: {
-        width: 28,
-        height: 28,
+        width: 26,
+        height: 26,
         borderRadius: 8,
-        backgroundColor: '#F8FAFC',
+        backgroundColor: '#F1F5F9',
         borderWidth: 1,
         borderColor: '#E2E8F0',
-        justifyContent: 'center',
         alignItems: 'center',
-        marginRight: 12
+        justifyContent: 'center'
     },
     optionIconSelected: {
-        backgroundColor: '#4F46E5',
-        borderColor: '#4F46E5'
+        backgroundColor: '#2563EB',
+        borderColor: '#2563EB'
     },
     optionIconText: {
-        fontSize: 12,
+        fontSize: 11,
         fontWeight: '700',
         color: '#64748B'
     },
@@ -641,186 +1002,154 @@ const styles = StyleSheet.create({
     },
     optionText: {
         fontSize: 14,
-        fontWeight: '500',
         color: '#334155',
-        flexShrink: 1
+        fontWeight: '500',
+        flex: 1
     },
     optionTextSelected: {
-        color: '#312E81',
+        color: '#1D4ED8',
         fontWeight: '600'
     },
     radioCircle: {
-        width: 20,
-        height: 20,
-        borderRadius: 10,
-        borderWidth: 1,
+        width: 18,
+        height: 18,
+        borderRadius: 9,
+        borderWidth: 1.5,
         borderColor: '#CBD5E1',
-        justifyContent: 'center',
-        alignItems: 'center'
+        alignItems: 'center',
+        justifyContent: 'center'
     },
     radioCircleSelected: {
-        borderColor: '#4F46E5',
-        backgroundColor: '#4F46E5'
+        borderColor: '#2563EB'
     },
     radioInner: {
         width: 8,
         height: 8,
         borderRadius: 4,
-        backgroundColor: '#FFFFFF'
+        backgroundColor: '#2563EB'
     },
     inputContainer: {
-        marginTop: 8
+        marginTop: 6
     },
     textInput: {
-        borderWidth: 1,
-        borderColor: '#E2E8F0',
         backgroundColor: '#FFFFFF',
-        borderRadius: 16,
-        padding: 16,
+        borderWidth: 1.5,
+        borderColor: '#E2E8F0',
+        borderRadius: 14,
+        padding: 14,
         fontSize: 14,
         color: '#0F172A'
     },
     textArea: {
-        borderWidth: 1,
-        borderColor: '#E2E8F0',
         backgroundColor: '#FFFFFF',
-        borderRadius: 16,
-        padding: 16,
+        borderWidth: 1.5,
+        borderColor: '#E2E8F0',
+        borderRadius: 14,
+        padding: 14,
         fontSize: 14,
         color: '#0F172A',
-        minHeight: 120
+        minHeight: 100
     },
-    footerControls: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: 16,
-        borderTopWidth: 1,
-        borderTopColor: '#E2E8F0',
-        backgroundColor: '#FFFFFF'
-    },
-    controlBtn: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingVertical: 10,
-        paddingHorizontal: 16,
-        borderRadius: 12,
-        backgroundColor: 'transparent'
-    },
-    controlBtnDisabled: {
-        opacity: 0.5
-    },
-    controlBtnText: {
-        fontSize: 12,
-        fontWeight: '600',
-        color: '#64748B',
-        marginLeft: 4
-    },
-    controlBtnTextDisabled: {
-        color: '#94A3B8'
-    },
-    nextBtn: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingVertical: 12,
-        paddingHorizontal: 20,
-        borderRadius: 12,
-        backgroundColor: '#4F46E5'
-    },
-    nextBtnDisabled: {
-        opacity: 0.7
-    },
-    nextBtnText: {
-        fontSize: 12,
-        fontWeight: '700',
-        color: '#FFFFFF',
-        marginRight: 6
-    },
+
+    // ── Results Styles ──
     resultsContainer: {
         padding: 20,
-        paddingBottom: 40
+        gap: 14
+    },
+    comparisonCard: {
+        padding: 14,
+        borderRadius: 16,
+        borderWidth: 1.5,
+        alignItems: 'center'
+    },
+    comparisonCardMatched: {
+        backgroundColor: '#F0FDF4',
+        borderColor: '#BBF7D0'
+    },
+    comparisonCardDifferent: {
+        backgroundColor: '#FFFBEB',
+        borderColor: '#FDE68A'
+    },
+    comparisonHeadline: {
+        fontSize: 17,
+        fontWeight: '800',
+        marginBottom: 4
+    },
+    comparisonBody: {
+        fontSize: 12,
+        color: '#475569',
+        textAlign: 'center',
+        lineHeight: 17
     },
     congratsBanner: {
         alignItems: 'center',
-        padding: 24,
-        borderRadius: 24,
-        backgroundColor: '#FFFFFF',
+        backgroundColor: '#F8FAFC',
+        padding: 16,
+        borderRadius: 18,
         borderWidth: 1,
-        borderColor: '#E2E8F0',
-        marginBottom: 24,
-        elevation: 2,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.05,
-        shadowRadius: 4
+        borderColor: '#E2E8F0'
     },
     completedBadge: {
         flexDirection: 'row',
         alignItems: 'center',
+        gap: 6,
         backgroundColor: '#ECFDF5',
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+        borderRadius: 12,
         borderWidth: 1,
-        borderColor: '#A7F3D0',
-        paddingHorizontal: 12,
-        paddingVertical: 4,
-        borderRadius: 16,
-        marginBottom: 12,
-        gap: 6
+        borderColor: '#D1FAE5',
+        marginBottom: 8
     },
     completedBadgeText: {
         fontSize: 10,
         fontWeight: '700',
-        color: '#059669'
+        color: '#059669',
+        letterSpacing: 0.5
     },
     resultTitle: {
-        fontSize: 28,
+        fontSize: 22,
         fontWeight: '800',
-        color: '#312E81',
+        color: '#1D4ED8',
         textAlign: 'center',
-        marginBottom: 8
+        marginBottom: 4
     },
     resultDescription: {
-        fontSize: 13,
+        fontSize: 12,
         color: '#64748B',
         textAlign: 'center',
-        lineHeight: 20
+        lineHeight: 16,
+        paddingHorizontal: 8
     },
     scoresGrid: {
-        flexDirection: 'column',
-        gap: 12,
-        marginBottom: 24
+        gap: 10
     },
     scoreCard: {
-        width: '100%',
-        padding: 16,
-        borderRadius: 16,
         backgroundColor: '#FFFFFF',
+        padding: 12,
+        borderRadius: 14,
         borderWidth: 1,
-        borderColor: '#E2E8F0',
-        elevation: 1,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 2
+        borderColor: '#E2E8F0'
     },
     scoreHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 8
+        marginBottom: 6
     },
     scoreLabel: {
-        fontSize: 11,
+        fontSize: 13,
         fontWeight: '600',
-        color: '#475569'
+        color: '#334155'
     },
     scoreValue: {
-        fontSize: 14,
+        fontSize: 13,
         fontWeight: '700'
     },
     scoreBarBg: {
         height: 6,
-        borderRadius: 3,
         backgroundColor: '#F1F5F9',
+        borderRadius: 3,
         overflow: 'hidden'
     },
     scoreBarFill: {
@@ -828,64 +1157,106 @@ const styles = StyleSheet.create({
         borderRadius: 3
     },
     traitsContainer: {
-        backgroundColor: '#FFFFFF',
-        borderRadius: 16,
-        padding: 16,
+        backgroundColor: '#F8FAFC',
+        padding: 14,
+        borderRadius: 14,
         borderWidth: 1,
-        borderColor: '#E2E8F0',
-        marginBottom: 24,
-        elevation: 1,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 2
+        borderColor: '#E2E8F0'
     },
     traitsTitle: {
-        fontSize: 10,
+        fontSize: 11,
         fontWeight: '700',
         color: '#64748B',
-        marginBottom: 12,
-        textTransform: 'uppercase'
+        marginBottom: 10,
+        letterSpacing: 0.5
     },
     traitsGrid: {
-        flexDirection: 'column',
-        gap: 8
+        gap: 6
     },
     traitRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        backgroundColor: '#F8FAFC',
+        backgroundColor: '#FFFFFF',
+        paddingHorizontal: 10,
+        paddingVertical: 8,
+        borderRadius: 10,
         borderWidth: 1,
-        borderColor: '#F1F5F9',
-        borderRadius: 12,
-        padding: 12,
-        width: '100%'
+        borderColor: '#F1F5F9'
     },
     traitLabel: {
         fontSize: 12,
-        fontWeight: '500',
-        color: '#334155'
+        color: '#334155',
+        flex: 1
     },
     traitValue: {
         fontSize: 12,
         fontWeight: '700',
-        color: '#4F46E5'
+        color: '#2563EB'
     },
     finishButton: {
-        backgroundColor: '#4F46E5',
-        padding: 16,
-        borderRadius: 16,
+        backgroundColor: '#2563EB',
+        paddingVertical: 14,
+        borderRadius: 14,
         alignItems: 'center',
         justifyContent: 'center',
-        elevation: 3,
-        shadowColor: '#4F46E5',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8
+        marginTop: 4
     },
     finishButtonText: {
+        color: '#FFF',
         fontSize: 14,
+        fontWeight: '700'
+    },
+
+    // ── Footer Controls ──
+    footerControls: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingHorizontal: 20,
+        paddingVertical: 14,
+        borderTopWidth: 1,
+        borderTopColor: '#F1F5F9',
+        backgroundColor: '#F8FAFC'
+    },
+    controlBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        paddingVertical: 8,
+        paddingHorizontal: 12,
+        borderRadius: 10
+    },
+    controlBtnDisabled: {
+        opacity: 0.4
+    },
+    controlBtnText: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: '#64748B'
+    },
+    controlBtnTextDisabled: {
+        color: '#94A3B8'
+    },
+    nextBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        backgroundColor: '#2563EB',
+        paddingVertical: 10,
+        paddingHorizontal: 16,
+        borderRadius: 12,
+        shadowColor: '#2563EB',
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.2,
+        shadowRadius: 5,
+        elevation: 3
+    },
+    nextBtnDisabled: {
+        opacity: 0.6
+    },
+    nextBtnText: {
+        fontSize: 13,
         fontWeight: '700',
         color: '#FFFFFF'
     }
