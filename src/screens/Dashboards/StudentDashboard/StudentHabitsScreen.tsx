@@ -58,6 +58,7 @@ import {
   createHabitPlan,
   getStudentBadges,
   getUserEntitlements,
+  consumeQuota,
   shareBadgeOnLinkedIn
 } from '@/api/student.services';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
@@ -308,8 +309,10 @@ export const StudentHabitsScreen = () => {
         activePlans = plansRes.value.message.flatMap((plan: any, planIndex: number) => {
           if (plan.habits && Array.isArray(plan.habits)) {
             return plan.habits.map((habit: any, habitIndex: number) => {
-              // Generate weekly completion status list based on weeklyData
-              const wData = [true, true, true, false, false, false, false].map(() => Math.random() > 0.3);
+              // Map weeklyData using habit.weekly_data from API or fallback to neutral 'none' (matching web)
+              const wData = Array.isArray(habit.weekly_data) && habit.weekly_data.length === 7
+                ? habit.weekly_data
+                : ['none', 'none', 'none', 'none', 'none', 'none', 'none'];
               return {
                 id: `${plan.name || planIndex}-${habitIndex}`,
                 title: habit.habit_name || plan.plan_name || "Untitled Habit",
@@ -560,6 +563,8 @@ export const StudentHabitsScreen = () => {
 
       if (habitToEdit) {
         payload.plan_id = habitToEdit.name;
+      } else {
+        consumeQuota("create_new_habit_plan");
       }
 
       await createHabitPlan(payload);
@@ -748,19 +753,11 @@ export const StudentHabitsScreen = () => {
         <View style={[styles.sectionHeader, { marginTop: 12 }]}>
           <View style={{flexDirection: 'row', alignItems: 'center', gap: 8}}>
             <Text style={styles.sectionTitleSimple}>My Habit Plans</Text>
-            {habitPlansEntitlement ? (
-              <View style={{backgroundColor: '#ECFDF5', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12, borderWidth: 1, borderColor: '#D1FAE5'}}>
-                <Text style={{fontSize: 10, fontWeight: '700', color: '#10B981'}}>
-                  {habitPlansEntitlement.remaining === 'Unlimited' 
-                    ? 'Unlimited' 
-                    : `${habitPlansEntitlement.remaining} / ${habitPlansEntitlement.limit}`}
-                </Text>
-              </View>
-            ) : (
-              <View style={{backgroundColor: '#ECFDF5', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12, borderWidth: 1, borderColor: '#D1FAE5'}}>
-                <Text style={{fontSize: 10, fontWeight: '700', color: '#10B981'}}>{habitPlans.length} / 20</Text>
-              </View>
-            )}
+            <View style={{backgroundColor: '#ECFDF5', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12, borderWidth: 1, borderColor: '#D1FAE5'}}>
+              <Text style={{fontSize: 10, fontWeight: '700', color: '#10B981'}}>
+                {habitPlans.length} {habitPlans.length === 1 ? 'Habit' : 'Habits'}
+              </Text>
+            </View>
           </View>
           <TouchableOpacity
             style={[styles.newHabitButton, { backgroundColor: '#FF6B00', borderColor: '#FF6B00' }]}
@@ -875,22 +872,42 @@ export const StudentHabitsScreen = () => {
                       <View>
                         <Text style={{fontSize: 9, fontWeight: '700', color: '#94A3B8', letterSpacing: 0.5, marginBottom: 6}}>THIS WEEK</Text>
                         <View style={styles.miniWeekRow}>
-                          {habit.weeklyData.map((done: boolean, dIdx: number) => (
-                            <View
-                              key={dIdx}
-                              style={[
-                                styles.miniDayNode,
-                                {width: 20, height: 20, borderRadius: 4},
-                                done ? styles.miniDayNodeActive : styles.miniDayNodeInactive
-                              ]}
-                            >
-                              <Text style={[
-                                styles.miniDayText,
-                                {fontSize: 8},
-                                done ? styles.miniDayTextActive : styles.miniDayTextInactive
-                              ]}>{weekDays[dIdx]}</Text>
-                            </View>
-                          ))}
+                          {habit.weeklyData.map((status: string | boolean, dIdx: number) => {
+                            const isDone = status === 'done' || status === true;
+                            const isPartial = status === 'partial';
+                            const isMissed = status === 'missed';
+
+                            let nodeStyle = styles.miniDayNodeInactive;
+                            let textStyle = styles.miniDayTextInactive;
+
+                            if (isDone) {
+                              nodeStyle = styles.miniDayNodeActive;
+                              textStyle = styles.miniDayTextActive;
+                            } else if (isPartial) {
+                              nodeStyle = styles.miniDayNodePartial;
+                              textStyle = styles.miniDayTextPartial;
+                            } else if (isMissed) {
+                              nodeStyle = styles.miniDayNodeMissed;
+                              textStyle = styles.miniDayTextMissed;
+                            }
+
+                            return (
+                              <View
+                                key={dIdx}
+                                style={[
+                                  styles.miniDayNode,
+                                  {width: 20, height: 20, borderRadius: 4},
+                                  nodeStyle
+                                ]}
+                              >
+                                <Text style={[
+                                  styles.miniDayText,
+                                  {fontSize: 8},
+                                  textStyle
+                                ]}>{weekDays[dIdx]}</Text>
+                              </View>
+                            );
+                          })}
                         </View>
                       </View>
                     </View>
@@ -1481,9 +1498,13 @@ const styles = StyleSheet.create({
   miniWeekRow: { flexDirection: 'row', gap: 6 },
   miniDayNode: { width: 22, height: 22, borderRadius: 6, alignItems: 'center', justifyContent: 'center', borderWidth: 1 },
   miniDayNodeActive: { backgroundColor: 'rgba(16, 185, 129, 0.1)', borderColor: 'rgba(16, 185, 129, 0.2)' },
+  miniDayNodePartial: { backgroundColor: '#FEF3C7', borderColor: '#FDE68A' },
+  miniDayNodeMissed: { backgroundColor: '#FEE2E2', borderColor: '#FECACA' },
   miniDayNodeInactive: { backgroundColor: '#F8FAFC', borderColor: '#F1F5F9' },
   miniDayText: { fontSize: 9, fontWeight: '800' },
   miniDayTextActive: { color: '#059669' },
+  miniDayTextPartial: { color: '#D97706' },
+  miniDayTextMissed: { color: '#EF4444' },
   miniDayTextInactive: { color: '#94A3B8' },
 
   miniProgressBox: { flexDirection: 'row', alignItems: 'center', gap: 6 },

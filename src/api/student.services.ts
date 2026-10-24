@@ -826,6 +826,21 @@ export const getUserEntitlements = async () => {
 };
 
 /**
+ * Consume quota for a feature
+ */
+export const consumeQuota = async (featureCode: string) => {
+  try {
+    const response = await api.post(
+      "method/quantbit_billing_platform.quantbit_billing_platform.api.consume_quota",
+      { feature_code: featureCode }
+    );
+    return response.data;
+  } catch (error) {
+    console.warn("Error consuming quota:", error);
+  }
+};
+
+/**
  * Fetch all success stories.
  */
 export const getSuccessStories = async () => {
