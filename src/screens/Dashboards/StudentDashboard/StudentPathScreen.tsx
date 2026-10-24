@@ -1101,7 +1101,7 @@ export const StudentPathScreen = () => {
               
               <View>
                 {[
-                  { num: 1, title: "Academic Profile", desc: "Tell us about your degree, specialisation, and core interests.", action: "Fill out the fields on the left and click 'Find Recommended Paths'." },
+                  { num: 1, title: "Academic Profile", desc: "Tell us about your degree, specialisation, and core interests.", action: "Fill out the fields and click 'Find Recommended Paths'." },
                   { num: 2, title: "Select Career Path", desc: "Explore AI-recommended career paths matching your profile.", action: "Click a path to view its skill hierarchy, then click 'Find Skill Gap'." },
                   { num: 3, title: "Skill Gap Analysis", desc: "Compare your claimed skills against path requirements.", action: "Review your matched/missing skills, then click 'Proceed & Activate Path'." }
                 ].map((step, idx, arr) => {

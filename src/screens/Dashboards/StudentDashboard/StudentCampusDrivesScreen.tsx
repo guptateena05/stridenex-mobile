@@ -116,7 +116,7 @@ export const StudentCampusDrivesScreen = () => {
       setDrives(driveList);
     } catch (err) {
       console.error("Error fetching campus drives:", err);
-      Alert.alert("Error", "Failed to load campus drives.");
+      setDrives([]);
     } finally {
       setLoading(false);
       setRefreshing(false);
