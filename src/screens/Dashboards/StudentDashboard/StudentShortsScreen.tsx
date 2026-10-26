@@ -56,6 +56,18 @@ import {
 } from 'lucide-react-native';
 import { useNavigation, DrawerActions } from '@react-navigation/native';
 
+const formatMediaUrl = (urlOrPath: string, baseDomain: string = "https://devstridenex.quantcloud.in"): string => {
+  if (!urlOrPath) return "";
+  const full = urlOrPath.startsWith("http://") || urlOrPath.startsWith("https://")
+    ? urlOrPath
+    : `${baseDomain}${urlOrPath.startsWith("/") ? "" : "/"}${urlOrPath}`;
+  try {
+    return encodeURI(decodeURI(full));
+  } catch {
+    return encodeURI(full);
+  }
+};
+
 // Reusable Video Player Logic inside a common wrapper
 const VideoPlayerWebView = ({ video, isPlaying, isMuted }: { video: any, isPlaying: boolean, isMuted: boolean }) => {
   const webViewRef = useRef<WebView>(null);
@@ -422,8 +434,8 @@ export const StudentShortsScreen = () => {
     
     if (existsIdx === -1) {
       const BASE_DOMAIN = "https://devstridenex.quantcloud.in";
-      const videoUrl = shortItem.video ? (shortItem.video.startsWith('http') ? shortItem.video : `${BASE_DOMAIN}${shortItem.video}`) : '';
-      const posterUrl = shortItem.thumbnail ? (shortItem.thumbnail.startsWith('http') ? shortItem.thumbnail : `${BASE_DOMAIN}${shortItem.thumbnail}`) : 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=500';
+      const videoUrl = shortItem.video ? formatMediaUrl(shortItem.video, BASE_DOMAIN) : '';
+      const posterUrl = shortItem.thumbnail ? formatMediaUrl(shortItem.thumbnail, BASE_DOMAIN) : 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=500';
       
       const mappedShort = {
         id: shortId,
@@ -676,8 +688,8 @@ export const StudentShortsScreen = () => {
         const savedIdsFromFeed: string[] = [];
         const likedIdsFromFeed: string[] = [];
         const mapped = rawShorts.map((item: any) => {
-          const videoUrl = item.video ? (item.video.startsWith('http') ? item.video : `${BASE_DOMAIN}${item.video}`) : '';
-          const posterUrl = item.thumbnail ? (item.thumbnail.startsWith('http') ? item.thumbnail : `${BASE_DOMAIN}${item.thumbnail}`) : 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=500'; 
+          const videoUrl = item.video ? formatMediaUrl(item.video, BASE_DOMAIN) : '';
+          const posterUrl = item.thumbnail ? formatMediaUrl(item.thumbnail, BASE_DOMAIN) : 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=500'; 
           
           const skill = item.skill || "Skill";
           const authorAvatar = skill.substring(0, 2).toUpperCase();
@@ -918,7 +930,9 @@ export const StudentShortsScreen = () => {
   };
 
   const shareToWhatsApp = async (video: any) => {
-    const text = `Check out this Educational Short: "${video.title}"\nWatch here: ${video.videoUrl}`;
+    const rawUrl = video.videoUrl || '';
+    const shareableUrl = formatMediaUrl(rawUrl);
+    const text = `Check out this Educational Short: "${video.title}"\nWatch here: ${shareableUrl}`;
     const url = `whatsapp://send?text=${encodeURIComponent(text)}`;
     try {
       const supported = await Linking.canOpenURL(url);
@@ -934,14 +948,16 @@ export const StudentShortsScreen = () => {
   };
 
   const shareToTelegram = async (video: any) => {
-    const text = `Check out this Educational Short: "${video.title}"\nWatch here: ${video.videoUrl}`;
+    const rawUrl = video.videoUrl || '';
+    const shareableUrl = formatMediaUrl(rawUrl);
+    const text = `Check out this Educational Short: "${video.title}"\nWatch here: ${shareableUrl}`;
     const url = `tg://msg?text=${encodeURIComponent(text)}`;
     try {
       const supported = await Linking.canOpenURL(url);
       if (supported) {
         await Linking.openURL(url);
       } else {
-        await Linking.openURL(`https://t.me/share/url?url=${encodeURIComponent(video.videoUrl)}&text=${encodeURIComponent(video.title)}`);
+        await Linking.openURL(`https://t.me/share/url?url=${encodeURIComponent(shareableUrl)}&text=${encodeURIComponent(video.title)}`);
       }
     } catch (err) {
       console.log("Error sharing to Telegram:", err);
@@ -950,7 +966,8 @@ export const StudentShortsScreen = () => {
   };
 
   const shareToInstagram = async (video: any) => {
-    Clipboard.setString(video.videoUrl);
+    const shareableUrl = formatMediaUrl(video.videoUrl || '');
+    Clipboard.setString(shareableUrl);
     Alert.alert(
       "Instagram Share",
       "Video link copied to clipboard! Open Instagram to share it with your friends.",
@@ -977,7 +994,8 @@ export const StudentShortsScreen = () => {
   };
 
   const copyShortsLink = (video: any) => {
-    Clipboard.setString(video.videoUrl);
+    const shareableUrl = formatMediaUrl(video.videoUrl || '');
+    Clipboard.setString(shareableUrl);
     if (Platform.OS === 'android') {
       ToastAndroid.show("Link copied to clipboard!", ToastAndroid.SHORT);
     } else {
@@ -986,10 +1004,12 @@ export const StudentShortsScreen = () => {
   };
 
   const systemShare = async (video: any) => {
+    const shareableUrl = formatMediaUrl(video.videoUrl || '');
     try {
       await Share.share({
         title: video.title,
-        message: `Check out this Educational Short: "${video.title}"\nWatch here: ${video.videoUrl}`,
+        message: `Check out this Educational Short: "${video.title}"\nWatch here: ${shareableUrl}`,
+        url: shareableUrl,
       });
     } catch (error) {
       console.log("System Share failed:", error);
