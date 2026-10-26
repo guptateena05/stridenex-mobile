@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import {
   View,
   StyleSheet,
@@ -7,7 +7,7 @@ import {
   TouchableOpacity,
   Text
 } from 'react-native';
-import { Edit3, Trash2 } from 'lucide-react-native';
+import { Edit3, Trash2, ChevronsLeft } from 'lucide-react-native';
 
 const ACTION_BUTTON_WIDTH = 70; // Width of each action button
 
@@ -38,6 +38,70 @@ export const SwipeableRow = ({ children, onEdit, onDelete, disableSwipe = false,
 
   const translateX = useRef(new Animated.Value(0)).current;
   const isOpen = useRef(false);
+  const [isOpenState, setIsOpenState] = useState(false);
+  const nudgeAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (disableSwipe || activeActionsCount === 0) return;
+
+    // Subtle discoverability nudge on mount to attract attention to the swipe action
+    const timer = setTimeout(() => {
+      Animated.sequence([
+        Animated.timing(nudgeAnim, {
+          toValue: -5,
+          duration: 250,
+          useNativeDriver: true,
+        }),
+        Animated.timing(nudgeAnim, {
+          toValue: 0,
+          duration: 250,
+          useNativeDriver: true,
+        }),
+        Animated.timing(nudgeAnim, {
+          toValue: -4,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(nudgeAnim, {
+          toValue: 0,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [disableSwipe, activeActionsCount]);
+
+  const openRow = () => {
+    Animated.spring(translateX, {
+      toValue: -swipeLimit,
+      useNativeDriver: true,
+      tension: 40,
+      friction: 7,
+    }).start();
+    isOpen.current = true;
+    setIsOpenState(true);
+  };
+
+  const closeRow = () => {
+    Animated.spring(translateX, {
+      toValue: 0,
+      useNativeDriver: true,
+      tension: 40,
+      friction: 7,
+    }).start();
+    isOpen.current = false;
+    setIsOpenState(false);
+  };
+
+  const toggleRow = () => {
+    if (isOpen.current) {
+      closeRow();
+    } else {
+      openRow();
+    }
+  };
 
   const panResponder = useRef(
     PanResponder.create({
@@ -74,39 +138,19 @@ export const SwipeableRow = ({ children, onEdit, onDelete, disableSwipe = false,
         const currentTranslateX = (translateX as any)._value;
 
         if (currentTranslateX > -ACTION_BUTTON_WIDTH * 0.7) {
-          Animated.spring(translateX, {
-            toValue: 0,
-            useNativeDriver: true,
-            tension: 40,
-            friction: 7,
-          }).start();
-          isOpen.current = false;
+          closeRow();
         } else {
-          Animated.spring(translateX, {
-            toValue: -swipeLimit,
-            useNativeDriver: true,
-            tension: 40,
-            friction: 7,
-          }).start();
-          isOpen.current = true;
+          openRow();
         }
       },
     })
   ).current;
 
-  const closeRow = () => {
-    Animated.spring(translateX, {
-      toValue: 0,
-      useNativeDriver: true,
-      tension: 40,
-      friction: 7,
-    }).start();
-    isOpen.current = false;
-  };
-
   if (activeActionsCount === 0) {
     return <View style={styles.container}>{children}</View>;
   }
+
+  const indicatorColor = editTextColor || '#0A8099';
 
   return (
     <View style={styles.container}>
@@ -171,6 +215,48 @@ export const SwipeableRow = ({ children, onEdit, onDelete, disableSwipe = false,
         {...panResponder.panHandlers}
       >
         {children}
+
+        {/* Visual Guidance: Swipe Affordance Tab */}
+        {!disableSwipe && activeActionsCount > 0 && (
+          <Animated.View
+            style={[
+              styles.swipeAffordance,
+              {
+                opacity: translateX.interpolate({
+                  inputRange: [-ACTION_BUTTON_WIDTH * 0.4, 0],
+                  outputRange: [0, 1],
+                  extrapolate: 'clamp',
+                }),
+                transform: [
+                  { translateY: -14 },
+                  { translateX: nudgeAnim },
+                ],
+              },
+            ]}
+            pointerEvents={isOpenState ? 'none' : 'auto'}
+          >
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={toggleRow}
+              style={[
+                styles.swipeAffordanceButton,
+                editBgColor ? { backgroundColor: editBgColor } : null,
+              ]}
+              hitSlop={{ top: 12, bottom: 12, left: 14, right: 10 }}
+            >
+              <ChevronsLeft size={13} color={indicatorColor} strokeWidth={2.5} />
+            </TouchableOpacity>
+          </Animated.View>
+        )}
+
+        {/* Tap outside to close when swiped open */}
+        {isOpenState && (
+          <TouchableOpacity
+            activeOpacity={1}
+            onPress={closeRow}
+            style={styles.openBackdrop}
+          />
+        )}
       </Animated.View>
     </View>
   );
@@ -209,5 +295,34 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 10,
     fontWeight: '800',
+  },
+  swipeAffordance: {
+    position: 'absolute',
+    right: 0,
+    top: '50%',
+    zIndex: 10,
+  },
+  swipeAffordanceButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F0F9FF',
+    borderColor: '#BAE6FD',
+    borderWidth: 1,
+    borderRightWidth: 0,
+    borderTopLeftRadius: 10,
+    borderBottomLeftRadius: 10,
+    paddingVertical: 7,
+    paddingLeft: 4,
+    paddingRight: 2,
+    shadowColor: '#0A8099',
+    shadowOffset: { width: -1, height: 1 },
+    shadowOpacity: 0.12,
+    shadowRadius: 2,
+    elevation: 3,
+  },
+  openBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'transparent',
+    zIndex: 9,
   },
 });

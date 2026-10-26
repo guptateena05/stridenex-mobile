@@ -157,11 +157,21 @@ export const submitTest = async (screenName: any, email?: string): Promise<Submi
 
 export const getStudentPsychometricResults = async (email?: string): Promise<{ status: string; data: PsychometricHistoryItem[] }> => {
     try {
-        const url = email
-            ? `method/nexedu.api.get_student_psychometric_results?email=${encodeURIComponent(email)}`
+        let resolvedEmail = email;
+        if (!resolvedEmail) {
+            resolvedEmail = (await AsyncStorage.getItem('userEmail')) || (await AsyncStorage.getItem('userName')) || undefined;
+        }
+        const url = resolvedEmail
+            ? `method/nexedu.api.get_student_psychometric_results?email=${encodeURIComponent(resolvedEmail)}`
             : `method/nexedu.api.get_student_psychometric_results`;
         const res = await api.get(url);
-        return res.data;
+        const payload = res.data?.message || res.data;
+        const items = Array.isArray(payload)
+            ? payload
+            : Array.isArray(payload?.data)
+                ? payload.data
+                : [];
+        return { status: "success", data: items };
     } catch (err) {
         console.error("Failed to get student psychometric results", err);
         return { status: "error", data: [] };
