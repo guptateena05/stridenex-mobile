@@ -149,10 +149,19 @@ export const IndustryPipelineScreen = ({ route, navigation }: any) => {
         industry: compName
       };
 
+      let effectiveSubFilter = subFilter;
       if (subFilter && subFilter !== "All") {
         if (type === "Project") {
-          params.project = subFilter;
-          params.proect = subFilter;
+          const matchedOpt = subFilterOptions.find(opt => 
+            opt.name === subFilter || 
+            opt.title.toLowerCase() === subFilter.toLowerCase() ||
+            (opt as any).project_name?.toLowerCase() === subFilter.toLowerCase()
+          );
+          if (matchedOpt) {
+            effectiveSubFilter = matchedOpt.name;
+          }
+          params.project = effectiveSubFilter;
+          params.proect = effectiveSubFilter;
         } else if (type === "Internship") {
           params.internship = subFilter;
         } else if (type === "Job") {
@@ -168,12 +177,30 @@ export const IndustryPipelineScreen = ({ route, navigation }: any) => {
         })
       ]);
 
-      const apiData =
+      let apiData =
         response?.data?.data ||
         response?.message?.data ||
         (Array.isArray(response?.data) ? response.data : []) ||
         (Array.isArray(response?.message) ? response.message : []) ||
         (Array.isArray(response) ? response : []);
+
+      // Fallback: If filtering for a specific project returned 0, fetch all company project apps and filter client-side
+      if (type === "Project" && subFilter !== "All" && (!Array.isArray(apiData) || apiData.length === 0)) {
+        try {
+          const allAppsRes = await getApplications({ opportunity_type: "Project", industry: compName });
+          const allApps = allAppsRes?.data?.data || allAppsRes?.message?.data || (Array.isArray(allAppsRes?.data) ? allAppsRes.data : []) || (Array.isArray(allAppsRes?.message) ? allAppsRes.message : []) || (Array.isArray(allAppsRes) ? allAppsRes : []);
+          if (Array.isArray(allApps) && allApps.length > 0) {
+            apiData = allApps.filter((app: any) => {
+              const p = (app.project || "").toLowerCase();
+              const target = subFilter.toLowerCase();
+              const targetEff = effectiveSubFilter.toLowerCase();
+              return p === target || p === targetEff || p.includes(target) || target.includes(p);
+            });
+          }
+        } catch (e) {
+          // ignore fallback error
+        }
+      }
 
       if (Array.isArray(apiData)) {
         const newCandidates: Record<string, Candidate[]> = {
@@ -200,13 +227,15 @@ export const IndustryPipelineScreen = ({ route, navigation }: any) => {
           const bgColors = ['#EF4444', '#3B82F6', '#10B981', '#6366F1', '#F59E0B', '#8B5CF6'];
           const randomColor = bgColors[Math.floor(Math.random() * bgColors.length)];
 
+          const projectDisplay = subFilterOptions.find(o => o.name === app.project)?.title || app.project || app.internship || app.job_profile || "Unknown";
+
           const candidate: Candidate = {
             id: app.name || Math.random().toString(),
             name: nameVal,
             owner: app.owner || app.modified_by || "Unknown",
             status: app.status || "Applied",
             studentEmail: email,
-            internship: app.internship || app.project || app.job_profile || "Unknown",
+            internship: projectDisplay,
             initials: initialsVal,
             bgColor: randomColor,
             college: app.college || (app.course && app.department ? `${app.course} (${app.department})` : "N/A"),
@@ -343,7 +372,7 @@ export const IndustryPipelineScreen = ({ route, navigation }: any) => {
         const options: DropdownOption[] = Array.isArray(responseData)
           ? responseData.map((item: any) => ({
               name: item.name || item,
-              title: item.title || item.name || item
+              title: item.project_name || item.title || item.name || item
             }))
           : [];
         setSubFilterOptions(options);

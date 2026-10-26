@@ -209,6 +209,17 @@ export const MentorScheduleScreen = () => {
     return schemes[Math.abs(hash) % schemes.length];
   };
 
+  const normalizeSessionList = (res: any): any[] => {
+    if (!res) return [];
+    if (Array.isArray(res)) return res;
+    if (Array.isArray(res?.message)) return res.message;
+    if (Array.isArray(res?.message?.records)) return res.message.records;
+    if (Array.isArray(res?.message?.data)) return res.message.data;
+    if (Array.isArray(res?.data?.records)) return res.data.records;
+    if (Array.isArray(res?.data)) return res.data;
+    return [];
+  };
+
   // API Call Handlers
   const fetchBookedSessions = useCallback(async (isSilent = false) => {
     if (!userName) return;
@@ -216,10 +227,10 @@ export const MentorScheduleScreen = () => {
     try {
       if (viewType === 'week') {
         const res = await getWeeklyBookedSessions(userName);
-        setWeeklyBooked(res?.message || []);
+        setWeeklyBooked(normalizeSessionList(res));
       } else {
         const res = await getMonthlyBookedSessions(userName);
-        setMonthlyBooked(res?.message || []);
+        setMonthlyBooked(normalizeSessionList(res));
       }
     } catch (err) {
       console.error("Failed to fetch booked sessions:", err);
@@ -246,7 +257,7 @@ export const MentorScheduleScreen = () => {
     if (!isSilent) setLoadingUpcoming(true);
     try {
       const res = await getUpcomingSessions(userName);
-      setUpcoming(res?.message || []);
+      setUpcoming(normalizeSessionList(res));
     } catch (err) {
       console.error("Failed to fetch upcoming bookings:", err);
     } finally {
@@ -258,9 +269,24 @@ export const MentorScheduleScreen = () => {
     await Promise.all([
       fetchBookedSessions(isSilent),
       fetchCalendar(isSilent),
-      fetchUpcoming(isSilent)
+      fetchUpcoming(isSilent),
+      // Also silently fetch complementary period so all future bookings are loaded for Upcoming view
+      (async () => {
+        if (!userName) return;
+        try {
+          if (viewType === 'week') {
+            const mRes = await getMonthlyBookedSessions(userName);
+            setMonthlyBooked(normalizeSessionList(mRes));
+          } else {
+            const wRes = await getWeeklyBookedSessions(userName);
+            setWeeklyBooked(normalizeSessionList(wRes));
+          }
+        } catch (e) {
+          // ignore
+        }
+      })()
     ]);
-  }, [fetchBookedSessions, fetchCalendar, fetchUpcoming]);
+  }, [fetchBookedSessions, fetchCalendar, fetchUpcoming, userName, viewType]);
 
   useEffect(() => {
     fetchData();
@@ -567,11 +593,40 @@ export const MentorScheduleScreen = () => {
     return activeBookedSessions.slice(start, start + ITEMS_PER_PAGE);
   }, [activeBookedSessions, bookedSessionsPage]);
 
-  const totalUpcomingPages = Math.ceil(upcoming.length / ITEMS_PER_PAGE) || 1;
+  const dynamicUpcomingBookings = useMemo(() => {
+    const todayStr = new Date().toISOString().split('T')[0];
+    const sessionMap = new Map<string, any>();
+
+    // Add sessions from upcoming
+    (upcoming || []).forEach((s: any) => {
+      const key = s.name || s.id || `${s.session_date}_${s.from_time}`;
+      sessionMap.set(key, s);
+    });
+
+    // Also include any future sessions from weekly and monthly booked lists
+    const allBooked = [...(weeklyBooked || []), ...(monthlyBooked || [])];
+    allBooked.forEach((s: any) => {
+      const sDate = s.session_date || s.date || '';
+      if (sDate >= todayStr) {
+        const key = s.name || s.id || `${sDate}_${s.from_time}`;
+        if (!sessionMap.has(key)) {
+          sessionMap.set(key, s);
+        }
+      }
+    });
+
+    return Array.from(sessionMap.values()).sort((a, b) => {
+      const dateA = `${a.session_date || a.date || ''} ${a.from_time || ''}`;
+      const dateB = `${b.session_date || b.date || ''} ${b.from_time || ''}`;
+      return dateA.localeCompare(dateB);
+    });
+  }, [upcoming, weeklyBooked, monthlyBooked]);
+
+  const totalUpcomingPages = Math.ceil(dynamicUpcomingBookings.length / ITEMS_PER_PAGE) || 1;
   const paginatedUpcoming = useMemo(() => {
     const start = (upcomingBookingsPage - 1) * ITEMS_PER_PAGE;
-    return upcoming.slice(start, start + ITEMS_PER_PAGE);
-  }, [upcoming, upcomingBookingsPage]);
+    return dynamicUpcomingBookings.slice(start, start + ITEMS_PER_PAGE);
+  }, [dynamicUpcomingBookings, upcomingBookingsPage]);
 
   const availabilityGridData = useMemo(() => {
     return Object.keys(slotCalendar || {}).map(dateStr => {
@@ -836,7 +891,7 @@ export const MentorScheduleScreen = () => {
           <View style={styles.tabContent}>
             <Text style={styles.sectionTitle}>All Upcoming Bookings</Text>
 
-            {loadingUpcoming && upcoming.length === 0 ? (
+            {loadingUpcoming && dynamicUpcomingBookings.length === 0 ? (
               <View style={styles.loadingWrapper}>
                 <ActivityIndicator size="large" color="#4c1d95" />
                 <Text style={styles.loadingText}>Fetching upcoming bookings...</Text>
@@ -847,12 +902,14 @@ export const MentorScheduleScreen = () => {
                   const studentName = session.student_full_name || session.student_name || session.student?.split('@')[0] || "Student";
                   const avatarColor = getAvatarColors(studentName);
                   
-                  const dateObj = new Date(session.session_date);
-                  const dateLabel = dateObj.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+                  const dateObj = new Date(session.session_date || session.date);
+                  const dateLabel = isNaN(dateObj.getTime())
+                    ? (session.session_date || session.date || "TBD")
+                    : dateObj.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
                   const timeLabel = formatTime(session.from_time);
 
                   return (
-                    <Animated.View key={session.name} entering={FadeInUp.delay(100 + i * 50)} style={styles.bookedCard}>
+                    <Animated.View key={session.name || session.id || i} entering={FadeInUp.delay(100 + i * 50)} style={styles.bookedCard}>
                       <View style={styles.cardTop}>
                         <View style={[styles.avatar, { backgroundColor: avatarColor.bg }]}>
                           <Text style={[styles.avatarText, { color: avatarColor.text }]}>{getInitials(studentName)}</Text>

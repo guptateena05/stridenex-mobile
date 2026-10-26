@@ -30,7 +30,9 @@ import {
   getProjectApplicationCount,
   createSkill,
   createCourse,
-  createDepartment
+  createDepartment,
+  getApplications,
+  getApplicationsCount
 } from '@/api/industry.services';
 import DynamicForm from '@/components/forms/DynamicForm';
 import { FormField } from '@/components/forms/DynamicField';
@@ -66,9 +68,10 @@ export const IndustryProjectsScreen = () => {
 
     try {
       setLoading(true);
-      const [listRes, countRes] = await Promise.all([
-        getProjectList(companyName),
-        getProjectApplicationCount(companyName)
+      const [listRes, appsRes, countRes] = await Promise.all([
+        getProjectList(companyName).catch(() => null),
+        getApplications({ opportunity_type: 'Project', industry: companyName }).catch(() => null),
+        getApplicationsCount({ opportunity_type: 'Project', industry: companyName }).catch(() => null)
       ]);
 
       const dataObj = listRes?.data || (listRes?.message && typeof listRes.message === 'object' ? listRes.message : null) || listRes || {};
@@ -87,12 +90,48 @@ export const IndustryProjectsScreen = () => {
         }
       }
 
-      setProjects(projectList);
+      const rawApps = appsRes?.data?.data 
+        || appsRes?.message?.data 
+        || (Array.isArray(appsRes?.data) ? appsRes.data : []) 
+        || (Array.isArray(appsRes?.message) ? appsRes.message : []) 
+        || (Array.isArray(appsRes) ? appsRes : []);
+      const appsList = Array.isArray(rawApps) ? rawApps : [];
+
+      const mappedProjects = projectList.map((p: any) => {
+        const pId = p.name || "";
+        const pTitle = p.project_name || "";
+        const matchingApps = appsList.filter((a: any) => {
+          return a.project === pId ||
+                 a.project === pTitle ||
+                 (pTitle && a.project?.startsWith(pTitle)) ||
+                 (pId && a.project?.startsWith(pId));
+        });
+        const applied = matchingApps.length;
+        const shortlisted = matchingApps.filter((a: any) => 
+          ["shortlisted", "selected", "accepted", "tech interview", "hr"].includes((a.status || "").toLowerCase())
+        ).length;
+        return {
+          ...p,
+          applied_count: applied,
+          shortlisted_count: shortlisted
+        };
+      });
+
+      setProjects(mappedProjects);
+
+      let totalApps = appsList.length;
+      if (countRes) {
+        const cData = countRes?.data || countRes?.message?.data || countRes?.message || countRes;
+        if (typeof cData === 'object' && cData !== null) {
+          const sum = Object.values(cData).reduce((acc: number, val: any) => acc + (typeof val === 'number' ? val : 0), 0);
+          if (sum > totalApps) totalApps = sum;
+        }
+      }
 
       setStats({
-        active: projectList.filter((p: any) => p.status === 'Active').length,
-        applications: countRes?.data?.total_applications || countRes?.message?.total_applications || 0,
-        awarded: projectList.reduce((acc: number, p: any) => acc + (p.shortlisted_count || 0), 0),
+        active: mappedProjects.filter((p: any) => p.status === 'Active').length,
+        applications: totalApps,
+        awarded: mappedProjects.reduce((acc: number, p: any) => acc + (p.shortlisted_count || 0), 0),
         ppo: 0
       });
     } catch (err) {
@@ -450,7 +489,7 @@ export const IndustryProjectsScreen = () => {
                   <Animated.View entering={FadeInUp.delay(350 + index * 50)} style={[styles.projectCard, { borderLeftWidth: 4, borderLeftColor: accentColor, marginBottom: 0 }]}>
                     <TouchableOpacity
                       activeOpacity={0.7}
-                      onPress={() => navigation.navigate('Pipeline', { type: 'Project', project: project.project_name || project.name })}
+                      onPress={() => navigation.navigate('Pipeline', { type: 'Project', project: project.name || project.project_name })}
                     >
                       <View style={styles.cardHeaderRow}>
                         <View style={styles.iconBox}>

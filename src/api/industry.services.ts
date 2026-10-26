@@ -324,6 +324,20 @@ export const deleteProject = async (projectName: string) => {
 
 export const getProjectApplicationCount = async (industry: string) => {
   try {
+    const countRes = await api.get(
+      'method/stridenex_app.stridenex_app.doctype.student_applications.student_applications.get_applications_count',
+      { params: { opportunity_type: "Project", industry } }
+    ).catch(() => null);
+
+    if (countRes) {
+      const resPayload = (countRes as any)?.data || countRes;
+      const data = resPayload?.data || resPayload?.message?.data || resPayload?.message || resPayload;
+      if (typeof data === "object" && data !== null) {
+        const total = Object.values(data).reduce((acc: number, val: any) => acc + (typeof val === "number" ? val : 0), 0);
+        return { data: { total_applications: total }, message: { total_applications: total } };
+      }
+    }
+
     const response = await api.get(
       'method/stridenex_app.stridenex_app.doctype.student_project_enrollment.student_project_enrollment.get_application_count_by_industry',
       { params: { industry } }
@@ -331,7 +345,7 @@ export const getProjectApplicationCount = async (industry: string) => {
     return response.data;
   } catch (error) {
     console.error("Error fetching project application count:", error);
-    throw error;
+    return { data: { total_applications: 0 }, message: { total_applications: 0 } };
   }
 };
 

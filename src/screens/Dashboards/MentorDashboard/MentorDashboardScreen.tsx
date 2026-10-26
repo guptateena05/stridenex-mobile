@@ -111,25 +111,31 @@ export const MentorDashboardScreen = () => {
       if (statsRes?.message) {
         setDashboardStats(statsRes.message);
       }
-      if (upcomingRes?.message && Array.isArray(upcomingRes.message)) {
-        setUpcoming(upcomingRes.message);
-      } else {
-        setUpcoming([]);
-      }
-      if (pendingRes?.message) {
-        setPending(pendingRes.message.records || []);
-        setPendingRequestsCount(pendingRes.message.total_pending_count || 0);
-      } else {
-        setPending([]);
-        setPendingRequestsCount(0);
-      }
-      if (verifyQueueRes?.message) {
-        setVerifyQueue(verifyQueueRes.message.records || []);
-        setTotalPendingCount(verifyQueueRes.message.total_pending_count || 0);
-      } else {
-        setVerifyQueue([]);
-        setTotalPendingCount(0);
-      }
+      const upcomingList = upcomingRes?.message?.records 
+        || upcomingRes?.message?.data 
+        || (Array.isArray(upcomingRes?.message) ? upcomingRes.message : []) 
+        || upcomingRes?.data?.records 
+        || upcomingRes?.data 
+        || [];
+      setUpcoming(Array.isArray(upcomingList) ? upcomingList : []);
+
+      const pendingList = pendingRes?.message?.records 
+        || pendingRes?.message?.data 
+        || (Array.isArray(pendingRes?.message) ? pendingRes.message : []) 
+        || pendingRes?.data?.records 
+        || pendingRes?.data 
+        || [];
+      setPending(Array.isArray(pendingList) ? pendingList : []);
+      setPendingRequestsCount(pendingRes?.message?.total_pending_count ?? (Array.isArray(pendingList) ? pendingList.length : 0));
+
+      const verifyList = verifyQueueRes?.message?.records 
+        || verifyQueueRes?.message?.data 
+        || (Array.isArray(verifyQueueRes?.message) ? verifyQueueRes.message : []) 
+        || verifyQueueRes?.data?.records 
+        || verifyQueueRes?.data 
+        || [];
+      setVerifyQueue(Array.isArray(verifyList) ? verifyList : []);
+      setTotalPendingCount(verifyQueueRes?.message?.total_pending_count ?? (Array.isArray(verifyList) ? verifyList.length : 0));
       if (payoutDataRes) {
         setPayoutData(payoutDataRes);
       }

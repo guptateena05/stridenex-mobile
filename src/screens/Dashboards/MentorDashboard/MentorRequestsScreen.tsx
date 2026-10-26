@@ -39,7 +39,9 @@ import {
   acceptRequest, 
   declineRequest, 
   verifyAndEndorseSkill, 
-  rejectSkillEvidence 
+  rejectSkillEvidence,
+  getMentorDashboardStats,
+  getMonthlyBookedSessions
 } from '@/api/mentor.services';
 import { StatsCard } from '@/components/dashboard/StatsCard';
 import { Tabs } from '@/components/Shared/Tabs';
@@ -71,6 +73,7 @@ export const MentorRequestsScreen = () => {
   const [loadingRequests, setLoadingRequests] = useState(true);
   const [acceptingId, setAcceptingId] = useState<string | null>(null);
   const [decliningId, setDecliningId] = useState<string | null>(null);
+  const [approvedThisMonth, setApprovedThisMonth] = useState<number>(0);
 
   // Verification Queue States
   const [verifyQueue, setVerifyQueue] = useState<any[]>([]);
@@ -160,13 +163,13 @@ export const MentorRequestsScreen = () => {
     if (!isSilent) setLoadingRequests(true);
     try {
       const response = await getPendingRequests(userName);
-      let list = [];
-      if (response?.message?.records && Array.isArray(response.message.records)) {
-        list = response.message.records;
-      } else if (Array.isArray(response?.message)) {
-        list = response.message;
-      }
-      setRequests(list);
+      const records = response?.message?.records 
+        || response?.message?.data 
+        || (Array.isArray(response?.message) ? response.message : []) 
+        || response?.data?.records 
+        || response?.data 
+        || [];
+      setRequests(Array.isArray(records) ? records : []);
     } catch (err) {
       console.error("Failed to fetch booking requests:", err);
     } finally {
@@ -179,13 +182,14 @@ export const MentorRequestsScreen = () => {
     if (!isSilent) setLoadingVerify(true);
     try {
       const response = await getMentorPendingVerifications(userName, 0);
-      if (response?.message) {
-        setVerifyQueue(response.message.records || []);
-        setTotalPendingCount(response.message.total_pending_count || 0);
-      } else {
-        setVerifyQueue([]);
-        setTotalPendingCount(0);
-      }
+      const records = response?.message?.records 
+        || response?.message?.data 
+        || (Array.isArray(response?.message) ? response.message : []) 
+        || response?.data?.records 
+        || response?.data 
+        || [];
+      setVerifyQueue(Array.isArray(records) ? records : []);
+      setTotalPendingCount(response?.message?.total_pending_count ?? (Array.isArray(records) ? records.length : 0));
     } catch (err) {
       console.error("Failed to fetch verification queue:", err);
     } finally {
@@ -193,12 +197,57 @@ export const MentorRequestsScreen = () => {
     }
   }, [userName]);
 
+  const fetchApprovedStats = useCallback(async () => {
+    if (!userName) return;
+    try {
+      const [statsRes, monthlyRes] = await Promise.all([
+        getMentorDashboardStats(userName).catch(() => null),
+        getMonthlyBookedSessions(userName).catch(() => null)
+      ]);
+
+      let count = 0;
+      if (statsRes?.message) {
+        const s = statsRes.message;
+        if (typeof s.approved_sessions_this_month === 'number') {
+          count = s.approved_sessions_this_month;
+        } else if (typeof s.approved_this_month === 'number') {
+          count = s.approved_this_month;
+        } else if (typeof s.sessions_this_month === 'number') {
+          count = s.sessions_this_month;
+        } else if (s.this_month && typeof s.this_month.sessions_completed === 'number') {
+          count = s.this_month.sessions_completed;
+        }
+      }
+
+      if (count === 0 && monthlyRes) {
+        const monthlyList = monthlyRes?.message?.records 
+          || monthlyRes?.message?.data 
+          || (Array.isArray(monthlyRes?.message) ? monthlyRes.message : []) 
+          || monthlyRes?.data?.records 
+          || monthlyRes?.data 
+          || [];
+        if (Array.isArray(monthlyList)) {
+          const approvedSessions = monthlyList.filter((item: any) => {
+            const st = (item.status || "").toLowerCase();
+            return st === "approved" || st === "confirmed" || st === "booked" || st === "completed";
+          });
+          count = approvedSessions.length > 0 ? approvedSessions.length : monthlyList.length;
+        }
+      }
+
+      setApprovedThisMonth(count);
+    } catch (err) {
+      console.error("Failed to fetch approved stats:", err);
+    }
+  }, [userName]);
+
   const fetchData = useCallback(async (isSilent = false) => {
     await Promise.all([
       fetchRequests(isSilent),
-      fetchVerifyQueue(isSilent)
+      fetchVerifyQueue(isSilent),
+      fetchApprovedStats()
     ]);
-  }, [fetchRequests, fetchVerifyQueue]);
+  }, [fetchRequests, fetchVerifyQueue, fetchApprovedStats]);
 
   useEffect(() => {
     fetchData();
@@ -221,6 +270,7 @@ export const MentorRequestsScreen = () => {
       });
       Alert.alert("Success", "Request accepted successfully.");
       fetchRequests(true);
+      fetchApprovedStats();
     } catch (err: any) {
       console.error("Failed to accept request:", err);
       Alert.alert("Error", err?.message || "Failed to accept request.");
@@ -340,8 +390,8 @@ export const MentorRequestsScreen = () => {
   const summaryStats = useMemo(() => [
     { label: "Pending Requests", value: requests.length, icon: UserPlus, color: "#EF4444" },
     { label: "Pending Skills", value: totalPendingCount, icon: ShieldCheck, color: "#F59E0B" },
-    { label: "Approved (Month)", value: 31, icon: CheckCircle, color: "#10B981" }
-  ], [requests.length, totalPendingCount]);
+    { label: "Approved (Month)", value: approvedThisMonth, icon: CheckCircle, color: "#10B981" }
+  ], [requests.length, totalPendingCount, approvedThisMonth]);
 
   const tabOptions = [
     { label: `Requests (${requests.length})`, value: 'bookings' },

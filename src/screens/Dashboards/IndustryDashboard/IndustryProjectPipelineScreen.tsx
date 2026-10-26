@@ -36,7 +36,7 @@ import {
 } from 'lucide-react-native';
 import Animated, { FadeInUp, FadeInRight } from 'react-native-reanimated';
 import { useIndustry } from '@/context/IndustryContext';
-import { getProjectApplicationList, getStudentByEmail, updateProjectApplicationStatus } from '@/api/industry.services';
+import { getProjectApplicationList, getStudentByEmail, updateProjectApplicationStatus, getApplications } from '@/api/industry.services';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -95,10 +95,23 @@ export const IndustryProjectPipelineScreen = ({ route, navigation }: any) => {
 
   const fetchApplications = useCallback(async (name: string, projName?: string) => {
     try {
-      if (!refreshing) setLoading(true);
-      const response = await getProjectApplicationList(name, projName);
+      let response = await getProjectApplicationList(name, projName).catch(() => null);
+      let apiData = response?.message?.data || response?.data || [];
 
-      const apiData = response?.message?.data || response?.data || [];
+      // Fallback: Query Student Applications for Project
+      if (!Array.isArray(apiData) || apiData.length === 0) {
+        try {
+          const appsRes = await getApplications({ opportunity_type: "Project", industry: name, project: projName }).catch(() => null);
+          const rawApps = appsRes?.data?.data || appsRes?.message?.data || (Array.isArray(appsRes?.data) ? appsRes.data : []) || (Array.isArray(appsRes?.message) ? appsRes.message : []) || (Array.isArray(appsRes) ? appsRes : []);
+          if (Array.isArray(rawApps) && rawApps.length > 0) {
+            apiData = projName 
+              ? rawApps.filter((a: any) => a.project === projName || a.project?.includes(projName) || projName.includes(a.project))
+              : rawApps;
+          }
+        } catch (e) {
+          // ignore
+        }
+      }
 
       if (Array.isArray(apiData)) {
         const newCandidates: Record<string, ProjectCandidate[]> = {
