@@ -7,7 +7,8 @@ import {
   TouchableOpacity, 
   ActivityIndicator, 
   Alert,
-  Linking
+  Linking,
+  AppState
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '@/theme/colors';
@@ -85,7 +86,7 @@ async function handleSelectPlan(
     // Use URLSearchParams to ensure identical query parameter encoding as web (e.g. + for spaces)
     const paymentParams = new URLSearchParams({
       from_site: fromSite,
-      frontend_url: "http://localhost:3000",
+      frontend_url: "https://devstridenex.quantcloud.in/student/dashboard/plans",
       pkg_name: plan.package_name || "",
       pkg_type: plan.package_type || "",
       pkg_app: plan.app_name || plan.app || "",
@@ -483,6 +484,16 @@ export const StudentPlansScreen = () => {
 
   useEffect(() => {
     fetchData();
+
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      if (nextAppState === 'active') {
+        fetchData();
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
   }, [userName]);
 
   if (loading) {

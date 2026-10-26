@@ -12,11 +12,21 @@ import { RootStackParamList } from './types';
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 const linking: LinkingOptions<any> = {
-  prefixes: ['stridenex://'],
+  prefixes: ['stridenex://', 'https://devstridenex.quantcloud.in'],
   config: {
     screens: {
-      Login: 'login',
+      Auth: {
+        screens: {
+          Login: 'login',
+        },
+      },
       CertificateVerify: 'certificate-verify/:id',
+      Dashboard: {
+        screens: {
+          Plans: 'plans',
+          'student/dashboard/plans': 'student/dashboard/plans',
+        },
+      },
     },
   },
 };

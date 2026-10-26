@@ -106,7 +106,7 @@ async function handleSelectPlan(
     // Use URLSearchParams to ensure identical query parameter encoding as web (e.g. + for spaces)
     const paymentParams = new URLSearchParams({
       from_site: fromSite,
-      frontend_url: "stridenex://",
+      frontend_url: "https://devstridenex.quantcloud.in/industry/dashboard/plan",
       pkg_name: plan.package_name || "",
       pkg_type: plan.package_type || "",
       pkg_app: plan.app_name || plan.app || "",
