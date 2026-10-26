@@ -25,10 +25,13 @@ import {
   Award, 
   TrendingUp,
   X,
-  ChevronDown
+  ChevronDown,
+  Pencil,
+  Trash2
 } from 'lucide-react-native';
 import Animated, { FadeInUp } from 'react-native-reanimated';
-import { getSuccessStories, createSuccessStory } from '@/api/student.services';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getStudentByEmail, getSuccessStories, createSuccessStory, updateSuccessStory, deleteSuccessStory } from '@/api/student.services';
 import { useAuth } from '@/context/AuthContext';
 
 const { width } = Dimensions.get('window');
@@ -47,7 +50,8 @@ export const SuccessStoriesWidget: React.FC<SuccessStoriesWidgetProps> = ({
   collegeName, 
   collegeDetailsName 
 }) => {
-  const { userName } = useAuth();
+  const { userName, userFullName } = useAuth();
+  const [studentData, setStudentData] = useState<any>(null);
   const [stories, setStories] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const scrollViewRef = useRef<ScrollView>(null);
@@ -55,6 +59,8 @@ export const SuccessStoriesWidget: React.FC<SuccessStoriesWidgetProps> = ({
   // Modal & form state
   const [modalVisible, setModalVisible] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [editingStory, setEditingStory] = useState<any | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [category, setCategory] = useState("Placement");
   const [status, setStatus] = useState("Published");
   const [title, setTitle] = useState("");
@@ -104,9 +110,140 @@ export const SuccessStoriesWidget: React.FC<SuccessStoriesWidgetProps> = ({
     }
   };
 
+  const fetchStudentProfile = async (email: string) => {
+    try {
+      const res = await getStudentByEmail(email);
+      const data = res?.data || res?.message?.data || res?.message;
+      if (data && typeof data === 'object') {
+        setStudentData(data);
+        await AsyncStorage.setItem(`studentDetails_${email}`, JSON.stringify(data));
+        return data;
+      }
+    } catch (err) {
+      console.error("Failed to fetch student profile in widget:", err);
+    }
+    return null;
+  };
+
   useEffect(() => {
     fetchStories();
-  }, [collegeName, collegeDetailsName]);
+
+    const loadStudentData = async () => {
+      if (!userName) return;
+      try {
+        const cached = await AsyncStorage.getItem(`studentDetails_${userName}`);
+        if (cached) {
+          setStudentData(JSON.parse(cached));
+        }
+        await fetchStudentProfile(userName);
+      } catch (err) {
+        console.error("Failed to load student details in widget:", err);
+      }
+    };
+    loadStudentData();
+  }, [collegeName, collegeDetailsName, userName]);
+
+  const isMyStory = (story: any): boolean => {
+    if (!story || (!userName && !studentData && !userFullName)) return false;
+
+    const clean = (str: any) => (typeof str === 'string' ? str.trim().toLowerCase() : '');
+
+    const storyStudent = clean(story.student);
+    const storyOwner = clean(story.owner);
+    const storyEmail = clean(story.student_email || story.email);
+
+    const authEmail = clean(userName);
+    const authFullName = clean(userFullName);
+    const profileId = clean(studentData?.name);
+    const profileEmail = clean(studentData?.email_id);
+    const profileFullName = clean(
+      studentData?.full_name ||
+      `${studentData?.first_name || ''} ${studentData?.last_name || ''}`.trim()
+    );
+
+    if (authEmail) {
+      if (storyStudent === authEmail || storyOwner === authEmail || storyEmail === authEmail) {
+        return true;
+      }
+      const userPrefix = authEmail.split('@')[0];
+      if (userPrefix && storyStudent === userPrefix) {
+        return true;
+      }
+    }
+
+    if (profileId && (storyStudent === profileId || storyOwner === profileId)) {
+      return true;
+    }
+
+    if (profileEmail && (storyStudent === profileEmail || storyOwner === profileEmail || storyEmail === profileEmail)) {
+      return true;
+    }
+
+    if (authFullName && storyStudent && storyStudent === authFullName) {
+      return true;
+    }
+
+    if (profileFullName && storyStudent && storyStudent === profileFullName) {
+      return true;
+    }
+
+    return false;
+  };
+
+  const handleOpenCreate = () => {
+    setEditingStory(null);
+    setTitle("");
+    setMetric("");
+    setTestimonial("");
+    setCategory("Placement");
+    setStatus("Published");
+    setCategoryDropdownOpen(false);
+    setStatusDropdownOpen(false);
+    setModalVisible(true);
+  };
+
+  const handleEditStory = (story: any) => {
+    setEditingStory(story);
+    setTitle(story.outcome_title || "");
+    setMetric(story.outcome_metric || "");
+    setTestimonial(story.testimonial || "");
+    setCategory(story.outcome_category || "Placement");
+    setStatus(story.status || "Published");
+    setCategoryDropdownOpen(false);
+    setStatusDropdownOpen(false);
+    setModalVisible(true);
+  };
+
+  const handleDeleteStory = (story: any) => {
+    const storyId = story.id || story.name;
+    if (!storyId) return;
+
+    Alert.alert(
+      "Delete Success Story",
+      `Are you sure you want to delete "${story.outcome_title || 'this story'}"? This action cannot be undone.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              setDeletingId(storyId);
+              await deleteSuccessStory({ id: storyId });
+              Alert.alert("Success", "Your success story has been deleted.");
+              fetchStories();
+            } catch (err: any) {
+              console.error("Error deleting story:", err);
+              const errorMsg = err?.response?.data?.message || err?.message || "Failed to delete success story.";
+              Alert.alert("Delete Failed", errorMsg);
+            } finally {
+              setDeletingId(null);
+            }
+          }
+        }
+      ]
+    );
+  };
 
   const handleSubmit = async () => {
     if (!title.trim()) {
@@ -121,38 +258,65 @@ export const SuccessStoriesWidget: React.FC<SuccessStoriesWidgetProps> = ({
     setSubmitting(true);
     
     try {
-      if (!userName) {
-        Alert.alert("Error", "Could not resolve user details. Please verify your login session.");
-        setSubmitting(false);
-        return;
+      if (editingStory) {
+        const storyId = editingStory.id || editingStory.name;
+        const payload = {
+          id: storyId,
+          name: storyId,
+          story_id: storyId,
+          student: editingStory.student || studentData?.name || userName,
+          outcome_category: category,
+          outcome_title: title.trim(),
+          outcome_metric: metric.trim() || null,
+          testimonial: testimonial.trim(),
+          status: status
+        };
+
+        console.log("Updating Success Story payload (Widget):", payload);
+        await updateSuccessStory(payload);
+        Alert.alert("Success", "Your success story has been updated!");
+      } else {
+        let resolvedStudentId = studentData?.name;
+        if (!resolvedStudentId && userName) {
+          const freshProfile = await fetchStudentProfile(userName);
+          resolvedStudentId = freshProfile?.name;
+        }
+        
+        const studentId = resolvedStudentId || userName;
+        if (!studentId) {
+          Alert.alert("Error", "Could not resolve user details. Please verify your login session.");
+          setSubmitting(false);
+          return;
+        }
+
+        const payload = {
+          student: studentId,
+          outcome_category: category,
+          outcome_title: title.trim(),
+          outcome_metric: metric.trim() || null,
+          testimonial: testimonial.trim(),
+          status: status
+        };
+
+        await createSuccessStory(payload);
+        Alert.alert("Success", "Your success story has been published!");
       }
-
-      const payload = {
-        student: userName,
-        outcome_category: category,
-        outcome_title: title,
-        outcome_metric: metric || null,
-        testimonial: testimonial,
-        status: status
-      };
-
-      await createSuccessStory(payload);
-
-      Alert.alert("Success", "Your success story has been published!");
       
       // Reset form
+      setModalVisible(false);
+      setEditingStory(null);
       setTitle("");
       setMetric("");
       setTestimonial("");
       setCategory("Placement");
       setStatus("Published");
-      setModalVisible(false);
       
       // Refresh list
       fetchStories();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error submitting story:", error);
-      Alert.alert("Error", "Failed to publish your success story. Please try again.");
+      const errorMsg = error?.response?.data?.message || error?.message || `Failed to ${editingStory ? "update" : "publish"} your success story.`;
+      Alert.alert(editingStory ? "Update Failed" : "Submission Failed", errorMsg);
     } finally {
       setSubmitting(false);
     }
@@ -227,7 +391,7 @@ export const SuccessStoriesWidget: React.FC<SuccessStoriesWidgetProps> = ({
         {!isCollege && (
           <TouchableOpacity 
             style={styles.headerBtn}
-            onPress={() => setModalVisible(true)}
+            onPress={handleOpenCreate}
           >
             <Text style={styles.headerBtnText}>Share Story</Text>
           </TouchableOpacity>
@@ -254,6 +418,8 @@ export const SuccessStoriesWidget: React.FC<SuccessStoriesWidgetProps> = ({
             const displayName = getStudentDisplayName(story);
             const initials = getInitials(story);
             const avatarStyle = getAvatarStyle(story);
+            const canManage = isMyStory(story);
+            const storyId = story.id || story.name;
             
             let leftBarColor = '#EC4899';
             let badgeBg = 'rgba(236, 72, 153, 0.06)';
@@ -311,8 +477,33 @@ export const SuccessStoriesWidget: React.FC<SuccessStoriesWidgetProps> = ({
                       <Text style={styles.userCollege} numberOfLines={1}>{story.college || "StrideNex Student"}</Text>
                     </View>
                   </View>
-                  <View style={[styles.successBadge, { backgroundColor: badgeBg, borderColor: badgeBorder }]}>
-                    <Text style={[styles.successBadgeText, { color: badgeText }]}>{story.outcome_category}</Text>
+                  <View style={styles.headerRightActions}>
+                    <View style={[styles.successBadge, { backgroundColor: badgeBg, borderColor: badgeBorder }]}>
+                      <Text style={[styles.successBadgeText, { color: badgeText }]}>{story.outcome_category}</Text>
+                    </View>
+                    {!isCollege && canManage && (
+                      <View style={styles.cardActionsRow}>
+                        <TouchableOpacity 
+                          style={styles.cardActionBtn} 
+                          onPress={() => handleEditStory(story)}
+                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        >
+                          <Pencil size={11} color="#F97316" />
+                        </TouchableOpacity>
+                        <TouchableOpacity 
+                          style={styles.cardActionBtn} 
+                          onPress={() => handleDeleteStory(story)}
+                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                          disabled={deletingId === storyId}
+                        >
+                          {deletingId === storyId ? (
+                            <ActivityIndicator size={10} color="#EF4444" />
+                          ) : (
+                            <Trash2 size={11} color="#EF4444" />
+                          )}
+                        </TouchableOpacity>
+                      </View>
+                    )}
                   </View>
                 </View>
 
@@ -368,21 +559,21 @@ export const SuccessStoriesWidget: React.FC<SuccessStoriesWidgetProps> = ({
                 {/* Modal Header */}
                 <View style={styles.modalHeader}>
                   <View style={styles.modalHeaderTitleBox}>
-                <View style={styles.modalHeaderIconBg}>
-                  <Sparkles size={16} color="#FFF" />
+                    <View style={styles.modalHeaderIconBg}>
+                      {editingStory ? <Pencil size={16} color="#FFF" /> : <Sparkles size={16} color="#FFF" />}
+                    </View>
+                    <View>
+                      <Text style={styles.modalTitle}>{editingStory ? "Edit Your Success" : "Share Your Success"}</Text>
+                      <Text style={styles.modalSubtitle}>{editingStory ? "Update your story details" : "Inspire others with your story"}</Text>
+                    </View>
+                  </View>
+                  <TouchableOpacity 
+                    style={styles.closeBtn}
+                    onPress={() => setModalVisible(false)}
+                  >
+                    <X size={20} color="#64748B" />
+                  </TouchableOpacity>
                 </View>
-                <View>
-                  <Text style={styles.modalTitle}>Share Your Success</Text>
-                  <Text style={styles.modalSubtitle}>Inspire others with your story</Text>
-                </View>
-              </View>
-              <TouchableOpacity 
-                style={styles.closeBtn}
-                onPress={() => setModalVisible(false)}
-              >
-                <X size={20} color="#64748B" />
-              </TouchableOpacity>
-            </View>
 
             {/* Modal Form */}
             <ScrollView contentContainerStyle={styles.formContainer} showsVerticalScrollIndicator={false}>
@@ -505,7 +696,7 @@ export const SuccessStoriesWidget: React.FC<SuccessStoriesWidgetProps> = ({
                   {submitting ? (
                     <ActivityIndicator size="small" color="#FFF" />
                   ) : (
-                    <Text style={styles.submitBtnText}>Publish Story</Text>
+                    <Text style={styles.submitBtnText}>{editingStory ? "Update Story" : "Publish Story"}</Text>
                   )}
                 </TouchableOpacity>
               </View>
@@ -636,6 +827,26 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: '#64748B',
     fontWeight: '500',
+  },
+  headerRightActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  cardActionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  cardActionBtn: {
+    width: 24,
+    height: 24,
+    borderRadius: 6,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   successBadge: {
     paddingHorizontal: 8,

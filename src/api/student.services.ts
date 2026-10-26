@@ -872,6 +872,45 @@ export const createSuccessStory = async (data: any) => {
 };
 
 /**
+ * Update a success story.
+ */
+export const updateSuccessStory = async (data: any) => {
+  try {
+    const storyId = data?.id || data?.name || data?.story_id;
+    const response = await api.post(
+      `method/stridenex_app.stridenex_app.doctype.success_story.success_story.update_success_story?id=${encodeURIComponent(storyId || "")}`,
+      {
+        ...data,
+        id: storyId,
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error updating success story:", error);
+    throw error;
+  }
+};
+
+/**
+ * Delete a success story.
+ */
+export const deleteSuccessStory = async (id: string | { id?: string; name?: string }) => {
+  try {
+    const storyId = typeof id === "string" ? id : (id?.id || id?.name || "");
+    const response = await api.post(
+      `method/stridenex_app.stridenex_app.doctype.success_story.success_story.delete_success_story?id=${encodeURIComponent(storyId || "")}`,
+      {
+        id: storyId,
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error deleting success story:", error);
+    throw error;
+  }
+};
+
+/**
  * Fetch educational shorts feed.
  */
 export const getShortsFeed = async (userEmail?: string) => {

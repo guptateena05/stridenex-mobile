@@ -27,18 +27,20 @@ import {
   TrendingUp,
   History,
   X,
-  ChevronDown
+  ChevronDown,
+  Pencil,
+  Trash2
 } from 'lucide-react-native';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '@/context/AuthContext';
-import { getStudentByEmail, getSuccessStories, createSuccessStory } from '@/api/student.services';
+import { getStudentByEmail, getSuccessStories, createSuccessStory, updateSuccessStory, deleteSuccessStory } from '@/api/student.services';
 
 const categories = ["Placement", "Startup", "Internship", "Higher Studies", "Other"];
 const statuses = ["Draft", "Published", "Archived"];
 
 export const StudentStoriesScreen = () => {
-  const { userName } = useAuth();
+  const { userName, userFullName } = useAuth();
   
   const [storiesList, setStoriesList] = useState<any[]>([]);
   const [loadingStories, setLoadingStories] = useState(true);
@@ -48,6 +50,8 @@ export const StudentStoriesScreen = () => {
   // Modal & form state
   const [modalVisible, setModalVisible] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [editingStory, setEditingStory] = useState<any | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [category, setCategory] = useState("Placement");
   const [status, setStatus] = useState("Published");
   const [title, setTitle] = useState("");
@@ -111,6 +115,108 @@ export const StudentStoriesScreen = () => {
     fetchStories(false);
   };
 
+  const isMyStory = (story: any): boolean => {
+    if (!story || (!userName && !studentData && !userFullName)) return false;
+
+    const clean = (str: any) => (typeof str === 'string' ? str.trim().toLowerCase() : '');
+
+    const storyStudent = clean(story.student);
+    const storyOwner = clean(story.owner);
+    const storyEmail = clean(story.student_email || story.email);
+
+    const authEmail = clean(userName);
+    const authFullName = clean(userFullName);
+    const profileId = clean(studentData?.name);
+    const profileEmail = clean(studentData?.email_id);
+    const profileFullName = clean(
+      studentData?.full_name ||
+      `${studentData?.first_name || ''} ${studentData?.last_name || ''}`.trim()
+    );
+
+    if (authEmail) {
+      if (storyStudent === authEmail || storyOwner === authEmail || storyEmail === authEmail) {
+        return true;
+      }
+      const userPrefix = authEmail.split('@')[0];
+      if (userPrefix && storyStudent === userPrefix) {
+        return true;
+      }
+    }
+
+    if (profileId && (storyStudent === profileId || storyOwner === profileId)) {
+      return true;
+    }
+
+    if (profileEmail && (storyStudent === profileEmail || storyOwner === profileEmail || storyEmail === profileEmail)) {
+      return true;
+    }
+
+    if (authFullName && storyStudent && storyStudent === authFullName) {
+      return true;
+    }
+
+    if (profileFullName && storyStudent && storyStudent === profileFullName) {
+      return true;
+    }
+
+    return false;
+  };
+
+  const handleOpenCreate = () => {
+    setEditingStory(null);
+    setTitle("");
+    setMetric("");
+    setTestimonial("");
+    setCategory("Placement");
+    setStatus("Published");
+    setCategoryDropdownOpen(false);
+    setStatusDropdownOpen(false);
+    setModalVisible(true);
+  };
+
+  const handleEditStory = (story: any) => {
+    setEditingStory(story);
+    setTitle(story.outcome_title || "");
+    setMetric(story.outcome_metric || "");
+    setTestimonial(story.testimonial || "");
+    setCategory(story.outcome_category || "Placement");
+    setStatus(story.status || "Published");
+    setCategoryDropdownOpen(false);
+    setStatusDropdownOpen(false);
+    setModalVisible(true);
+  };
+
+  const handleDeleteStory = (story: any) => {
+    const storyId = story.id || story.name;
+    if (!storyId) return;
+
+    Alert.alert(
+      "Delete Success Story",
+      `Are you sure you want to delete "${story.outcome_title || 'this story'}"? This action cannot be undone.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              setDeletingId(storyId);
+              await deleteSuccessStory({ id: storyId });
+              Alert.alert("Success", "Your success story has been deleted.");
+              fetchStories(false);
+            } catch (err: any) {
+              console.error("Error deleting story:", err);
+              const errorMsg = err?.response?.data?.message || err?.message || "Failed to delete success story.";
+              Alert.alert("Delete Failed", errorMsg);
+            } finally {
+              setDeletingId(null);
+            }
+          }
+        }
+      ]
+    );
+  };
+
   const handleSubmit = async () => {
     if (!title.trim()) {
       Alert.alert("Validation Error", "Outcome Title is required.");
@@ -124,36 +230,56 @@ export const StudentStoriesScreen = () => {
     setSubmitting(true);
     
     try {
-      let resolvedStudentId = studentData?.name;
-      if (!resolvedStudentId && userName) {
-        const freshProfile = await fetchStudentProfile(userName);
-        resolvedStudentId = freshProfile?.name;
+      if (editingStory) {
+        const storyId = editingStory.id || editingStory.name;
+        const payload = {
+          id: storyId,
+          name: storyId,
+          story_id: storyId,
+          student: editingStory.student || studentData?.name || userName,
+          outcome_category: category,
+          outcome_title: title.trim(),
+          outcome_metric: metric.trim() || null,
+          testimonial: testimonial.trim(),
+          status: status
+        };
+
+        console.log("Updating Success Story payload:", payload);
+        await updateSuccessStory(payload);
+        Alert.alert("Success", "Your success story has been updated!");
+      } else {
+        let resolvedStudentId = studentData?.name;
+        if (!resolvedStudentId && userName) {
+          const freshProfile = await fetchStudentProfile(userName);
+          resolvedStudentId = freshProfile?.name;
+        }
+        
+        const studentId = resolvedStudentId || userName;
+        if (!studentId) {
+          Alert.alert("Error", "Could not resolve student details. Please verify your login session.");
+          setSubmitting(false);
+          return;
+        }
+
+        const payload = {
+          student: studentId,
+          outcome_category: category,
+          outcome_title: title.trim(),
+          outcome_metric: metric.trim() || null,
+          testimonial: testimonial.trim(),
+          status: status
+        };
+
+        console.log("Submitting Success Story payload:", payload);
+        const res = await createSuccessStory(payload);
+        console.log("Success Story creation response:", res);
+
+        Alert.alert("Success", "Your success story has been published!");
       }
-      
-      const studentId = resolvedStudentId || userName;
-      if (!studentId) {
-        Alert.alert("Error", "Could not resolve student details. Please verify your login session.");
-        setSubmitting(false);
-        return;
-      }
-
-      const payload = {
-        student: studentId,
-        outcome_category: category,
-        outcome_title: title,
-        outcome_metric: metric || null,
-        testimonial: testimonial,
-        status: status
-      };
-
-      console.log("Submitting Success Story payload:", payload);
-      const res = await createSuccessStory(payload);
-      console.log("Success Story creation response:", res);
-
-      Alert.alert("Success", "Your success story has been published!");
       
       // Reset form
       setModalVisible(false);
+      setEditingStory(null);
       setTitle("");
       setMetric("");
       setTestimonial("");
@@ -163,9 +289,9 @@ export const StudentStoriesScreen = () => {
       // Refresh list
       fetchStories(false);
     } catch (err: any) {
-      console.error("Error creating story:", err);
-      const errorMsg = err?.response?.data?.message || err?.message || "Failed to submit success story.";
-      Alert.alert("Submission Failed", errorMsg);
+      console.error("Error submitting story:", err);
+      const errorMsg = err?.response?.data?.message || err?.message || `Failed to ${editingStory ? "update" : "submit"} success story.`;
+      Alert.alert(editingStory ? "Update Failed" : "Submission Failed", errorMsg);
     } finally {
       setSubmitting(false);
     }
@@ -239,7 +365,7 @@ export const StudentStoriesScreen = () => {
               <Text style={styles.title}>Stories</Text>
             </View>
             <TouchableOpacity 
-              onPress={() => setModalVisible(true)}
+              onPress={handleOpenCreate}
               style={styles.headerBtn}
               activeOpacity={0.8}
             >
@@ -261,7 +387,7 @@ export const StudentStoriesScreen = () => {
             <Text style={styles.emptyText}>No success stories published yet.</Text>
             <TouchableOpacity 
               style={styles.emptyButton}
-              onPress={() => setModalVisible(true)}
+              onPress={handleOpenCreate}
             >
               <Text style={styles.emptyButtonText}>Be the first to share!</Text>
             </TouchableOpacity>
@@ -273,6 +399,8 @@ export const StudentStoriesScreen = () => {
               const displayName = getStudentDisplayName(story);
               const initials = getInitials(story);
               const avatarStyle = getAvatarStyle(story);
+              const canManage = isMyStory(story);
+              const storyId = story.id || story.name;
               
               let leftBarColor = '#EC4899';
               let badgeBg = 'rgba(236, 72, 153, 0.06)';
@@ -327,8 +455,33 @@ export const StudentStoriesScreen = () => {
                         <Text style={styles.userCollege} numberOfLines={1}>{story.college || "StrideNex Student"}</Text>
                       </View>
                     </View>
-                    <View style={[styles.successBadge, { backgroundColor: badgeBg, borderColor: badgeBorder }]}>
-                      <Text style={[styles.successBadgeText, { color: badgeText }]}>{story.outcome_category}</Text>
+                    <View style={styles.headerRightActions}>
+                      <View style={[styles.successBadge, { backgroundColor: badgeBg, borderColor: badgeBorder }]}>
+                        <Text style={[styles.successBadgeText, { color: badgeText }]}>{story.outcome_category}</Text>
+                      </View>
+                      {canManage && (
+                        <View style={styles.cardActionsRow}>
+                          <TouchableOpacity 
+                            style={styles.cardActionBtn} 
+                            onPress={() => handleEditStory(story)}
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                          >
+                            <Pencil size={12} color="#F97316" />
+                          </TouchableOpacity>
+                          <TouchableOpacity 
+                            style={styles.cardActionBtn} 
+                            onPress={() => handleDeleteStory(story)}
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                            disabled={deletingId === storyId}
+                          >
+                            {deletingId === storyId ? (
+                              <ActivityIndicator size={10} color="#EF4444" />
+                            ) : (
+                              <Trash2 size={12} color="#EF4444" />
+                            )}
+                          </TouchableOpacity>
+                        </View>
+                      )}
                     </View>
                   </View>
 
@@ -375,7 +528,7 @@ export const StudentStoriesScreen = () => {
             
             <TouchableOpacity 
               style={styles.viewAllButton}
-              onPress={() => setModalVisible(true)}
+              onPress={handleOpenCreate}
               activeOpacity={0.8}
             >
               <Text style={styles.viewAllText}>Share Your Story</Text>
@@ -403,11 +556,11 @@ export const StudentStoriesScreen = () => {
             <View style={styles.modalHeader}>
               <View style={styles.modalHeaderTitleBox}>
                 <View style={styles.modalHeaderIconBg}>
-                  <Sparkles size={16} color="#FFF" />
+                  {editingStory ? <Pencil size={16} color="#FFF" /> : <Sparkles size={16} color="#FFF" />}
                 </View>
                 <View>
-                  <Text style={styles.modalTitle}>Share Your Success</Text>
-                  <Text style={styles.modalSubtitle}>Inspire others with your story</Text>
+                  <Text style={styles.modalTitle}>{editingStory ? "Edit Your Success" : "Share Your Success"}</Text>
+                  <Text style={styles.modalSubtitle}>{editingStory ? "Update your story details" : "Inspire others with your story"}</Text>
                 </View>
               </View>
               <TouchableOpacity 
@@ -539,7 +692,7 @@ export const StudentStoriesScreen = () => {
                   {submitting ? (
                     <ActivityIndicator size="small" color="#FFF" />
                   ) : (
-                    <Text style={styles.submitBtnText}>Publish Story</Text>
+                    <Text style={styles.submitBtnText}>{editingStory ? "Update Story" : "Publish Story"}</Text>
                   )}
                 </TouchableOpacity>
               </View>
@@ -674,6 +827,26 @@ const styles = StyleSheet.create({
   userMeta: { flex: 1 },
   userName: { fontSize: 13, fontWeight: '800', color: '#1E293B', marginBottom: 1 },
   userCollege: { fontSize: 10, fontWeight: '500', color: '#94A3B8' },
+  headerRightActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  cardActionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  cardActionBtn: {
+    width: 24,
+    height: 24,
+    borderRadius: 6,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   successBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, borderWidth: 1 },
   successBadgeText: { fontSize: 8, fontWeight: '700' },
   

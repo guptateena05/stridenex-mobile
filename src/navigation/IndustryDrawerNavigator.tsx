@@ -25,7 +25,8 @@ import {
   Calendar,
   School,
   Settings,
-  Users
+  Users,
+  CreditCard
 } from 'lucide-react-native';
 import { IndustrySettingsScreen } from '@/screens/Dashboards/IndustryDashboard/IndustrySettingsScreen';
 import { IndustryProjectPipelineScreen } from '@/screens/Dashboards/IndustryDashboard/IndustryProjectPipelineScreen';
@@ -103,7 +104,7 @@ export const IndustryDrawerNavigator = () => {
         name="Plans"
         component={IndustryPlansScreen}
         options={{
-          drawerIcon: ({ color, size }) => <School color={color} size={size} />
+          drawerIcon: ({ color, size }) => <CreditCard color={color} size={size} />
         }}
       />
       <Drawer.Screen

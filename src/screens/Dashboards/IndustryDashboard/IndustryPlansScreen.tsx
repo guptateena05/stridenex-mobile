@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   View, 
   Text, 
@@ -7,8 +7,11 @@ import {
   TouchableOpacity, 
   ActivityIndicator, 
   Alert,
-  Linking
+  Linking,
+  AppState,
+  RefreshControl
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '@/theme/colors';
 import { typography } from '@/theme/typography';
@@ -27,7 +30,9 @@ import {
   Users,
   ChevronDown,
   ChevronUp,
-  IndianRupee
+  IndianRupee,
+  CheckCircle2,
+  ShieldCheck
 } from 'lucide-react-native';
 import Animated, { FadeInUp, FadeInRight } from 'react-native-reanimated';
 import { useAuth } from '@/context/AuthContext';
@@ -131,26 +136,71 @@ async function handleSelectPlan(
   }
 }
 
+function extractActivePlan(dash: any) {
+  if (!dash) return null;
+  const data = dash.data || dash;
+
+  // 1. Direct active_subscription object
+  if (data.active_subscription && typeof data.active_subscription === 'object' && Object.keys(data.active_subscription).length > 0) {
+    return { kind: "paid", data: data.active_subscription };
+  }
+
+  // 2. Nested under dash.data
+  if (dash.data?.active_subscription && typeof dash.data.active_subscription === 'object' && Object.keys(dash.data.active_subscription).length > 0) {
+    return { kind: "paid", data: dash.data.active_subscription };
+  }
+
+  // 3. Current active plan from history list (is_active === 1 or true, or paid and not expired)
+  const historyList = Array.isArray(data.history) ? data.history : (Array.isArray(dash.history) ? dash.history : []);
+  const activeHistory = historyList.find((h: any) => {
+    const isActive = h.is_active === 1 || h.is_active === true || String(h.is_active).toLowerCase() === 'true';
+    const isPaid = (h.payment_status || "").toLowerCase() === "paid";
+    const remainingDays = h.expiry_date ? calcRemainingDays(h.expiry_date) : 1;
+    return (isActive && remainingDays > 0) || (isPaid && remainingDays > 0);
+  });
+  if (activeHistory) {
+    return { kind: "paid", data: activeHistory };
+  }
+
+  // 4. From summary if current_package exists and is not 'No Active Plan'
+  const summaryObj = data.summary || dash.summary || dash.data?.summary;
+  if (summaryObj?.current_package && summaryObj.current_package !== "No Active Plan") {
+    const matchHistory = historyList.find((h: any) => h.package_name === summaryObj.current_package);
+    return {
+      kind: "paid",
+      data: matchHistory || {
+        package_name: summaryObj.current_package,
+        package_type: summaryObj.current_package_type || "Day Based",
+        expiry_date: summaryObj.next_expiry || "",
+        is_active: true,
+        payment_status: "Paid",
+      }
+    };
+  }
+
+  // 5. Free or current_plan
+  const currentPlan = data.current_plan || dash.current_plan || dash.data?.current_plan;
+  if (currentPlan && typeof currentPlan === 'object' && Object.keys(currentPlan).length > 0) {
+    return { kind: "free", data: currentPlan };
+  }
+
+  return null;
+}
+
 const ActivePlanSection = ({ plan }: { plan: any }) => {
   const isPaid = plan.kind === "paid";
-  const isTokenBased = plan.kind === "free" && plan.data.package_type === "Token Based";
+  const isTokenBased = plan.kind === "free" && plan.data?.package_type === "Token Based";
 
   const expiryDateStr = isPaid
-    ? plan.data.expiry_date
-    : plan.data.to_date ?? "";
+    ? plan.data?.expiry_date
+    : plan.data?.to_date ?? "";
   
   const remaining = expiryDateStr ? calcRemainingDays(expiryDateStr) : null;
   const isExpired = remaining === 0 && !isTokenBased;
 
-  const packageName = isPaid
-    ? plan.data.package_name
-    : plan.data.package_name;
-  
-  const packageType = isPaid
-    ? plan.data.package_type
-    : plan.data.package_type;
-  
-  const isFree = plan.kind === "free" && plan.data.source === "active_package";
+  const packageName = plan.data?.package_name || "Active Package";
+  const packageType = plan.data?.package_type || "Day Based";
+  const isFree = plan.kind === "free" && plan.data?.source === "active_package";
 
   if (isExpired) {
     return (
@@ -178,13 +228,13 @@ const ActivePlanSection = ({ plan }: { plan: any }) => {
     <View style={styles.activePlanContainer}>
       <View style={styles.planBannerLeft}>
         <View style={[styles.planBannerIconBg, styles.activeIconBg]}>
-          <Crown size={20} color="#10B981" />
+          <Crown size={22} color="#10B981" />
         </View>
         <View style={styles.planBannerTextContainer}>
           <View style={styles.badgeRow}>
             <View style={styles.activeBadge}>
               <View style={styles.pulseDotGreen} />
-              <Text style={styles.activeBadgeText}>Active Plan</Text>
+              <Text style={styles.activeBadgeText}>Current Active Plan</Text>
             </View>
             <Text style={styles.bannerPlanName}>{packageName}</Text>
             {isFree && (
@@ -205,7 +255,7 @@ const ActivePlanSection = ({ plan }: { plan: any }) => {
               <View style={styles.metaRowDetail}>
                 <Zap size={12} color="#10B981" />
                 <Text style={styles.metaDetailText}>
-                  {plan.data.remaining_tokens ?? 0} / {plan.data.total_tokens ?? 0} tokens
+                  {plan.data?.remaining_tokens ?? 0} / {plan.data?.total_tokens ?? 0} tokens
                 </Text>
               </View>
             ) : (
@@ -218,19 +268,27 @@ const ActivePlanSection = ({ plan }: { plan: any }) => {
             )}
 
             {expiryDateStr && !isTokenBased ? (
-              <Text style={styles.expiryDateText}>
-                Expires: {formatDate(expiryDateStr)}
-              </Text>
+              <View style={styles.metaRowDetail}>
+                <CalendarDays size={12} color="#64748B" />
+                <Text style={styles.expiryDateText}>
+                  Expires: {formatDate(expiryDateStr)}
+                </Text>
+              </View>
             ) : null}
           </View>
         </View>
+      </View>
+
+      <View style={styles.activePlanRightBadge}>
+        <CheckCircle size={12} color="#FFFFFF" />
+        <Text style={styles.activePlanRightBadgeText}>{isFree ? "Free Plan" : "Subscription Active"}</Text>
       </View>
     </View>
   );
 };
 
 const SummaryCards = ({ dashboard }: { dashboard: any }) => {
-  const { summary } = dashboard;
+  const summary = dashboard?.summary || dashboard?.data?.summary;
   if (!summary) return null;
 
   const cards = [
@@ -276,7 +334,7 @@ const SummaryCards = ({ dashboard }: { dashboard: any }) => {
 };
 
 const BillingHistoryList = ({ dashboard }: { dashboard: any }) => {
-  const history = dashboard.history || [];
+  const history = dashboard?.history || dashboard?.data?.history || [];
   const sorted = [...history].sort((a, b) => {
     const dateDiff = new Date(b.purchase_date).getTime() - new Date(a.purchase_date).getTime();
     if (dateDiff !== 0) return dateDiff;
@@ -383,11 +441,12 @@ export const IndustryPlansScreen = () => {
   const [packages, setPackages] = useState<BillingPackage[]>([]);
   const [dashboard, setDashboard] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [redirectingPlan, setRedirectingPlan] = useState<string | null>(null);
 
-  const fetchData = async () => {
-    setLoading(true);
+  const fetchData = useCallback(async (showLoading = true) => {
+    if (showLoading) setLoading(true);
     setError(null);
     try {
       const [packagesRes, dashboardRes] = await Promise.allSettled([
@@ -397,7 +456,7 @@ export const IndustryPlansScreen = () => {
 
       if (packagesRes.status === "fulfilled") {
         const res = packagesRes.value;
-        const data = res?.message?.data || res?.data || [];
+        const data = res?.message?.data || res?.data || (Array.isArray(res) ? res : []);
         setPackages(data);
       } else {
         console.warn("Failed to fetch packages on mobile", packagesRes.reason);
@@ -405,7 +464,9 @@ export const IndustryPlansScreen = () => {
       }
 
       if (dashboardRes.status === "fulfilled") {
-        setDashboard(dashboardRes.value);
+        const raw = dashboardRes.value;
+        const normalized = raw?.data || (raw?.message && typeof raw.message === 'object' && !Array.isArray(raw.message) ? raw.message : null) || raw;
+        setDashboard(normalized);
       } else {
         console.warn("Failed to fetch subscription dashboard on mobile:", dashboardRes.reason);
       }
@@ -413,13 +474,45 @@ export const IndustryPlansScreen = () => {
       console.error("Failed to fetch billing data on mobile:", err);
       setError(err.message || "Failed to load plans. Please try again.");
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
+      setRefreshing(false);
     }
-  };
+  }, []);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchData(false);
+  }, [fetchData]);
+
+  // Re-fetch whenever screen is focused (e.g. returning to tab or drawer item)
+  useFocusEffect(
+    useCallback(() => {
+      fetchData(false);
+    }, [fetchData])
+  );
 
   useEffect(() => {
-    fetchData();
-  }, [userName]);
+    fetchData(true);
+
+    // Re-fetch when returning from external payment gateway in browser
+    const appStateSub = AppState.addEventListener('change', (nextAppState) => {
+      if (nextAppState === 'active') {
+        fetchData(false);
+      }
+    });
+
+    // Re-fetch when deep linked back to app via stridenex://
+    const urlSub = Linking.addEventListener('url', (event) => {
+      if (event.url && event.url.startsWith('stridenex://')) {
+        fetchData(false);
+      }
+    });
+
+    return () => {
+      appStateSub.remove();
+      urlSub.remove();
+    };
+  }, [fetchData]);
 
   if (loading) {
     return (
@@ -438,7 +531,7 @@ export const IndustryPlansScreen = () => {
         <View style={styles.errorContainer}>
           <AlertCircle size={40} color="#EF4444" />
           <Text style={styles.errorText}>{error}</Text>
-          <TouchableOpacity style={styles.tryAgainButton} onPress={fetchData}>
+          <TouchableOpacity style={styles.tryAgainButton} onPress={() => fetchData(true)}>
             <Text style={styles.tryAgainText}>Try Again</Text>
           </TouchableOpacity>
         </View>
@@ -446,16 +539,13 @@ export const IndustryPlansScreen = () => {
     );
   }
 
-  const displayPlan = dashboard?.active_subscription
-    ? { kind: "paid", data: dashboard.active_subscription }
-    : dashboard?.current_plan
-      ? { kind: "free", data: dashboard.current_plan }
-      : null;
+  const displayPlan = extractActivePlan(dashboard);
 
   const hasActiveOrHistory =
     !!displayPlan ||
     !!dashboard?.summary?.current_package ||
-    (!!dashboard?.history && dashboard.history.length > 0);
+    !!dashboard?.data?.summary?.current_package ||
+    ((dashboard?.history || dashboard?.data?.history || []).length > 0);
 
   if (packages.length === 0 && !hasActiveOrHistory) {
     return (
@@ -472,7 +562,19 @@ export const IndustryPlansScreen = () => {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-      <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        style={styles.container} 
+        contentContainerStyle={styles.content} 
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[colors.purple[600]]}
+            tintColor={colors.purple[600]}
+          />
+        }
+      >
         {/* Header */}
         <Animated.View entering={FadeInUp.delay(100)} style={styles.header}>
           <View style={styles.headerBadge}>
@@ -503,23 +605,35 @@ export const IndustryPlansScreen = () => {
             <View style={styles.listContainer}>
               {packages.map((plan, index) => {
                 const isPopular = plan.amount === maxAmount && packages.length > 1;
+                const isCurrentPlan = !!displayPlan && 
+                  (displayPlan.data?.package_name || "").trim().toLowerCase() === (plan.package_name || "").trim().toLowerCase() &&
+                  (displayPlan.data?.expiry_date ? calcRemainingDays(displayPlan.data.expiry_date) > 0 : true);
+
                 return (
                   <Animated.View 
                     key={plan.package_name} 
                     entering={FadeInRight.delay(250 + index * 100)}
                     style={[
                       styles.planCard, 
-                      isPopular && styles.planCardPopular
+                      isPopular && styles.planCardPopular,
+                      isCurrentPlan && styles.planCardActivePlan
                     ]}
                   >
-                    {isPopular && (
+                    {isCurrentPlan ? (
+                      <View style={styles.popularBadgeWrapper}>
+                        <View style={[styles.popularBadge, styles.activePlanBadgeTop]}>
+                          <CheckCircle size={10} color="#FFFFFF" />
+                          <Text style={styles.popularBadgeText}>Active Plan</Text>
+                        </View>
+                      </View>
+                    ) : isPopular ? (
                       <View style={styles.popularBadgeWrapper}>
                         <View style={styles.popularBadge}>
                           <Sparkles size={10} color="#FFFFFF" />
                           <Text style={styles.popularBadgeText}>Best Value</Text>
                         </View>
                       </View>
-                    )}
+                    ) : null}
 
                     <Text style={styles.planName}>{plan.package_name}</Text>
                     
@@ -564,7 +678,7 @@ export const IndustryPlansScreen = () => {
                       <View style={styles.featuresContainer}>
                         {plan.features.map((feature, idx) => (
                           <View key={idx} style={styles.featureItem}>
-                            <CheckCircle size={14} color={isPopular ? colors.purple[600] : "#10B981"} />
+                            <CheckCircle size={14} color={isCurrentPlan ? "#10B981" : (isPopular ? colors.purple[600] : "#10B981")} />
                             <Text style={styles.featureText}>{feature}</Text>
                           </View>
                         ))}
@@ -576,35 +690,46 @@ export const IndustryPlansScreen = () => {
                     )}
 
                     {/* CTA Button */}
-                    <TouchableOpacity 
-                      style={[
-                        styles.ctaButton, 
-                        isPopular ? styles.ctaButtonPopular : styles.ctaButtonOutline
-                      ]}
-                      onPress={() => handleSelectPlan(plan, userName || "", setRedirectingPlan)}
-                      disabled={redirectingPlan !== null}
-                      activeOpacity={0.8}
-                    >
-                      {redirectingPlan === plan.package_name ? (
+                    {isCurrentPlan ? (
+                      <View style={[styles.ctaButton, styles.ctaButtonActivePlan]}>
                         <View style={styles.btnRow}>
-                          <ActivityIndicator size="small" color={isPopular ? "#FFFFFF" : colors.purple[600]} />
-                          <Text style={[
-                            styles.ctaButtonText, 
-                            isPopular ? styles.ctaButtonTextPopular : styles.ctaButtonTextOutline,
-                            { marginLeft: 6 }
-                          ]}>Redirecting...</Text>
+                          <CheckCircle size={14} color="#059669" />
+                          <Text style={[styles.ctaButtonText, styles.ctaButtonTextActivePlan, { marginLeft: 6 }]}>
+                            Current Active Plan
+                          </Text>
                         </View>
-                      ) : (
-                        <View style={styles.btnRow}>
-                          <Zap size={14} color={isPopular ? "#FFFFFF" : colors.purple[600]} />
-                          <Text style={[
-                            styles.ctaButtonText, 
-                            isPopular ? styles.ctaButtonTextPopular : styles.ctaButtonTextOutline,
-                            { marginLeft: 6 }
-                          ]}>Get Started</Text>
-                        </View>
-                      )}
-                    </TouchableOpacity>
+                      </View>
+                    ) : (
+                      <TouchableOpacity 
+                        style={[
+                          styles.ctaButton, 
+                          isPopular ? styles.ctaButtonPopular : styles.ctaButtonOutline
+                        ]}
+                        onPress={() => handleSelectPlan(plan, userName || "", setRedirectingPlan)}
+                        disabled={redirectingPlan !== null}
+                        activeOpacity={0.8}
+                      >
+                        {redirectingPlan === plan.package_name ? (
+                          <View style={styles.btnRow}>
+                            <ActivityIndicator size="small" color={isPopular ? "#FFFFFF" : colors.purple[600]} />
+                            <Text style={[
+                              styles.ctaButtonText, 
+                              isPopular ? styles.ctaButtonTextPopular : styles.ctaButtonTextOutline,
+                              { marginLeft: 6 }
+                            ]}>Redirecting...</Text>
+                          </View>
+                        ) : (
+                          <View style={styles.btnRow}>
+                            <Zap size={14} color={isPopular ? "#FFFFFF" : colors.purple[600]} />
+                            <Text style={[
+                              styles.ctaButtonText, 
+                              isPopular ? styles.ctaButtonTextPopular : styles.ctaButtonTextOutline,
+                              { marginLeft: 6 }
+                            ]}>Get Started</Text>
+                          </View>
+                        )}
+                      </TouchableOpacity>
+                    )}
                   </Animated.View>
                 );
               })}
@@ -681,10 +806,12 @@ const styles = StyleSheet.create({
   listContainer: { gap: 16, marginBottom: 16, marginTop: 12 },
   planCard: { backgroundColor: '#FFFFFF', borderRadius: 24, padding: 24, borderWidth: 1.5, borderColor: '#F1F5F9', borderLeftWidth: 4, borderLeftColor: colors.purple[600], shadowColor: '#64748B', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.04, shadowRadius: 12, elevation: 3 },
   planCardPopular: { borderColor: 'rgba(10, 128, 153, 0.3)', backgroundColor: '#E6F5F8', borderLeftColor: colors.purple[600] },
+  planCardActivePlan: { borderColor: '#10B981', backgroundColor: '#F0FDF4', borderLeftColor: '#10B981' },
   
   popularBadgeWrapper: { position: 'absolute', top: -10, left: 24, zIndex: 10 },
   popularBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: colors.purple[600], paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, shadowColor: colors.purple[600], shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 4 },
   popularBadgeText: { color: '#FFFFFF', fontSize: 10, fontWeight: '800' },
+  activePlanBadgeTop: { backgroundColor: '#10B981', shadowColor: '#10B981' },
   
   planName: { fontSize: 18, fontWeight: '800', color: '#1E293B', marginBottom: 8 },
   priceRow: { flexDirection: 'row', alignItems: 'baseline', gap: 2, marginBottom: 12 },
@@ -706,14 +833,18 @@ const styles = StyleSheet.create({
   ctaButton: { width: '100%', paddingVertical: 14, borderRadius: 12, alignItems: 'center' },
   ctaButtonPopular: { backgroundColor: colors.purple[600], shadowColor: colors.purple[600], shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8 },
   ctaButtonOutline: { backgroundColor: '#FFFFFF', borderWidth: 1.5, borderColor: '#E2E8F0' },
+  ctaButtonActivePlan: { backgroundColor: '#DCFCE7', borderWidth: 1.5, borderColor: '#86EFAC' },
   ctaButtonText: { fontSize: 13, fontWeight: '800' },
   ctaButtonTextPopular: { color: '#FFFFFF' },
   ctaButtonTextOutline: { color: colors.purple[600] },
+  ctaButtonTextActivePlan: { color: '#15803D' },
   
   btnRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
 
   expiredPlanContainer: { padding: 16, borderRadius: 16, borderWidth: 1, borderColor: '#FECACA', backgroundColor: '#FEF2F2' },
-  activePlanContainer: { padding: 16, borderRadius: 16, borderWidth: 1, borderColor: '#A7F3D0', backgroundColor: '#ECFDF5' },
+  activePlanContainer: { padding: 16, borderRadius: 16, borderWidth: 1.5, borderColor: '#A7F3D0', backgroundColor: '#ECFDF5', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
+  activePlanRightBadge: { backgroundColor: '#10B981', flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 5, borderRadius: 8, alignSelf: 'flex-start' },
+  activePlanRightBadgeText: { color: '#FFFFFF', fontSize: 10, fontWeight: '700' },
   planBannerLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   planBannerIconBg: { width: 40, height: 40, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
   expiredIconBg: { backgroundColor: '#FEE2E2' },

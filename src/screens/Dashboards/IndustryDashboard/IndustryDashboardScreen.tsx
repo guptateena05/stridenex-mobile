@@ -19,14 +19,19 @@ import {
   GraduationCap,
   Building2,
   MessageSquare,
-  TrendingUp
+  TrendingUp,
+  Crown,
+  ChevronRight,
+  ShieldCheck,
+  CreditCard
 } from 'lucide-react-native';
 import Animated, { FadeInUp, FadeInRight } from 'react-native-reanimated';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { StatsCard } from '@/components/dashboard/StatsCard';
 import { ReferralCardWidget } from '@/components/dashboard/ReferralCardWidget';
 import { useIndustry } from '@/context/IndustryContext';
 import { getApplicationStatusCount } from '@/api/industry.services';
+import { getUserSubscriptionDashboard } from '@/api/student.services';
 
 const industryStats = [
   { id: 1, title: "SEARCHABLE STUDENTS", value: "12,840", icon: Users, color: "#3B82F6", bg: "rgba(59, 130, 246, 0.08)" },
@@ -48,6 +53,43 @@ const initialPipelineStages = [
   { stage: "Accepted", count: 0, color: "#0D9488", apiKey: "Accepted" }
 ];
 
+const extractActivePlan = (dash: any) => {
+  if (!dash) return null;
+  const rawData = dash?.data || dash;
+  if (rawData?.active_subscription?.package_name) {
+    return rawData.active_subscription;
+  }
+  if (dash?.active_subscription?.package_name) {
+    return dash.active_subscription;
+  }
+  const history = Array.isArray(rawData?.history) ? rawData.history : (Array.isArray(dash?.history) ? dash.history : []);
+  const activeFromHistory = history.find((item: any) => {
+    const isStatusActive = ['active', 'paid', 'success'].includes(String(item?.status || item?.payment_status || '').toLowerCase());
+    const days = Number(item?.remaining_days ?? item?.remainingDays ?? 0);
+    return isStatusActive && (days > 0 || !item?.end_date || new Date(item?.end_date).getTime() >= Date.now());
+  });
+  if (activeFromHistory) {
+    return {
+      package_name: activeFromHistory.package_name || activeFromHistory.package || activeFromHistory.plan_name,
+      amount: activeFromHistory.amount || activeFromHistory.price,
+      remaining_days: activeFromHistory.remaining_days ?? activeFromHistory.remainingDays,
+      end_date: activeFromHistory.end_date || activeFromHistory.expiry_date,
+      start_date: activeFromHistory.start_date || activeFromHistory.creation,
+      payment_id: activeFromHistory.payment_id || activeFromHistory.transaction_id,
+      status: activeFromHistory.status || 'Active',
+    };
+  }
+  if (rawData?.summary?.current_package && rawData?.summary?.current_package !== 'Free') {
+    return {
+      package_name: rawData.summary.current_package,
+      remaining_days: rawData.summary.days_remaining || 0,
+      end_date: rawData.summary.expiry_date || null,
+      status: 'Active',
+    };
+  }
+  return null;
+};
+
 export const IndustryDashboardScreen = () => {
   const navigation = useNavigation<any>();
   const { userFullName, userImage } = useAuth();
@@ -56,13 +98,23 @@ export const IndustryDashboardScreen = () => {
   const [appliedCount, setAppliedCount] = React.useState(0);
   const [loadingPipeline, setLoadingPipeline] = React.useState(false);
   const [refreshing, setRefreshing] = React.useState(false);
+  const [activePlan, setActivePlan] = React.useState<any>(null);
 
-  const onRefresh = React.useCallback(async () => {
-    setRefreshing(true);
-    await refreshIndustryData();
-    await fetchPipelineCounts();
-    setRefreshing(false);
-  }, [refreshIndustryData]);
+  const fetchSubscription = React.useCallback(async () => {
+    try {
+      const dash = await getUserSubscriptionDashboard();
+      const plan = extractActivePlan(dash);
+      setActivePlan(plan);
+    } catch (err) {
+      console.log("Error fetching industry subscription in overview:", err);
+    }
+  }, []);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      fetchSubscription();
+    }, [fetchSubscription])
+  );
 
   const fetchPipelineCounts = React.useCallback(async () => {
     const companyName = industryData?.company_name || industryData?.name;
@@ -101,6 +153,16 @@ export const IndustryDashboardScreen = () => {
     fetchPipelineCounts();
   }, [fetchPipelineCounts]);
 
+  const onRefresh = React.useCallback(async () => {
+    setRefreshing(true);
+    await Promise.allSettled([
+      refreshIndustryData(),
+      fetchPipelineCounts(),
+      fetchSubscription(),
+    ]);
+    setRefreshing(false);
+  }, [refreshIndustryData, fetchPipelineCounts, fetchSubscription]);
+
   const dynamicStats = React.useMemo(() => [
     { id: 1, title: "SEARCHABLE STUDENTS", value: "0", icon: Users, color: "#0A8099", bg: "rgba(10, 128, 153, 0.08)" },
     { id: 2, title: "APPLICATIONS RECEIVED", value: loadingPipeline ? "..." : appliedCount.toString(), icon: ClipboardList, color: "#64748B", bg: "rgba(100, 116, 139, 0.08)" },
@@ -137,6 +199,84 @@ export const IndustryDashboardScreen = () => {
               progress={100}
               theme="purple"
             />
+          </Animated.View>
+
+          {/* Dedicated Active Subscription Plan Module */}
+          <Animated.View entering={FadeInUp.delay(180)} style={styles.subscriptionModuleWrapper}>
+            {activePlan ? (
+              <TouchableOpacity 
+                style={styles.activePlanCard} 
+                activeOpacity={0.88}
+                onPress={() => navigation.navigate('Plans')}
+              >
+                <View style={styles.activePlanHeader}>
+                  <View style={styles.activePlanLiveTag}>
+                    <View style={styles.pulseDot} />
+                    <Text style={styles.activePlanLiveText}>CURRENT ACTIVE PLAN</Text>
+                  </View>
+                  <View style={styles.activePlanBadge}>
+                    <ShieldCheck size={12} color="#059669" />
+                    <Text style={styles.activePlanBadgeText}>Active Subscription</Text>
+                  </View>
+                </View>
+
+                <View style={styles.activePlanBody}>
+                  <View style={styles.activePlanIconWrap}>
+                    <Crown size={22} color="#7C3AED" />
+                  </View>
+                  <View style={styles.activePlanDetails}>
+                    <Text style={styles.activePlanName} numberOfLines={1}>
+                      {activePlan.package_name || 'Industry Pro Package'}
+                    </Text>
+                    <Text style={styles.activePlanValidity}>
+                      {activePlan.remaining_days !== undefined
+                        ? `✓ Full Access • ${activePlan.remaining_days} days remaining`
+                        : activePlan.end_date
+                        ? `✓ Valid until ${activePlan.end_date}`
+                        : '✓ Pro Package Features Active'}
+                    </Text>
+                  </View>
+                  <View style={styles.activePlanArrow}>
+                    <ChevronRight size={18} color="#64748B" />
+                  </View>
+                </View>
+
+                <View style={styles.activePlanFooter}>
+                  <View style={styles.activePlanFeatureRow}>
+                    <CheckCircle2 size={13} color="#10B981" />
+                    <Text style={styles.activePlanFeatureText}>Candidate Database & Hiring Unlocked</Text>
+                  </View>
+                  <Text style={styles.managePlanLink}>Manage Plan →</Text>
+                </View>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity 
+                style={styles.upgradePlanCard} 
+                activeOpacity={0.88}
+                onPress={() => navigation.navigate('Plans')}
+              >
+                <View style={styles.upgradePlanLeft}>
+                  <View style={styles.upgradeIconWrap}>
+                    <Crown size={20} color="#7C3AED" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                      <Text style={styles.upgradeTitle}>Industry Pro Package</Text>
+                      <View style={styles.proTag}>
+                        <Text style={styles.proTagText}>PRO</Text>
+                      </View>
+                    </View>
+                    <Text style={styles.upgradeSubtitle} numberOfLines={1}>
+                      Unlock student database & unlimited postings
+                    </Text>
+                  </View>
+                </View>
+                <View style={styles.upgradeBtn}>
+                  <Text style={styles.upgradeBtnText}>View Plans</Text>
+                  <ChevronRight size={13} color="#FFFFFF" />
+                </View>
+              </TouchableOpacity>
+            )}
           </Animated.View>
         </View>
 
@@ -268,5 +408,181 @@ const styles = StyleSheet.create({
   actionBtn: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14, paddingHorizontal: 16, borderRadius: 12, borderWidth: 1, borderColor: '#E2E8F0', marginBottom: 12 },
   actionIconBox: { width: 32, height: 32, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
   actionBtnText: { fontSize: 14, fontWeight: '700', color: '#334155' },
+  subscriptionModuleWrapper: {
+    marginBottom: 14,
+  },
+  activePlanCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1.5,
+    borderColor: '#A7F3D0',
+    shadowColor: '#059669',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 3,
+  },
+  activePlanHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  activePlanLiveTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#ECFDF5',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 999,
+  },
+  pulseDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#10B981',
+  },
+  activePlanLiveText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#065F46',
+    letterSpacing: 0.5,
+  },
+  activePlanBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#D1FAE5',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  activePlanBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#047857',
+  },
+  activePlanBody: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  activePlanIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: 'rgba(124, 58, 237, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  activePlanDetails: {
+    flex: 1,
+  },
+  activePlanName: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#0F172A',
+    marginBottom: 3,
+  },
+  activePlanValidity: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#059669',
+  },
+  activePlanArrow: {
+    paddingLeft: 8,
+  },
+  activePlanFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+  },
+  activePlanFeatureRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  activePlanFeatureText: {
+    fontSize: 11,
+    color: '#475569',
+    fontWeight: '500',
+  },
+  managePlanLink: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.purple[600],
+  },
+  upgradePlanCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    shadowColor: '#64748B',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  upgradePlanLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1,
+    marginRight: 12,
+  },
+  upgradeIconWrap: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    backgroundColor: 'rgba(124, 58, 237, 0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  proTag: {
+    backgroundColor: '#7C3AED',
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 4,
+  },
+  proTagText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
+  },
+  upgradeTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  upgradeSubtitle: {
+    fontSize: 11,
+    color: '#64748B',
+    fontWeight: '500',
+  },
+  upgradeBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: colors.purple[600],
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+  },
+  upgradeBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
   footerSpacer: { height: 40 }
 });
