@@ -13,7 +13,8 @@ import {
   TextInput,
   KeyboardAvoidingView,
   TouchableWithoutFeedback,
-  Keyboard
+  Keyboard,
+  ToastAndroid
 } from 'react-native';
 import { colors } from '@/theme/colors';
 import { typography } from '@/theme/typography';
@@ -27,7 +28,8 @@ import {
   X,
   ChevronDown,
   Pencil,
-  Trash2
+  Trash2,
+  Check
 } from 'lucide-react-native';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -70,6 +72,15 @@ export const SuccessStoriesWidget: React.FC<SuccessStoriesWidgetProps> = ({
   // Dropdown UI visibility states
   const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
   const [statusDropdownOpen, setStatusDropdownOpen] = useState(false);
+  const [deleteConfirmStory, setDeleteConfirmStory] = useState<any | null>(null);
+
+  const showToast = (message: string) => {
+    if (Platform.OS === 'android') {
+      ToastAndroid.show(message, ToastAndroid.SHORT);
+    } else {
+      Alert.alert("Success", message);
+    }
+  };
   
   const fetchStories = async () => {
     try {
@@ -215,34 +226,27 @@ export const SuccessStoriesWidget: React.FC<SuccessStoriesWidgetProps> = ({
   };
 
   const handleDeleteStory = (story: any) => {
-    const storyId = story.id || story.name;
+    setDeleteConfirmStory(story);
+  };
+
+  const confirmDeleteStory = async () => {
+    if (!deleteConfirmStory) return;
+    const storyId = deleteConfirmStory.id || deleteConfirmStory.name;
     if (!storyId) return;
 
-    Alert.alert(
-      "Delete Success Story",
-      `Are you sure you want to delete "${story.outcome_title || 'this story'}"? This action cannot be undone.`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              setDeletingId(storyId);
-              await deleteSuccessStory({ id: storyId });
-              Alert.alert("Success", "Your success story has been deleted.");
-              fetchStories();
-            } catch (err: any) {
-              console.error("Error deleting story:", err);
-              const errorMsg = err?.response?.data?.message || err?.message || "Failed to delete success story.";
-              Alert.alert("Delete Failed", errorMsg);
-            } finally {
-              setDeletingId(null);
-            }
-          }
-        }
-      ]
-    );
+    try {
+      setDeletingId(storyId);
+      await deleteSuccessStory({ id: storyId });
+      showToast("Story deleted successfully");
+      setDeleteConfirmStory(null);
+      fetchStories();
+    } catch (err: any) {
+      console.error("Error deleting story:", err);
+      const errorMsg = err?.response?.data?.message || err?.message || "Failed to delete success story.";
+      Alert.alert("Delete Failed", errorMsg);
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   const handleSubmit = async () => {
@@ -258,13 +262,23 @@ export const SuccessStoriesWidget: React.FC<SuccessStoriesWidgetProps> = ({
     setSubmitting(true);
     
     try {
+      const studentEmail =
+        (editingStory?.student && editingStory.student.includes("@") ? editingStory.student : null) ||
+        editingStory?.student_email ||
+        editingStory?.email ||
+        studentData?.email_id ||
+        studentData?.email ||
+        userName ||
+        (await AsyncStorage.getItem("userEmail")) ||
+        "";
+
       if (editingStory) {
         const storyId = editingStory.id || editingStory.name;
         const payload = {
           id: storyId,
           name: storyId,
           story_id: storyId,
-          student: editingStory.student || studentData?.name || userName,
+          student: studentEmail,
           outcome_category: category,
           outcome_title: title.trim(),
           outcome_metric: metric.trim() || null,
@@ -274,23 +288,16 @@ export const SuccessStoriesWidget: React.FC<SuccessStoriesWidgetProps> = ({
 
         console.log("Updating Success Story payload (Widget):", payload);
         await updateSuccessStory(payload);
-        Alert.alert("Success", "Your success story has been updated!");
+        showToast("Story updated successfully");
       } else {
-        let resolvedStudentId = studentData?.name;
-        if (!resolvedStudentId && userName) {
-          const freshProfile = await fetchStudentProfile(userName);
-          resolvedStudentId = freshProfile?.name;
-        }
-        
-        const studentId = resolvedStudentId || userName;
-        if (!studentId) {
+        if (!studentEmail) {
           Alert.alert("Error", "Could not resolve user details. Please verify your login session.");
           setSubmitting(false);
           return;
         }
 
         const payload = {
-          student: studentId,
+          student: studentEmail,
           outcome_category: category,
           outcome_title: title.trim(),
           outcome_metric: metric.trim() || null,
@@ -299,7 +306,7 @@ export const SuccessStoriesWidget: React.FC<SuccessStoriesWidgetProps> = ({
         };
 
         await createSuccessStory(payload);
-        Alert.alert("Success", "Your success story has been published!");
+        showToast("Story published successfully");
       }
       
       // Reset form
@@ -707,6 +714,48 @@ export const SuccessStoriesWidget: React.FC<SuccessStoriesWidgetProps> = ({
     </TouchableWithoutFeedback>
   </Modal>
 
+      {/* Delete Confirmation Modal */}
+      <Modal
+        visible={Boolean(deleteConfirmStory)}
+        transparent
+        animationType="fade"
+        onRequestClose={() => !deletingId && setDeleteConfirmStory(null)}
+      >
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' }}>
+          <View style={{ backgroundColor: '#FFFFFF', padding: 24, borderRadius: 16, width: '85%', alignItems: 'center' }}>
+            <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: '#FEF2F2', justifyContent: 'center', alignItems: 'center', marginBottom: 16 }}>
+              <Trash2 size={24} color="#DC2626" />
+            </View>
+            <Text style={{ fontSize: 16, fontWeight: 'bold', marginBottom: 8, textAlign: 'center', color: '#1E293B' }}>
+              Delete Success Story
+            </Text>
+            <Text style={{ fontSize: 13, color: '#64748B', textAlign: 'center', marginBottom: 20, lineHeight: 18 }}>
+              Are you sure you want to delete "{deleteConfirmStory?.outcome_title || 'this story'}"? This action cannot be undone.
+            </Text>
+            <View style={{ flexDirection: 'row', width: '100%', justifyContent: 'space-between' }}>
+              <TouchableOpacity
+                style={{ flex: 1, marginRight: 8, padding: 12, borderRadius: 12, borderWidth: 1, borderColor: '#E2E8F0', alignItems: 'center' }}
+                onPress={() => setDeleteConfirmStory(null)}
+                disabled={deletingId !== null}
+              >
+                <Text style={{ color: '#64748B', fontWeight: 'bold' }}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{ flex: 1, marginLeft: 8, backgroundColor: '#DC2626', padding: 12, borderRadius: 12, alignItems: 'center' }}
+                onPress={confirmDeleteStory}
+                disabled={deletingId !== null}
+              >
+                {deletingId ? (
+                  <ActivityIndicator size="small" color="#FFF" />
+                ) : (
+                  <Text style={{ color: 'white', fontWeight: 'bold' }}>Delete</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
     </View>
   );
 };
@@ -1081,4 +1130,5 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#FFF',
   },
+
 });

@@ -860,10 +860,18 @@ export const getSuccessStories = async () => {
  */
 export const createSuccessStory = async (data: any) => {
   try {
+    let studentEmail = data?.student;
+    if (!studentEmail || typeof studentEmail !== "string" || !studentEmail.includes("@")) {
+      const storedEmail = await AsyncStorage.getItem("userEmail");
+      if (storedEmail) {
+        studentEmail = storedEmail;
+      }
+    }
     const response = await api.post(
       "method/stridenex_app.stridenex_app.doctype.success_story.success_story.create_success_story",
       {
         ...data,
+        student: studentEmail,
         status: data?.status || "Published",
       }
     );
@@ -880,11 +888,19 @@ export const createSuccessStory = async (data: any) => {
 export const updateSuccessStory = async (data: any) => {
   try {
     const storyId = data?.id || data?.name || data?.story_id;
+    let studentEmail = data?.student;
+    if (!studentEmail || typeof studentEmail !== "string" || !studentEmail.includes("@")) {
+      const storedEmail = await AsyncStorage.getItem("userEmail");
+      if (storedEmail) {
+        studentEmail = storedEmail;
+      }
+    }
     const response = await api.post(
       `method/stridenex_app.stridenex_app.doctype.success_story.success_story.update_success_story?id=${encodeURIComponent(storyId || "")}`,
       {
         ...data,
         id: storyId,
+        student: studentEmail,
         status: data?.status || "Published",
       }
     );
