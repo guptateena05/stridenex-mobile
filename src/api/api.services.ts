@@ -32,7 +32,20 @@ api.interceptors.request.use(
         console.log("AFTER TOKEN FETCH", token ? "Token exists" : "No token");
       }
 
-      if (token) {
+      const isAuthRoute =
+        typeof config.url === "string" &&
+        (config.url.includes("login") ||
+          config.url.includes("signup") ||
+          config.url.includes("forgot_password") ||
+          config.url.includes("reset_user_password") ||
+          config.url.includes("send_email_otp") ||
+          config.url.includes("validate_email_otp") ||
+          config.url.includes("send_mobile_otp") ||
+          config.url.includes("validate_mobile_otp") ||
+          config.url.includes("send_verification_otp") ||
+          config.url.includes("verify_verification_otp"));
+
+      if (!isAuthRoute && token) {
         config.headers.Authorization = `token ${token}`;
       }
 
