@@ -94,6 +94,9 @@ async function handleSelectPlan(
       pkg_amount: plan.amount !== undefined && plan.amount !== null ? String(plan.amount) : "",
       account_type: "Mentor",
       customer_email: customerEmail || "",
+      platform: "mobile",
+      is_mobile: "true",
+      mobile_url: "stridenex://plans",
     });
 
     // Use standard URL constructor to correctly resolve page path relative to base billing domain

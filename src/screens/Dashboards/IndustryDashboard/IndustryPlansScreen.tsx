@@ -116,6 +116,9 @@ async function handleSelectPlan(
       account_type: "Industry",
       customer_email: customerEmail || "",
       is_tax_inclusive: isInclusive ? "1" : "0",
+      platform: "mobile",
+      is_mobile: "true",
+      mobile_url: "stridenex://plans",
     });
 
     const proceedPaymentUrl = `${billingOrigin}/proceedpayment.html?${paymentParams.toString()}`;
