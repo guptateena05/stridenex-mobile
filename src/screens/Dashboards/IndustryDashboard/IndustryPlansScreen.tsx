@@ -283,8 +283,8 @@ const ActivePlanSection = ({ plan }: { plan: any }) => {
       </View>
 
       <View style={styles.activePlanRightBadge}>
-        <CheckCircle size={12} color="#FFFFFF" />
-        <Text style={styles.activePlanRightBadgeText}>{isFree ? "Free Plan" : "Subscription Active"}</Text>
+        <CheckCircle size={13} color="#FFFFFF" />
+        <Text style={styles.activePlanRightBadgeText}>{isFree ? "Free" : "Active"}</Text>
       </View>
     </View>
   );
@@ -608,9 +608,10 @@ export const IndustryPlansScreen = () => {
             <View style={styles.listContainer}>
               {packages.map((plan, index) => {
                 const isPopular = plan.amount === maxAmount && packages.length > 1;
+                const activeExpiry = displayPlan?.data?.expiry_date || displayPlan?.data?.to_date;
                 const isCurrentPlan = !!displayPlan && 
                   (displayPlan.data?.package_name || "").trim().toLowerCase() === (plan.package_name || "").trim().toLowerCase() &&
-                  (displayPlan.data?.expiry_date ? calcRemainingDays(displayPlan.data.expiry_date) > 0 : true);
+                  (activeExpiry ? calcRemainingDays(activeExpiry) > 0 : true);
 
                 return (
                   <Animated.View 
@@ -845,10 +846,10 @@ const styles = StyleSheet.create({
   btnRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
 
   expiredPlanContainer: { padding: 16, borderRadius: 16, borderWidth: 1, borderColor: '#FECACA', backgroundColor: '#FEF2F2' },
-  activePlanContainer: { padding: 16, borderRadius: 16, borderWidth: 1.5, borderColor: '#A7F3D0', backgroundColor: '#ECFDF5', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
-  activePlanRightBadge: { backgroundColor: '#10B981', flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 5, borderRadius: 8, alignSelf: 'flex-start' },
+  activePlanContainer: { padding: 16, borderRadius: 16, borderWidth: 1.5, borderColor: '#A7F3D0', backgroundColor: '#ECFDF5', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
+  activePlanRightBadge: { backgroundColor: '#10B981', flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 5, borderRadius: 8, flexShrink: 0, alignSelf: 'center' },
   activePlanRightBadgeText: { color: '#FFFFFF', fontSize: 10, fontWeight: '700' },
-  planBannerLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  planBannerLeft: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12 },
   planBannerIconBg: { width: 40, height: 40, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
   expiredIconBg: { backgroundColor: '#FEE2E2' },
   activeIconBg: { backgroundColor: '#D1FAE5' },

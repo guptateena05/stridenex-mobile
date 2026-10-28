@@ -214,6 +214,11 @@ const ActivePlanSection = ({ plan }: { plan: any }) => {
           </View>
         </View>
       </View>
+
+      <View style={styles.activePlanRightBadge}>
+        <CheckCircle size={13} color="#FFFFFF" />
+        <Text style={styles.activePlanRightBadgeText}>{isFree ? "Free" : "Active"}</Text>
+      </View>
     </View>
   );
 };
@@ -581,23 +586,36 @@ export const StudentPlansScreen = () => {
             <View style={styles.listContainer}>
               {packages.map((plan, index) => {
                 const isPopular = plan.amount === maxAmount && packages.length > 1;
+                const activeExpiry = displayPlan?.data?.expiry_date || displayPlan?.data?.to_date;
+                const isCurrentPlan = !!displayPlan && 
+                  (displayPlan.data?.package_name || "").trim().toLowerCase() === (plan.package_name || "").trim().toLowerCase() &&
+                  (activeExpiry ? calcRemainingDays(activeExpiry) > 0 : true);
+
                 return (
                   <Animated.View 
                     key={plan.package_name} 
                     entering={FadeInRight.delay(250 + index * 100)}
                     style={[
                       styles.planCard, 
-                      isPopular && styles.planCardPopular
+                      isPopular && styles.planCardPopular,
+                      isCurrentPlan && styles.planCardActivePlan
                     ]}
                   >
-                    {isPopular && (
+                    {isCurrentPlan ? (
+                      <View style={styles.popularBadgeWrapper}>
+                        <View style={[styles.popularBadge, styles.activePlanBadgeTop]}>
+                          <CheckCircle size={10} color="#FFFFFF" />
+                          <Text style={styles.popularBadgeText}>Active Plan</Text>
+                        </View>
+                      </View>
+                    ) : isPopular ? (
                       <View style={styles.popularBadgeWrapper}>
                         <View style={styles.popularBadge}>
                           <Sparkles size={10} color="#FFFFFF" />
                           <Text style={styles.popularBadgeText}>Best Value</Text>
                         </View>
                       </View>
-                    )}
+                    ) : null}
 
                     <Text style={styles.planName}>{plan.package_name}</Text>
                     
@@ -627,7 +645,7 @@ export const StudentPlansScreen = () => {
                       <View style={styles.featuresContainer}>
                         {plan.features.map((feature, idx) => (
                           <View key={idx} style={styles.featureItem}>
-                            <CheckCircle size={14} color={isPopular ? "#FF6B00" : "#10B981"} />
+                            <CheckCircle size={14} color={isCurrentPlan ? "#10B981" : (isPopular ? "#FF6B00" : "#10B981")} />
                             <Text style={styles.featureText}>{feature}</Text>
                           </View>
                         ))}
@@ -639,35 +657,46 @@ export const StudentPlansScreen = () => {
                     )}
 
                     {/* CTA Button */}
-                    <TouchableOpacity 
-                      style={[
-                        styles.ctaButton, 
-                        isPopular ? styles.ctaButtonPopular : styles.ctaButtonOutline
-                      ]}
-                      onPress={() => handleSelectPlan(plan, userName || "", setRedirectingPlan)}
-                      disabled={redirectingPlan !== null}
-                      activeOpacity={0.8}
-                    >
-                      {redirectingPlan === plan.package_name ? (
+                    {isCurrentPlan ? (
+                      <View style={[styles.ctaButton, styles.ctaButtonActivePlan]}>
                         <View style={styles.btnRow}>
-                          <ActivityIndicator size="small" color={isPopular ? "#FFFFFF" : "#FF6B00"} />
-                          <Text style={[
-                            styles.ctaButtonText, 
-                            isPopular ? styles.ctaButtonTextPopular : styles.ctaButtonTextOutline,
-                            { marginLeft: 6 }
-                          ]}>Redirecting...</Text>
+                          <CheckCircle size={14} color="#059669" />
+                          <Text style={[styles.ctaButtonText, styles.ctaButtonTextActivePlan, { marginLeft: 6 }]}>
+                            Current Active Plan
+                          </Text>
                         </View>
-                      ) : (
-                        <View style={styles.btnRow}>
-                          <Zap size={14} color={isPopular ? "#FFFFFF" : "#FF6B00"} />
-                          <Text style={[
-                            styles.ctaButtonText, 
-                            isPopular ? styles.ctaButtonTextPopular : styles.ctaButtonTextOutline,
-                            { marginLeft: 6 }
-                          ]}>Get Started</Text>
-                        </View>
-                      )}
-                    </TouchableOpacity>
+                      </View>
+                    ) : (
+                      <TouchableOpacity 
+                        style={[
+                          styles.ctaButton, 
+                          isPopular ? styles.ctaButtonPopular : styles.ctaButtonOutline
+                        ]}
+                        onPress={() => handleSelectPlan(plan, userName || "", setRedirectingPlan)}
+                        disabled={redirectingPlan !== null}
+                        activeOpacity={0.8}
+                      >
+                        {redirectingPlan === plan.package_name ? (
+                          <View style={styles.btnRow}>
+                            <ActivityIndicator size="small" color={isPopular ? "#FFFFFF" : "#FF6B00"} />
+                            <Text style={[
+                              styles.ctaButtonText, 
+                              isPopular ? styles.ctaButtonTextPopular : styles.ctaButtonTextOutline,
+                              { marginLeft: 6 }
+                            ]}>Redirecting...</Text>
+                          </View>
+                        ) : (
+                          <View style={styles.btnRow}>
+                            <Zap size={14} color={isPopular ? "#FFFFFF" : "#FF6B00"} />
+                            <Text style={[
+                              styles.ctaButtonText, 
+                              isPopular ? styles.ctaButtonTextPopular : styles.ctaButtonTextOutline,
+                              { marginLeft: 6 }
+                            ]}>Get Started</Text>
+                          </View>
+                        )}
+                      </TouchableOpacity>
+                    )}
                   </Animated.View>
                 );
               })}
@@ -773,10 +802,12 @@ const styles = StyleSheet.create({
   listContainer: { gap: 16, marginBottom: 16, marginTop: 12 },
   planCard: { backgroundColor: '#FFFFFF', borderRadius: 24, padding: 24, borderWidth: 1.5, borderColor: '#F1F5F9', borderLeftWidth: 4, borderLeftColor: '#E2E8F0', shadowColor: '#64748B', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.04, shadowRadius: 12, elevation: 3 },
   planCardPopular: { borderColor: '#FDBA74', backgroundColor: '#FFF7ED', borderLeftColor: '#FF6B00' },
+  planCardActivePlan: { borderColor: '#10B981', backgroundColor: '#F0FDF4', borderLeftColor: '#10B981' },
   
   popularBadgeWrapper: { position: 'absolute', top: -10, left: 24, zIndex: 10 },
   popularBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: colors.accent.DEFAULT, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, shadowColor: colors.accent.DEFAULT, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 4 },
   popularBadgeText: { color: '#FFFFFF', fontSize: 10, fontWeight: '800' },
+  activePlanBadgeTop: { backgroundColor: '#10B981', shadowColor: '#10B981' },
   
   planName: { fontSize: 18, fontWeight: '800', color: '#1E293B', marginBottom: 8 },
   priceRow: { flexDirection: 'row', alignItems: 'baseline', gap: 2, marginBottom: 12 },
@@ -798,15 +829,19 @@ const styles = StyleSheet.create({
   ctaButton: { width: '100%', paddingVertical: 14, borderRadius: 12, alignItems: 'center' },
   ctaButtonPopular: { backgroundColor: colors.accent.DEFAULT, shadowColor: colors.accent.DEFAULT, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8 },
   ctaButtonOutline: { backgroundColor: '#FFFFFF', borderWidth: 1.5, borderColor: '#E2E8F0' },
+  ctaButtonActivePlan: { backgroundColor: '#DCFCE7', borderWidth: 1.5, borderColor: '#86EFAC' },
   ctaButtonText: { fontSize: 13, fontWeight: '800' },
   ctaButtonTextPopular: { color: '#FFFFFF' },
   ctaButtonTextOutline: { color: '#FF6B00' },
+  ctaButtonTextActivePlan: { color: '#15803D' },
   
   btnRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
 
   expiredPlanContainer: { padding: 16, borderRadius: 16, borderWidth: 1, borderColor: '#FECACA', backgroundColor: '#FEF2F2' },
-  activePlanContainer: { padding: 16, borderRadius: 16, borderWidth: 1, borderColor: '#A7F3D0', backgroundColor: '#ECFDF5' },
-  planBannerLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  activePlanContainer: { padding: 16, borderRadius: 16, borderWidth: 1.5, borderColor: '#A7F3D0', backgroundColor: '#ECFDF5', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
+  activePlanRightBadge: { backgroundColor: '#10B981', flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 5, borderRadius: 8, flexShrink: 0, alignSelf: 'center' },
+  activePlanRightBadgeText: { color: '#FFFFFF', fontSize: 10, fontWeight: '700' },
+  planBannerLeft: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12 },
   planBannerIconBg: { width: 40, height: 40, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
   expiredIconBg: { backgroundColor: '#FEE2E2' },
   activeIconBg: { backgroundColor: '#D1FAE5' },
