@@ -68,6 +68,14 @@ export const EditProfileTab = () => {
     };
   }, [studentData, userName]);
 
+  useEffect(() => {
+    if (initialFormValues && Object.keys(initialFormValues).length > 0) {
+      setProfileFormValues((prev: any) => {
+        return Object.keys(prev).length === 0 ? initialFormValues : { ...initialFormValues, ...prev };
+      });
+    }
+  }, [initialFormValues]);
+
   const handleUpdateProfile = async (formData: any) => {
     if (!userName) return;
     setUpdateLoading(true);
@@ -149,7 +157,13 @@ export const EditProfileTab = () => {
     return sideEffects;
   };
 
-  const editFields: FormField[] = useMemo(() => [
+  const editFields: FormField[] = useMemo(() => {
+    const currentStream = profileFormValues.stream ?? initialFormValues.stream;
+    const currentCourseType = profileFormValues.course_type ?? initialFormValues.course_type;
+    const currentCourse = profileFormValues.course ?? initialFormValues.course;
+    const currentDepartment = profileFormValues.department ?? initialFormValues.department;
+
+    return [
     {
       fieldname: 'first_name',
       label: 'First Name',
@@ -223,11 +237,10 @@ export const EditProfileTab = () => {
       label: 'Course',
       fieldtype: 'Data',
       required: true,
-      disabled: !profileFormValues.stream || !profileFormValues.course_type,
       apiEndpoint: "method/stridenex_app.api_stridenex_app.college.master.get_courses_by_type",
-      apiParams: (profileFormValues.stream && profileFormValues.course_type) ? {
-        stream: profileFormValues.stream,
-        course_type: profileFormValues.course_type
+      apiParams: (currentStream && currentCourseType) ? {
+        stream: currentStream,
+        course_type: currentCourseType
       } : {},
       mapOptions: (data: any) => {
         const courses = data?.data?.courses || data?.courses || data?.message?.data?.courses || [];
@@ -240,10 +253,9 @@ export const EditProfileTab = () => {
       label: 'Department',
       fieldtype: 'Data',
       required: true,
-      disabled: !profileFormValues.course,
       apiEndpoint: "method/stridenex_app.stridenex_app.doctype.college_department.college_department.get_departments_by_course",
-      apiParams: profileFormValues.course ? {
-        courses: profileFormValues.course
+      apiParams: currentCourse ? {
+        courses: currentCourse
       } : {},
       mapOptions: (data: any) => {
         const depts = data?.data || data?.message?.data || [];
@@ -263,17 +275,22 @@ export const EditProfileTab = () => {
       label: 'Semester',
       fieldtype: 'Data',
       required: true,
-      disabled: !profileFormValues.department,
       apiEndpoint: "method/stridenex_app.api_stridenex_app.student.masters.get_semester",
-      apiParams: profileFormValues.department ? {
-        semester: studentDepartmentOptions.find(d => d.value === profileFormValues.department)?.semester || ""
+      apiParams: currentDepartment ? {
+        semester: studentDepartmentOptions.find(d => d.value === currentDepartment)?.semester || ""
       } : {},
       mapOptions: (data: any) => {
         let semesters = Array.isArray(data) ? data : (data?.data?.data || data?.message?.data || data?.message || data?.data || []);
         semesters = Array.isArray(semesters) ? semesters : [];
+        if (semesters.length === 0) {
+          return [1, 2, 3, 4, 5, 6, 7, 8].map(n => ({
+            value: `Semester ${n}`,
+            label: `Semester ${n}`
+          }));
+        }
         return semesters.map((sem: any) => ({
-          value: sem.name,
-          label: sem.name
+          value: sem.name || sem.semester || sem.value || String(sem),
+          label: sem.name || sem.semester || sem.label || String(sem)
         }));
       },
       layout: 'full',
@@ -337,7 +354,8 @@ export const EditProfileTab = () => {
       placeholder: 'Upload Marksheet',
       layout: 'full',
     },
-  ], [profileFormValues.stream, profileFormValues.course_type, profileFormValues.course, profileFormValues.department, studentDepartmentOptions]);
+  ];
+}, [profileFormValues, initialFormValues, studentDepartmentOptions]);
 
   if (loading) {
     return (

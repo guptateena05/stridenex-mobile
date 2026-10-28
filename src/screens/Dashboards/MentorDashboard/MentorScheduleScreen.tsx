@@ -44,6 +44,7 @@ import {
   getSlotCalendar, 
   getWeeklyBookedSessions, 
   getMonthlyBookedSessions, 
+  getPendingRequests, 
   blockTime, 
   rescheduleSession, 
   saveMentorAvailability, 
@@ -87,6 +88,7 @@ export const MentorScheduleScreen = () => {
   
   // Upcoming bookings tab state
   const [upcoming, setUpcoming] = useState<any[]>([]);
+  const [pendingRequests, setPendingRequests] = useState<any[]>([]);
   const [loadingUpcoming, setLoadingUpcoming] = useState(true);
   const [upcomingBookingsPage, setUpcomingBookingsPage] = useState<number>(1);
   
@@ -256,8 +258,12 @@ export const MentorScheduleScreen = () => {
     if (!userName) return;
     if (!isSilent) setLoadingUpcoming(true);
     try {
-      const res = await getUpcomingSessions(userName);
+      const [res, pRes] = await Promise.all([
+        getUpcomingSessions(userName).catch(e => { console.error("Error upcoming:", e); return null; }),
+        getPendingRequests(userName).catch(e => { console.error("Error pending:", e); return null; })
+      ]);
       setUpcoming(normalizeSessionList(res));
+      setPendingRequests(normalizeSessionList(pRes));
     } catch (err) {
       console.error("Failed to fetch upcoming bookings:", err);
     } finally {
@@ -603,8 +609,9 @@ export const MentorScheduleScreen = () => {
       sessionMap.set(key, s);
     });
 
-    // Also include any future sessions from weekly and monthly booked lists
-    const allBooked = [...(weeklyBooked || []), ...(monthlyBooked || [])];
+    // Also include any future sessions from weekly, monthly, and pending booking lists
+    const pendingWithFlag = (pendingRequests || []).map((p: any) => ({ ...p, isPendingRequest: true }));
+    const allBooked = [...(weeklyBooked || []), ...(monthlyBooked || []), ...pendingWithFlag];
     allBooked.forEach((s: any) => {
       const sDate = s.session_date || s.date || '';
       if (sDate >= todayStr) {
@@ -620,7 +627,7 @@ export const MentorScheduleScreen = () => {
       const dateB = `${b.session_date || b.date || ''} ${b.from_time || ''}`;
       return dateA.localeCompare(dateB);
     });
-  }, [upcoming, weeklyBooked, monthlyBooked]);
+  }, [upcoming, weeklyBooked, monthlyBooked, pendingRequests]);
 
   const totalUpcomingPages = Math.ceil(dynamicUpcomingBookings.length / ITEMS_PER_PAGE) || 1;
   const paginatedUpcoming = useMemo(() => {
@@ -932,6 +939,11 @@ export const MentorScheduleScreen = () => {
                           <Clock size={12} color="#475569" />
                           <Text style={styles.durationBadgeText}>{session.duration || 60} mins</Text>
                         </View>
+                        {(session.isPendingRequest || (session.status && session.status.toLowerCase() === 'pending')) && (
+                          <View style={{ backgroundColor: '#FEF3C7', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, borderWidth: 1, borderColor: '#FDE68A' }}>
+                            <Text style={{ fontSize: 10, fontWeight: '700', color: '#B45309' }}>Pending Approval</Text>
+                          </View>
+                        )}
                       </View>
 
                       <View style={styles.actionsRow}>

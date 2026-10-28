@@ -212,8 +212,6 @@ export const MentorRequestsScreen = () => {
           count = s.approved_sessions_this_month;
         } else if (typeof s.approved_this_month === 'number') {
           count = s.approved_this_month;
-        } else if (typeof s.sessions_this_month === 'number') {
-          count = s.sessions_this_month;
         } else if (s.this_month && typeof s.this_month.sessions_completed === 'number') {
           count = s.this_month.sessions_completed;
         }
@@ -227,11 +225,15 @@ export const MentorRequestsScreen = () => {
           || monthlyRes?.data 
           || [];
         if (Array.isArray(monthlyList)) {
+          const currentYearMonth = new Date().toISOString().slice(0, 7);
           const approvedSessions = monthlyList.filter((item: any) => {
             const st = (item.status || "").toLowerCase();
-            return st === "approved" || st === "confirmed" || st === "booked" || st === "completed";
+            const isApproved = st === "approved" || st === "confirmed" || st === "booked" || st === "completed" || st === "scheduled";
+            const sessionDate = item.session_date || item.date || "";
+            const isCurrentMonth = sessionDate ? sessionDate.startsWith(currentYearMonth) : true;
+            return isApproved && isCurrentMonth;
           });
-          count = approvedSessions.length > 0 ? approvedSessions.length : monthlyList.length;
+          count = approvedSessions.length;
         }
       }
 
