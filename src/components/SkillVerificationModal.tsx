@@ -109,16 +109,16 @@ const SkillVerificationModal: React.FC<SkillVerificationModalProps> = ({
         
         {/* Header */}
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: '#E2E8F0', backgroundColor: 'white' }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-            <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: '#EA580C', alignItems: 'center', justifyContent: 'center' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1, marginRight: 12 }}>
+            <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: '#EA580C', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                <Award size={20} color="white" />
             </View>
-            <View>
+            <View style={{ flex: 1 }}>
               <Text style={{ fontSize: 16, fontWeight: '800', color: '#0F172A' }}>Skill Assessment</Text>
-              <Text style={{ fontSize: 12, color: '#64748B', fontWeight: '600' }}>{skillName} • {skillLevel}</Text>
+              <Text style={{ fontSize: 12, color: '#64748B', fontWeight: '600' }} numberOfLines={1} ellipsizeMode="tail">{skillName} • {skillLevel}</Text>
             </View>
           </View>
-          <TouchableOpacity onPress={onClose} style={{ padding: 8, backgroundColor: '#F1F5F9', borderRadius: 20 }}>
+          <TouchableOpacity onPress={onClose} style={{ padding: 8, backgroundColor: '#F1F5F9', borderRadius: 20, flexShrink: 0 }} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
             <X size={20} color="#64748B" />
           </TouchableOpacity>
         </View>

@@ -369,8 +369,8 @@ export const StudentSkillsScreen = () => {
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Add New Skill</Text>
-              <TouchableOpacity onPress={() => setIsSkillModalVisible(false)} style={styles.closeBtn}>
-                <X size={24} color="#000" />
+              <TouchableOpacity onPress={() => setIsSkillModalVisible(false)} style={styles.closeBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                <X size={20} color="#0F172A" />
               </TouchableOpacity>
             </View>
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.modalScroll}>
@@ -393,8 +393,8 @@ export const StudentSkillsScreen = () => {
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>{selectedSkill?.name}</Text>
-              <TouchableOpacity onPress={() => setIsDetailModalVisible(false)} style={styles.closeBtn}>
-                <X size={24} color="#000" />
+              <TouchableOpacity onPress={() => setIsDetailModalVisible(false)} style={styles.closeBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                <X size={20} color="#0F172A" />
               </TouchableOpacity>
             </View>
             <View style={styles.detailBody}>
@@ -442,8 +442,8 @@ export const StudentSkillsScreen = () => {
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Add Evidence: {selectedSkill?.name}</Text>
-              <TouchableOpacity onPress={() => setIsEvidenceModalVisible(false)} style={styles.closeBtn}>
-                <X size={24} color="#000" />
+              <TouchableOpacity onPress={() => setIsEvidenceModalVisible(false)} style={styles.closeBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                <X size={20} color="#0F172A" />
               </TouchableOpacity>
             </View>
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.modalScroll}>
@@ -693,20 +693,28 @@ const styles = StyleSheet.create({
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 20,
+    alignItems: 'flex-start',
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#F1F5F9',
+    gap: 12,
   },
   modalTitle: {
+    flex: 1,
     fontSize: 18,
     fontWeight: '800',
     color: '#0F172A',
+    lineHeight: 24,
+    marginRight: 8,
   },
   closeBtn: {
     padding: 6,
     backgroundColor: '#F8FAFC',
     borderRadius: 20,
+    flexShrink: 0,
+    marginTop: -2,
   },
   modalScroll: {
     paddingBottom: 60,

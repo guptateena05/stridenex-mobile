@@ -194,19 +194,24 @@ const styles = StyleSheet.create({
   },
   cardHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
+    gap: 8,
     marginBottom: 8,
   },
   skillName: {
+    flex: 1,
     fontSize: 16,
     fontWeight: '800',
     color: '#0F172A',
     fontFamily: typography.fontFamily.display,
+    lineHeight: 22,
+    marginRight: 8,
   },
   badgesRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    flexWrap: 'wrap',
     gap: 8,
     marginBottom: 12,
   },
@@ -256,6 +261,8 @@ const styles = StyleSheet.create({
   rightAction: {
     flexDirection: 'row',
     alignItems: 'center',
+    flexShrink: 0,
+    marginTop: 1,
   },
   verifiedBadge: {
     flexDirection: 'row',
