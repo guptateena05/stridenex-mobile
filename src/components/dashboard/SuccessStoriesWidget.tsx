@@ -46,11 +46,13 @@ const statuses = ["Draft", "Published", "Archived"];
 interface SuccessStoriesWidgetProps {
   collegeName?: string;
   collegeDetailsName?: string;
+  refreshTrigger?: any;
 }
 
 export const SuccessStoriesWidget: React.FC<SuccessStoriesWidgetProps> = ({ 
   collegeName, 
-  collegeDetailsName 
+  collegeDetailsName,
+  refreshTrigger
 }) => {
   const { userName, userFullName } = useAuth();
   const [studentData, setStudentData] = useState<any>(null);
@@ -101,19 +103,46 @@ export const SuccessStoriesWidget: React.FC<SuccessStoriesWidgetProps> = ({
         }
       }
       
-      let filtered = fetchedStories.filter(s => s && s.testimonial);
+      let filtered = fetchedStories.filter(s => s && s.testimonial && String(s.testimonial).trim().length > 0);
       
       if (collegeName || collegeDetailsName) {
-        const cName = (collegeName || "").toLowerCase().trim();
-        const cdName = (collegeDetailsName || "").toLowerCase().trim();
+        const normalize = (str: string) =>
+          (str || "")
+            .toLowerCase()
+            .replace(/&/g, "and")
+            .replace(/[^a-z0-9 ]/g, " ")
+            .replace(/\s+/g, " ")
+            .trim();
+
+        const cName = normalize(collegeName || "");
+        const cdName = normalize(collegeDetailsName || "");
+
+        const matchesCollege = (target: string, query: string) => {
+          if (!target || !query) return false;
+          if (target === query) return true;
+          // Flexible substring match if query/target has meaningful length (e.g. "Shivneri College of Engineering and Polytechnic" matches "Shivneri College of Engineering")
+          if (query.length >= 4 && target.length >= 4) {
+            if (target.includes(query) || query.includes(target)) return true;
+          }
+          return false;
+        };
+
         filtered = filtered.filter(story => {
-          if (!story.college) return false;
-          const storyColl = story.college.toLowerCase().trim();
-          return (cName && storyColl === cName) || (cdName && storyColl === cdName);
+          const storyColl = normalize(story.college || story.college_name || "");
+          if (!storyColl) return false;
+          return matchesCollege(storyColl, cName) || matchesCollege(storyColl, cdName);
         });
       }
       
       setStories(filtered);
+
+      // Cache for offline / fast display
+      try {
+        const cacheKey = `successStories_${collegeName || collegeDetailsName || 'global'}`;
+        await AsyncStorage.setItem(cacheKey, JSON.stringify(filtered));
+      } catch (e) {
+        // ignore cache write error
+      }
     } catch (error) {
       console.error("Error loading success stories widget:", error);
     } finally {
@@ -137,6 +166,21 @@ export const SuccessStoriesWidget: React.FC<SuccessStoriesWidgetProps> = ({
   };
 
   useEffect(() => {
+    const loadCache = async () => {
+      try {
+        const cacheKey = `successStories_${collegeName || collegeDetailsName || 'global'}`;
+        const cached = await AsyncStorage.getItem(cacheKey);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setStories(parsed);
+          }
+        }
+      } catch (e) {
+        // ignore cache read error
+      }
+    };
+    loadCache();
     fetchStories();
 
     const loadStudentData = async () => {
@@ -152,7 +196,7 @@ export const SuccessStoriesWidget: React.FC<SuccessStoriesWidgetProps> = ({
       }
     };
     loadStudentData();
-  }, [collegeName, collegeDetailsName, userName]);
+  }, [collegeName, collegeDetailsName, userName, refreshTrigger]);
 
   const isMyStory = (story: any): boolean => {
     if (!story || (!userName && !studentData && !userFullName)) return false;

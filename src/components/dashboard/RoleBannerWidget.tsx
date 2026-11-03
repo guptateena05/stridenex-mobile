@@ -77,7 +77,6 @@ export const RoleBannerWidget = ({ fullName, date, role, progress, theme = 'oran
           </Defs>
           <Rect x="0" y="0" width="100%" height="100%" fill="url(#headerGrad)" rx={32} />
           <Circle cx="90%" cy="10%" r="80" fill="white" fillOpacity="0.12" />
-          <Circle cx="5%" cy="90%" r="50" fill="white" fillOpacity="0.08" />
         </Svg>
       </View>
 

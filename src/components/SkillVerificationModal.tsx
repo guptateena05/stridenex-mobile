@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, Modal, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Alert, SafeAreaView } from 'react-native';
+import { View, Text, Modal, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Alert, SafeAreaView, Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { X, Check, Award, AlertCircle, Zap, Shield, CheckCircle, Lightbulb, Flag } from 'lucide-react-native';
 import { getSkillTestQuestions, submitSkillTest } from '../api/student.services';
 import ConfettiCannon from 'react-native-confetti-cannon';
@@ -22,6 +23,7 @@ const SkillVerificationModal: React.FC<SkillVerificationModalProps> = ({
   onClose,
   onSuccess
 }) => {
+  const insets = useSafeAreaInsets();
   const [testMode, setTestMode] = useState<'intro' | 'test' | 'result' | 'detailed_result'>('intro');
   const [testQuestions, setTestQuestions] = useState<any[]>([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -108,7 +110,7 @@ const SkillVerificationModal: React.FC<SkillVerificationModalProps> = ({
       <SafeAreaView style={{ flex: 1, backgroundColor: '#F8FAFC' }}>
         
         {/* Header */}
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: '#E2E8F0', backgroundColor: 'white' }}>
+        <View style={[{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: '#E2E8F0', backgroundColor: 'white' }, Platform.OS === 'ios' && { paddingTop: insets.top + 12 }]}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1, marginRight: 12 }}>
             <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: '#EA580C', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                <Award size={20} color="white" />
@@ -326,7 +328,7 @@ const SkillVerificationModal: React.FC<SkillVerificationModalProps> = ({
         {testMode === 'detailed_result' && testResult && (
            <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
              {/* Header */}
-             <View style={{ padding: 20, paddingTop: 60, backgroundColor: '#FFFFFF', borderBottomWidth: 1, borderBottomColor: '#F1F5F9', flexDirection: 'row', alignItems: 'center' }}>
+             <View style={{ padding: 20, paddingTop: Platform.OS === 'ios' ? insets.top + 16 : 20, backgroundColor: '#FFFFFF', borderBottomWidth: 1, borderBottomColor: '#F1F5F9', flexDirection: 'row', alignItems: 'center' }}>
                <View style={{ width: 48, height: 48, borderRadius: 12, backgroundColor: '#EA580C', alignItems: 'center', justifyContent: 'center', marginRight: 16 }}>
                  <Shield size={24} color="#FFFFFF" />
                </View>

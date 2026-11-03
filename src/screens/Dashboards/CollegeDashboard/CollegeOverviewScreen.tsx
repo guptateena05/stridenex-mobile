@@ -896,7 +896,11 @@ export const CollegeOverviewScreen = () => {
 
         {/* Success Stories Widget */}
         <Animated.View entering={FadeInUp.delay(500)}>
-          <SuccessStoriesWidget collegeName={collegeData?.college_name} />
+          <SuccessStoriesWidget 
+            collegeName={collegeData?.college_name || collegeData?.name} 
+            collegeDetailsName={collegeData?.name || collegeData?.college_name}
+            refreshTrigger={refreshing}
+          />
         </Animated.View>
 
         {/* Referral Card */}

@@ -26,10 +26,9 @@ import {
   Server,
   Video,
   Users,
-  ChevronDown,
-  ChevronUp,
   IndianRupee
 } from 'lucide-react-native';
+import { Pagination } from '@/components/Shared/Pagination';
 import Animated, { FadeInUp, FadeInRight } from 'react-native-reanimated';
 import { useAuth } from '@/context/AuthContext';
 import { 
@@ -272,6 +271,8 @@ const SummaryCards = ({ dashboard }: { dashboard: any }) => {
 const SESSION_TYPES = ["Session Booking", "1:1 Mentorship", "Group Session"];
 const isSession = (type?: string) => type ? SESSION_TYPES.includes(type) : false;
 
+const ITEMS_PER_PAGE = 5;
+
 const HistoryTabContent = ({ dashboard, tab }: { dashboard: any; tab: 'software' | 'mentorship' }) => {
   const history = dashboard.history || [];
   const sorted = [...history].sort((a, b) => {
@@ -284,12 +285,15 @@ const HistoryTabContent = ({ dashboard, tab }: { dashboard: any; tab: 'software'
     );
   });
 
-  const [showAllSubs, setShowAllSubs] = useState(false);
+  const [softwarePage, setSoftwarePage] = useState(1);
+  const [mentorshipPage, setMentorshipPage] = useState(1);
 
   if (tab === 'software') {
     const subscriptions = sorted.filter((e) => !isSession(e.package_type));
-    const visibleSubs = showAllSubs ? subscriptions : subscriptions.slice(0, 3);
-    const hasMore = subscriptions.length > 3;
+    const totalPages = Math.ceil(subscriptions.length / ITEMS_PER_PAGE) || 1;
+    const safePage = Math.min(Math.max(1, softwarePage), totalPages);
+    const startIdx = (safePage - 1) * ITEMS_PER_PAGE;
+    const visibleSubs = subscriptions.slice(startIdx, startIdx + ITEMS_PER_PAGE);
 
     if (subscriptions.length === 0) {
       return (
@@ -355,29 +359,21 @@ const HistoryTabContent = ({ dashboard, tab }: { dashboard: any; tab: 'software'
           ))}
         </View>
 
-        {hasMore && (
-          <TouchableOpacity
-            onPress={() => setShowAllSubs(!showAllSubs)}
-            style={styles.showMoreBtn}
-            activeOpacity={0.8}
-          >
-            {showAllSubs ? (
-              <View style={styles.btnRow}>
-                <ChevronUp size={14} color="#6366F1" />
-                <Text style={styles.showMoreBtnText}>Show less</Text>
-              </View>
-            ) : (
-              <View style={styles.btnRow}>
-                <ChevronDown size={14} color="#6366F1" />
-                <Text style={styles.showMoreBtnText}>Show all {subscriptions.length} subscriptions</Text>
-              </View>
-            )}
-          </TouchableOpacity>
-        )}
+        <Pagination
+          currentPage={safePage}
+          totalPages={totalPages}
+          onPageChange={setSoftwarePage}
+          activeColor={colors.accent.DEFAULT}
+          style={{ marginTop: 16, borderTopWidth: 0, paddingVertical: 4 }}
+        />
       </View>
     );
   } else {
     const sessions = sorted.filter((e) => isSession(e.package_type));
+    const totalPages = Math.ceil(sessions.length / ITEMS_PER_PAGE) || 1;
+    const safePage = Math.min(Math.max(1, mentorshipPage), totalPages);
+    const startIdx = (safePage - 1) * ITEMS_PER_PAGE;
+    const visibleSessions = sessions.slice(startIdx, startIdx + ITEMS_PER_PAGE);
 
     if (sessions.length === 0) {
       return (
@@ -391,7 +387,7 @@ const HistoryTabContent = ({ dashboard, tab }: { dashboard: any; tab: 'software'
     return (
       <View style={styles.historySection}>
         <View style={styles.historyList}>
-          {sessions.map((entry) => (
+          {visibleSessions.map((entry) => (
             <View key={entry.name} style={styles.sessionHistoryCard}>
               <View style={[styles.cardSideStrip, entry.is_active ? styles.stripActiveOrange : styles.stripInactiveOrange]} />
               <View style={styles.historyCardBody}>
@@ -445,6 +441,14 @@ const HistoryTabContent = ({ dashboard, tab }: { dashboard: any; tab: 'software'
             </View>
           ))}
         </View>
+
+        <Pagination
+          currentPage={safePage}
+          totalPages={totalPages}
+          onPageChange={setMentorshipPage}
+          activeColor={colors.accent.DEFAULT}
+          style={{ marginTop: 16, borderTopWidth: 0, paddingVertical: 4 }}
+        />
       </View>
     );
   }
@@ -922,8 +926,6 @@ const styles = StyleSheet.create({
   historyCardRight: { alignItems: 'flex-end', justifyContent: 'center', minWidth: 60 },
   amountText: { fontSize: 14, fontWeight: '900', color: '#1E293B' },
   discountText: { fontSize: 9, color: '#94A3B8', marginTop: 1 },
-  showMoreBtn: { marginTop: 12, width: '100%', backgroundColor: '#EEF2FF', borderWidth: 1, borderColor: '#C7D2FE', borderRadius: 12, paddingVertical: 10, justifyContent: 'center', alignItems: 'center' },
-  showMoreBtnText: { fontSize: 11, fontWeight: '700', color: '#4F46E5' },
   sessionBadge: { backgroundColor: '#FFE4E6', paddingHorizontal: 6, paddingVertical: 1, borderRadius: 4 },
   sessionBadgeText: { fontSize: 8, fontWeight: '800', color: '#E11D48', textTransform: 'uppercase' },
   mentorRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },

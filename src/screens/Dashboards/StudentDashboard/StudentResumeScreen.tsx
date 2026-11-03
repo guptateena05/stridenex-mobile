@@ -17,7 +17,7 @@ import {
   Linking,
   RefreshControl
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { 
   FileText, 
   Plus, 
@@ -100,6 +100,7 @@ interface Project {
 
 export const StudentResumeScreen = () => {
   const { userName } = useAuth();
+  const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(true);
 
   const [educationList, setEducationList] = useState<Education[]>([]);
@@ -840,12 +841,12 @@ export const StudentResumeScreen = () => {
 
       {/* Entry Modal */}
       <Modal animationType="slide" transparent={true} visible={isModalVisible} onRequestClose={() => setIsModalVisible(false)}>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalOverlay}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={[styles.modalOverlay, Platform.OS === 'ios' && { paddingTop: insets.top + 10 }]}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>{currentSectionConfig?.title}</Text>
-              <TouchableOpacity onPress={() => setIsModalVisible(false)} style={styles.closeBtn}>
-                <X size={24} color="#000" />
+              <TouchableOpacity onPress={() => setIsModalVisible(false)} style={styles.closeBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                <X size={20} color="#0F172A" />
               </TouchableOpacity>
             </View>
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.modalScroll}>
@@ -1186,20 +1187,26 @@ const styles = StyleSheet.create({
   modalHeader: { 
     flexDirection: 'row', 
     justifyContent: 'space-between', 
-    alignItems: 'center', 
+    alignItems: 'flex-start', 
     padding: 20, 
     borderBottomWidth: 1, 
-    borderBottomColor: '#F1F5F9' 
+    borderBottomColor: '#F1F5F9',
+    gap: 12,
   },
   modalTitle: { 
+    flex: 1,
     fontSize: 16, 
     fontWeight: '800', 
-    color: '#0F172A' 
+    color: '#0F172A',
+    lineHeight: 22,
+    marginRight: 8,
   },
   closeBtn: { 
     padding: 6, 
     backgroundColor: '#F8FAFC', 
-    borderRadius: 20 
+    borderRadius: 20,
+    flexShrink: 0,
+    marginTop: -2,
   },
   modalScroll: { 
     paddingBottom: 60 

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, ActivityIndicator, Alert, Modal, TextInput } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, ActivityIndicator, Alert, Modal, TextInput, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '@/theme/colors';
 import { typography } from '@/theme/typography';
 import { spacing } from '@/theme/spacing';
@@ -34,6 +34,7 @@ import * as DocumentPicker from '@react-native-documents/picker';
 
 export const StudentJobsScreen = () => {
   const { userName } = useAuth();
+  const insets = useSafeAreaInsets();
   const [jobs, setJobs] = useState<any[]>([]);
   const [studentApplications, setStudentApplications] = useState<any[]>([]);
   const [acceptingOffer, setAcceptingOffer] = useState<string | null>(null);
@@ -607,7 +608,7 @@ export const StudentJobsScreen = () => {
         <SafeAreaView style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             {/* Header */}
-            <View style={styles.modalHeader}>
+            <View style={[styles.modalHeader, Platform.OS === 'ios' && { paddingTop: insets.top + 12 }]}>
               <View style={styles.modalHeaderTitleBox}>
                 <View style={styles.modalIconBox}>
                   <Briefcase size={22} color="#fff" />
@@ -625,6 +626,7 @@ export const StudentJobsScreen = () => {
                 activeOpacity={0.7}
                 onPress={() => setShowDetailsModal(false)} 
                 style={styles.modalCloseBtn}
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
               >
                 <X size={20} color="#000" />
               </TouchableOpacity>
@@ -800,7 +802,7 @@ export const StudentJobsScreen = () => {
         <SafeAreaView style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             {/* Header */}
-            <View style={styles.modalHeader}>
+            <View style={[styles.modalHeader, Platform.OS === 'ios' && { paddingTop: insets.top + 12 }]}>
               <View style={styles.modalHeaderTitleBox}>
                 <View style={[styles.modalIconBox, { backgroundColor: '#F97316' }]}>
                   <FileText size={22} color="#fff" />
@@ -818,6 +820,7 @@ export const StudentJobsScreen = () => {
                 activeOpacity={0.7}
                 onPress={() => setShowApplyModal(false)}
                 style={styles.modalCloseBtn}
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
               >
                 <X size={20} color="#000" />
               </TouchableOpacity>
@@ -1284,6 +1287,7 @@ const styles = StyleSheet.create({
     borderColor: '#E2E8F0',
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 0,
   },
   modalScroll: {
     paddingHorizontal: 24,

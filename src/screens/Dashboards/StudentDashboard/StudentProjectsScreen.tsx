@@ -10,9 +10,10 @@ import {
   Alert, 
   Modal,
   RefreshControl,
-  TextInput
+  TextInput,
+  Platform
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '@/theme/colors';
 import { typography } from '@/theme/typography';
 import { 
@@ -43,6 +44,7 @@ import {
 
 export const StudentProjectsScreen = () => {
   const { userName } = useAuth();
+  const insets = useSafeAreaInsets();
   
   // Data list
   const [projects, setProjects] = useState<any[]>([]);
@@ -564,7 +566,7 @@ export const StudentProjectsScreen = () => {
         <SafeAreaView style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             {/* Header */}
-            <View style={styles.modalHeader}>
+            <View style={[styles.modalHeader, Platform.OS === 'ios' && { paddingTop: insets.top + 12 }]}>
               <View style={styles.modalHeaderTitleBox}>
                 <View style={styles.modalIconBox}>
                   <Briefcase size={22} color="#fff" />
@@ -582,6 +584,7 @@ export const StudentProjectsScreen = () => {
                 activeOpacity={0.7}
                 onPress={() => setShowDetailsModal(false)} 
                 style={styles.modalCloseBtn}
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
               >
                 <X size={20} color="#000" />
               </TouchableOpacity>
@@ -1047,6 +1050,7 @@ const styles = StyleSheet.create({
     padding: 8,
     backgroundColor: '#F8FAFC',
     borderRadius: 20,
+    flexShrink: 0,
   },
   modalScroll: {
     paddingBottom: 110,

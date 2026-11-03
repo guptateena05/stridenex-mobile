@@ -12,7 +12,7 @@ import {
   ActivityIndicator,
   TextInput
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '@/theme/colors';
 import { typography } from '@/theme/typography';
 import { spacing } from '@/theme/spacing';
@@ -47,6 +47,7 @@ import { FormField } from '@/components/forms/DynamicField';
 
 export const StudentSkillsScreen = () => {
   const { userName } = useAuth();
+  const insets = useSafeAreaInsets();
   const [skills, setSkills] = useState<SkillRow[]>([]);
   const [summary, setSummary] = useState<any>({});
   const [overallScore, setOverallScore] = useState<number>(0);
@@ -365,7 +366,7 @@ export const StudentSkillsScreen = () => {
 
       {/* Add New Skill Modal */}
       <Modal animationType="slide" transparent={true} visible={isSkillModalVisible} onRequestClose={() => setIsSkillModalVisible(false)}>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalOverlay}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={[styles.modalOverlay, Platform.OS === 'ios' && { paddingTop: insets.top + 10 }]}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Add New Skill</Text>
@@ -389,7 +390,7 @@ export const StudentSkillsScreen = () => {
 
       {/* Skill Detail Modal */}
       <Modal animationType="slide" transparent={true} visible={isDetailModalVisible} onRequestClose={() => setIsDetailModalVisible(false)}>
-        <View style={styles.modalOverlay}>
+        <View style={[styles.modalOverlay, Platform.OS === 'ios' && { paddingTop: insets.top + 10 }]}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>{selectedSkill?.name}</Text>
@@ -438,7 +439,7 @@ export const StudentSkillsScreen = () => {
 
       {/* Add Skill Evidence Modal */}
       <Modal animationType="slide" transparent={true} visible={isEvidenceModalVisible} onRequestClose={() => setIsEvidenceModalVisible(false)}>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalOverlay}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={[styles.modalOverlay, Platform.OS === 'ios' && { paddingTop: insets.top + 10 }]}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Add Evidence: {selectedSkill?.name}</Text>

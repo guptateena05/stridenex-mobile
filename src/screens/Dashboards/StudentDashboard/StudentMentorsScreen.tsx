@@ -14,7 +14,7 @@ import {
   KeyboardAvoidingView,
   Platform
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '@/theme/colors';
 import { typography } from '@/theme/typography';
 import { 
@@ -61,6 +61,7 @@ const AVATAR_COLORS = [
 
 export const StudentMentorsScreen = () => {
   const { userName } = useAuth();
+  const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState<'group_sessions' | 'workshops' | 'booked_sessions' | 'mentors'>('group_sessions');
   const [mentors, setMentors] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -688,14 +689,15 @@ export const StudentMentorsScreen = () => {
       >
         <SafeAreaView style={styles.modalOverlay}>
           <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
-            <View style={styles.modalHeader}>
-              <View>
+            <View style={[styles.modalHeader, Platform.OS === 'ios' && { paddingTop: insets.top + 12 }]}>
+              <View style={{ flex: 1, marginRight: 8 }}>
                 <Text style={styles.modalTitle}>Book Session</Text>
                 <Text style={styles.modalSubtitle}>with {selectedMentor.name}</Text>
               </View>
               <TouchableOpacity 
                 onPress={() => setBookingModalVisible(false)}
                 style={styles.modalCloseBtn}
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
               >
                 <X size={20} color="#64748B" />
               </TouchableOpacity>
@@ -1789,7 +1791,7 @@ const styles = StyleSheet.create({
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, borderBottomWidth: 1.5, borderBottomColor: '#F1F5F9', backgroundColor: '#FFFFFF' },
   modalTitle: { fontSize: 18, fontWeight: '800', color: '#0F172A' },
   modalSubtitle: { fontSize: 12, color: '#64748B', fontWeight: '500', marginTop: 1 },
-  modalCloseBtn: { padding: 8, backgroundColor: '#F8FAFC', borderRadius: 20 },
+  modalCloseBtn: { padding: 8, backgroundColor: '#F8FAFC', borderRadius: 20, flexShrink: 0 },
   modalScroll: { flex: 1 },
   modalLoaderContainer: { paddingVertical: 60, alignItems: 'center', justifyContent: 'center' },
   modalLoaderText: { fontSize: 12, color: '#64748B', fontWeight: '600', marginTop: 10 },

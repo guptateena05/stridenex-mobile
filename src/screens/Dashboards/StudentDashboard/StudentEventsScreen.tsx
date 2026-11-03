@@ -9,9 +9,10 @@ import {
   ActivityIndicator, 
   Alert, 
   Modal, 
-  RefreshControl
+  RefreshControl,
+  Platform
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '@/theme/colors';
 import { typography } from '@/theme/typography';
 import { 
@@ -23,7 +24,6 @@ import {
   Trophy,
   Bell,
   Megaphone,
-  ChevronRight,
   Sparkles,
   Eye,
   CheckCircle2,
@@ -84,6 +84,7 @@ const calculateDaysLeft = (dateString: string) => {
 
 export const StudentEventsScreen = () => {
   const { userName } = useAuth();
+  const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState<'events' | 'notices'>('events');
   const [events, setEvents] = useState<any[]>([]);
   const [notices, setNotices] = useState<any[]>([]);
@@ -249,12 +250,12 @@ export const StudentEventsScreen = () => {
         onRequestClose={() => setSelectedEvent(null)}
       >
         <SafeAreaView style={styles.modalOverlay}>
-          <View style={[styles.modalHeader, { backgroundColor: selectedEvent.bgColor, borderBottomColor: selectedEvent.borderColor }]}>
+          <View style={[styles.modalHeader, { backgroundColor: selectedEvent.bgColor, borderBottomColor: selectedEvent.borderColor }, Platform.OS === 'ios' && { paddingTop: insets.top + 12 }]}>
             <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
               <View style={[styles.modalIconBox, { backgroundColor: '#FFFFFF' }]}>
                 <Trophy size={22} color={selectedEvent.color} />
               </View>
-              <View style={{ flex: 1 }}>
+              <View style={{ flex: 1, marginRight: 8 }}>
                 <Text style={styles.modalTitleText} numberOfLines={1}>{selectedEvent.title}</Text>
                 <View style={[styles.daysLeftBadge, { backgroundColor: selectedEvent.bgColor, borderColor: selectedEvent.borderColor, alignSelf: 'flex-start', marginTop: 4 }]}>
                   <Text style={[styles.daysLeftText, { color: selectedEvent.color }]}>{selectedEvent.type}</Text>
@@ -264,6 +265,7 @@ export const StudentEventsScreen = () => {
             <TouchableOpacity 
               onPress={() => setSelectedEvent(null)}
               style={styles.modalCloseBtn}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             >
               <X size={20} color="#64748B" />
             </TouchableOpacity>
@@ -521,7 +523,6 @@ export const StudentEventsScreen = () => {
                           <Text style={styles.noticeDate}>{notice.date}</Text>
                         </View>
                       </View>
-                      <ChevronRight size={16} color="#CBD5E1" />
                     </View>
                   );
                 })}
@@ -637,7 +638,7 @@ const styles = StyleSheet.create({
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, borderBottomWidth: 1.5 },
   modalIconBox: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 1 },
   modalTitleText: { fontSize: 18, fontWeight: '800', color: '#0F172A' },
-  modalCloseBtn: { padding: 8, backgroundColor: '#F8FAFC', borderRadius: 20 },
+  modalCloseBtn: { padding: 8, backgroundColor: '#F8FAFC', borderRadius: 20, flexShrink: 0 },
   modalScroll: { flex: 1 },
   modalGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 24 },
   modalGridItem: { width: '47%', flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#F8FAFC', padding: 12, borderRadius: 12, borderWidth: 1, borderColor: '#F1F5F9' },
