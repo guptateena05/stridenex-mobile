@@ -592,6 +592,8 @@ export default function PsychometricTestModal({
         );
     };
 
+    if (!isOpen) return null;
+
     return (
         <Modal visible={isOpen} transparent animationType="fade" onRequestClose={handleFinishAndClose}>
             <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalOverlay}>

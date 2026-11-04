@@ -35,6 +35,7 @@ export const StudentDashboardScreen = () => {
   const [isPsychoModalVisible, setIsPsychoModalVisible] = useState(false);
   const [isHistoryModalVisible, setIsHistoryModalVisible] = useState(false);
   const [isTourActive, setIsTourActive] = useState(false);
+  const [hasCompletedTest, setHasCompletedTest] = useState<boolean>(false);
 
   // Load cached student data on mount/username change
   useEffect(() => {
@@ -46,6 +47,10 @@ export const StudentDashboardScreen = () => {
           const parsed = JSON.parse(cached);
           setStudentData(parsed);
           setLoadingDetails(false);
+        }
+        const localCompleted = await AsyncStorage.getItem(`psychometric_completed_${userName}`);
+        if (localCompleted === "true") {
+          setHasCompletedTest(true);
         }
       } catch (err) {
         console.log("Error loading mobile student cache:", err);
@@ -85,7 +90,16 @@ export const StudentDashboardScreen = () => {
     const checkStatus = async () => {
       try {
         const status = await checkOnboardingStatus(userName);
-        if (status.is_first_login && !status.is_onboarded) {
+        const isCompleted = !!(
+          status.has_completed_test || 
+          status.test_completed || 
+          status.is_onboarded || 
+          status.submission
+        );
+        setHasCompletedTest(isCompleted);
+
+        // If user has not completed the assessment, trigger it for onboarding
+        if (!isCompleted) {
           setIsPsychoModalVisible(true);
         } else {
           setIsPsychoModalVisible(false);
@@ -307,8 +321,17 @@ export const StudentDashboardScreen = () => {
   }, [studentData]);
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-      <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+    <View style={styles.safeArea}>
+      <ScrollView 
+        style={styles.container} 
+        contentContainerStyle={styles.content} 
+        showsVerticalScrollIndicator={false}
+        scrollEnabled={true}
+        nestedScrollEnabled={true}
+        bounces={true}
+        alwaysBounceVertical={true}
+        keyboardShouldPersistTaps="handled"
+      >
         <Animated.View entering={FadeInUp.delay(200)}>
           <RoleBannerWidget 
             fullName={bannerTitle} 
@@ -357,20 +380,24 @@ export const StudentDashboardScreen = () => {
             </View>
           </View>
           <View style={styles.psychoBannerActions}>
-            <TouchableOpacity 
-              style={styles.psychoHistoryBtn}
-              onPress={() => setIsHistoryModalVisible(true)}
-              activeOpacity={0.7}
-            >
-              <History size={15} color="#475569" style={{ marginRight: 6 }} />
-              <Text style={styles.psychoHistoryBtnText}>View History</Text>
-            </TouchableOpacity>
+            {hasCompletedTest && (
+              <TouchableOpacity 
+                style={styles.psychoHistoryBtn}
+                onPress={() => setIsHistoryModalVisible(true)}
+                activeOpacity={0.7}
+              >
+                <History size={15} color="#475569" style={{ marginRight: 6 }} />
+                <Text style={styles.psychoHistoryBtnText}>View History</Text>
+              </TouchableOpacity>
+            )}
             <TouchableOpacity 
               style={styles.psychoTakeBtn}
               onPress={() => setIsPsychoModalVisible(true)}
               activeOpacity={0.8}
             >
-              <Text style={styles.psychoTakeBtnText}>Retake Assessment</Text>
+              <Text style={styles.psychoTakeBtnText}>
+                {hasCompletedTest ? "Retake Assessment" : "Take Assessment"}
+              </Text>
             </TouchableOpacity>
           </View>
         </Animated.View>
@@ -509,27 +536,36 @@ export const StudentDashboardScreen = () => {
         </View>
       )}
 
-      <PsychometricTestModal
-        isOpen={isPsychoModalVisible && !isTourActive}
-        onClose={() => setIsPsychoModalVisible(false)}
-        onCompleted={() => {
-          setIsPsychoModalVisible(false);
-        }}
-        studentEmail={userName || undefined}
-        isMandatory={false}
-      />
+      {isPsychoModalVisible && (
+        <PsychometricTestModal
+          isOpen={isPsychoModalVisible}
+          onClose={() => setIsPsychoModalVisible(false)}
+          onCompleted={() => {
+            setIsPsychoModalVisible(false);
+            setHasCompletedTest(true);
+            if (userName) {
+              AsyncStorage.setItem(`psychometric_completed_${userName}`, "true");
+            }
+          }}
+          studentEmail={userName || undefined}
+          isMandatory={!hasCompletedTest}
+        />
+      )}
 
-      <PsychometricHistoryModal
-        isOpen={isHistoryModalVisible}
-        onClose={() => setIsHistoryModalVisible(false)}
-        studentEmail={userName || undefined}
-      />
+      {isHistoryModalVisible && (
+        <PsychometricHistoryModal
+          isOpen={isHistoryModalVisible}
+          onClose={() => setIsHistoryModalVisible(false)}
+          studentEmail={userName || undefined}
+        />
+      )}
 
       <StudentGuidelineTour 
         studentEmail={userName || undefined} 
+        disabled={isPsychoModalVisible || !hasCompletedTest}
         onTourStateChange={setIsTourActive} 
       />
-    </SafeAreaView>
+    </View>
   );
 };
 
@@ -542,9 +578,10 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
+    flexGrow: 1,
     paddingHorizontal: 20,
     paddingTop: 32,
-    paddingBottom: 110,
+    paddingBottom: 130,
   },
   header: {
     marginBottom: 28,

@@ -459,6 +459,7 @@ export const SuccessStoriesWidget: React.FC<SuccessStoriesWidgetProps> = ({
           ref={scrollViewRef}
           horizontal
           showsHorizontalScrollIndicator={false}
+          nestedScrollEnabled={true}
           contentContainerStyle={styles.scrollContent}
           snapToInterval={CARD_WIDTH + CARD_MARGIN}
           decelerationRate="fast"
@@ -590,6 +591,7 @@ export const SuccessStoriesWidget: React.FC<SuccessStoriesWidgetProps> = ({
       )}
 
       {/* Creation Dialog Modal */}
+      {modalVisible && (
       <Modal
         visible={modalVisible}
         animationType="slide"
@@ -757,8 +759,10 @@ export const SuccessStoriesWidget: React.FC<SuccessStoriesWidgetProps> = ({
       </KeyboardAvoidingView>
     </TouchableWithoutFeedback>
   </Modal>
+  )}
 
       {/* Delete Confirmation Modal */}
+      {Boolean(deleteConfirmStory) && (
       <Modal
         visible={Boolean(deleteConfirmStory)}
         transparent
@@ -799,6 +803,7 @@ export const SuccessStoriesWidget: React.FC<SuccessStoriesWidgetProps> = ({
           </View>
         </View>
       </Modal>
+      )}
 
     </View>
   );

@@ -36,9 +36,10 @@ interface GuidelineStep {
 interface StudentGuidelineTourProps {
   studentEmail: string | undefined;
   onTourStateChange?: (isOpen: boolean) => void;
+  disabled?: boolean;
 }
 
-export default function StudentGuidelineTour({ studentEmail, onTourStateChange }: StudentGuidelineTourProps) {
+export default function StudentGuidelineTour({ studentEmail, onTourStateChange, disabled }: StudentGuidelineTourProps) {
   const [steps, setSteps] = useState<GuidelineStep[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
@@ -52,13 +53,18 @@ export default function StudentGuidelineTour({ studentEmail, onTourStateChange }
   }, [isOpen]);
 
   useEffect(() => {
+    if (disabled) {
+      setIsOpen(false);
+      return;
+    }
     if (studentEmail) {
       fetchGuidelines();
     }
-  }, [studentEmail]);
+  }, [studentEmail, disabled]);
 
   const fetchGuidelines = async (forceOpen = false) => {
     if (!studentEmail) return;
+    if (disabled && !forceOpen) return;
     setLoading(true);
     try {
       const res = await getStudentGuidelines('Student', null, studentEmail);
@@ -152,7 +158,8 @@ export default function StudentGuidelineTour({ studentEmail, onTourStateChange }
         <Compass size={20} color="#FFF" />
       </TouchableOpacity>
 
-      <Modal visible={isOpen} transparent animationType="slide">
+      {isOpen && (
+        <Modal visible={isOpen} transparent animationType="slide">
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             
@@ -277,6 +284,7 @@ export default function StudentGuidelineTour({ studentEmail, onTourStateChange }
           </View>
         </View>
       </Modal>
+      )}
     </>
   );
 }

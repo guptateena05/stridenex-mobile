@@ -6,6 +6,7 @@ export interface OnboardingStatusResponse {
     is_onboarded: boolean;
     test_completed: boolean;
     has_completed_test: boolean;
+    requires_test?: boolean;
     submission?: {
         name: string;
         psychometric_test: string;

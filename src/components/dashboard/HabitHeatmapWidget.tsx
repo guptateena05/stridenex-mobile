@@ -98,7 +98,7 @@ export const HabitHeatmapWidget = ({ studentEmail }: { studentEmail: string }) =
         </View>
 
         <View style={styles.yearsContainer}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} nestedScrollEnabled={true}>
             {yearOptions.map(y => (
               <TouchableOpacity 
                 key={y} 
@@ -131,7 +131,7 @@ export const HabitHeatmapWidget = ({ studentEmail }: { studentEmail: string }) =
             </View>
 
             {/* Scrollable Grid */}
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} nestedScrollEnabled={true}>
               <View style={styles.scrollGridContent}>
                 {/* Months Row */}
                 <View style={styles.monthsRow}>

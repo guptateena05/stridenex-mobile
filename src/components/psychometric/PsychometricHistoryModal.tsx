@@ -190,6 +190,8 @@ export default function PsychometricHistoryModal({ isOpen, onClose, studentEmail
         fetchHistory();
     }, [isOpen, studentEmail]);
 
+    if (!isOpen) return null;
+
     const real = results.filter(r => (r.job_score ?? 0) + (r.entrepreneurship_score ?? 0) + (r.higher_education_score ?? 0) > 0);
     const latest = real[0];
     const best = real.length ? Math.round(Math.max(...real.map(r => r.percentage ?? r.score ?? 0))) : 0;
