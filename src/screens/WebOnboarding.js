@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { ActivityIndicator, View, StyleSheet } from 'react-native';
+import { ActivityIndicator, View, StyleSheet, StatusBar } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors } from '@/theme/colors';
@@ -74,6 +75,26 @@ const WebOnboarding = ({ route, navigation }) => {
           `;
         }
 
+        // Prevent iOS Safari/WebKit auto-zoom on input focus
+        script += `
+          (function() {
+            var meta = document.querySelector('meta[name="viewport"]');
+            if (meta) {
+              meta.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
+            } else {
+              meta = document.createElement('meta');
+              meta.name = 'viewport';
+              meta.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no';
+              document.head.appendChild(meta);
+            }
+            var style = document.createElement('style');
+            style.id = 'disable-ios-zoom';
+            style.type = 'text/css';
+            style.innerHTML = 'input, select, textarea { font-size: 16px !important; }';
+            document.head.appendChild(style);
+          })();
+        `;
+
         setInjectedScript(script);
       } catch (err) {
         console.error("Failed to prepare onboarding script", err);
@@ -105,23 +126,64 @@ const WebOnboarding = ({ route, navigation }) => {
 
   if (!isReady) {
     return (
-      <View style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+        <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
         <View style={styles.loaderContainer}>
           <ActivityIndicator size="large" color={colors.accent.DEFAULT} />
         </View>
-      </View>
+      </SafeAreaView>
     );
   }
 
+  const postLoadScript = `
+    (function() {
+      var meta = document.querySelector('meta[name="viewport"]');
+      if (meta) {
+        meta.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
+      } else {
+        meta = document.createElement('meta');
+        meta.name = 'viewport';
+        meta.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no';
+        document.head.appendChild(meta);
+      }
+
+      if (!document.getElementById('disable-ios-zoom')) {
+        var style = document.createElement('style');
+        style.id = 'disable-ios-zoom';
+        style.type = 'text/css';
+        style.innerHTML = 'input, select, textarea { font-size: 16px !important; }';
+        document.head.appendChild(style);
+      }
+
+      var observer = new MutationObserver(function() {
+        if (!document.getElementById('disable-ios-zoom')) {
+          var s = document.createElement('style');
+          s.id = 'disable-ios-zoom';
+          s.type = 'text/css';
+          s.innerHTML = 'input, select, textarea { font-size: 16px !important; }';
+          document.head.appendChild(s);
+        }
+      });
+      observer.observe(document.documentElement, { childList: true, subtree: true });
+    })();
+    true;
+  `;
+
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+      <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
       <WebView
         source={{ uri: url }}
         onNavigationStateChange={handleNavigation}
         injectedJavaScriptBeforeContentLoaded={injectedScript}
+        injectedJavaScript={postLoadScript}
         javaScriptEnabled={true}
         domStorageEnabled={true}
         cacheEnabled={false}
+        scalesPageToFit={false}
+        showsHorizontalScrollIndicator={false}
+        setBuiltInZoomControls={false}
+        bounces={false}
         startInLoadingState={true}
         renderLoading={() => (
           <View style={styles.loaderContainer}>
@@ -129,7 +191,7 @@ const WebOnboarding = ({ route, navigation }) => {
           </View>
         )}
       />
-    </View>
+    </SafeAreaView>
   );
 };
 
