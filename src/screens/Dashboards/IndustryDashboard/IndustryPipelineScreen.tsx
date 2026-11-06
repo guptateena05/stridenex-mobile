@@ -39,6 +39,7 @@ import {
 } from 'lucide-react-native';
 import Animated, { FadeInUp, FadeInRight } from 'react-native-reanimated';
 import { useIndustry } from '@/context/IndustryContext';
+import { useAuth } from '@/context/AuthContext';
 import { 
   getApplications, 
   getAllDropdownData,
@@ -46,6 +47,58 @@ import {
   getStudentByEmail, 
   updateApplicationStatus 
 } from '@/api/industry.services';
+
+const resolveOwner = (
+  app: any,
+  fallbackCompany?: string,
+  fallbackUser?: string | null
+): string => {
+  const candidateOwner =
+    app.owner_name ||
+    app.recruiter ||
+    app.assigned_to ||
+    app.owner ||
+    app.modified_by;
+
+  const studentEmail = (app.email_id || app.student || "").trim().toLowerCase();
+
+  if (candidateOwner && typeof candidateOwner === 'string') {
+    const trimmed = candidateOwner.trim();
+    const lower = trimmed.toLowerCase();
+    if (
+      lower !== 'unknown' &&
+      lower !== 'administrator' &&
+      lower !== 'admin' &&
+      lower !== 'null' &&
+      lower !== 'undefined' &&
+      lower !== studentEmail &&
+      (!studentEmail || !lower.includes(studentEmail))
+    ) {
+      if (trimmed.includes('@')) {
+        const prefix = trimmed.split('@')[0];
+        if (prefix.includes('.')) {
+          return prefix
+            .split('.')
+            .map((p: string) => p.charAt(0).toUpperCase() + p.slice(1))
+            .join(' ');
+        }
+        return prefix.charAt(0).toUpperCase() + prefix.slice(1);
+      }
+      return trimmed;
+    }
+  }
+
+  const comp = app.industry || app.company_name || app.company || fallbackCompany;
+  if (comp && typeof comp === 'string' && comp.trim() && comp.toLowerCase() !== 'unknown') {
+    return comp.trim();
+  }
+
+  if (fallbackUser && typeof fallbackUser === 'string' && fallbackUser.trim() && fallbackUser.toLowerCase() !== 'unknown') {
+    return fallbackUser.trim();
+  }
+
+  return "Company";
+};
 
 interface Candidate {
   id: string;
@@ -74,6 +127,7 @@ interface DropdownOption {
 
 export const IndustryPipelineScreen = ({ route, navigation }: any) => {
   const { industryData } = useIndustry();
+  const { userFullName } = useAuth();
   const companyName = industryData?.company_name || industryData?.name || "";
 
   const [activeTab, setActiveTab] = useState("Applied");
@@ -229,10 +283,12 @@ export const IndustryPipelineScreen = ({ route, navigation }: any) => {
 
           const projectDisplay = subFilterOptions.find(o => o.name === app.project)?.title || app.project || app.internship || app.job_profile || "Unknown";
 
+          const candidateOwner = resolveOwner(app, compName || companyName, userFullName);
+
           const candidate: Candidate = {
             id: app.name || Math.random().toString(),
             name: nameVal,
-            owner: app.owner || app.modified_by || "Unknown",
+            owner: candidateOwner,
             status: app.status || "Applied",
             studentEmail: email,
             internship: projectDisplay,
@@ -445,8 +501,10 @@ export const IndustryPipelineScreen = ({ route, navigation }: any) => {
       await updateApplicationStatus(selectedCandidate.id, selectedStatus);
       await fetchApplications(companyName, opportunityType, selectedSubFilter);
       setSelectedCandidate(prev => prev ? { ...prev, status: selectedStatus } : null);
-      Alert.alert("Success", `Status updated to ${selectedStatus}`);
       setIsModalOpen(false);
+      setTimeout(() => {
+        Alert.alert("Success", `Status updated to ${selectedStatus}`);
+      }, 100);
     } catch (err: any) {
       Alert.alert("Error", err?.message || "Failed to update status");
     } finally {
@@ -639,9 +697,11 @@ export const IndustryPipelineScreen = ({ route, navigation }: any) => {
                       <Clock size={12} color="#64748B" />
                       <Text style={styles.footerText}>Applied on {candidate.applied_on}</Text>
                     </View>
-                    <View style={styles.ownerBadge}>
-                      <Text style={styles.ownerText}>Owner: {candidate.owner}</Text>
-                    </View>
+                    {candidate.owner && candidate.owner.toLowerCase() !== 'unknown' ? (
+                      <View style={styles.ownerBadge}>
+                        <Text style={styles.ownerText} numberOfLines={1}>Owner: {candidate.owner}</Text>
+                      </View>
+                    ) : null}
                   </View>
                 </TouchableOpacity>
               </Animated.View>
@@ -664,7 +724,15 @@ export const IndustryPipelineScreen = ({ route, navigation }: any) => {
         visible={isModalOpen}
         animationType="slide"
         transparent={true}
-        onRequestClose={() => setIsModalOpen(false)}
+        onRequestClose={() => {
+          if (showConfirmStatusModal) {
+            setShowConfirmStatusModal(false);
+          } else if (isStatusPickerOpen) {
+            setIsStatusPickerOpen(false);
+          } else {
+            setIsModalOpen(false);
+          }
+        }}
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContainer}>
@@ -766,44 +834,73 @@ export const IndustryPipelineScreen = ({ route, navigation }: any) => {
               )}
             </ScrollView>
           </View>
-        </View>
 
-        {/* Status Picker Modal */}
-        <Modal
-          visible={isStatusPickerOpen}
-          transparent={true}
-          animationType="fade"
-          onRequestClose={() => setIsStatusPickerOpen(false)}
-        >
-          <TouchableOpacity 
-            style={styles.pickerOverlay} 
-            activeOpacity={1} 
-            onPress={() => setIsStatusPickerOpen(false)}
-          >
-            <View style={styles.pickerContent}>
-              <Text style={styles.pickerHeader}>Select Status</Text>
-              {currentColumns.map((col) => (
-                <TouchableOpacity
-                  key={col.id}
-                  style={[
-                    styles.pickerItem,
-                    selectedStatus === col.id && styles.pickerItemActive
-                  ]}
-                  onPress={() => {
-                    setSelectedStatus(col.id);
-                    setIsStatusPickerOpen(false);
-                  }}
-                >
-                  <Text style={[
-                    styles.pickerItemText,
-                    selectedStatus === col.id && styles.pickerItemTextActive
-                  ]}>{col.title}</Text>
-                  {selectedStatus === col.id && <CheckCircle2 size={16} color={colors.purple[600]} />}
-                </TouchableOpacity>
-              ))}
+          {/* Status Picker Overlay */}
+          {isStatusPickerOpen && (
+            <TouchableOpacity 
+              style={[StyleSheet.absoluteFill, styles.pickerOverlay, { zIndex: 9000 }]} 
+              activeOpacity={1} 
+              onPress={() => setIsStatusPickerOpen(false)}
+            >
+              <View style={styles.pickerContent}>
+                <Text style={styles.pickerHeader}>Select Status</Text>
+                {currentColumns.map((col) => (
+                  <TouchableOpacity
+                    key={col.id}
+                    style={[
+                      styles.pickerItem,
+                      selectedStatus === col.id && styles.pickerItemActive
+                    ]}
+                    onPress={() => {
+                      setSelectedStatus(col.id);
+                      setIsStatusPickerOpen(false);
+                    }}
+                  >
+                    <Text style={[
+                      styles.pickerItemText,
+                      selectedStatus === col.id && styles.pickerItemTextActive
+                    ]}>{col.title}</Text>
+                    {selectedStatus === col.id && <CheckCircle2 size={16} color={colors.purple[600]} />}
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </TouchableOpacity>
+          )}
+
+          {/* Confirm Status Change Overlay */}
+          {showConfirmStatusModal && (
+            <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', zIndex: 9999 }]}>
+               <View style={{ backgroundColor: 'white', padding: 24, borderRadius: 16, width: '85%', alignItems: 'center' }}>
+                  <HelpCircle size={40} color="#F97316" style={{ marginBottom: 16 }} />
+                  <Text style={{ fontSize: 16, fontWeight: 'bold', marginBottom: 8, textAlign: 'center', color: '#1E293B' }}>
+                     Confirm Status Change
+                  </Text>
+                  <Text style={{ fontSize: 13, color: '#64748B', textAlign: 'center', marginBottom: 20, lineHeight: 18 }}>
+                    Are you sure you want to change the status of {selectedCandidate?.name} to "{selectedStatus}"?
+                  </Text>
+                  <View style={{ flexDirection: 'row', width: '100%', justifyContent: 'space-between' }}>
+                     <TouchableOpacity 
+                       style={{ flex: 1, marginRight: 8, padding: 12, borderRadius: 12, borderWidth: 1, borderColor: '#E2E8F0', alignItems: 'center' }} 
+                       onPress={() => setShowConfirmStatusModal(false)}
+                     >
+                       <Text style={{ color: '#64748B', fontWeight: 'bold' }}>Cancel</Text>
+                     </TouchableOpacity>
+                     <TouchableOpacity 
+                       style={{ flex: 1, marginLeft: 8, backgroundColor: '#F97316', padding: 12, borderRadius: 12, alignItems: 'center' }} 
+                       onPress={confirmStatusChange}
+                       disabled={updateStatusLoading}
+                     >
+                       {updateStatusLoading ? (
+                         <ActivityIndicator color="#FFF" size="small" />
+                       ) : (
+                         <Text style={{ color: 'white', fontWeight: 'bold' }}>Confirm</Text>
+                       )}
+                     </TouchableOpacity>
+                  </View>
+               </View>
             </View>
-          </TouchableOpacity>
-        </Modal>
+          )}
+        </View>
       </Modal>
 
       {/* Opportunity Type Picker Modal */}
@@ -902,31 +999,7 @@ export const IndustryPipelineScreen = ({ route, navigation }: any) => {
         </TouchableOpacity>
       </Modal>
 
-      {/* Confirm Status Change Modal */}
-      <Modal visible={showConfirmStatusModal} transparent animationType="fade">
-        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' }}>
-           <View style={{ backgroundColor: 'white', padding: 24, borderRadius: 16, width: '85%', alignItems: 'center' }}>
-              <HelpCircle size={40} color="#F97316" style={{ marginBottom: 16 }} />
-              <Text style={{ fontSize: 16, fontWeight: 'bold', marginBottom: 8, textAlign: 'center', color: '#1E293B' }}>
-                 Confirm Status Change
-              </Text>
-              <Text style={{ fontSize: 13, color: '#64748B', textAlign: 'center', marginBottom: 20, lineHeight: 18 }}>
-                Are you sure you want to change the status of {selectedCandidate?.name} to "{selectedStatus}"?
-              </Text>
-              <View style={{ flexDirection: 'row', width: '100%', justifyContent: 'space-between' }}>
-                 <TouchableOpacity style={{ flex: 1, marginRight: 8, padding: 12, borderRadius: 12, borderWidth: 1, borderColor: '#E2E8F0', alignItems: 'center' }} onPress={() => setShowConfirmStatusModal(false)}>
-                   <Text style={{ color: '#64748B', fontWeight: 'bold' }}>Cancel</Text>
-                 </TouchableOpacity>
-                 <TouchableOpacity 
-                   style={{ flex: 1, marginLeft: 8, backgroundColor: '#F97316', padding: 12, borderRadius: 12, alignItems: 'center' }} 
-                   onPress={confirmStatusChange}
-                 >
-                   <Text style={{ color: 'white', fontWeight: 'bold' }}>Confirm</Text>
-                 </TouchableOpacity>
-              </View>
-           </View>
-        </View>
-      </Modal>
+      {/* End of Pickers */}
 
     </SafeAreaView>
   );
@@ -1013,7 +1086,7 @@ const styles = StyleSheet.create({
   cardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 16, paddingTop: 16, borderTopWidth: 1, borderTopColor: '#F1F5F9' },
   footerItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   footerText: { fontSize: 11, fontWeight: '600', color: '#64748B' },
-  ownerBadge: { backgroundColor: '#F8FAFC', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, borderWidth: 1, borderColor: '#F1F5F9' },
+  ownerBadge: { backgroundColor: '#F8FAFC', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, borderWidth: 1, borderColor: '#F1F5F9', maxWidth: '48%' },
   ownerText: { fontSize: 10, fontWeight: '700', color: '#94A3B8' },
 
   emptyState: { alignItems: 'center', justifyContent: 'center', paddingVertical: 80, paddingHorizontal: 40 },
