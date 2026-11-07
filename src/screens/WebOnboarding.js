@@ -13,10 +13,11 @@ const WebOnboarding = ({ route, navigation }) => {
   useEffect(() => {
     const prepareScript = async () => {
       try {
-        const [storedFirst, storedLast, storedPwd] = await Promise.all([
+        const [storedFirst, storedLast, storedPwd, storedMobile] = await Promise.all([
           AsyncStorage.getItem('userFirstName'),
           AsyncStorage.getItem('userLastName'),
           AsyncStorage.getItem('userPassword'),
+          AsyncStorage.getItem('userMobileNo'),
         ]);
 
         const fullName = sessionData?.fullName || '';
@@ -24,6 +25,7 @@ const WebOnboarding = ({ route, navigation }) => {
         const resolvedFirst = sessionData?.firstName || storedFirst || nameParts[0] || '';
         const resolvedLast = sessionData?.lastName || storedLast || (nameParts.length > 1 ? nameParts.slice(1).join(' ') : '') || '';
         const resolvedPassword = sessionData?.userPassword || storedPwd || '';
+        const resolvedMobile = sessionData?.mobileNo || sessionData?.mobile_no || storedMobile || '';
         const emailToPrefill = email || (sessionData && sessionData.email);
 
         let script = `
@@ -39,6 +41,13 @@ const WebOnboarding = ({ route, navigation }) => {
           script += `
             localStorage.setItem("userEmail", ${JSON.stringify(emailToPrefill)});
             console.log("Prefilled userEmail in localStorage");
+          `;
+        }
+
+        if (resolvedMobile) {
+          script += `
+            localStorage.setItem("userMobileNo", ${JSON.stringify(resolvedMobile)});
+            console.log("Prefilled userMobileNo in localStorage:", ${JSON.stringify(resolvedMobile)});
           `;
         }
 

@@ -145,6 +145,7 @@ export const SignupScreen = () => {
         if (selectedRole === 'student') {
           navigation.navigate('StudentOnboarding');
         } else {
+          const storedMobile = await AsyncStorage.getItem('userMobileNo');
           try {
             const loginRes = await api.post(
               'method/stridenex_app.api_stridenex_app.app.login',
@@ -162,6 +163,7 @@ export const SignupScreen = () => {
                   apiKey: api_key || '',
                   apiSecret: api_secret || '',
                   email: email,
+                  mobileNo: storedMobile || '',
                   isOnboarded: String(loginData.is_onboarded ?? '0'),
                   fullName: loginData.full_name || `${firstName} ${lastName}`.trim(),
                   firstName: firstName,
@@ -182,6 +184,7 @@ export const SignupScreen = () => {
             email: email,
             sessionData: {
               email: email,
+              mobileNo: storedMobile || '',
               fullName: `${firstName} ${lastName}`.trim(),
               firstName: firstName,
               lastName: lastName,

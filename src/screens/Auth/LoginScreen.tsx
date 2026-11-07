@@ -254,6 +254,12 @@ export const LoginScreen = () => {
           effectiveFullName = `${resolvedFirst} ${resolvedLast}`.trim();
         }
 
+        const storedMobile = await AsyncStorage.getItem('userMobileNo');
+        const resolvedMobile = data.mobile_no ? String(data.mobile_no).replace(/^\+91-?/, '') : (storedMobile || '');
+        if (resolvedMobile) {
+          await AsyncStorage.setItem('userMobileNo', resolvedMobile);
+        }
+
         const userDetails = {
           full_name: effectiveFullName,
           username: username
@@ -271,6 +277,7 @@ export const LoginScreen = () => {
                 apiKey: api_key || '',
                 apiSecret: api_secret || '',
                 email: userEmail,
+                mobileNo: resolvedMobile,
                 isOnboarded: String(isOnboardedVal),
                 fullName: effectiveFullName,
                 firstName: resolvedFirst,
@@ -295,6 +302,7 @@ export const LoginScreen = () => {
                 apiKey: api_key || '',
                 apiSecret: api_secret || '',
                 email: userEmail,
+                mobileNo: resolvedMobile,
                 isOnboarded: String(isOnboardedVal),
                 fullName: effectiveFullName,
                 firstName: resolvedFirst,
@@ -319,6 +327,7 @@ export const LoginScreen = () => {
                 apiKey: api_key || '',
                 apiSecret: api_secret || '',
                 email: userEmail,
+                mobileNo: resolvedMobile,
                 isOnboarded: String(isOnboardedVal),
                 fullName: effectiveFullName,
                 firstName: resolvedFirst,
