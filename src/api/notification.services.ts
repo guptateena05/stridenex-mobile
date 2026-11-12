@@ -22,10 +22,14 @@ export interface NotificationResponse {
   };
 }
 
-export const getNotifications = async (ownerEmail: string): Promise<NotificationResponse> => {
+export const getNotifications = async (
+  ownerEmail: string,
+  limit: number = 20,
+  unreadOnly: 0 | 1 = 0
+): Promise<NotificationResponse> => {
   try {
     const response = await api.get(
-      `method/stridenex_app.api_stridenex_app.notification.get_notifications?owner_email=${encodeURIComponent(ownerEmail)}`
+      `method/stridenex_app.api_stridenex_app.notification.get_notifications?owner_email=${encodeURIComponent(ownerEmail)}&limit=${limit}&unread_only=${unreadOnly}`
     );
     return response.data;
   } catch (error) {

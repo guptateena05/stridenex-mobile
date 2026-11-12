@@ -119,11 +119,23 @@ const NotificationHtmlView = ({ html }: { html: string }) => {
             padding: 0;
             background-color: transparent;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            color: #334155;
+            color: #1e293b;
+            font-size: 13px;
+            line-height: 19px;
             -webkit-text-size-adjust: 100%;
           }
           body {
             padding: 4px 2px;
+          }
+          p {
+            margin: 0 0 6px 0;
+            color: #1e293b;
+            font-size: 13px;
+            line-height: 19px;
+          }
+          strong, b {
+            color: #0f0fbd;
+            font-weight: 600;
           }
           table {
             width: 100% !important;
@@ -337,7 +349,7 @@ export const DashboardHeader = ({
       setLoading(true);
     }
     try {
-      const response = await getNotifications(effectiveEmail);
+      const response = await getNotifications(effectiveEmail, 20, 0);
       const notificationsData = response?.message?.data || [];
       setNotifications(notificationsData);
       setUnreadCount(
@@ -355,7 +367,7 @@ export const DashboardHeader = ({
   const fetchNotificationCount = useCallback(async () => {
     if (!effectiveEmail) return;
     try {
-      const response = await getNotifications(effectiveEmail);
+      const response = await getNotifications(effectiveEmail, 20, 0);
       const notificationsData = response?.message?.data || [];
       setUnreadCount(
         response?.message?.unread_count ??
@@ -546,8 +558,16 @@ export const DashboardHeader = ({
             <Bell color={colors.navy} size={22} />
           )}
           {unreadCount > 0 && (
-            <View style={styles.unreadBadge}>
-              <Text style={styles.unreadBadgeText}>
+            <View
+              style={[
+                styles.unreadBadge,
+                unreadCount > 99 && { minWidth: 32, right: -8 }
+              ]}
+            >
+              <Text
+                style={styles.unreadBadgeText}
+                allowFontScaling={false}
+              >
                 {unreadCount > 99 ? '99+' : unreadCount}
               </Text>
             </View>
@@ -559,88 +579,89 @@ export const DashboardHeader = ({
       <Modal
         visible={showNotifications}
         transparent={true}
+        statusBarTranslucent={true}
         animationType="fade"
         onRequestClose={() => setShowNotifications(false)}
       >
-        <Pressable
-          style={styles.modalOverlay}
-          onPress={() => setShowNotifications(false)}
-        >
+        <View style={styles.modalOverlay}>
+          <Pressable
+            style={StyleSheet.absoluteFill}
+            onPress={() => setShowNotifications(false)}
+          />
           <Animated.View
             entering={FadeIn.duration(200)}
             style={[
               styles.popoverDialog,
-              { marginTop: insets.top + 55, marginRight: 12 }
+              { marginTop: insets.top + 54, marginRight: 12 }
             ]}
           >
-            <Pressable onPress={(e) => e.stopPropagation()}>
-              {/* Header matching Web */}
-              <View style={styles.popoverHeader}>
-                <View style={styles.headerLeft}>
-                  <Bell size={18} color="#0F172A" />
-                  <Text style={styles.popoverTitle}>Notifications</Text>
-                  {unreadCount > 0 && (
-                    <View style={styles.unreadHeaderPill}>
-                      <Text style={styles.unreadHeaderPillText}>
-                        {unreadCount}
-                      </Text>
-                    </View>
-                  )}
-                </View>
-
-                <View style={styles.headerRight}>
-                  {unreadCount > 0 && (
-                    <TouchableOpacity
-                      onPress={handleMarkAllAsRead}
-                      style={styles.headerActionBtn}
-                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                      accessibilityLabel="Mark all as read"
-                    >
-                      <CheckCheck size={18} color="#64748B" />
-                    </TouchableOpacity>
-                  )}
-                  <TouchableOpacity
-                    onPress={() => setShowNotifications(false)}
-                    style={styles.headerActionBtn}
-                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                    accessibilityLabel="Close"
-                  >
-                    <X size={18} color="#64748B" />
-                  </TouchableOpacity>
-                </View>
+            {/* Header matching Web */}
+            <View style={styles.popoverHeader}>
+              <View style={styles.headerLeft}>
+                <Bell size={18} color="#0F172A" />
+                <Text style={styles.popoverTitle}>Notifications</Text>
+                {unreadCount > 0 && (
+                  <View style={styles.unreadHeaderPill}>
+                    <Text style={styles.unreadHeaderPillText}>
+                      {unreadCount}
+                    </Text>
+                  </View>
+                )}
               </View>
 
-              {/* Notification List / Loading / Empty */}
-              {loading && !refreshing ? (
-                <View style={styles.popoverLoading}>
-                  <ActivityIndicator size="small" color="#2563EB" />
-                </View>
-              ) : notifications.length > 0 ? (
-                <FlatList
-                  data={notifications}
-                  renderItem={renderNotificationItem}
-                  keyExtractor={(item) => item.name}
-                  contentContainerStyle={styles.popoverList}
-                  showsVerticalScrollIndicator={true}
-                  style={styles.listContainer}
-                  refreshControl={
-                    <RefreshControl
-                      refreshing={refreshing}
-                      onRefresh={() => fetchNotifications(true)}
-                      colors={['#2563EB']}
-                    />
-                  }
-                />
-              ) : (
-                <View style={styles.popoverEmpty}>
-                  <Bell size={32} color="#CBD5E1" />
-                  <Text style={styles.popoverEmptyText}>No notifications</Text>
-                  <Text style={styles.popoverEmptySub}>You're all caught up!</Text>
-                </View>
-              )}
-            </Pressable>
+              <View style={styles.headerRight}>
+                {unreadCount > 0 && (
+                  <TouchableOpacity
+                    onPress={handleMarkAllAsRead}
+                    style={styles.headerActionBtn}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    accessibilityLabel="Mark all as read"
+                  >
+                    <CheckCheck size={18} color="#64748B" />
+                  </TouchableOpacity>
+                )}
+                <TouchableOpacity
+                  onPress={() => setShowNotifications(false)}
+                  style={styles.headerActionBtn}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  accessibilityLabel="Close"
+                >
+                  <X size={18} color="#64748B" />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Notification List / Loading / Empty */}
+            {loading && !refreshing ? (
+              <View style={styles.popoverLoading}>
+                <ActivityIndicator size="small" color="#2563EB" />
+              </View>
+            ) : notifications.length > 0 ? (
+              <FlatList
+                data={notifications}
+                renderItem={renderNotificationItem}
+                keyExtractor={(item) => item.name}
+                contentContainerStyle={styles.popoverList}
+                showsVerticalScrollIndicator={true}
+                nestedScrollEnabled={true}
+                style={styles.listContainer}
+                refreshControl={
+                  <RefreshControl
+                    refreshing={refreshing}
+                    onRefresh={() => fetchNotifications(true)}
+                    colors={['#2563EB']}
+                  />
+                }
+              />
+            ) : (
+              <View style={styles.popoverEmpty}>
+                <Bell size={32} color="#CBD5E1" />
+                <Text style={styles.popoverEmptyText}>No notifications</Text>
+                <Text style={styles.popoverEmptySub}>You're all caught up!</Text>
+              </View>
+            )}
           </Animated.View>
-        </Pressable>
+        </View>
       </Modal>
 
       {/* Logging Out Modal */}
@@ -729,16 +750,17 @@ const styles = StyleSheet.create({
     padding: 8,
     marginLeft: spacing.xs,
     position: 'relative',
+    overflow: 'visible',
   },
   unreadBadge: {
     position: 'absolute',
-    top: 3,
-    right: 3,
+    top: -1,
+    right: -4,
     backgroundColor: '#EF4444',
     borderRadius: 10,
-    minWidth: 18,
-    height: 18,
-    paddingHorizontal: 4,
+    minWidth: 20,
+    height: 19,
+    paddingHorizontal: 5,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1.5,
@@ -746,10 +768,10 @@ const styles = StyleSheet.create({
   },
   unreadBadgeText: {
     color: '#FFFFFF',
-    fontSize: 9,
+    fontSize: 10,
     fontWeight: '800',
     textAlign: 'center',
-    lineHeight: 12,
+    includeFontPadding: false,
   },
   modalOverlay: {
     flex: 1,
