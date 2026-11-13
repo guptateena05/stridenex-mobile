@@ -7,6 +7,7 @@ import { useAuth } from '@/context/AuthContext';
 import { ActivityIndicator, View, Platform } from 'react-native';
 import { colors } from '@/theme/colors';
 import CertificateVerifyScreen from '@/screens/Public/CertificateVerifyScreen';
+import WebLmsScreen from '@/screens/WebLmsScreen';
 import { RootStackParamList } from './types';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -46,9 +47,12 @@ const RootNavigator = () => {
     <NavigationContainer linking={linking}>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {isAuthenticated ? (
-          <Stack.Screen name="Dashboard">
-            {() => <DashboardNavigator role={role || undefined} />}
-          </Stack.Screen>
+          <>
+            <Stack.Screen name="Dashboard">
+              {() => <DashboardNavigator role={role || undefined} />}
+            </Stack.Screen>
+            <Stack.Screen name="WebLms" component={WebLmsScreen} />
+          </>
         ) : (
           <Stack.Screen name="Auth" component={AuthNavigator} />
         )}

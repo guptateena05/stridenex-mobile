@@ -226,6 +226,7 @@ export const CustomDrawerContent = (props: DrawerContentComponentProps & { isInc
               if (userRole === 'Student') {
                 manualTabs = [
                   { name: 'Overview', icon: LayoutDashboard },
+                  { name: 'Courses', icon: BookOpen, isLms: true },
                   { name: 'Skill Ledger', icon: Zap },
                   { name: 'Projects', icon: FolderGit2 },
                   { name: 'Internships', icon: Briefcase, hide: props.hideJobs },
@@ -273,7 +274,16 @@ export const CustomDrawerContent = (props: DrawerContentComponentProps & { isInc
                       activeBackgroundColor={drawerActiveBackgroundColor || 'rgba(255, 107, 0, 0.1)'}
                       style={{ borderRadius: 8, marginHorizontal: 12 }}
                       labelStyle={{ fontSize: 14, fontWeight: '600', marginLeft: 8 }}
-                      onPress={() => props.navigation.navigate('ModuleTabs', { screen: tab.name })}
+                      onPress={() => {
+                        if (tab.isLms) {
+                          props.navigation.closeDrawer();
+                          (props.navigation as any).navigate('WebLms', {
+                            url: 'https://testwebstridenex.quantcloud.in/lms/courses?source=mobile',
+                          });
+                          return;
+                        }
+                        props.navigation.navigate('ModuleTabs', { screen: tab.name });
+                      }}
                     />
                   </View>
                 );

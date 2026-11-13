@@ -1,6 +1,7 @@
 export type RootStackParamList = {
   Auth: undefined;
   Dashboard: undefined;
+  WebLms: { url?: string };
   CertificateVerify: { id: string };
 };
 
