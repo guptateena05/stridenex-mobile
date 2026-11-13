@@ -807,18 +807,23 @@ export const CollegePlacementScreen = ({ route }: any) => {
   };
 
   const handleNotifyCandidateMail = async (student: any, status: string, driveName: string) => {
-    const email = student.email || student.email_id || student.name || student.student_id;
-    const fullName = student.student_name || student.name || `${student.first_name || ""} ${student.last_name || ""}`.trim() || "Candidate";
+    const rawEmail = student.email_id || student.email || student.student_email || student.user_email;
+    const email = (typeof rawEmail === "string" && rawEmail.includes("@"))
+      ? rawEmail.trim()
+      : ((typeof student.name === "string" && student.name.includes("@")) ? student.name.trim() : null);
+
+    const fullName = student.student_name || `${student.first_name || ""} ${student.last_name || ""}`.trim() || student.name || "Candidate";
     if (!email) {
       Alert.alert("Error", "Student email is not available");
       return;
     }
+    const resolvedDriveName = driveName || selectedDrive?.name || selectedDrive?.company || "Campus Placement Drive";
     try {
       await sendCandidateStatusMail({
         email,
         status,
         candidate_name: fullName,
-        drive_name: driveName
+        drive_name: resolvedDriveName
       });
       Alert.alert("Success", `Email sent successfully to ${fullName}!`);
     } catch (err: any) {
@@ -961,8 +966,8 @@ export const CollegePlacementScreen = ({ route }: any) => {
   };
 
   const triggerNotification = async (type: 'eligible' | 'remind' | 'notice' | 'shortlist') => {
-    if (!selectedDrive) return;
-    const driveName = selectedDrive.name || selectedDrive.company || "";
+    if (!selectedDrive && (type !== 'eligible' || activeTab !== 'eligibility')) return;
+    const driveName = selectedDrive?.name || selectedDrive?.company || "Campus Placement Drive";
 
     try {
       if (type === 'notice') {
@@ -974,7 +979,7 @@ export const CollegePlacementScreen = ({ route }: any) => {
       let statusString = '';
 
       if (type === 'eligible') {
-        studentsToNotify = driveEligibleStudents;
+        studentsToNotify = (activeTab === 'eligibility' || !selectedDrive) ? tabEligibleStudents : driveEligibleStudents;
         statusString = 'eligible';
         if (studentsToNotify.length === 0) {
           Alert.alert("Warning", "No eligible students to notify.");
@@ -1008,8 +1013,12 @@ export const CollegePlacementScreen = ({ route }: any) => {
                 Alert.alert("Sending...", "Sending email notifications in background...");
                 const results = await Promise.allSettled(
                   studentsToNotify.map(async (student: any) => {
-                    const email = student.email || student.student_email || student.email_id || student.name || student.student_id;
-                    const fullName = student.student_name || student.name || `${student.first_name || ""} ${student.last_name || ""}`.trim() || "Candidate";
+                    const rawEmail = student.email_id || student.email || student.student_email || student.user_email;
+                    const email = (typeof rawEmail === "string" && rawEmail.includes("@"))
+                      ? rawEmail.trim()
+                      : ((typeof student.name === "string" && student.name.includes("@")) ? student.name.trim() : null);
+
+                    const fullName = student.student_name || `${student.first_name || ""} ${student.last_name || ""}`.trim() || student.name || "Candidate";
                     if (email) {
                       await sendCandidateStatusMail({
                         email,
@@ -1017,6 +1026,8 @@ export const CollegePlacementScreen = ({ route }: any) => {
                         candidate_name: fullName,
                         drive_name: driveName
                       });
+                    } else {
+                      throw new Error(`Missing valid email for ${fullName}`);
                     }
                   })
                 );
@@ -1949,6 +1960,13 @@ export const CollegePlacementScreen = ({ route }: any) => {
                             <Text style={{ color: '#FFF', fontSize: 12, fontWeight: '700' }}>Export Ineligible</Text>
                           </TouchableOpacity>
                         </View>
+                        <TouchableOpacity 
+                          style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: '#EA580C', paddingVertical: 10, borderRadius: 12, marginTop: 10 }}
+                          onPress={() => triggerNotification('eligible')}
+                        >
+                          <Bell size={14} color="#FFF" />
+                          <Text style={{ color: '#FFF', fontSize: 12, fontWeight: '800' }}>Notify All Eligible ({tabEligibleStudents.length})</Text>
+                        </TouchableOpacity>
                       </View>
 
                       <View style={styles.filterForm}>
