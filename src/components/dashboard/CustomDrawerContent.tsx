@@ -10,6 +10,7 @@ import { useAuth } from '@/context/AuthContext';
 import circularLogo from '@/assets/images/circularLogo.jpg';
 import { 
   BarChart2, 
+  BarChart,
   BookOpen, 
   Briefcase, 
   Users, 
@@ -119,16 +120,18 @@ export const CustomDrawerContent = (props: DrawerContentComponentProps & { isInc
             const { title, drawerIcon, drawerActiveTintColor, drawerInactiveTintColor, drawerActiveBackgroundColor, drawerLabelStyle, drawerItemStyle } = props.descriptors[route.key].options;
             const isNepParent = route.name === 'NEP & UGC 2026';
             const isNepChild = nepTabs.includes(route.name);
-            const isCampusParent = route.name === 'Campus Drives';
             const isCampusChild = campusTabs.includes(route.name);
 
             if (isNepChild && !nepExpanded) return null;
-            if (isCampusChild && !campusExpanded) return null;
+            // Campus child items are rendered directly inside the Campus Drives accordion below, so skip them in the outer loop
+            if (isCampusChild) return null;
 
             const isDisabled = false; // user requested no restriction even if profile incomplete
             
             if (route.name === 'ModuleTabs') {
               const activeTabName = (route.state as any)?.routes[(route.state as any)?.index ?? 0]?.name || "Overview";
+              const currentCampusTab = (route.state as any)?.routes?.find((r: any) => r.name === 'Campus Drives')?.params?.tab || 'drives';
+
               const manualTabs = [
                 { name: 'Overview', icon: LayoutDashboard },
                 { name: 'Student Analytics', icon: Users },
@@ -136,41 +139,91 @@ export const CustomDrawerContent = (props: DrawerContentComponentProps & { isInc
                 { name: 'Interventions', icon: Target },
                 { name: 'Notice Board', icon: BookOpen }
               ];
-              return manualTabs.map((tab) => {
-                const isTabFocused = focused && activeTabName === tab.name;
-                const isCampusParent = tab.name === 'Campus Drives';
-                
-                return (
-                  <View key={`tab-${tab.name}`} pointerEvents={isDisabled && tab.name !== 'Overview' ? 'none' : 'auto'} style={{ opacity: isDisabled && tab.name !== 'Overview' ? 0.4 : 1 }}>
-                    <DrawerItem
-                      label={({ focused, color }) => (
-                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flex: 1, paddingRight: 4 }}>
-                          <Text style={{ color, fontSize: 14, fontWeight: '600', marginLeft: 8 }}>
-                            {tab.name}
-                          </Text>
-                          {isCampusParent && (
-                            <View style={{ opacity: 0.5 }}>
-                              {campusExpanded ? <ChevronUp size={16} color={color} /> : <ChevronDown size={16} color={color} />}
+
+              const campusChildItems = [
+                { name: 'Active Drives', tab: 'drives', icon: Briefcase },
+                { name: 'Placement Tracker', tab: 'tracker', icon: Users },
+                { name: 'Eligibility Checker', tab: 'eligibility', icon: Target },
+                { name: 'Placement Stats', tab: 'stats', icon: BarChart },
+              ];
+
+              return (
+                <View key="college-module-tabs">
+                  {manualTabs.map((tab) => {
+                    const isCampusParent = tab.name === 'Campus Drives';
+                    const isTabFocused = focused && activeTabName === tab.name;
+                    
+                    return (
+                      <View key={`tab-${tab.name}`} pointerEvents={isDisabled && tab.name !== 'Overview' ? 'none' : 'auto'} style={{ opacity: isDisabled && tab.name !== 'Overview' ? 0.4 : 1 }}>
+                        <DrawerItem
+                          label={({ focused: itemFocused, color }) => (
+                            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flex: 1, paddingRight: 4 }}>
+                              <Text style={{ color, fontSize: 14, fontWeight: '600', marginLeft: 8 }}>
+                                {tab.name}
+                              </Text>
+                              {isCampusParent && (
+                                <View style={{ opacity: 0.5 }}>
+                                  {campusExpanded ? <ChevronUp size={16} color={color} /> : <ChevronDown size={16} color={color} />}
+                                </View>
+                              )}
                             </View>
                           )}
-                        </View>
-                      )}
-                      icon={({ color, size }) => <tab.icon color={color} size={size} />}
-                      focused={isTabFocused}
-                      activeTintColor={drawerActiveTintColor || '#10b981'}
-                      inactiveTintColor={drawerInactiveTintColor || colors.text.secondary}
-                      activeBackgroundColor={drawerActiveBackgroundColor || 'rgba(16, 185, 129, 0.1)'}
-                      style={{ borderRadius: 8, marginHorizontal: 12 }}
-                      onPress={() => {
-                        if (isCampusParent) {
-                          setCampusExpanded(!campusExpanded);
-                        }
-                        props.navigation.navigate('ModuleTabs', { screen: tab.name });
-                      }}
-                    />
-                  </View>
-                );
-              });
+                          icon={({ color, size }) => <tab.icon color={color} size={size} />}
+                          focused={isTabFocused}
+                          activeTintColor={drawerActiveTintColor || '#10b981'}
+                          inactiveTintColor={drawerInactiveTintColor || colors.text.secondary}
+                          activeBackgroundColor={drawerActiveBackgroundColor || 'rgba(16, 185, 129, 0.1)'}
+                          style={{ borderRadius: 8, marginHorizontal: 12 }}
+                          onPress={() => {
+                            if (isCampusParent) {
+                              setCampusExpanded(!campusExpanded);
+                              return; // Just open/close accordion, do NOT route!
+                            }
+                            props.navigation.navigate('ModuleTabs', { screen: tab.name });
+                          }}
+                        />
+
+                        {isCampusParent && campusExpanded && (
+                          <View style={{ marginTop: 2, marginBottom: 4 }}>
+                            {campusChildItems.map((child) => {
+                              const isChildFocused = isTabFocused && currentCampusTab === child.tab;
+                              return (
+                                <DrawerItem
+                                  key={`campus-child-${child.tab}`}
+                                  label={({ color }) => (
+                                    <Text style={{ color, fontSize: 13, fontWeight: isChildFocused ? '700' : '500', marginLeft: 4 }}>
+                                      {child.name}
+                                    </Text>
+                                  )}
+                                  icon={({ color, size }) => <child.icon color={color} size={size - 2} />}
+                                  focused={isChildFocused}
+                                  activeTintColor="#10b981"
+                                  inactiveTintColor={colors.text.secondary}
+                                  activeBackgroundColor="rgba(16, 185, 129, 0.12)"
+                                  style={{
+                                    borderRadius: 8,
+                                    marginHorizontal: 12,
+                                    marginLeft: 32,
+                                    marginVertical: 1,
+                                    height: 42,
+                                  }}
+                                  onPress={() => {
+                                    props.navigation.closeDrawer();
+                                    props.navigation.navigate('ModuleTabs', {
+                                      screen: 'Campus Drives',
+                                      params: { tab: child.tab },
+                                    });
+                                  }}
+                                />
+                              );
+                            })}
+                          </View>
+                        )}
+                      </View>
+                    );
+                  })}
+                </View>
+              );
             }
 
             return (
@@ -181,12 +234,9 @@ export const CustomDrawerContent = (props: DrawerContentComponentProps & { isInc
                       <Text style={[drawerLabelStyle, { color, fontSize: 13, fontWeight: '700' }]}>
                         {title !== undefined ? title : route.name}
                       </Text>
-                      {(isNepParent || isCampusParent) && (
+                      {isNepParent && (
                         <View style={{ opacity: 0.5 }}>
-                          {isNepParent 
-                            ? (nepExpanded ? <ChevronUp size={16} color={color} /> : <ChevronDown size={16} color={color} />)
-                            : (campusExpanded ? <ChevronUp size={16} color={color} /> : <ChevronDown size={16} color={color} />)
-                          }
+                          {nepExpanded ? <ChevronUp size={16} color={color} /> : <ChevronDown size={16} color={color} />}
                         </View>
                       )}
                     </View>
@@ -196,12 +246,10 @@ export const CustomDrawerContent = (props: DrawerContentComponentProps & { isInc
                   activeTintColor={drawerActiveTintColor || '#10b981'}
                   inactiveTintColor={drawerInactiveTintColor || colors.text.secondary}
                   activeBackgroundColor={drawerActiveBackgroundColor || 'rgba(16, 185, 129, 0.1)'}
-                  style={[drawerItemStyle, (isNepChild || isCampusChild) && { marginTop: 0, marginBottom: 2, marginLeft: 44 }]}
+                  style={[drawerItemStyle, isNepChild && { marginTop: 0, marginBottom: 2, marginLeft: 44 }]}
                   onPress={() => {
                     if (isNepParent) {
                       setNepExpanded(!nepExpanded);
-                    } else if (isCampusParent) {
-                      setCampusExpanded(!campusExpanded);
                     } else {
                       props.navigation.navigate(route.name);
                     }
