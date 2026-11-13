@@ -102,7 +102,13 @@ const preprocessHtml = (rawHtml: string): string => {
   return processed;
 };
 
-const NotificationHtmlView = ({ html }: { html: string }) => {
+const NotificationHtmlView = ({
+  html,
+  onLinkPress
+}: {
+  html: string;
+  onLinkPress?: (url: string) => void;
+}) => {
   const [webViewHeight, setWebViewHeight] = useState(380);
 
   const wrappedHtml = `
@@ -220,11 +226,15 @@ const NotificationHtmlView = ({ html }: { html: string }) => {
               const newH = Math.max(140, Math.ceil(data.height) + 16);
               setWebViewHeight(newH);
             } else if (data?.type === 'LINK_PRESS' && typeof data.url === 'string') {
-              const url = data.url;
-              if (url && !url.startsWith('javascript:')) {
-                Linking.openURL(url).catch((err) => {
-                  console.error('Error opening notification link:', err);
-                });
+              if (onLinkPress) {
+                onLinkPress(data.url);
+              } else {
+                const url = data.url;
+                if (url && !url.startsWith('javascript:')) {
+                  Linking.openURL(url).catch((err) => {
+                    console.error('Error opening notification link:', err);
+                  });
+                }
               }
             }
           } catch (e) {
@@ -244,7 +254,9 @@ const NotificationHtmlView = ({ html }: { html: string }) => {
 
           // If user explicitly clicked a link inside the WebView
           if (request.navigationType === 'click') {
-            if (!request.url.startsWith('javascript:')) {
+            if (onLinkPress) {
+              onLinkPress(request.url);
+            } else if (!request.url.startsWith('javascript:')) {
               Linking.openURL(request.url).catch((err) => {
                 console.error('Error opening notification link:', err);
               });
@@ -457,6 +469,223 @@ export const DashboardHeader = ({
     navigation.dispatch(DrawerActions.openDrawer());
   };
 
+  const handleNotificationLinkPress = (rawUrl: string, item: Notification) => {
+    // 1. Close the notification modal
+    setShowNotifications(false);
+
+    // 2. Mark as read
+    if (item.read === 0) {
+      handleMarkAsRead(item.name);
+    }
+
+    let path = rawUrl || '';
+    try {
+      if (rawUrl.startsWith('http://') || rawUrl.startsWith('https://')) {
+        const parsed = new URL(rawUrl);
+        path = parsed.pathname;
+      }
+    } catch {
+      path = rawUrl || '';
+    }
+
+    const lowerPath = path.toLowerCase();
+    const lowerSubject = (item.subject || '').toLowerCase();
+    const docType = (item.document_type || '').toLowerCase();
+    const currentRole = (role as string || '').toLowerCase();
+
+    // Check if it's an LMS course link
+    if (lowerPath.includes('/lms') || lowerPath.includes('/courses') || docType === 'course') {
+      navigation.navigate('WebLms', { url: rawUrl || 'https://testwebstridenex.quantcloud.in/lms/courses?source=mobile' });
+      return;
+    }
+
+    // STUDENT ROLE
+    if (currentRole === 'student') {
+      if (
+        lowerPath.includes('campus-drive') ||
+        lowerPath.includes('drives') ||
+        docType.includes('drive') ||
+        lowerSubject.includes('placement drive') ||
+        lowerSubject.includes('campus placement')
+      ) {
+        navigation.navigate('Campus Drives');
+        return;
+      }
+      if (lowerPath.includes('internship') || docType.includes('internship') || lowerSubject.includes('internship')) {
+        navigation.navigate('ModuleTabs', { screen: 'Internships' });
+        return;
+      }
+      if (lowerPath.includes('job') || docType.includes('job') || lowerSubject.includes('job')) {
+        navigation.navigate('ModuleTabs', { screen: 'Jobs' });
+        return;
+      }
+      if (lowerPath.includes('skill') || lowerPath.includes('ledger')) {
+        navigation.navigate('ModuleTabs', { screen: 'Skill Ledger' });
+        return;
+      }
+      if (lowerPath.includes('path')) {
+        navigation.navigate('Skill Path');
+        return;
+      }
+      if (lowerPath.includes('project') || docType.includes('project')) {
+        navigation.navigate('ModuleTabs', { screen: 'Projects' });
+        return;
+      }
+      if (lowerPath.includes('habit') || docType.includes('habit') || lowerSubject.includes('habit')) {
+        navigation.navigate('ModuleTabs', { screen: 'Habits' });
+        return;
+      }
+      if (lowerPath.includes('mentor')) {
+        navigation.navigate('Mentors');
+        return;
+      }
+      if (lowerPath.includes('community')) {
+        navigation.navigate('Community');
+        return;
+      }
+      if (lowerPath.includes('event')) {
+        navigation.navigate('Events');
+        return;
+      }
+      if (lowerPath.includes('short')) {
+        navigation.navigate('Shorts');
+        return;
+      }
+      if (lowerPath.includes('plan')) {
+        navigation.navigate('Plans');
+        return;
+      }
+      if (lowerPath.includes('resume')) {
+        navigation.navigate('Resume');
+        return;
+      }
+      if (lowerPath.includes('overview') || lowerPath.includes('dashboard')) {
+        navigation.navigate('ModuleTabs', { screen: 'Overview' });
+        return;
+      }
+    }
+
+    // COLLEGE ROLE
+    if (currentRole === 'college') {
+      if (
+        lowerPath.includes('campus-drive') ||
+        lowerPath.includes('drive') ||
+        docType.includes('drive') ||
+        lowerSubject.includes('drive')
+      ) {
+        let tabParam: 'drives' | 'tracker' | 'eligibility' | 'stats' = 'drives';
+        if (lowerPath.includes('tracker')) tabParam = 'tracker';
+        else if (lowerPath.includes('eligibility')) tabParam = 'eligibility';
+        else if (lowerPath.includes('stats')) tabParam = 'stats';
+        navigation.navigate('ModuleTabs', { screen: 'Campus Drives', params: { tab: tabParam } });
+        return;
+      }
+      if (lowerPath.includes('student') || lowerPath.includes('analytics')) {
+        navigation.navigate('ModuleTabs', { screen: 'Student Analytics' });
+        return;
+      }
+      if (lowerPath.includes('intervention')) {
+        navigation.navigate('ModuleTabs', { screen: 'Interventions' });
+        return;
+      }
+      if (lowerPath.includes('notice')) {
+        navigation.navigate('ModuleTabs', { screen: 'Notice Board' });
+        return;
+      }
+      if (lowerPath.includes('community')) {
+        navigation.navigate('Community');
+        return;
+      }
+      if (lowerPath.includes('plan')) {
+        navigation.navigate('Plans');
+        return;
+      }
+      if (lowerPath.includes('overview') || lowerPath.includes('dashboard')) {
+        navigation.navigate('ModuleTabs', { screen: 'Overview' });
+        return;
+      }
+    }
+
+    // INDUSTRY ROLE
+    if (currentRole === 'industry') {
+      if (lowerPath.includes('pipeline')) {
+        navigation.navigate('ModuleTabs', { screen: 'Pipeline' });
+        return;
+      }
+      if (lowerPath.includes('project')) {
+        navigation.navigate('ModuleTabs', { screen: 'Projects' });
+        return;
+      }
+      if (lowerPath.includes('internship')) {
+        navigation.navigate('ModuleTabs', { screen: 'Internships' });
+        return;
+      }
+      if (lowerPath.includes('job')) {
+        navigation.navigate('ModuleTabs', { screen: 'Job Profiles' });
+        return;
+      }
+      if (lowerPath.includes('company') || lowerPath.includes('profile')) {
+        navigation.navigate('Company Profile');
+        return;
+      }
+      if (lowerPath.includes('community')) {
+        navigation.navigate('Community');
+        return;
+      }
+      if (lowerPath.includes('settings')) {
+        navigation.navigate('Settings');
+        return;
+      }
+      if (lowerPath.includes('plan')) {
+        navigation.navigate('Plans');
+        return;
+      }
+      if (lowerPath.includes('overview') || lowerPath.includes('dashboard')) {
+        navigation.navigate('ModuleTabs', { screen: 'Overview' });
+        return;
+      }
+    }
+
+    // MENTOR ROLE
+    if (currentRole === 'mentor') {
+      if (lowerPath.includes('schedule')) {
+        navigation.navigate('ModuleTabs', { screen: 'Schedule' });
+        return;
+      }
+      if (lowerPath.includes('offering')) {
+        navigation.navigate('ModuleTabs', { screen: 'Offerings' });
+        return;
+      }
+      if (lowerPath.includes('request')) {
+        navigation.navigate('ModuleTabs', { screen: 'Requests' });
+        return;
+      }
+      if (lowerPath.includes('history') || lowerPath.includes('session')) {
+        navigation.navigate('ModuleTabs', { screen: 'Session History' });
+        return;
+      }
+      if (lowerPath.includes('payout')) {
+        navigation.navigate('Payouts & Commission');
+        return;
+      }
+      if (lowerPath.includes('community')) {
+        navigation.navigate('Community');
+        return;
+      }
+      if (lowerPath.includes('overview') || lowerPath.includes('dashboard')) {
+        navigation.navigate('ModuleTabs', { screen: 'Overview' });
+        return;
+      }
+    }
+
+    // Fallback: If external URL outside StrideNex domain
+    if (rawUrl && (rawUrl.startsWith('http://') || rawUrl.startsWith('https://')) && !rawUrl.includes('quantcloud.in') && !rawUrl.includes('stridenex')) {
+      Linking.openURL(rawUrl).catch((err) => {
+        console.error('Error opening external notification link:', err);
+      });
+    }
+  };
+
   const renderNotificationItem = ({ item, index }: { item: Notification; index: number }) => {
     const isUnread = item.read === 0;
     const hasHtml = isHtmlContent(item.email_content);
@@ -476,7 +705,7 @@ export const DashboardHeader = ({
               <TouchableOpacity
                 style={{ flex: 1 }}
                 activeOpacity={0.7}
-                onPress={() => isUnread && handleMarkAsRead(item.name)}
+                onPress={() => handleNotificationLinkPress('', item)}
               >
                 <Text
                   style={[styles.notifTitle, isUnread && styles.unreadText]}
@@ -500,11 +729,19 @@ export const DashboardHeader = ({
             </View>
 
             {hasHtml ? (
-              <NotificationHtmlView html={item.email_content!} />
+              <NotificationHtmlView
+                html={item.email_content!}
+                onLinkPress={(url) => handleNotificationLinkPress(url, item)}
+              />
             ) : cleanedMsg ? (
-              <Text style={styles.notifMsg}>
-                {cleanedMsg}
-              </Text>
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => handleNotificationLinkPress('', item)}
+              >
+                <Text style={styles.notifMsg}>
+                  {cleanedMsg}
+                </Text>
+              </TouchableOpacity>
             ) : null}
 
             <View style={styles.notifFooter}>
