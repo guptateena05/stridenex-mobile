@@ -1,4 +1,6 @@
-import { api } from "./api.services";
+import { Platform } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { api, BASE_URL } from "./api.services";
 
 export interface Notification {
   name: string;
@@ -72,5 +74,107 @@ export const markAllNotificationsAsRead = async (ownerEmail: string): Promise<vo
       console.error("Error marking all notifications as read:", postErr);
       throw postErr;
     }
+  }
+};
+
+export const registerDeviceToken = async (
+  fcmToken: string,
+  ownerEmail?: string
+): Promise<boolean> => {
+  try {
+    const effectiveEmail =
+      ownerEmail ||
+      (await AsyncStorage.getItem("userName")) ||
+      (await AsyncStorage.getItem("userEmail")) ||
+      "";
+
+    const storedToken = await AsyncStorage.getItem("token");
+
+    // Guard: Do not register if user is not logged in / email is empty
+    if (!effectiveEmail || !storedToken || storedToken === "dummy-token") {
+      console.log("[save_device_token] User is not logged in. Skipping API call.");
+      return false;
+    }
+
+    const payload: {
+      fcm_token: string;
+      platform: string;
+      owner_email: string;
+    } = {
+      fcm_token: fcmToken,
+      platform: Platform.OS, // "android" or "ios"
+      owner_email: effectiveEmail,
+    };
+
+    console.log("==========================================");
+    console.log("[save_device_token] CALLING API:");
+    console.log("[save_device_token] URL:", `${BASE_URL}method/stridenex_app.api_stridenex_app.notification.save_device_token`);
+    console.log("[save_device_token] PAYLOAD:", JSON.stringify(payload, null, 2));
+    console.log("==========================================");
+
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      "Authorization": `token ${storedToken.trim()}`,
+    };
+
+    const response = await api.post(
+      "method/stridenex_app.api_stridenex_app.notification.save_device_token",
+      payload,
+      { headers }
+    );
+
+    console.log("[save_device_token] SUCCESS RESPONSE:", response?.data);
+    return true;
+  } catch (error: any) {
+    console.warn(
+      "[save_device_token] Failed to register device token with backend:",
+      error?.response?.data || error?.message || error
+    );
+    throw error;
+  }
+};
+
+export const unregisterDeviceToken = async (
+  fcmToken?: string,
+  ownerEmail?: string
+): Promise<boolean> => {
+  try {
+    const effectiveEmail =
+      ownerEmail ||
+      (await AsyncStorage.getItem("userName")) ||
+      (await AsyncStorage.getItem("userEmail")) ||
+      "";
+
+    if (!fcmToken) return false;
+
+    const payload = {
+      fcm_token: fcmToken,
+      platform: Platform.OS,
+      owner_email: effectiveEmail,
+    };
+
+    console.log("[unregisterDeviceToken] De-registering device token for user:", effectiveEmail || "anonymous");
+
+    const storedToken = await AsyncStorage.getItem("token");
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    if (storedToken) {
+      headers["Authorization"] = `token ${storedToken.trim()}`;
+    }
+
+    try {
+      await api.post(
+        "method/stridenex_app.api_stridenex_app.notification.delete_device_token",
+        payload,
+        { headers }
+      );
+    } catch {
+      // Backend may not implement delete_device_token; graceful fallback
+    }
+    return true;
+  } catch (error: any) {
+    console.warn("[unregisterDeviceToken] Error unregistering token:", error?.message || error);
+    return false;
   }
 };

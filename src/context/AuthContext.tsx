@@ -1,6 +1,7 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { api, BASE_URL, getProfilePicture } from '@/api/api.services';
+import { handlePostLoginFcmToken, handleLogoutPushCleanup } from '@/services/pushNotification.service';
 
 type Role = 'Student' | 'Mentor' | 'College' | 'Industry' | null;
 
@@ -91,6 +92,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       if (userDetails?.username) {
         await AsyncStorage.setItem('userName', userDetails.username);
         setUserName(userDetails.username);
+        // Requirement 1 & 2: Generate/retrieve FCM token after login & register with backend
+        handlePostLoginFcmToken(userDetails.username).catch((err) => {
+          console.warn("[Auth] Error handling post-login FCM token:", err);
+        });
       }
       if (userDetails?.user_image) {
         await AsyncStorage.setItem('userImage', userDetails.user_image);
@@ -142,6 +147,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         } catch (apiError) {
           console.error("Logout API error:", apiError);
         }
+      }
+
+      // Requirement 5: Clean up push notification device token on logout
+      try {
+        await handleLogoutPushCleanup();
+      } catch (pushErr) {
+        console.warn("[Auth] Error during push notification logout cleanup:", pushErr);
       }
       await AsyncStorage.removeItem('token');
       await AsyncStorage.removeItem('role');
