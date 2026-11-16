@@ -1,5 +1,11 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { ActivityIndicator, View, StyleSheet, StatusBar, BackHandler } from 'react-native';
+import {
+  ActivityIndicator,
+  View,
+  StyleSheet,
+  StatusBar,
+  BackHandler,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { WebView, WebViewMessageEvent, WebViewNavigation } from 'react-native-webview';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -16,6 +22,11 @@ const STRIDENEX_RETURN_PATHS = [
   '/industry/dashboard',
   '/mentor/dashboard',
   '/partner',
+  '/student',
+  '/college',
+  '/industry',
+  '/mentor',
+  '/dashboard',
 ];
 
 const isStrideNexReturnUrl = (rawUrl?: string): boolean => {
@@ -23,7 +34,23 @@ const isStrideNexReturnUrl = (rawUrl?: string): boolean => {
   try {
     const parsed = new URL(rawUrl);
     const path = parsed.pathname.toLowerCase();
-    return STRIDENEX_RETURN_PATHS.some((prefix) => path === prefix || path.startsWith(`${prefix}/`));
+
+    // Check explicit dashboard/portal prefixes
+    if (STRIDENEX_RETURN_PATHS.some((prefix) => path === prefix || path.startsWith(`${prefix}/`))) {
+      return true;
+    }
+
+    // If navigated on stridenex domain but away from /lms
+    if (
+      (parsed.hostname.includes('stridenex') || parsed.hostname.includes('quantcloud')) &&
+      !path.startsWith('/lms') &&
+      !path.startsWith('/api') &&
+      !path.startsWith('/assets') &&
+      !path.startsWith('/_next')
+    ) {
+      return true;
+    }
+    return false;
   } catch {
     return STRIDENEX_RETURN_PATHS.some((prefix) => rawUrl.includes(prefix));
   }
@@ -108,7 +135,10 @@ const WebLmsScreen: React.FC = () => {
               localStorage.setItem("role", ${JSON.stringify(lowerRole)});
               localStorage.setItem("roles", ${JSON.stringify(JSON.stringify([effectiveRole]))});
               localStorage.setItem("isOnboarded", "1");
+              localStorage.setItem("has_lms_access", "true");
+              localStorage.setItem("isInstructor", "true");
               document.cookie = "user_role=" + encodeURIComponent(${JSON.stringify(lowerRole)}) + "; path=/";
+              document.cookie = "has_lms_access=true; path=/";
             } catch (e) {}
 
             var meta = document.querySelector('meta[name="viewport"]');

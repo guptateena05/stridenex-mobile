@@ -39,6 +39,8 @@ import {
 import DynamicForm from '@/components/forms/DynamicForm';
 import { FormField } from '@/components/forms/DynamicField';
 import ProfileImageUploader from '@/components/profile/ProfileImageUploader';
+import { useLmsAccess } from '@/utils/lmsAccess';
+import { LmsUpgradeModal } from '@/components/modals/LmsUpgradeModal';
 import {
   Users,
   TrendingUp,
@@ -56,7 +58,8 @@ import {
   X,
   GraduationCap,
   Calendar,
-  Code
+  Code,
+  BookOpen
 } from 'lucide-react-native';
 
 const actionItems = [
@@ -86,6 +89,7 @@ export const CollegeOverviewScreen = () => {
   const insets = useSafeAreaInsets();
   const { userName, userImage, userFullName } = useAuth();
   const navigation = useNavigation<any>();
+  const { checkingLms, showUpgradeModal, setShowUpgradeModal, handleOpenLmsStudio } = useLmsAccess();
   const [collegeData, setCollegeData] = useState<any>(null);
   const collegeDataRef = useRef<any>(null);
 
@@ -868,6 +872,26 @@ export const CollegeOverviewScreen = () => {
           </Card>
         </View>
 
+        {/* Learning Management - LMS Studio Card */}
+        <Animated.View entering={FadeInUp.delay(350)} style={{ marginBottom: 16 }}>
+          <TouchableOpacity
+            style={styles.lmsStudioCard}
+            onPress={() => handleOpenLmsStudio(collegeData?.email)}
+            activeOpacity={0.8}
+          >
+            <View style={styles.lmsCardRow}>
+              <View style={styles.lmsIconBox}>
+                <BookOpen size={24} color="#2563EB" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.lmsCardSubtitle}>Learning Management</Text>
+                <Text style={styles.lmsCardTitle}>LMS Studio</Text>
+                <Text style={styles.lmsCardAction}>Access courses & curriculum →</Text>
+              </View>
+            </View>
+          </TouchableOpacity>
+        </Animated.View>
+
         {/* Growth Trend Bar Chart */}
         <Card style={[styles.sectionCard, { marginBottom: 40 }]}>
           <View style={styles.flexRowBetween}>
@@ -943,6 +967,25 @@ export const CollegeOverviewScreen = () => {
             </ScrollView>
           </View>
         </KeyboardAvoidingView>
+      </Modal>
+
+      {/* LMS Studio Upgrade Plan Modal */}
+      <LmsUpgradeModal
+        isOpen={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        role="college"
+        onUpgrade={() => {
+          setShowUpgradeModal(false);
+          navigation.navigate('Plans');
+        }}
+      />
+
+      {/* Checking LMS Studio Access Loader */}
+      <Modal visible={checkingLms} transparent animationType="fade" statusBarTranslucent>
+        <View style={styles.loaderOverlay}>
+          <ActivityIndicator size="large" color="#059669" />
+          <Text style={styles.loaderText}>Checking LMS Studio access...</Text>
+        </View>
       </Modal>
     </View>
   );
@@ -1088,6 +1131,62 @@ const styles = StyleSheet.create({
   emptyStateText: {
     fontSize: 12,
     color: '#94A3B8',
+    fontWeight: '600',
+  },
+  lmsStudioCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderLeftWidth: 4,
+    borderLeftColor: '#2563EB',
+    shadowColor: '#64748B',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  lmsCardRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+  lmsIconBox: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#EFF6FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  lmsCardSubtitle: {
+    fontSize: 11,
+    color: '#64748B',
+    fontWeight: '600',
+  },
+  lmsCardTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#1E293B',
+    marginTop: 1,
+  },
+  lmsCardAction: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#2563EB',
+    marginTop: 3,
+  },
+  loaderOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loaderText: {
+    color: '#FFFFFF',
+    marginTop: 12,
+    fontSize: 14,
     fontWeight: '600',
   },
 });

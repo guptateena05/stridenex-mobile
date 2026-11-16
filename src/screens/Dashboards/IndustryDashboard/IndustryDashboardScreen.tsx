@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '@/theme/colors';
 import { typography } from '@/theme/typography';
@@ -23,7 +23,8 @@ import {
   Crown,
   ChevronRight,
   ShieldCheck,
-  CreditCard
+  CreditCard,
+  BookOpen
 } from 'lucide-react-native';
 import Animated, { FadeInUp, FadeInRight } from 'react-native-reanimated';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -32,6 +33,8 @@ import { ReferralCardWidget } from '@/components/dashboard/ReferralCardWidget';
 import { useIndustry } from '@/context/IndustryContext';
 import { getApplicationStatusCount } from '@/api/industry.services';
 import { getUserSubscriptionDashboard } from '@/api/student.services';
+import { useLmsAccess } from '@/utils/lmsAccess';
+import { LmsUpgradeModal } from '@/components/modals/LmsUpgradeModal';
 
 const industryStats = [
   { id: 1, title: "SEARCHABLE STUDENTS", value: "12,840", icon: Users, color: "#3B82F6", bg: "rgba(59, 130, 246, 0.08)" },
@@ -94,6 +97,7 @@ export const IndustryDashboardScreen = () => {
   const navigation = useNavigation<any>();
   const { userFullName, userImage } = useAuth();
   const { industryData, refreshIndustryData } = useIndustry();
+  const { checkingLms, showUpgradeModal, setShowUpgradeModal, handleOpenLmsStudio } = useLmsAccess();
   const [pipelineData, setPipelineData] = React.useState(initialPipelineStages);
   const [appliedCount, setAppliedCount] = React.useState(0);
   const [loadingPipeline, setLoadingPipeline] = React.useState(false);
@@ -349,6 +353,15 @@ export const IndustryDashboardScreen = () => {
                 </View>
                 <Text style={styles.actionBtnText}>Post Job Profile</Text>
               </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.actionBtn}
+                onPress={() => handleOpenLmsStudio((industryData as any)?.company_email || (industryData as any)?.email)}
+              >
+                <View style={[styles.actionIconBox, { backgroundColor: 'rgba(147, 51, 234, 0.1)' }]}>
+                  <BookOpen size={16} color={colors.purple[600]} />
+                </View>
+                <Text style={styles.actionBtnText}>LMS Studio</Text>
+              </TouchableOpacity>
             </View>
           </Animated.View>
         </View>
@@ -364,6 +377,25 @@ export const IndustryDashboardScreen = () => {
 
         <View style={styles.footerSpacer} />
       </ScrollView>
+
+      {/* LMS Studio Upgrade Plan Modal */}
+      <LmsUpgradeModal
+        isOpen={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        role="industry"
+        onUpgrade={() => {
+          setShowUpgradeModal(false);
+          navigation.navigate('Plans');
+        }}
+      />
+
+      {/* Checking LMS Studio Access Loader */}
+      <Modal visible={checkingLms} transparent animationType="fade" statusBarTranslucent>
+        <View style={styles.loaderOverlay}>
+          <ActivityIndicator size="large" color={colors.purple[600]} />
+          <Text style={styles.loaderText}>Checking LMS Studio access...</Text>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -584,5 +616,17 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#FFFFFF',
   },
-  footerSpacer: { height: 40 }
+  footerSpacer: { height: 40 },
+  loaderOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loaderText: {
+    color: '#FFFFFF',
+    marginTop: 12,
+    fontSize: 14,
+    fontWeight: '600',
+  },
 });

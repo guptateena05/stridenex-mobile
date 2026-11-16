@@ -32,12 +32,15 @@ import {
   AlertCircle,
   LayoutDashboard,
   Award,
-  X
+  X,
+  BookOpen
 } from 'lucide-react-native';
 import Animated, { FadeInUp, FadeInRight } from 'react-native-reanimated';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import { StatsCard } from '@/components/dashboard/StatsCard';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useLmsAccess } from '@/utils/lmsAccess';
+import { LmsUpgradeModal } from '@/components/modals/LmsUpgradeModal';
 import {
   getMentorByEmail,
   getMentorDashboardStats,
@@ -52,6 +55,7 @@ import {
 export const MentorDashboardScreen = () => {
   const { userFullName, userName, userImage, updateUserFullName } = useAuth();
   const navigation = useNavigation<any>();
+  const { checkingLms, showUpgradeModal, setShowUpgradeModal, handleOpenLmsStudio } = useLmsAccess();
 
   // Overview data states
   const [loading, setLoading] = useState(true);
@@ -660,6 +664,26 @@ export const MentorDashboardScreen = () => {
             </View>
           </Animated.View>
 
+          {/* Learning Management - LMS Studio Card */}
+          <Animated.View entering={FadeInUp.delay(320)} style={{ marginBottom: 16 }}>
+            <TouchableOpacity
+              style={styles.lmsStudioCard}
+              onPress={() => handleOpenLmsStudio(mentorData?.email)}
+              activeOpacity={0.8}
+            >
+              <View style={styles.lmsCardRow}>
+                <View style={styles.lmsIconBox}>
+                  <BookOpen size={24} color="#4C1D95" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.lmsCardSubtitle}>Learning Management</Text>
+                  <Text style={styles.lmsCardTitle}>LMS Studio</Text>
+                  <Text style={styles.lmsCardAction}>Create courses & manage cohorts →</Text>
+                </View>
+              </View>
+            </TouchableOpacity>
+          </Animated.View>
+
           {/* Referral Card */}
           {(mentorData?.user_details?.referal_code || mentorData?.referal_code) && (
             <Animated.View entering={FadeInUp.delay(350)}>
@@ -791,6 +815,25 @@ export const MentorDashboardScreen = () => {
         </View>
       </Modal>
 
+      {/* LMS Studio Upgrade Plan Modal */}
+      <LmsUpgradeModal
+        isOpen={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        role="mentor"
+        onUpgrade={() => {
+          setShowUpgradeModal(false);
+          navigation.navigate('Plans');
+        }}
+      />
+
+      {/* Checking LMS Studio Access Loader */}
+      <Modal visible={checkingLms} transparent animationType="fade" statusBarTranslucent>
+        <View style={styles.loaderOverlay}>
+          <ActivityIndicator size="large" color="#4C1D95" />
+          <Text style={styles.loaderText}>Checking LMS Studio access...</Text>
+        </View>
+      </Modal>
+
     </SafeAreaView>
   );
 };
@@ -895,5 +938,61 @@ const styles = StyleSheet.create({
   modalCancelBtn: { flex: 1, backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E2E8F0', paddingVertical: 14, borderRadius: 12, alignItems: 'center' },
   modalCancelBtnText: { color: '#64748B', fontSize: 14, fontWeight: '800' },
   modalConfirmBtn: { flex: 1, backgroundColor: '#F97316', paddingVertical: 14, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  modalConfirmBtnText: { color: '#FFF', fontSize: 14, fontWeight: '800' }
+  modalConfirmBtnText: { color: '#FFF', fontSize: 14, fontWeight: '800' },
+  lmsStudioCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderLeftWidth: 4,
+    borderLeftColor: '#4C1D95',
+    shadowColor: '#64748B',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  lmsCardRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+  lmsIconBox: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(76, 29, 149, 0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  lmsCardSubtitle: {
+    fontSize: 11,
+    color: '#64748B',
+    fontWeight: '600',
+  },
+  lmsCardTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#1E293B',
+    marginTop: 1,
+  },
+  lmsCardAction: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#4C1D95',
+    marginTop: 3,
+  },
+  loaderOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loaderText: {
+    color: '#FFFFFF',
+    marginTop: 12,
+    fontSize: 14,
+    fontWeight: '600',
+  },
 });

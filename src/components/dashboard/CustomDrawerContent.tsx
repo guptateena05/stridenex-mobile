@@ -7,6 +7,8 @@ import { colors } from '@/theme/colors';
 import { typography } from '@/theme/typography';
 import { spacing, borderRadius } from '@/theme/spacing';
 import { useAuth } from '@/context/AuthContext';
+import { useLmsAccess } from '@/utils/lmsAccess';
+import { LmsUpgradeModal } from '@/components/modals/LmsUpgradeModal';
 import circularLogo from '@/assets/images/circularLogo.jpg';
 import { 
   BarChart2, 
@@ -37,6 +39,7 @@ import {
 export const CustomDrawerContent = (props: DrawerContentComponentProps & { isIncomplete?: boolean; hideJobs?: boolean }) => {
   const insets = useSafeAreaInsets();
   const { userFullName, role, logout } = useAuth();
+  const { checkingLms, showUpgradeModal, setShowUpgradeModal, handleOpenLmsStudio } = useLmsAccess();
 
   const [displayName, setDisplayName] = useState<string>(userFullName && userFullName !== 'Test User' ? userFullName : '');
 
@@ -355,6 +358,40 @@ export const CustomDrawerContent = (props: DrawerContentComponentProps & { isInc
             );
           })
         )}
+
+        {/* LMS Studio at the very last position in the sidebar */}
+        {role !== 'Student' && (
+          <View style={{ marginTop: 2, marginBottom: 8 }}>
+            <DrawerItem
+              label="LMS Studio"
+              icon={({ color, size }) => <BookOpen color={color} size={size} />}
+              focused={false}
+              activeTintColor={
+                role === 'College'
+                  ? '#10b981'
+                  : role === 'Mentor'
+                  ? '#4c1d95'
+                  : role === 'Industry'
+                  ? colors.purple[600]
+                  : colors.accent.DEFAULT
+              }
+              inactiveTintColor={colors.text.secondary}
+              activeBackgroundColor={
+                role === 'College'
+                  ? 'rgba(16, 185, 129, 0.1)'
+                  : role === 'Mentor'
+                  ? 'rgba(76, 29, 149, 0.1)'
+                  : 'rgba(147, 51, 234, 0.1)'
+              }
+              style={{ borderRadius: 8, marginHorizontal: 12 }}
+              labelStyle={{ fontSize: 14, fontWeight: '600', marginLeft: 8 }}
+              onPress={() => {
+                props.navigation.closeDrawer();
+                handleOpenLmsStudio();
+              }}
+            />
+          </View>
+        )}
       </ScrollView>
 
       <View style={[styles.footer, { paddingBottom: insets.bottom + spacing.md }]}>
@@ -394,6 +431,25 @@ export const CustomDrawerContent = (props: DrawerContentComponentProps & { isInc
                  </TouchableOpacity>
               </View>
            </View>
+        </View>
+      </Modal>
+
+      {/* LMS Studio Upgrade Plan Modal */}
+      <LmsUpgradeModal
+        isOpen={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        role={role as string}
+        onUpgrade={() => {
+          setShowUpgradeModal(false);
+          props.navigation.navigate('Plans');
+        }}
+      />
+
+      {/* Checking LMS Studio Access Loader */}
+      <Modal visible={checkingLms} transparent animationType="fade" statusBarTranslucent>
+        <View style={styles.loaderOverlay}>
+          <ActivityIndicator size="large" color={colors.primary.DEFAULT} />
+          <Text style={styles.loggingOutText}>Checking LMS Studio access...</Text>
         </View>
       </Modal>
 
