@@ -145,36 +145,54 @@ export const unregisterDeviceToken = async (
       (await AsyncStorage.getItem("userEmail")) ||
       "";
 
-    if (!fcmToken) return false;
+    const effectiveToken =
+      fcmToken ||
+      (await AsyncStorage.getItem("fcm_device_token")) ||
+      (await AsyncStorage.getItem("fcm_last_synced_token")) ||
+      "";
 
-    const payload = {
-      fcm_token: fcmToken,
+    if (!effectiveToken || !effectiveEmail) {
+      console.log("[delete_device_token] No active token or user email to delete. Skipping.");
+      return false;
+    }
+
+    const payload: {
+      fcm_token: string;
+      platform: string;
+      owner_email: string;
+    } = {
+      fcm_token: effectiveToken,
       platform: Platform.OS,
       owner_email: effectiveEmail,
     };
 
-    console.log("[unregisterDeviceToken] De-registering device token for user:", effectiveEmail || "anonymous");
+    console.log("==========================================");
+    console.log("[delete_device_token] CALLING API:");
+    console.log("[delete_device_token] URL:", `${BASE_URL}method/stridenex_app.api_stridenex_app.notification.delete_device_token`);
+    console.log("[delete_device_token] PAYLOAD:", JSON.stringify(payload, null, 2));
+    console.log("==========================================");
 
     const storedToken = await AsyncStorage.getItem("token");
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
     };
-    if (storedToken) {
+    if (storedToken && storedToken !== "dummy-token") {
       headers["Authorization"] = `token ${storedToken.trim()}`;
     }
 
-    try {
-      await api.post(
-        "method/stridenex_app.api_stridenex_app.notification.delete_device_token",
-        payload,
-        { headers }
-      );
-    } catch {
-      // Backend may not implement delete_device_token; graceful fallback
-    }
+    const response = await api.post(
+      "method/stridenex_app.api_stridenex_app.notification.delete_device_token",
+      payload,
+      { headers }
+    );
+
+    console.log("[delete_device_token] SUCCESS RESPONSE:", response?.data);
     return true;
   } catch (error: any) {
-    console.warn("[unregisterDeviceToken] Error unregistering token:", error?.message || error);
+    console.warn(
+      "[delete_device_token] Failed to delete device token from backend:",
+      error?.response?.data || error?.message || error
+    );
     return false;
   }
 };

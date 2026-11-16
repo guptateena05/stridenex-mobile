@@ -21,7 +21,7 @@ import {
   AuthorizationStatus,
   RemoteMessage,
 } from '@react-native-firebase/messaging';
-import { registerDeviceToken } from '@/api/notification.services';
+import { registerDeviceToken, unregisterDeviceToken } from '@/api/notification.services';
 
 // Storage keys for caching and deduplication
 export const FCM_TOKEN_STORAGE_KEY = 'fcm_device_token';
@@ -330,12 +330,12 @@ export const setupTokenRefreshListener = (userEmail?: string): (() => void) => {
 /**
  * 5. On logout:
  * - Detaches active listeners.
- * - Does NOT delete the token on Firebase servers or wipe local caches,
- *   enabling the same user to log back in without creating duplicate registrations.
+ * - Calls delete_device_token to remove device token registration from backend database.
+ * - Cleans up sync tracker keys so subsequent logins create fresh registration.
  */
-export const handleLogoutPushCleanup = async (): Promise<void> => {
+export const handleLogoutPushCleanup = async (userEmail?: string): Promise<void> => {
   try {
-    console.log('[Push] Logging out: detaching push notification listeners...');
+    console.log('[Push] Logging out: detaching push notification listeners & unregistering device token...');
 
     // Detach token refresh listener while logged out
     if (tokenRefreshUnsubscribe) {
@@ -349,10 +349,32 @@ export const handleLogoutPushCleanup = async (): Promise<void> => {
       appStateSubscription = null;
     }
 
-    // We intentionally keep FCM_TOKEN_STORAGE_KEY, FCM_LAST_SYNCED_TOKEN_KEY, and
-    // FCM_LAST_SYNCED_USER_KEY in AsyncStorage so that if the same user logs in again
-    // on this device, the existing registration is reused without extra API calls.
-    console.log('[Push] Logout cleanup complete. Device token preserved for re-login reuse.');
+    const email =
+      userEmail ||
+      (await AsyncStorage.getItem('userName')) ||
+      (await AsyncStorage.getItem('userEmail')) ||
+      '';
+
+    const cachedToken =
+      (await AsyncStorage.getItem(FCM_TOKEN_STORAGE_KEY)) ||
+      (await AsyncStorage.getItem(FCM_LAST_SYNCED_TOKEN_KEY)) ||
+      '';
+
+    if (cachedToken && email) {
+      try {
+        console.log(`[Push] Deleting device token from backend for user: ${email}...`);
+        await unregisterDeviceToken(cachedToken, email);
+      } catch (delErr) {
+        console.warn('[Push] Error calling unregisterDeviceToken on logout:', delErr);
+      }
+    }
+
+    // Clear backend sync tracker keys so next login freshly registers on backend
+    await AsyncStorage.removeItem(FCM_LAST_SYNCED_TOKEN_KEY);
+    await AsyncStorage.removeItem(FCM_LAST_SYNCED_USER_KEY);
+    await AsyncStorage.removeItem(FCM_PENDING_SYNC_KEY);
+
+    console.log('[Push] Logout push cleanup complete. Device token deleted from backend database.');
   } catch (err) {
     console.warn('[Push] Error during logout token cleanup:', err);
   }

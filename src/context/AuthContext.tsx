@@ -149,9 +149,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
       }
 
-      // Requirement 5: Clean up push notification device token on logout
+      // Clean up push notification device token on backend (delete_device_token)
       try {
-        await handleLogoutPushCleanup();
+        const currentEmail =
+          userName ||
+          (await AsyncStorage.getItem('userName')) ||
+          (await AsyncStorage.getItem('userEmail')) ||
+          '';
+        await handleLogoutPushCleanup(currentEmail);
       } catch (pushErr) {
         console.warn("[Auth] Error during push notification logout cleanup:", pushErr);
       }

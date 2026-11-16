@@ -23,5 +23,20 @@ class MainApplication : Application(), ReactApplication {
   override fun onCreate() {
     super.onCreate()
     loadReactNative(this)
+
+    // Ensure high-priority StrideNex notification channel exists for push notifications
+    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+      val notificationManager = getSystemService(android.app.NotificationManager::class.java)
+      val channel = android.app.NotificationChannel(
+        "stridenex_notifications",
+        "StrideNex Notifications",
+        android.app.NotificationManager.IMPORTANCE_HIGH
+      ).apply {
+        description = "StrideNex app notifications, course updates, and alerts"
+        enableLights(true)
+        enableVibration(true)
+      }
+      notificationManager?.createNotificationChannel(channel)
+    }
   }
 }
