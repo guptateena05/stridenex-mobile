@@ -141,6 +141,9 @@ export const SignupScreen = () => {
         await AsyncStorage.setItem("userFirstName", firstName);
         await AsyncStorage.setItem("userLastName", lastName);
         await AsyncStorage.setItem("userPassword", password);
+        await AsyncStorage.setItem(`is_first_login_${email}`, 'true');
+        await AsyncStorage.setItem('just_signed_up', 'true');
+        await AsyncStorage.setItem('newly_registered_email', email);
 
         if (selectedRole === 'student') {
           navigation.navigate('StudentOnboarding');

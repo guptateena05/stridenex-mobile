@@ -134,6 +134,15 @@ export const StudentDashboardScreen = () => {
     if (!userName) return;
     const checkStatus = async () => {
       try {
+        const userKey = `has_seen_student_tour_${userName}`;
+        const hasSeen = await AsyncStorage.getItem(userKey);
+
+        const storedFirst = await AsyncStorage.getItem(`is_first_login_${userName}`);
+        const justSignedUp = await AsyncStorage.getItem('just_signed_up');
+        const isExplicitFirst = (storedFirst === 'true' || justSignedUp === 'true') && hasSeen !== 'true';
+
+        setIsFirstLogin(!!isExplicitFirst);
+
         const status = await checkOnboardingStatus(userName);
         const isCompleted = !!(
           status.has_completed_test || 
@@ -143,24 +152,19 @@ export const StudentDashboardScreen = () => {
         );
         setHasCompletedTest(isCompleted);
 
-        // If user is first time login
-        if (status.is_first_login) {
-          setIsFirstLogin(true);
-          if (!isCompleted) {
-            setIsPsychoModalVisible(true);
-          } else {
-            setIsPsychoModalVisible(false);
-          }
+        // Show test modal only for genuine first-time students who haven't completed test
+        if (isExplicitFirst && !isCompleted && !status.is_onboarded) {
+          setIsPsychoModalVisible(true);
         } else {
-          // Old user
           setIsPsychoModalVisible(false);
-          setIsFirstLogin(false);
-          if (userName) {
-            AsyncStorage.setItem(`has_seen_student_tour_${userName}`, 'true');
+          if (hasSeen === 'true') {
+            await AsyncStorage.setItem(`is_first_login_${userName}`, 'false');
           }
         }
       } catch (err) {
         console.error("Error checking onboarding status", err);
+        setIsFirstLogin(false);
+        setIsPsychoModalVisible(false);
       }
     };
     checkStatus();

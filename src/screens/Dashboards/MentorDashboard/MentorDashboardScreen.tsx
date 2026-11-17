@@ -78,6 +78,34 @@ export const MentorDashboardScreen = () => {
   const [rescheduleDate, setRescheduleDate] = useState("");
   const [rescheduleFromTime, setRescheduleFromTime] = useState("");
   const [rescheduleToTime, setRescheduleToTime] = useState("");
+  const [isFirstLogin, setIsFirstLogin] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (!userName) return;
+    const checkStatus = async () => {
+      try {
+        const userKey = `has_seen_mentor_tour_${userName}`;
+        const hasSeen = await AsyncStorage.getItem(userKey);
+        if (hasSeen === 'true') {
+          setIsFirstLogin(false);
+          return;
+        }
+
+        const storedFirst = await AsyncStorage.getItem(`is_first_login_${userName}`);
+        const justSignedUp = await AsyncStorage.getItem('just_signed_up');
+
+        if (storedFirst === 'true' || justSignedUp === 'true') {
+          setIsFirstLogin(true);
+        } else {
+          setIsFirstLogin(false);
+          await AsyncStorage.setItem(userKey, 'true');
+        }
+      } catch (e) {
+        console.log('Error checking mentor first login:', e);
+      }
+    };
+    checkStatus();
+  }, [userName]);
   const [rescheduleReason, setRescheduleReason] = useState("");
   const [submittingReschedule, setSubmittingReschedule] = useState(false);
   const [rescheduleError, setRescheduleError] = useState("");
@@ -835,7 +863,7 @@ export const MentorDashboardScreen = () => {
         </View>
       </Modal>
 
-      <MentorGuidelineTour mentorEmail={userName || undefined} />
+      <MentorGuidelineTour mentorEmail={userName || undefined} isFirstLogin={isFirstLogin} />
     </SafeAreaView>
   );
 };

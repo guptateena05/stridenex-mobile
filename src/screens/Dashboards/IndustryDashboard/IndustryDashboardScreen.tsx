@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl, Modal } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '@/theme/colors';
 import { typography } from '@/theme/typography';
@@ -104,6 +105,34 @@ export const IndustryDashboardScreen = () => {
   const [loadingPipeline, setLoadingPipeline] = React.useState(false);
   const [refreshing, setRefreshing] = React.useState(false);
   const [activePlan, setActivePlan] = React.useState<any>(null);
+  const [isFirstLogin, setIsFirstLogin] = React.useState<boolean>(false);
+
+  React.useEffect(() => {
+    if (!userName) return;
+    const checkStatus = async () => {
+      try {
+        const userKey = `has_seen_industry_tour_${userName}`;
+        const hasSeen = await AsyncStorage.getItem(userKey);
+        if (hasSeen === 'true') {
+          setIsFirstLogin(false);
+          return;
+        }
+
+        const storedFirst = await AsyncStorage.getItem(`is_first_login_${userName}`);
+        const justSignedUp = await AsyncStorage.getItem('just_signed_up');
+
+        if (storedFirst === 'true' || justSignedUp === 'true') {
+          setIsFirstLogin(true);
+        } else {
+          setIsFirstLogin(false);
+          await AsyncStorage.setItem(userKey, 'true');
+        }
+      } catch (e) {
+        console.log('Error checking industry first login:', e);
+      }
+    };
+    checkStatus();
+  }, [userName]);
 
   const fetchSubscription = React.useCallback(async () => {
     try {
@@ -398,7 +427,7 @@ export const IndustryDashboardScreen = () => {
         </View>
       </Modal>
 
-      <IndustryGuidelineTour industryEmail={userName || undefined} />
+      <IndustryGuidelineTour industryEmail={userName || undefined} isFirstLogin={isFirstLogin} />
     </SafeAreaView>
   );
 };

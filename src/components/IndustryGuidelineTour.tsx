@@ -115,8 +115,13 @@ export default function IndustryGuidelineTour({
       try {
         const userKey = industryEmail ? `has_seen_industry_tour_${industryEmail}` : 'has_seen_industry_tour';
         const hasSeen = await AsyncStorage.getItem(userKey);
+        const storedFirst = industryEmail ? await AsyncStorage.getItem(`is_first_login_${industryEmail}`) : null;
+        const justSignedUp = await AsyncStorage.getItem('just_signed_up');
+
+        const isFirstTimeUser = isFirstLogin || storedFirst === 'true' || justSignedUp === 'true';
+
         // ONLY auto-launch if explicitly first-time login
-        if (isFirstLogin && !hasSeen && isMounted) {
+        if (isFirstTimeUser && hasSeen !== 'true' && isMounted) {
           timer = setTimeout(() => {
             if (isMounted) {
               startTour();
@@ -151,6 +156,10 @@ export default function IndustryGuidelineTour({
     try {
       const userKey = industryEmail ? `has_seen_industry_tour_${industryEmail}` : 'has_seen_industry_tour';
       await AsyncStorage.setItem(userKey, 'true');
+      if (industryEmail) {
+        await AsyncStorage.setItem(`is_first_login_${industryEmail}`, 'false');
+      }
+      await AsyncStorage.removeItem('just_signed_up');
     } catch (e) {
       console.log('Error saving industry tour completion:', e);
     }

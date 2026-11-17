@@ -108,6 +108,34 @@ export const CollegeOverviewScreen = () => {
   const [dashboardSummary, setDashboardSummary] = useState<any>(null);
   const [placementStats, setPlacementStats] = useState<any>(null);
   const [branchPerformance, setBranchPerformance] = useState<any[] | null>(null);
+  const [isFirstLogin, setIsFirstLogin] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (!userName) return;
+    const checkStatus = async () => {
+      try {
+        const userKey = `has_seen_college_tour_${userName}`;
+        const hasSeen = await AsyncStorage.getItem(userKey);
+        if (hasSeen === 'true') {
+          setIsFirstLogin(false);
+          return;
+        }
+
+        const storedFirst = await AsyncStorage.getItem(`is_first_login_${userName}`);
+        const justSignedUp = await AsyncStorage.getItem('just_signed_up');
+
+        if (storedFirst === 'true' || justSignedUp === 'true') {
+          setIsFirstLogin(true);
+        } else {
+          setIsFirstLogin(false);
+          await AsyncStorage.setItem(userKey, 'true');
+        }
+      } catch (e) {
+        console.log('Error checking college first login:', e);
+      }
+    };
+    checkStatus();
+  }, [userName]);
   const [driveCounts, setDriveCounts] = useState<any>(null);
   const [upcomingDrivesList, setUpcomingDrivesList] = useState<any[]>([]);
   const [employabilityDistribution, setEmployabilityDistribution] = useState<any>(null);
@@ -989,7 +1017,7 @@ export const CollegeOverviewScreen = () => {
         </View>
       </Modal>
 
-      <CollegeGuidelineTour collegeEmail={userName || undefined} />
+      <CollegeGuidelineTour collegeEmail={userName || undefined} isFirstLogin={isFirstLogin} />
     </View>
   );
 };

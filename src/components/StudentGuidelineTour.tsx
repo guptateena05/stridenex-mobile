@@ -166,6 +166,10 @@ export default function StudentGuidelineTour({
       const userKey = studentEmail ? `has_seen_student_tour_${studentEmail}` : 'has_seen_student_tour';
       await AsyncStorage.setItem(userKey, 'true');
       await AsyncStorage.setItem('dismissed_student_tour', 'true');
+      if (studentEmail) {
+        await AsyncStorage.setItem(`is_first_login_${studentEmail}`, 'false');
+      }
+      await AsyncStorage.removeItem('just_signed_up');
     } catch (e) {
       console.log('Error saving tour completion:', e);
     }

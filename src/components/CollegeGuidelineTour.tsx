@@ -115,8 +115,13 @@ export default function CollegeGuidelineTour({
       try {
         const userKey = collegeEmail ? `has_seen_college_tour_${collegeEmail}` : 'has_seen_college_tour';
         const hasSeen = await AsyncStorage.getItem(userKey);
+        const storedFirst = collegeEmail ? await AsyncStorage.getItem(`is_first_login_${collegeEmail}`) : null;
+        const justSignedUp = await AsyncStorage.getItem('just_signed_up');
+
+        const isFirstTimeUser = isFirstLogin || storedFirst === 'true' || justSignedUp === 'true';
+
         // ONLY auto-launch if explicitly first-time login
-        if (isFirstLogin && !hasSeen && isMounted) {
+        if (isFirstTimeUser && hasSeen !== 'true' && isMounted) {
           timer = setTimeout(() => {
             if (isMounted) {
               startTour();
@@ -151,6 +156,10 @@ export default function CollegeGuidelineTour({
     try {
       const userKey = collegeEmail ? `has_seen_college_tour_${collegeEmail}` : 'has_seen_college_tour';
       await AsyncStorage.setItem(userKey, 'true');
+      if (collegeEmail) {
+        await AsyncStorage.setItem(`is_first_login_${collegeEmail}`, 'false');
+      }
+      await AsyncStorage.removeItem('just_signed_up');
     } catch (e) {
       console.log('Error saving college tour completion:', e);
     }

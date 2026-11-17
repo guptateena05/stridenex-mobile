@@ -239,6 +239,18 @@ export const LoginScreen = () => {
 
         const userEmail = data.user || username;
         await AsyncStorage.setItem("userEmail", userEmail);
+        if (data.is_first_login !== undefined) {
+          await AsyncStorage.setItem(`is_first_login_${userEmail}`, String(data.is_first_login));
+        } else {
+          const justSignedUp = (await AsyncStorage.getItem('just_signed_up')) === 'true' &&
+            (await AsyncStorage.getItem('newly_registered_email')) === userEmail;
+
+          if (justSignedUp) {
+            await AsyncStorage.setItem(`is_first_login_${userEmail}`, 'true');
+          } else {
+            await AsyncStorage.setItem(`is_first_login_${userEmail}`, 'false');
+          }
+        }
 
         const storedFirstName = await AsyncStorage.getItem('userFirstName');
         const storedLastName = await AsyncStorage.getItem('userLastName');

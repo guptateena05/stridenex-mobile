@@ -114,8 +114,13 @@ export default function MentorGuidelineTour({
       try {
         const userKey = mentorEmail ? `has_seen_mentor_tour_${mentorEmail}` : 'has_seen_mentor_tour';
         const hasSeen = await AsyncStorage.getItem(userKey);
+        const storedFirst = mentorEmail ? await AsyncStorage.getItem(`is_first_login_${mentorEmail}`) : null;
+        const justSignedUp = await AsyncStorage.getItem('just_signed_up');
+
+        const isFirstTimeUser = isFirstLogin || storedFirst === 'true' || justSignedUp === 'true';
+
         // ONLY auto-launch if explicitly first-time login
-        if (isFirstLogin && !hasSeen && isMounted) {
+        if (isFirstTimeUser && hasSeen !== 'true' && isMounted) {
           timer = setTimeout(() => {
             if (isMounted) {
               startTour();
@@ -150,6 +155,10 @@ export default function MentorGuidelineTour({
     try {
       const userKey = mentorEmail ? `has_seen_mentor_tour_${mentorEmail}` : 'has_seen_mentor_tour';
       await AsyncStorage.setItem(userKey, 'true');
+      if (mentorEmail) {
+        await AsyncStorage.setItem(`is_first_login_${mentorEmail}`, 'false');
+      }
+      await AsyncStorage.removeItem('just_signed_up');
     } catch (e) {
       console.log('Error saving mentor tour completion:', e);
     }
