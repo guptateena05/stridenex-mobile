@@ -24,6 +24,7 @@ import PsychometricTestModal from '@/components/psychometric/PsychometricTestMod
 import PsychometricHistoryModal from '@/components/psychometric/PsychometricHistoryModal';
 import { checkOnboardingStatus } from '@/api/psychometric.services';
 import StudentGuidelineTour from '@/components/StudentGuidelineTour';
+import { fetchAndCacheStudentPlanStatus, getCachedStudentPlanStatus } from '@/api/studentPlan';
 
 const { width } = Dimensions.get('window');
 
@@ -37,6 +38,49 @@ export const StudentDashboardScreen = () => {
   const [isTourActive, setIsTourActive] = useState(false);
   const [hasCompletedTest, setHasCompletedTest] = useState<boolean>(false);
   const [isFirstLogin, setIsFirstLogin] = useState<boolean>(false);
+  const [hasActivePlan, setHasActivePlan] = useState<boolean | null>(null);
+
+  // Check student plan status
+  useEffect(() => {
+    let isMounted = true;
+    const checkPlan = async () => {
+      const cached = await getCachedStudentPlanStatus();
+      if (isMounted && cached !== null) {
+        setHasActivePlan(cached);
+      }
+      const fresh = await fetchAndCacheStudentPlanStatus();
+      if (isMounted) {
+        setHasActivePlan(fresh);
+      }
+    };
+    checkPlan();
+
+    const sub = DeviceEventEmitter.addListener('PLAN_UPDATED', (data) => {
+      if (isMounted && data?.isActive !== undefined) {
+        setHasActivePlan(data.isActive);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      sub.remove();
+    };
+  }, []);
+
+  // For returning students without active plan, redirect to Plans screen
+  useEffect(() => {
+    if (isFirstLogin || isTourActive || hasActivePlan === null) return;
+    if (hasActivePlan === false) {
+      navigation.navigate('Plans');
+    }
+  }, [isFirstLogin, isTourActive, hasActivePlan, navigation]);
+
+  const handleTourClose = async () => {
+    const active = await fetchAndCacheStudentPlanStatus();
+    if (!active) {
+      navigation.navigate('Plans');
+    }
+  };
 
   // Load cached student data on mount/username change
   useEffect(() => {
@@ -588,6 +632,7 @@ export const StudentDashboardScreen = () => {
         isFirstLogin={isFirstLogin}
         disabled={isPsychoModalVisible}
         onTourStateChange={setIsTourActive} 
+        onTourClose={handleTourClose}
       />
     </View>
   );

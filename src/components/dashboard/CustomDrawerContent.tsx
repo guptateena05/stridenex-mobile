@@ -33,10 +33,11 @@ import {
   Target,
   Mail,
   UserCheck,
-  Video
+  Video,
+  Lock
 } from 'lucide-react-native';
 
-export const CustomDrawerContent = (props: DrawerContentComponentProps & { isIncomplete?: boolean; hideJobs?: boolean }) => {
+export const CustomDrawerContent = (props: DrawerContentComponentProps & { isIncomplete?: boolean; hideJobs?: boolean; hasActivePlan?: boolean | null }) => {
   const insets = useSafeAreaInsets();
   const { userFullName, role, logout } = useAuth();
   const { checkingLms, showUpgradeModal, setShowUpgradeModal, handleOpenLmsStudio } = useLmsAccess();
@@ -310,22 +311,43 @@ export const CustomDrawerContent = (props: DrawerContentComponentProps & { isInc
                 ];
               }
 
+              const isStudentWithoutPlan = role === 'Student' && props.hasActivePlan === false;
+
               return manualTabs.map((tab) => {
                 if (tab.hide) return null;
                 const isTabFocused = focused && activeTabName === tab.name;
+                const isLocked = isStudentWithoutPlan;
                 
                 return (
-                  <View key={`tab-${tab.name}`} pointerEvents={isDisabled && tab.name !== 'Overview' ? 'none' : 'auto'} style={{ opacity: isDisabled && tab.name !== 'Overview' ? 0.4 : 1 }}>
+                  <View key={`tab-${tab.name}`} pointerEvents={isDisabled && tab.name !== 'Overview' ? 'none' : 'auto'} style={{ opacity: isLocked ? 0.65 : isDisabled && tab.name !== 'Overview' ? 0.4 : 1 }}>
                     <DrawerItem
-                      label={tab.name}
+                      label={({ color }) => (
+                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flex: 1, paddingRight: 4 }}>
+                          <Text style={{ color, fontSize: 14, fontWeight: '600', marginLeft: 8 }}>
+                            {tab.name}
+                          </Text>
+                          {isLocked && <Lock size={14} color="#D97706" />}
+                        </View>
+                      )}
                       icon={({ color, size }) => <tab.icon color={color} size={size} />}
                       focused={isTabFocused}
                       activeTintColor={drawerActiveTintColor || colors.accent.DEFAULT}
                       inactiveTintColor={drawerInactiveTintColor || colors.text.secondary}
                       activeBackgroundColor={drawerActiveBackgroundColor || 'rgba(255, 107, 0, 0.1)'}
                       style={{ borderRadius: 8, marginHorizontal: 12 }}
-                      labelStyle={{ fontSize: 14, fontWeight: '600', marginLeft: 8 }}
                       onPress={() => {
+                        if (isLocked) {
+                          props.navigation.closeDrawer();
+                          Alert.alert(
+                            "Subscription Required",
+                            "All features are locked until an active plan is purchased. Please select a plan to unlock full access.",
+                            [
+                              { text: "View Plans", onPress: () => props.navigation.navigate("Plans") },
+                              { text: "Cancel", style: "cancel" }
+                            ]
+                          );
+                          return;
+                        }
                         if (tab.isLms) {
                           props.navigation.closeDrawer();
                           (props.navigation as any).navigate('WebLms', {
@@ -341,18 +363,41 @@ export const CustomDrawerContent = (props: DrawerContentComponentProps & { isInc
               });
             }
 
+            const isStudentWithoutPlan = role === 'Student' && props.hasActivePlan === false;
+            const isRouteLocked = isStudentWithoutPlan && route.name !== 'Plans';
+
             return (
-              <View key={route.key} pointerEvents={isDisabled ? 'none' : 'auto'} style={{ opacity: isDisabled ? 0.4 : 1 }}>
+              <View key={route.key} pointerEvents={isDisabled ? 'none' : 'auto'} style={{ opacity: isRouteLocked ? 0.65 : isDisabled ? 0.4 : 1 }}>
                 <DrawerItem
-                  label={title !== undefined ? title : route.name}
+                  label={({ color }) => (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flex: 1, paddingRight: 4 }}>
+                      <Text style={[drawerLabelStyle, { color, fontSize: 14, fontWeight: '600', marginLeft: 8 }]}>
+                        {title !== undefined ? title : route.name}
+                      </Text>
+                      {isRouteLocked && <Lock size={14} color="#D97706" />}
+                    </View>
+                  )}
                   icon={drawerIcon}
                   focused={focused}
                   activeTintColor={drawerActiveTintColor || colors.accent.DEFAULT}
                   inactiveTintColor={drawerInactiveTintColor || colors.text.secondary}
                   activeBackgroundColor={drawerActiveBackgroundColor || 'rgba(255, 107, 0, 0.1)'}
                   style={drawerItemStyle}
-                  labelStyle={drawerLabelStyle}
-                  onPress={() => props.navigation.navigate(route.name)}
+                  onPress={() => {
+                    if (isRouteLocked) {
+                      props.navigation.closeDrawer();
+                      Alert.alert(
+                        "Subscription Required",
+                        "All features are locked until an active plan is purchased. Please select a plan to unlock full access.",
+                        [
+                          { text: "View Plans", onPress: () => props.navigation.navigate("Plans") },
+                          { text: "Cancel", style: "cancel" }
+                        ]
+                      );
+                      return;
+                    }
+                    props.navigation.navigate(route.name);
+                  }}
                 />
               </View>
             );

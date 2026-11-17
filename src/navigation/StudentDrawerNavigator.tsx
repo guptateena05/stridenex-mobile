@@ -43,6 +43,7 @@ import { StudentPlansScreen } from '@/screens/Dashboards/StudentDashboard/Studen
 import { StudentShortsScreen } from '@/screens/Dashboards/StudentDashboard/StudentShortsScreen';
 import { StudentProfileSettingsScreen } from '@/screens/Dashboards/StudentDashboard/StudentProfileSettingsScreen';
 import { StudentResumePreviewScreen } from '@/screens/Dashboards/StudentDashboard/StudentResumePreviewScreen';
+import { fetchAndCacheStudentPlanStatus, getCachedStudentPlanStatus } from '@/api/studentPlan';
 
 const Drawer = createDrawerNavigator();
 
@@ -60,6 +61,34 @@ const styles = StyleSheet.create({
 });
 
 const StudentTabs = () => {
+  const [hasActivePlan, setHasActivePlan] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    const check = async () => {
+      const cached = await getCachedStudentPlanStatus();
+      if (isMounted && cached !== null) {
+        setHasActivePlan(cached);
+      }
+      const fresh = await fetchAndCacheStudentPlanStatus();
+      if (isMounted) {
+        setHasActivePlan(fresh);
+      }
+    };
+    check();
+
+    const sub = DeviceEventEmitter.addListener('PLAN_UPDATED', (data) => {
+      if (isMounted && data?.isActive !== undefined) {
+        setHasActivePlan(data.isActive);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      sub.remove();
+    };
+  }, []);
+
   const studentTabs: TabConfig[] = [
     { name: "Overview", component: StudentDashboardScreen, icon: LayoutDashboard },
     { name: "Skill Ledger", component: StudentSkillsScreen, icon: Zap },
@@ -69,13 +98,40 @@ const StudentTabs = () => {
     { name: "Habits", component: StudentHabitsScreen, icon: PieChart }
   ];
 
-  return <SharedBottomTabs tabs={studentTabs} />;
+  return <SharedBottomTabs tabs={studentTabs} isLocked={hasActivePlan === false} />;
 };
 
 export const StudentDrawerNavigator = () => {
   const { userName } = useAuth();
   const [hideJobs, setHideJobs] = useState(false);
   const [isIncomplete, setIsIncomplete] = useState(false);
+  const [hasActivePlan, setHasActivePlan] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    const checkPlan = async () => {
+      const cached = await getCachedStudentPlanStatus();
+      if (isMounted && cached !== null) {
+        setHasActivePlan(cached);
+      }
+      const fresh = await fetchAndCacheStudentPlanStatus();
+      if (isMounted) {
+        setHasActivePlan(fresh);
+      }
+    };
+    checkPlan();
+
+    const sub = DeviceEventEmitter.addListener('PLAN_UPDATED', (data) => {
+      if (isMounted && data?.isActive !== undefined) {
+        setHasActivePlan(data.isActive);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      sub.remove();
+    };
+  }, []);
 
   useEffect(() => {
     const checkStudentYear = async () => {
@@ -105,7 +161,14 @@ export const StudentDrawerNavigator = () => {
 
   return (
     <Drawer.Navigator
-      drawerContent={(props) => <CustomDrawerContent {...props} isIncomplete={isIncomplete} hideJobs={hideJobs} />}
+      drawerContent={(props) => (
+        <CustomDrawerContent
+          {...props}
+          isIncomplete={isIncomplete}
+          hideJobs={hideJobs}
+          hasActivePlan={hasActivePlan}
+        />
+      )}
       screenOptions={{
         header: () => <DashboardHeader />,
         drawerActiveBackgroundColor: 'rgba(255, 107, 0, 0.1)',

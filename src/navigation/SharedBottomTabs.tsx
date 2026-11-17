@@ -1,7 +1,8 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Platform } from 'react-native';
+import { Platform, View, Alert } from 'react-native';
 import { colors } from '@/theme/colors';
+import { Lock } from 'lucide-react-native';
 
 const Tab = createBottomTabNavigator();
 
@@ -16,9 +17,14 @@ export type TabConfig = {
 export type SharedBottomTabsProps = {
   tabs: TabConfig[];
   activeTintColor?: string;
+  isLocked?: boolean;
 };
 
-export const SharedBottomTabs = ({ tabs, activeTintColor = colors.accent.DEFAULT }: SharedBottomTabsProps) => {
+export const SharedBottomTabs = ({
+  tabs,
+  activeTintColor = colors.accent.DEFAULT,
+  isLocked = false
+}: SharedBottomTabsProps) => {
   return (
     <Tab.Navigator
       screenOptions={{
@@ -59,10 +65,43 @@ export const SharedBottomTabs = ({ tabs, activeTintColor = colors.accent.DEFAULT
             name={tab.name}
             component={tab.component}
             initialParams={tab.initialParams}
+            listeners={({ navigation }) => ({
+              tabPress: (e) => {
+                if (isLocked) {
+                  e.preventDefault();
+                  Alert.alert(
+                    "Subscription Required",
+                    "All tabs are locked until an active plan is purchased. Please select a plan to unlock full access.",
+                    [
+                      { text: "View Plans", onPress: () => navigation.navigate("Plans") },
+                      { text: "Cancel", style: "cancel" }
+                    ]
+                  );
+                }
+              }
+            })}
             options={{
               tabBarIcon: ({ color, focused }) => {
                 const IconComponent = tab.icon;
-                return <IconComponent color={color} size={focused ? 24 : 22} strokeWidth={focused ? 2.5 : 2} />;
+                return (
+                  <View style={{ position: 'relative', alignItems: 'center', justifyContent: 'center' }}>
+                    <IconComponent color={color} size={focused ? 24 : 22} strokeWidth={focused ? 2.5 : 2} />
+                    {isLocked && (
+                      <View style={{
+                        position: 'absolute',
+                        top: -3,
+                        right: -6,
+                        backgroundColor: '#FEF3C7',
+                        borderRadius: 6,
+                        padding: 1.5,
+                        borderWidth: 0.5,
+                        borderColor: '#F59E0B'
+                      }}>
+                        <Lock size={9} color="#D97706" />
+                      </View>
+                    )}
+                  </View>
+                );
               }
             }}
           />

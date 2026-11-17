@@ -93,13 +93,15 @@ interface StudentGuidelineTourProps {
   onTourStateChange?: (isOpen: boolean) => void;
   disabled?: boolean;
   isFirstLogin?: boolean;
+  onTourClose?: () => void;
 }
 
 export default function StudentGuidelineTour({
   studentEmail,
   onTourStateChange,
   disabled,
-  isFirstLogin = false
+  isFirstLogin = false,
+  onTourClose
 }: StudentGuidelineTourProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -166,6 +168,9 @@ export default function StudentGuidelineTour({
       await AsyncStorage.setItem('dismissed_student_tour', 'true');
     } catch (e) {
       console.log('Error saving tour completion:', e);
+    }
+    if (onTourClose) {
+      onTourClose();
     }
   };
 

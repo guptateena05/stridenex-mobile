@@ -8,8 +8,10 @@ import {
   ActivityIndicator, 
   Alert,
   Linking,
-  AppState
+  AppState,
+  DeviceEventEmitter
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '@/theme/colors';
 import { typography } from '@/theme/typography';
@@ -26,7 +28,8 @@ import {
   Server,
   Video,
   Users,
-  IndianRupee
+  IndianRupee,
+  Lock
 } from 'lucide-react-native';
 import { Pagination } from '@/components/Shared/Pagination';
 import Animated, { FadeInUp, FadeInRight } from 'react-native-reanimated';
@@ -35,6 +38,7 @@ import {
   getBillingPackagesByType, 
   getUserSubscriptionDashboard 
 } from '@/api/student.services';
+import { isStudentPlanActive } from '@/api/studentPlan';
 
 interface BillingPackage {
   package_name: string;
@@ -483,6 +487,9 @@ export const StudentPlansScreen = () => {
 
       if (dashboardRes.status === "fulfilled") {
         setDashboard(dashboardRes.value);
+        const active = isStudentPlanActive(dashboardRes.value);
+        AsyncStorage.setItem('has_active_student_plan', active ? 'true' : 'false');
+        DeviceEventEmitter.emit('PLAN_UPDATED', { isActive: active });
       } else {
         console.warn("Failed to fetch subscription dashboard on mobile:", dashboardRes.reason);
       }
@@ -569,6 +576,21 @@ export const StudentPlansScreen = () => {
           <Text style={styles.title}>Plans & Billing</Text>
           <Text style={styles.subtitle}>Manage your StrideNex membership</Text>
         </Animated.View>
+
+        {/* Locked Notice Banner */}
+        {!isStudentPlanActive(dashboard) && (
+          <Animated.View entering={FadeInUp.delay(120)} style={styles.lockedNotice}>
+            <View style={styles.lockedNoticeIcon}>
+              <Lock size={18} color="#D97706" />
+            </View>
+            <View style={styles.lockedNoticeTextContainer}>
+              <Text style={styles.lockedNoticeTitle}>Dashboard Tabs Are Locked</Text>
+              <Text style={styles.lockedNoticeDesc}>
+                An active subscription is required to unlock your Overview, Skill Ledger, Projects, Internships, and other modules. Choose a plan below to activate full access.
+              </Text>
+            </View>
+          </Animated.View>
+        )}
 
         {/* 1. Active / Expired Plan Banner */}
         {displayPlan && (
@@ -930,6 +952,40 @@ const styles = StyleSheet.create({
   sessionBadgeText: { fontSize: 8, fontWeight: '800', color: '#E11D48', textTransform: 'uppercase' },
   mentorRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   mentorNameText: { fontSize: 10, fontWeight: '700', color: '#64748B' },
+
+  lockedNotice: {
+    backgroundColor: '#FFFBEB',
+    borderColor: '#FDE68A',
+    borderWidth: 1,
+    borderRadius: 14,
+    padding: 12,
+    marginBottom: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  lockedNoticeIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    backgroundColor: '#FEF3C7',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  lockedNoticeTextContainer: {
+    flex: 1,
+  },
+  lockedNoticeTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#92400E',
+  },
+  lockedNoticeDesc: {
+    fontSize: 11,
+    color: '#B45309',
+    marginTop: 2,
+    lineHeight: 15,
+  },
 
   footerSpacer: { height: 40 }
 });
