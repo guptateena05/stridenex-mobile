@@ -35,6 +35,7 @@ import { getApplicationStatusCount } from '@/api/industry.services';
 import { getUserSubscriptionDashboard } from '@/api/student.services';
 import { useLmsAccess } from '@/utils/lmsAccess';
 import { LmsUpgradeModal } from '@/components/modals/LmsUpgradeModal';
+import IndustryGuidelineTour from '@/components/IndustryGuidelineTour';
 
 const industryStats = [
   { id: 1, title: "SEARCHABLE STUDENTS", value: "12,840", icon: Users, color: "#3B82F6", bg: "rgba(59, 130, 246, 0.08)" },
@@ -95,7 +96,7 @@ const extractActivePlan = (dash: any) => {
 
 export const IndustryDashboardScreen = () => {
   const navigation = useNavigation<any>();
-  const { userFullName, userImage } = useAuth();
+  const { userFullName, userImage, userName } = useAuth();
   const { industryData, refreshIndustryData } = useIndustry();
   const { checkingLms, showUpgradeModal, setShowUpgradeModal, handleOpenLmsStudio } = useLmsAccess();
   const [pipelineData, setPipelineData] = React.useState(initialPipelineStages);
@@ -396,6 +397,8 @@ export const IndustryDashboardScreen = () => {
           <Text style={styles.loaderText}>Checking LMS Studio access...</Text>
         </View>
       </Modal>
+
+      <IndustryGuidelineTour industryEmail={userName || undefined} />
     </SafeAreaView>
   );
 };

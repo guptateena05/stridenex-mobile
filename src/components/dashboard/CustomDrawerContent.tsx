@@ -280,8 +280,8 @@ export const CustomDrawerContent = (props: DrawerContentComponentProps & { isInc
                   { name: 'Courses', icon: BookOpen, isLms: true },
                   { name: 'Skill Ledger', icon: Zap },
                   { name: 'Projects', icon: FolderGit2 },
-                  { name: 'Internships', icon: Briefcase, hide: props.hideJobs },
-                  { name: 'Jobs', icon: Award, hide: props.hideJobs },
+                  { name: 'Internships', icon: Briefcase },
+                  { name: 'Jobs', icon: Award },
                   { name: 'Habits', icon: PieChart }
                 ];
               } else if (userRole === 'College') {

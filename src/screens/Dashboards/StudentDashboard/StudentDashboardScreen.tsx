@@ -36,6 +36,7 @@ export const StudentDashboardScreen = () => {
   const [isHistoryModalVisible, setIsHistoryModalVisible] = useState(false);
   const [isTourActive, setIsTourActive] = useState(false);
   const [hasCompletedTest, setHasCompletedTest] = useState<boolean>(false);
+  const [isFirstLogin, setIsFirstLogin] = useState<boolean>(false);
 
   // Load cached student data on mount/username change
   useEffect(() => {
@@ -98,11 +99,21 @@ export const StudentDashboardScreen = () => {
         );
         setHasCompletedTest(isCompleted);
 
-        // If user has not completed the assessment, trigger it for onboarding
-        if (!isCompleted) {
-          setIsPsychoModalVisible(true);
+        // If user is first time login
+        if (status.is_first_login) {
+          setIsFirstLogin(true);
+          if (!isCompleted) {
+            setIsPsychoModalVisible(true);
+          } else {
+            setIsPsychoModalVisible(false);
+          }
         } else {
+          // Old user
           setIsPsychoModalVisible(false);
+          setIsFirstLogin(false);
+          if (userName) {
+            AsyncStorage.setItem(`has_seen_student_tour_${userName}`, 'true');
+          }
         }
       } catch (err) {
         console.error("Error checking onboarding status", err);
@@ -539,12 +550,24 @@ export const StudentDashboardScreen = () => {
       {isPsychoModalVisible && (
         <PsychometricTestModal
           isOpen={isPsychoModalVisible}
-          onClose={() => setIsPsychoModalVisible(false)}
+          onClose={() => {
+            setIsPsychoModalVisible(false);
+            if (isFirstLogin) {
+              setTimeout(() => {
+                DeviceEventEmitter.emit('START_STUDENT_TAB_TOUR');
+              }, 300);
+            }
+          }}
           onCompleted={() => {
             setIsPsychoModalVisible(false);
             setHasCompletedTest(true);
             if (userName) {
               AsyncStorage.setItem(`psychometric_completed_${userName}`, "true");
+            }
+            if (isFirstLogin) {
+              setTimeout(() => {
+                DeviceEventEmitter.emit('START_STUDENT_TAB_TOUR');
+              }, 300);
             }
           }}
           studentEmail={userName || undefined}
@@ -562,7 +585,8 @@ export const StudentDashboardScreen = () => {
 
       <StudentGuidelineTour 
         studentEmail={userName || undefined} 
-        disabled={isPsychoModalVisible || !hasCompletedTest}
+        isFirstLogin={isFirstLogin}
+        disabled={isPsychoModalVisible}
         onTourStateChange={setIsTourActive} 
       />
     </View>

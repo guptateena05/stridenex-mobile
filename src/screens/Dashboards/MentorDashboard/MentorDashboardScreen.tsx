@@ -38,6 +38,7 @@ import {
 import Animated, { FadeInUp, FadeInRight } from 'react-native-reanimated';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import { StatsCard } from '@/components/dashboard/StatsCard';
+import MentorGuidelineTour from '@/components/MentorGuidelineTour';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLmsAccess } from '@/utils/lmsAccess';
 import { LmsUpgradeModal } from '@/components/modals/LmsUpgradeModal';
@@ -834,6 +835,7 @@ export const MentorDashboardScreen = () => {
         </View>
       </Modal>
 
+      <MentorGuidelineTour mentorEmail={userName || undefined} />
     </SafeAreaView>
   );
 };

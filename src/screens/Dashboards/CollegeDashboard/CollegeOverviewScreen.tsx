@@ -21,6 +21,7 @@ import { Card } from '@/components/Shared/Card';
 import { RoleBannerWidget } from '@/components/dashboard/RoleBannerWidget';
 import { SuccessStoriesWidget } from '@/components/dashboard/SuccessStoriesWidget';
 import { ReferralCardWidget } from '@/components/dashboard/ReferralCardWidget';
+import CollegeGuidelineTour from '@/components/CollegeGuidelineTour';
 import Animated, { FadeInUp, FadeInRight } from 'react-native-reanimated';
 import { useAuth } from '@/context/AuthContext';
 import { useNavigation } from '@react-navigation/native';
@@ -987,6 +988,8 @@ export const CollegeOverviewScreen = () => {
           <Text style={styles.loaderText}>Checking LMS Studio access...</Text>
         </View>
       </Modal>
+
+      <CollegeGuidelineTour collegeEmail={userName || undefined} />
     </View>
   );
 };

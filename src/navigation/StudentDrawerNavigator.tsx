@@ -59,15 +59,13 @@ const styles = StyleSheet.create({
   dummyText: { fontSize: 16, color: colors.text.secondary },
 });
 
-const StudentTabs = ({ route }: any) => {
-  const hideJobs = route.params?.hideJobs || false;
-  
+const StudentTabs = () => {
   const studentTabs: TabConfig[] = [
     { name: "Overview", component: StudentDashboardScreen, icon: LayoutDashboard },
     { name: "Skill Ledger", component: StudentSkillsScreen, icon: Zap },
     { name: "Projects", component: StudentProjectsScreen, icon: FolderGit2 },
-    { name: "Internships", component: StudentInternshipScreen, icon: Briefcase, hide: hideJobs },
-    { name: "Jobs", component: StudentJobsScreen, icon: Award, hide: hideJobs },
+    { name: "Internships", component: StudentInternshipScreen, icon: Briefcase },
+    { name: "Jobs", component: StudentJobsScreen, icon: Award },
     { name: "Habits", component: StudentHabitsScreen, icon: PieChart }
   ];
 
@@ -85,16 +83,7 @@ export const StudentDrawerNavigator = () => {
       try {
         const response = await getStudentByEmail(userName);
         const data = response?.data || response?.message?.data || response?.message || response;
-        if (data && data.current_year) {
-          const year = data.current_year.toLowerCase();
-          const courseType = String(data.course_type || "").trim().toLowerCase();
-          
-          if (courseType === "ug" && (year.includes('first') || year.includes('1st') || year.includes('second') || year.includes('2nd') || year === '1' || year === '2')) {
-            setHideJobs(true);
-          } else {
-            setHideJobs(false);
-          }
-        }
+        setHideJobs(false);
         const statsRes = await getDashboardStats(userName);
         const stats = statsRes?.data || statsRes?.message || statsRes;
         if (stats && Number(stats.profile_completeness) < 60) {

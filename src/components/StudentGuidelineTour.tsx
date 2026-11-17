@@ -1,524 +1,617 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   Modal,
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
-  ActivityIndicator,
-  Image,
   Dimensions,
-  ScrollView,
+  Platform,
+  DeviceEventEmitter,
+  Pressable
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
-  getStudentGuidelines,
-  completeStudentGuidelineStep,
-} from '@/api/student.services';
-import { Compass, X, Check, Play, Sparkles, ChevronLeft, ChevronRight } from 'lucide-react-native';
-import WebView from 'react-native-webview';
+  LayoutDashboard,
+  Zap,
+  FolderGit2,
+  Briefcase,
+  Award,
+  PieChart,
+  ChevronLeft,
+  ChevronRight,
+  X,
+  Compass,
+  Sparkles
+} from 'lucide-react-native';
+import { colors } from '@/theme/colors';
 
-const { width, height } = Dimensions.get('window');
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-interface GuidelineStep {
+export interface MobileTabTourStep {
+  id: string;
   name: string;
   title: string;
-  module: string;
-  tab: string;
-  step_no: number;
+  badge: string;
+  icon: React.ElementType;
   description: string;
-  video_url: string | null;
-  image: string | null;
-  is_mandatory: number;
-  status: 'Pending' | 'Completed';
 }
+
+export const MOBILE_STUDENT_TABS: MobileTabTourStep[] = [
+  {
+    id: 'overview',
+    name: 'Overview',
+    title: 'Overview Dashboard',
+    badge: 'Home Base',
+    icon: LayoutDashboard,
+    description: 'Your central hub for tracking your skill readiness score, weekly habit heatmaps, recent opportunity alerts, and quick profile actions.'
+  },
+  {
+    id: 'skill-ledger',
+    name: 'Skill Ledger',
+    title: 'Verified Skill Ledger',
+    badge: 'Competencies',
+    icon: Zap,
+    description: 'Your digital competency passport. Track and verify your technical, problem-solving, and soft skills with verified badges.'
+  },
+  {
+    id: 'projects',
+    name: 'Projects',
+    title: 'Project Portfolio',
+    badge: 'Proof of Work',
+    icon: FolderGit2,
+    description: 'Showcase capstone, academic, and open-source projects with live demo URLs, GitHub repositories, and tech stacks for recruiters.'
+  },
+  {
+    id: 'internships',
+    name: 'Internships',
+    title: 'Industry Internships',
+    badge: 'Hands-on',
+    icon: Briefcase,
+    description: 'Discover and apply for verified corporate internships tailored to your branch, academic year, and verified skill set.'
+  },
+  {
+    id: 'jobs',
+    name: 'Jobs',
+    title: 'Full-Time Jobs',
+    badge: 'Placements',
+    icon: Award,
+    description: 'Explore entry-level jobs and placement opportunities from verified hiring partners, with real-time application tracking.'
+  },
+  {
+    id: 'habits',
+    name: 'Habits',
+    title: 'Learning Habits',
+    badge: 'Consistency',
+    icon: PieChart,
+    description: 'Build daily study discipline. Monitor coding practice streaks, problem-solving goals, and weekly activity consistency.'
+  }
+];
 
 interface StudentGuidelineTourProps {
-  studentEmail: string | undefined;
+  studentEmail?: string;
   onTourStateChange?: (isOpen: boolean) => void;
   disabled?: boolean;
+  isFirstLogin?: boolean;
 }
 
-export default function StudentGuidelineTour({ studentEmail, onTourStateChange, disabled }: StudentGuidelineTourProps) {
-  const [steps, setSteps] = useState<GuidelineStep[]>([]);
-  const [currentIndex, setCurrentIndex] = useState(0);
+export default function StudentGuidelineTour({
+  studentEmail,
+  onTourStateChange,
+  disabled,
+  isFirstLogin = false
+}: StudentGuidelineTourProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [completingStep, setCompletingStep] = useState(false);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [activeTabs, setActiveTabs] = useState<MobileTabTourStep[]>(MOBILE_STUDENT_TABS);
 
   useEffect(() => {
     if (onTourStateChange) {
       onTourStateChange(isOpen);
     }
-  }, [isOpen]);
+  }, [isOpen, onTourStateChange]);
+
+  const startTour = useCallback(async () => {
+    if (disabled) return;
+    setActiveTabs(MOBILE_STUDENT_TABS);
+    setCurrentIndex(0);
+    setIsOpen(true);
+  }, [disabled]);
 
   useEffect(() => {
-    if (disabled) {
-      setIsOpen(false);
-      return;
-    }
-    if (studentEmail) {
-      fetchGuidelines();
-    }
-  }, [studentEmail, disabled]);
+    if (disabled) return;
+    let timer: any = null;
+    let isMounted = true;
 
-  const fetchGuidelines = async (forceOpen = false) => {
-    if (!studentEmail) return;
-    if (disabled && !forceOpen) return;
-    setLoading(true);
-    try {
-      const res = await getStudentGuidelines('Student', null, studentEmail);
-      const data = res?.data?.message || res?.data?.data || res?.data;
-      if (data && Array.isArray(data.steps) && data.steps.length > 0) {
-        const sortedSteps = [...data.steps].sort((a, b) => a.step_no - b.step_no);
-        setSteps(sortedSteps);
-
-        const dismissedStr = await AsyncStorage.getItem('dismissed_student_tour');
-        const isDismissed = dismissedStr === 'true';
-        const hasPending = sortedSteps.some((s) => s.status === 'Pending');
-
-        if (forceOpen || (hasPending && !isDismissed)) {
-          const firstPending = sortedSteps.findIndex((s) => s.status === 'Pending');
-          setCurrentIndex(firstPending !== -1 ? firstPending : 0);
-          setIsOpen(true);
-        }
-      }
-    } catch (error) {
-      console.error('Error loading student guidelines:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const currentStep = steps[currentIndex];
-  const totalSteps = steps.length;
-  const progressPercentage = totalSteps > 0 ? ((currentIndex + 1) / totalSteps) * 100 : 0;
-
-  const getMediaUrl = (url: string | null | undefined) => {
-    if (!url) return null;
-    if (url.startsWith('http')) return url;
-    // Fallback domain if relative
-    return `https://devstridenex.quantcloud.in${url}`;
-  };
-
-  const handleNext = async () => {
-    if (!currentStep) return;
-
-    if (currentStep.status === 'Pending' && studentEmail) {
-      setCompletingStep(true);
+    const checkTourStatus = async () => {
       try {
-        await completeStudentGuidelineStep(currentStep.name, studentEmail);
-        const updatedSteps = [...steps];
-        updatedSteps[currentIndex].status = 'Completed';
-        setSteps(updatedSteps);
-      } catch (error) {
-        console.error('Error completing onboarding step:', error);
-      } finally {
-        setCompletingStep(false);
+        const userKey = studentEmail ? `has_seen_student_tour_${studentEmail}` : 'has_seen_student_tour';
+        const hasSeen = await AsyncStorage.getItem(userKey);
+        // ONLY auto-launch if explicitly first-time login
+        if (isFirstLogin && !hasSeen && isMounted) {
+          timer = setTimeout(() => {
+            if (isMounted) {
+              startTour();
+            }
+          }, 800);
+        }
+      } catch (e) {
+        console.log('Error checking tour status:', e);
       }
-    }
+    };
 
-    if (currentIndex < totalSteps - 1) {
-      setCurrentIndex(currentIndex + 1);
-    } else {
-      await AsyncStorage.setItem('dismissed_student_tour', 'true');
-      setIsOpen(false);
-    }
-  };
+    checkTourStatus();
 
-  const handleBack = () => {
-    if (currentIndex > 0) {
-      setCurrentIndex(currentIndex - 1);
-    }
-  };
+    return () => {
+      isMounted = false;
+      if (timer) clearTimeout(timer);
+    };
+  }, [disabled, startTour, studentEmail, isFirstLogin]);
 
-  const handleSkip = async () => {
-    await AsyncStorage.setItem('dismissed_student_tour', 'true');
+  useEffect(() => {
+    const sub = DeviceEventEmitter.addListener('START_STUDENT_TAB_TOUR', () => {
+      startTour();
+    });
+
+    return () => {
+      sub.remove();
+    };
+  }, [startTour]);
+
+  const finishTour = async () => {
     setIsOpen(false);
+    try {
+      const userKey = studentEmail ? `has_seen_student_tour_${studentEmail}` : 'has_seen_student_tour';
+      await AsyncStorage.setItem(userKey, 'true');
+      await AsyncStorage.setItem('dismissed_student_tour', 'true');
+    } catch (e) {
+      console.log('Error saving tour completion:', e);
+    }
   };
 
-  const handleManualOpen = () => {
-    fetchGuidelines(true);
+  const handleNext = () => {
+    if (currentIndex < activeTabs.length - 1) {
+      setCurrentIndex((prev) => prev + 1);
+    } else {
+      finishTour();
+    }
   };
 
-  const cleanDescription = (htmlStr: string) => {
-    if (!htmlStr) return '';
-    return htmlStr.replace(/<[^>]*>?/gm, '').trim();
+  const handlePrev = () => {
+    if (currentIndex > 0) {
+      setCurrentIndex((prev) => prev - 1);
+    }
   };
 
-  if (steps.length === 0) return null;
+  if (!isOpen) {
+    return (
+      <TouchableOpacity
+        style={styles.floatingTrigger}
+        onPress={startTour}
+        activeOpacity={0.8}
+        accessibilityLabel="Start Tabs Tour"
+        accessibilityRole="button"
+      >
+        <Compass size={18} color="#EA580C" />
+        <Text style={styles.floatingTriggerText}>Tabs Guide</Text>
+      </TouchableOpacity>
+    );
+  }
+
+  const currentTab = activeTabs[currentIndex] || activeTabs[0];
+  const totalTabs = activeTabs.length;
+  const StepIcon = currentTab.icon;
+
+  // Geometry calculations for bottom tab bar
+  const tabWidth = SCREEN_WIDTH / totalTabs;
+  const tabCenterX = (currentIndex + 0.5) * tabWidth;
+  const bottomBarHeight = Platform.OS === 'ios' ? 85 : 70;
+
+  // Popup positioning
+  const popupWidth = Math.min(340, SCREEN_WIDTH - 32);
+  const halfPopup = popupWidth / 2;
+  let popupLeft = tabCenterX - halfPopup;
+  if (popupLeft < 16) popupLeft = 16;
+  if (popupLeft + popupWidth > SCREEN_WIDTH - 16) {
+    popupLeft = SCREEN_WIDTH - popupWidth - 16;
+  }
+  const arrowLeft = Math.max(16, Math.min(popupWidth - 16, tabCenterX - popupLeft));
 
   return (
-    <>
-      <TouchableOpacity
-        style={styles.floatingButton}
-        onPress={handleManualOpen}
-        activeOpacity={0.8}
-      >
-        <Compass size={20} color="#FFF" />
-      </TouchableOpacity>
+    <Modal
+      visible={isOpen}
+      transparent={true}
+      animationType="fade"
+      statusBarTranslucent={true}
+      onRequestClose={finishTour}
+    >
+      <View style={styles.overlay}>
+        {/* Semi-transparent backdrop */}
+        <Pressable style={styles.backdropPressable} onPress={finishTour} />
 
-      {isOpen && (
-        <Modal visible={isOpen} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            
-            {/* Header */}
-            <View style={styles.header}>
-              <View style={styles.headerLeft}>
-                <Sparkles size={18} color="#93C5FD" style={{ marginRight: 8 }} />
-                <Text style={styles.headerStepText}>
-                  STEP {currentIndex + 1} OF {totalSteps}
-                </Text>
-              </View>
-              <Text style={styles.headerTitle}>App Guide</Text>
-              <TouchableOpacity style={styles.closeBtn} onPress={handleSkip}>
-                <X size={20} color="#E2E8F0" />
-              </TouchableOpacity>
-            </View>
-
-            {/* Progress Bar */}
-            <View style={styles.progressBarContainer}>
-              <View style={[styles.progressBarFill, { width: `${progressPercentage}%` }]} />
-            </View>
-
-            {/* Content Area */}
-            {currentStep && (
-              <ScrollView 
-                style={styles.bodyScroll} 
-                contentContainerStyle={styles.bodyContentContainer}
-                showsVerticalScrollIndicator={false}
-              >
-                {/* Visual Preview Area */}
-                <View style={styles.mediaContainer}>
-                  {currentStep.image ? (
-                    <Image
-                      source={{ uri: getMediaUrl(currentStep.image) as string }}
-                      style={styles.mediaImage}
-                      resizeMode="contain"
-                    />
-                  ) : currentStep.video_url ? (
-                    <View style={styles.videoContainer}>
-                      <WebView
-                        source={{ uri: getMediaUrl(currentStep.video_url) as string }}
-                        style={styles.webview}
-                        allowsFullscreenVideo
-                        javaScriptEnabled
-                      />
-                    </View>
-                  ) : (
-                    <View style={styles.fallbackMedia}>
-                      <Compass size={48} color="#94A3B8" />
-                      <Text style={styles.fallbackText}>Explore Feature</Text>
-                    </View>
-                  )}
-                </View>
-
-                {/* Text Content Area */}
-                <View style={styles.textContainer}>
-                  {currentStep.tab && (
-                    <View style={styles.tabBadge}>
-                      <Text style={styles.tabBadgeText}>Feature: {currentStep.tab}</Text>
-                    </View>
-                  )}
-                  <Text style={styles.stepTitle}>{currentStep.title}</Text>
-                  <Text style={styles.stepDescription}>
-                    {cleanDescription(currentStep.description)}
-                  </Text>
-
-                  <View style={styles.statusRow}>
-                    <View style={[
-                      styles.statusBadge, 
-                      currentStep.status === 'Completed' ? styles.statusCompleted : styles.statusPending
-                    ]}>
-                      {currentStep.status === 'Completed' ? (
-                        <>
-                          <Check size={12} color="#15803D" style={{ marginRight: 4 }} />
-                          <Text style={styles.statusCompletedText}>Completed</Text>
-                        </>
-                      ) : (
-                        <>
-                          <View style={styles.dotPending} />
-                          <Text style={styles.statusPendingText}>To Explore</Text>
-                        </>
-                      )}
-                    </View>
-                    {currentStep.is_mandatory === 1 && (
-                      <View style={styles.mandatoryBadge}>
-                        <Text style={styles.mandatoryBadgeText}>MANDATORY</Text>
-                      </View>
-                    )}
-                  </View>
-                </View>
-              </ScrollView>
-            )}
-
-            {/* Footer Navigation */}
-            <View style={styles.footerControls}>
-              <TouchableOpacity
-                style={[styles.btnOutline, currentIndex === 0 && styles.btnDisabled]}
-                onPress={handleBack}
-                disabled={currentIndex === 0 || completingStep}
-              >
-                <ChevronLeft size={18} color={currentIndex === 0 ? '#94A3B8' : '#475569'} />
-                <Text style={[styles.btnOutlineText, currentIndex === 0 && styles.btnTextDisabled]}>
-                  Back
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.btnPrimary, completingStep && styles.btnDisabled]}
-                onPress={handleNext}
-                disabled={completingStep}
-              >
-                {completingStep ? (
-                  <ActivityIndicator size="small" color="#FFF" style={{ marginRight: 8 }} />
-                ) : null}
-                <Text style={styles.btnPrimaryText}>
-                  {currentIndex === totalSteps - 1 ? "Finish Tour" : "Continue"}
-                </Text>
-                {!completingStep && <ChevronRight size={18} color="#FFF" />}
-              </TouchableOpacity>
-            </View>
-
+        {/* Highlight spotlight over the active bottom tab */}
+        <View
+          style={[
+            styles.tabSpotlight,
+            {
+              left: tabCenterX - 28,
+              bottom: (Platform.OS === 'ios' ? 28 : 12),
+            }
+          ]}
+          pointerEvents="none"
+        >
+          <View style={styles.tabSpotlightInner}>
+            <StepIcon size={24} color="#EA580C" strokeWidth={2.5} />
           </View>
         </View>
-      </Modal>
-      )}
-    </>
+
+        {/* Small Tour Popup anchored directly above the highlighted tab */}
+        <View
+          style={[
+            styles.popupCard,
+            {
+              left: popupLeft,
+              width: popupWidth,
+              bottom: bottomBarHeight + 20,
+            }
+          ]}
+        >
+          {/* Downward-pointing arrow caret */}
+          <View
+            style={[
+              styles.downArrow,
+              { left: arrowLeft - 8 }
+            ]}
+          />
+
+          {/* Header */}
+          <View style={styles.cardHeader}>
+            <View style={styles.headerLeft}>
+              <View style={styles.iconContainer}>
+                <StepIcon size={18} color="#EA580C" strokeWidth={2.5} />
+              </View>
+              <View>
+                <View style={styles.badgeRow}>
+                  <Text style={styles.badgeText}>{currentTab.badge}</Text>
+                  <Text style={styles.stepCounterText}>
+                    {currentIndex + 1} of {totalTabs}
+                  </Text>
+                </View>
+                <Text style={styles.tabTitle}>{currentTab.name}</Text>
+              </View>
+            </View>
+
+            <TouchableOpacity
+              onPress={finishTour}
+              style={styles.closeBtn}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <X size={18} color="#94A3B8" />
+            </TouchableOpacity>
+          </View>
+
+          {/* Description */}
+          <View style={styles.cardBody}>
+            <Text style={styles.descriptionText}>{currentTab.description}</Text>
+          </View>
+
+          {/* Carousel Dots & Controls Footer */}
+          <View style={styles.cardFooter}>
+            {/* Carousel Indicator Dots */}
+            <View style={styles.dotsRow}>
+              {activeTabs.map((tab, idx) => {
+                const isActive = idx === currentIndex;
+                return (
+                  <TouchableOpacity
+                    key={tab.id}
+                    onPress={() => setCurrentIndex(idx)}
+                    activeOpacity={0.7}
+                    hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
+                    style={[
+                      styles.dot,
+                      isActive ? styles.dotActive : styles.dotInactive
+                    ]}
+                  />
+                );
+              })}
+            </View>
+
+            {/* Action Buttons: Previous & Next/Finish */}
+            <View style={styles.actionsRow}>
+              <TouchableOpacity
+                onPress={handlePrev}
+                disabled={currentIndex === 0}
+                style={[
+                  styles.prevBtn,
+                  currentIndex === 0 && styles.btnDisabled
+                ]}
+                activeOpacity={0.7}
+              >
+                <ChevronLeft size={16} color={currentIndex === 0 ? '#CBD5E1' : '#475569'} />
+                <Text
+                  style={[
+                    styles.prevBtnText,
+                    currentIndex === 0 && styles.prevBtnTextDisabled
+                  ]}
+                >
+                  Previous
+                </Text>
+              </TouchableOpacity>
+
+              <View style={styles.rightActions}>
+                <TouchableOpacity
+                  onPress={finishTour}
+                  style={styles.skipBtn}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.skipBtnText}>Skip</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={handleNext}
+                  style={styles.nextBtn}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.nextBtnText}>
+                    {currentIndex === totalTabs - 1 ? 'Finish' : 'Next'}
+                  </Text>
+                  {currentIndex === totalTabs - 1 ? (
+                    <Sparkles size={15} color="#FFFFFF" style={{ marginLeft: 4 }} />
+                  ) : (
+                    <ChevronRight size={16} color="#FFFFFF" />
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </View>
+      </View>
+    </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  floatingButton: {
-    position: 'absolute',
-    bottom: 110,
-    right: 24,
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#FF6B00',
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    zIndex: 1000,
-  },
-  modalOverlay: {
+  overlay: {
     flex: 1,
-    backgroundColor: 'rgba(15, 23, 42, 0.6)',
-    justifyContent: 'center',
+    backgroundColor: 'transparent',
+    justifyContent: 'flex-end',
+  },
+  backdropPressable: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  tabSpotlight: {
+    position: 'absolute',
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 2.5,
+    borderColor: '#EA580C',
     alignItems: 'center',
-    padding: 16,
+    justifyContent: 'center',
+    shadowColor: '#EA580C',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
+    elevation: 12,
+    zIndex: 9999,
   },
-  modalContent: {
-    width: '100%',
-    maxWidth: 500,
-    backgroundColor: '#FFF',
+  tabSpotlightInner: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#FFF7ED',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  popupCard: {
+    position: 'absolute',
+    backgroundColor: '#FFFFFF',
     borderRadius: 20,
-    overflow: 'hidden',
-    maxHeight: '90%',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.16,
+    shadowRadius: 20,
+    elevation: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    overflow: 'visible',
+    zIndex: 10000,
   },
-  header: {
+  downArrow: {
+    position: 'absolute',
+    bottom: -8,
+    width: 16,
+    height: 16,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderRightWidth: 1,
+    borderColor: '#E2E8F0',
+    transform: [{ rotate: '45deg' }],
+    zIndex: 10001,
+  },
+  cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#1E3A8A', // matches royal/primary vibe
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+    backgroundColor: '#FAFAFA',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
   },
   headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 10,
   },
-  headerStepText: {
-    color: '#DBEAFE',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  headerTitle: {
-    color: '#FFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  closeBtn: {
-    padding: 4,
-  },
-  progressBarContainer: {
-    height: 4,
-    backgroundColor: '#E2E8F0',
-    width: '100%',
-  },
-  progressBarFill: {
-    height: '100%',
-    backgroundColor: '#3B82F6', // Accent
-  },
-  bodyScroll: {
-    flexShrink: 1,
-  },
-  bodyContentContainer: {
-    padding: 20,
-  },
-  mediaContainer: {
-    width: '100%',
-    height: 200,
-    backgroundColor: '#F8FAFC',
+  iconContainer: {
+    width: 38,
+    height: 38,
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    overflow: 'hidden',
-    marginBottom: 20,
-    justifyContent: 'center',
+    backgroundColor: '#FFEDD5',
     alignItems: 'center',
-  },
-  mediaImage: {
-    width: '100%',
-    height: '100%',
-  },
-  videoContainer: {
-    width: '100%',
-    height: '100%',
-  },
-  webview: {
-    flex: 1,
-  },
-  fallbackMedia: {
     justifyContent: 'center',
-    alignItems: 'center',
   },
-  fallbackText: {
-    marginTop: 12,
-    color: '#64748B',
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  textContainer: {
-    flex: 1,
-  },
-  tabBadge: {
-    alignSelf: 'flex-start',
-    backgroundColor: '#EFF6FF',
-    borderWidth: 1,
-    borderColor: '#DBEAFE',
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 16,
-    marginBottom: 12,
-  },
-  tabBadgeText: {
-    color: '#2563EB',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  stepTitle: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: '#0F172A',
-    marginBottom: 12,
-    lineHeight: 28,
-  },
-  stepDescription: {
-    fontSize: 15,
-    color: '#475569',
-    lineHeight: 24,
-    marginBottom: 16,
-  },
-  statusRow: {
+  badgeRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
   },
-  statusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    borderWidth: 1,
-  },
-  statusCompleted: {
-    backgroundColor: '#F0FDF4',
-    borderColor: '#DCFCE7',
-  },
-  statusPending: {
-    backgroundColor: '#FFF7ED',
-    borderColor: '#FFEDD5',
-  },
-  statusCompletedText: {
-    color: '#166534',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  statusPendingText: {
-    color: '#C2410C',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  dotPending: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#EA580C',
-    marginRight: 6,
-  },
-  mandatoryBadge: {
-    backgroundColor: '#FEF2F2',
-    borderColor: '#FEE2E2',
-    borderWidth: 1,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
-  },
-  mandatoryBadgeText: {
-    color: '#DC2626',
+  badgeText: {
     fontSize: 10,
     fontWeight: '700',
+    textTransform: 'uppercase',
+    color: '#EA580C',
+    backgroundColor: '#FFF7ED',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
   },
-  footerControls: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
-    backgroundColor: '#F8FAFC',
+  stepCounterText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#94A3B8',
   },
-  btnOutline: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 10,
+  tabTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#0F172A',
+    marginTop: 2,
+  },
+  closeBtn: {
+    padding: 6,
+    borderRadius: 8,
+    backgroundColor: '#F1F5F9',
+  },
+  cardBody: {
     paddingHorizontal: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#CBD5E1',
-    backgroundColor: '#FFF',
+    paddingVertical: 14,
   },
-  btnOutlineText: {
-    color: '#334155',
-    fontWeight: '600',
-    fontSize: 14,
-    marginLeft: 4,
+  descriptionText: {
+    fontSize: 13,
+    lineHeight: 19,
+    color: '#475569',
+    fontWeight: '400',
   },
-  btnPrimary: {
+  cardFooter: {
+    paddingHorizontal: 16,
+    paddingBottom: 14,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#F8FAFC',
+    backgroundColor: '#FFFFFF',
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+  },
+  dotsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#2563EB',
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 12,
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 6,
+    marginBottom: 6,
   },
-  btnPrimaryText: {
-    color: '#FFF',
-    fontWeight: '600',
-    fontSize: 14,
-    marginRight: 6,
+  dot: {
+    height: 6,
+    borderRadius: 3,
+  },
+  dotActive: {
+    width: 20,
+    backgroundColor: '#EA580C',
+  },
+  dotInactive: {
+    width: 6,
+    backgroundColor: '#CBD5E1',
+  },
+  actionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 4,
+  },
+  prevBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 10,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
   btnDisabled: {
-    opacity: 0.5,
+    backgroundColor: '#F8FAFC',
+    borderColor: '#F1F5F9',
   },
-  btnTextDisabled: {
+  prevBtnText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#334155',
+    marginLeft: 2,
+  },
+  prevBtnTextDisabled: {
+    color: '#CBD5E1',
+  },
+  rightActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  skipBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+  },
+  skipBtnText: {
+    fontSize: 12,
+    fontWeight: '600',
     color: '#94A3B8',
+  },
+  nextBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 10,
+    backgroundColor: '#EA580C',
+    shadowColor: '#EA580C',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  nextBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginRight: 2,
+  },
+  floatingTrigger: {
+    position: 'absolute',
+    bottom: 85,
+    right: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#FED7AA',
+    shadowColor: '#EA580C',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 5,
+    gap: 6,
+    zIndex: 999,
+  },
+  floatingTriggerText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#EA580C',
   },
 });
