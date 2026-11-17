@@ -22,8 +22,10 @@ import {
   Award,
   FileText,
   CheckSquare,
-  Briefcase
+  Briefcase,
+  HelpCircle
 } from 'lucide-react-native';
+import { SupportScreen } from '@/screens/Dashboards/Shared/SupportScreen';
 
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { SharedBottomTabs, TabConfig } from './SharedBottomTabs';
@@ -167,6 +169,14 @@ export const CollegeDrawerNavigator = () => {
         name="Plans"
         component={CollegePlansScreen}
         options={{ drawerIcon: ({ color, size }) => <Award color={color} size={size} /> }}
+      />
+      <Drawer.Screen
+        name="Support"
+        component={SupportScreen}
+        options={{
+          drawerIcon: ({ color, size }) => <HelpCircle color={color} size={size} />,
+          drawerItemStyle: { display: 'none' }
+        }}
       />
     </Drawer.Navigator>
   );

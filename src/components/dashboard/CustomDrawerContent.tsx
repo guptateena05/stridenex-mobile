@@ -34,7 +34,8 @@ import {
   Mail,
   UserCheck,
   Video,
-  Lock
+  Lock,
+  HelpCircle
 } from 'lucide-react-native';
 
 export const CustomDrawerContent = (props: DrawerContentComponentProps & { isIncomplete?: boolean; hideJobs?: boolean; hasActivePlan?: boolean | null }) => {
@@ -440,6 +441,29 @@ export const CustomDrawerContent = (props: DrawerContentComponentProps & { isInc
       </ScrollView>
 
       <View style={[styles.footer, { paddingBottom: insets.bottom + spacing.md }]}>
+        <TouchableOpacity
+          style={styles.supportBtn}
+          onPress={() => {
+            props.navigation.closeDrawer();
+            props.navigation.navigate('Support');
+          }}
+          activeOpacity={0.7}
+        >
+          <HelpCircle
+            size={20}
+            color={
+              role === 'College'
+                ? '#10b981'
+                : role === 'Mentor'
+                ? '#4c1d95'
+                : role === 'Industry'
+                ? colors.purple?.[600] || '#9333ea'
+                : colors.accent.DEFAULT
+            }
+          />
+          <Text style={styles.supportText}>Support</Text>
+        </TouchableOpacity>
+
         <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
           <LogOut size={20} color={colors.error} />
           <Text style={styles.logoutText}>Logout</Text>
@@ -573,6 +597,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     borderTopWidth: 1,
     borderTopColor: '#f1f5f9',
+  },
+  supportBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    paddingVertical: spacing.sm + 2,
+    marginTop: spacing.xs,
+  },
+  supportText: {
+    fontSize: 15,
+    fontFamily: typography.fontFamily.body,
+    color: '#334155',
+    fontWeight: '600',
   },
   logoutBtn: {
     flexDirection: 'row',

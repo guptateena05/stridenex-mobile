@@ -21,7 +21,9 @@ import {
   TrendingUp,
   Award,
   Users,
+  HelpCircle
 } from 'lucide-react-native';
+import { SupportScreen } from '@/screens/Dashboards/Shared/SupportScreen';
 
 import { SharedBottomTabs, TabConfig } from './SharedBottomTabs';
 
@@ -89,6 +91,14 @@ export const MentorDrawerNavigator = () => {
         component={MentorPlansScreen}
         options={{
           drawerIcon: ({ color, size }) => <Award color={color} size={size} />
+        }}
+      />
+      <Drawer.Screen
+        name="Support"
+        component={SupportScreen}
+        options={{
+          drawerIcon: ({ color, size }) => <HelpCircle color={color} size={size} />,
+          drawerItemStyle: { display: 'none' }
         }}
       />
     </Drawer.Navigator>

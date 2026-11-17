@@ -26,8 +26,10 @@ import {
   School,
   Settings,
   Users,
-  CreditCard
+  CreditCard,
+  HelpCircle
 } from 'lucide-react-native';
+import { SupportScreen } from '@/screens/Dashboards/Shared/SupportScreen';
 import { IndustrySettingsScreen } from '@/screens/Dashboards/IndustryDashboard/IndustrySettingsScreen';
 import { IndustryProjectPipelineScreen } from '@/screens/Dashboards/IndustryDashboard/IndustryProjectPipelineScreen';
 import { SharedBottomTabs, TabConfig } from './SharedBottomTabs';
@@ -111,6 +113,14 @@ export const IndustryDrawerNavigator = () => {
         name="Project Pipeline"
         component={IndustryProjectPipelineScreen}
         options={{
+          drawerItemStyle: { display: 'none' }
+        }}
+      />
+      <Drawer.Screen
+        name="Support"
+        component={SupportScreen}
+        options={{
+          drawerIcon: ({ color, size }) => <HelpCircle color={color} size={size} />,
           drawerItemStyle: { display: 'none' }
         }}
       />

@@ -25,8 +25,10 @@ import {
   FileText,
   Building2,
   Award,
-  FolderGit2
+  FolderGit2,
+  HelpCircle
 } from 'lucide-react-native';
+import { SupportScreen } from '@/screens/Dashboards/Shared/SupportScreen';
 
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { StudentPathScreen } from '@/screens/Dashboards/StudentDashboard/StudentPathScreen';
@@ -257,6 +259,14 @@ export const StudentDrawerNavigator = () => {
         component={StudentResumePreviewScreen}
         options={{
           drawerIcon: ({ color, size }) => <FileText color={color} size={size} />,
+          drawerItemStyle: { display: 'none' }
+        }}
+      />
+      <Drawer.Screen
+        name="Support"
+        component={SupportScreen}
+        options={{
+          drawerIcon: ({ color, size }) => <HelpCircle color={color} size={size} />,
           drawerItemStyle: { display: 'none' }
         }}
       />
