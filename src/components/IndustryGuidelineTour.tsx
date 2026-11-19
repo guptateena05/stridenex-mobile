@@ -21,7 +21,14 @@ import {
   ChevronRight,
   X,
   Compass,
-  Sparkles
+  Sparkles,
+  Building2,
+  Users,
+  Settings,
+  CreditCard,
+  HelpCircle,
+  BookOpen,
+  Menu
 } from 'lucide-react-native';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -33,16 +40,19 @@ export interface MobileTabTourStep {
   badge: string;
   icon: React.ElementType;
   description: string;
+  isSidebar?: boolean;
 }
 
 export const MOBILE_INDUSTRY_TABS: MobileTabTourStep[] = [
+  // --- BOTTOM TABS ---
   {
     id: 'overview',
     name: 'Overview',
     title: 'Overview Dashboard',
     badge: 'Talent Hub',
     icon: LayoutDashboard,
-    description: 'Central corporate dashboard tracking active candidate pipelines, projects, and talent engagement metrics in real time.'
+    description: 'Central corporate dashboard tracking active candidate pipelines, projects, and talent engagement metrics in real time.',
+    isSidebar: false
   },
   {
     id: 'pipeline',
@@ -50,7 +60,8 @@ export const MOBILE_INDUSTRY_TABS: MobileTabTourStep[] = [
     title: 'Applicant Pipeline',
     badge: 'Recruitment Flow',
     icon: Mail,
-    description: 'Track student applications through evaluation stages from submission to technical assessment, interview, and final offer.'
+    description: 'Track student applications through evaluation stages from submission to technical assessment, interview, and final offer.',
+    isSidebar: false
   },
   {
     id: 'projects',
@@ -58,7 +69,8 @@ export const MOBILE_INDUSTRY_TABS: MobileTabTourStep[] = [
     title: 'Projects & R&D Challenges',
     badge: 'Live Projects',
     icon: FolderGit2,
-    description: 'Post live industry challenges and capstone problems to evaluate student submissions through real hands-on work.'
+    description: 'Post live industry challenges and capstone problems to evaluate student submissions through real hands-on work.',
+    isSidebar: false
   },
   {
     id: 'internships',
@@ -66,7 +78,8 @@ export const MOBILE_INDUSTRY_TABS: MobileTabTourStep[] = [
     title: 'Corporate Internships',
     badge: 'Internships',
     icon: UserCheck,
-    description: 'Publish internship openings, specify required competencies, and review interested candidates directly.'
+    description: 'Publish internship openings, specify required competencies, and review interested candidates directly.',
+    isSidebar: false
   },
   {
     id: 'jobs',
@@ -74,7 +87,63 @@ export const MOBILE_INDUSTRY_TABS: MobileTabTourStep[] = [
     title: 'Full-Time Job Roles',
     badge: 'Full-Time',
     icon: Briefcase,
-    description: 'Post full-time graduate opportunities and manage campus recruitment partnerships with verified colleges.'
+    description: 'Post full-time graduate opportunities and manage campus recruitment partnerships with verified colleges.',
+    isSidebar: false
+  },
+  // --- SIDEBAR ITEMS ---
+  {
+    id: 'company-profile',
+    name: 'Company Profile',
+    title: 'Corporate Profile',
+    badge: 'Brand Identity',
+    icon: Building2,
+    description: 'Manage corporate branding, company overview, work culture, office locations, and candidate-facing presence.',
+    isSidebar: true
+  },
+  {
+    id: 'community',
+    name: 'Community',
+    title: 'Industry Community',
+    badge: 'Network',
+    icon: Users,
+    description: 'Connect with placement heads, university coordinators, and corporate recruiters for strategic campus hiring.',
+    isSidebar: true
+  },
+  {
+    id: 'settings',
+    name: 'Settings',
+    title: 'Account Settings',
+    badge: 'Preferences',
+    icon: Settings,
+    description: 'Configure corporate account preferences, team permissions, notification settings, and company credentials.',
+    isSidebar: true
+  },
+  {
+    id: 'plans',
+    name: 'Plans',
+    title: 'Enterprise Plans',
+    badge: 'Membership',
+    icon: CreditCard,
+    description: 'Review corporate subscription tiers to unlock high-volume applicant pipelines and premium campus recruitment drives.',
+    isSidebar: true
+  },
+  {
+    id: 'support',
+    name: 'Support & Helpdesk',
+    title: 'Support & Helpdesk',
+    badge: 'Assistance',
+    icon: HelpCircle,
+    description: 'Submit enterprise tickets, report issues with file attachments, and get fast support from our account specialists.',
+    isSidebar: true
+  },
+  {
+    id: 'lms-studio',
+    name: 'LMS Studio',
+    title: 'Corporate LMS Studio',
+    badge: 'LMS Studio',
+    icon: BookOpen,
+    description: 'Access corporate learning and skill evaluation courses to train intern cohorts and upskill new hires.',
+    isSidebar: true
   }
 ];
 
@@ -197,11 +266,17 @@ export default function IndustryGuidelineTour({
   const currentTab = MOBILE_INDUSTRY_TABS[currentIndex] || MOBILE_INDUSTRY_TABS[0];
   const totalTabs = MOBILE_INDUSTRY_TABS.length;
   const StepIcon = currentTab.icon;
+  const isSidebarStep = currentTab.isSidebar === true;
 
-  const tabWidth = SCREEN_WIDTH / totalTabs;
-  const tabCenterX = (currentIndex + 0.5) * tabWidth;
+  // Geometry calculations for bottom tab bar
+  const bottomTabs = MOBILE_INDUSTRY_TABS.filter((t) => !t.isSidebar);
+  const totalBottomTabs = bottomTabs.length || 5;
+  const bottomTabIndex = bottomTabs.findIndex((t) => t.id === currentTab.id);
+  const tabWidth = SCREEN_WIDTH / totalBottomTabs;
+  const tabCenterX = ((bottomTabIndex >= 0 ? bottomTabIndex : 0) + 0.5) * tabWidth;
   const bottomBarHeight = Platform.OS === 'ios' ? 85 : 70;
 
+  // Popup positioning
   const popupWidth = Math.min(340, SCREEN_WIDTH - 32);
   const halfPopup = popupWidth / 2;
   let popupLeft = tabCenterX - halfPopup;
@@ -209,7 +284,12 @@ export default function IndustryGuidelineTour({
   if (popupLeft + popupWidth > SCREEN_WIDTH - 16) {
     popupLeft = SCREEN_WIDTH - popupWidth - 16;
   }
-  const arrowLeft = Math.max(16, Math.min(popupWidth - 16, tabCenterX - popupLeft));
+  let arrowLeft = Math.max(16, Math.min(popupWidth - 16, tabCenterX - popupLeft));
+
+  if (isSidebarStep) {
+    popupLeft = 16;
+    arrowLeft = 44;
+  }
 
   return (
     <Modal
@@ -222,51 +302,80 @@ export default function IndustryGuidelineTour({
       <View style={styles.overlay}>
         <Pressable style={styles.backdropPressable} onPress={finishTour} />
 
-        <View
-          style={[
-            styles.tabSpotlight,
-            {
-              left: tabCenterX - 28,
-              bottom: Platform.OS === 'ios' ? 28 : 12,
-            }
-          ]}
-          pointerEvents="none"
-        >
-          <View style={styles.tabSpotlightInner}>
-            <StepIcon size={24} color="#9333EA" strokeWidth={2.5} />
+        {/* Highlight spotlight */}
+        {isSidebarStep ? (
+          <View
+            style={[
+              styles.tabSpotlight,
+              {
+                left: 18,
+                top: Platform.OS === 'ios' ? 52 : 36,
+              }
+            ]}
+            pointerEvents="none"
+          >
+            <View style={styles.tabSpotlightInner}>
+              <Menu size={24} color="#9333EA" strokeWidth={2.5} />
+            </View>
           </View>
-        </View>
+        ) : (
+          <View
+            style={[
+              styles.tabSpotlight,
+              {
+                left: tabCenterX - 28,
+                bottom: Platform.OS === 'ios' ? 28 : 12,
+              }
+            ]}
+            pointerEvents="none"
+          >
+            <View style={styles.tabSpotlightInner}>
+              <StepIcon size={24} color="#9333EA" strokeWidth={2.5} />
+            </View>
+          </View>
+        )}
 
         <View
           style={[
             styles.popupCard,
-            {
-              left: popupLeft,
-              width: popupWidth,
-              bottom: bottomBarHeight + 20,
-            }
+            isSidebarStep
+              ? {
+                  left: popupLeft,
+                  width: popupWidth,
+                  top: Platform.OS === 'ios' ? 126 : 108,
+                }
+              : {
+                  left: popupLeft,
+                  width: popupWidth,
+                  bottom: bottomBarHeight + 20,
+                }
           ]}
         >
-          <View
-            style={[
-              styles.downArrow,
-              { left: arrowLeft - 8 }
-            ]}
-          />
+          {isSidebarStep ? (
+            <View style={[styles.upArrow, { left: arrowLeft - 8 }]} />
+          ) : (
+            <View style={[styles.downArrow, { left: arrowLeft - 8 }]} />
+          )}
 
           <View style={styles.cardHeader}>
             <View style={styles.headerLeft}>
               <View style={styles.iconContainer}>
                 <StepIcon size={18} color="#9333EA" strokeWidth={2.5} />
               </View>
-              <View>
+              <View style={{ flex: 1 }}>
                 <View style={styles.badgeRow}>
                   <Text style={styles.badgeText}>{currentTab.badge}</Text>
+                  {isSidebarStep && (
+                    <View style={styles.sidebarPill}>
+                      <Menu size={10} color="#9333EA" />
+                      <Text style={styles.sidebarPillText}>Sidebar</Text>
+                    </View>
+                  )}
                   <Text style={styles.stepCounterText}>
                     {currentIndex + 1} of {totalTabs}
                   </Text>
                 </View>
-                <Text style={styles.tabTitle}>{currentTab.name}</Text>
+                <Text style={styles.tabTitle} numberOfLines={1}>{currentTab.name}</Text>
               </View>
             </View>
 
@@ -281,6 +390,13 @@ export default function IndustryGuidelineTour({
 
           <View style={styles.cardBody}>
             <Text style={styles.descriptionText}>{currentTab.description}</Text>
+            {isSidebarStep && (
+              <View style={styles.sidebarHintBox}>
+                <Text style={styles.sidebarHintText}>
+                  📍 Open the ☰ Sidebar Menu at the top-left to access {currentTab.name}.
+                </Text>
+              </View>
+            )}
           </View>
 
           <View style={styles.cardFooter}>
@@ -415,6 +531,18 @@ const styles = StyleSheet.create({
     transform: [{ rotate: '45deg' }],
     zIndex: 10001,
   },
+  upArrow: {
+    position: 'absolute',
+    top: -8,
+    width: 16,
+    height: 16,
+    backgroundColor: '#FAFAFA',
+    borderTopWidth: 1,
+    borderLeftWidth: 1,
+    borderColor: '#E2E8F0',
+    transform: [{ rotate: '45deg' }],
+    zIndex: 10001,
+  },
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -431,6 +559,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
     flex: 1,
+    marginRight: 8,
   },
   iconContainer: {
     width: 36,
@@ -445,7 +574,7 @@ const styles = StyleSheet.create({
   badgeRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
   },
   badgeText: {
     fontSize: 10,
@@ -455,6 +584,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     paddingVertical: 1.5,
     borderRadius: 8,
+    textTransform: 'uppercase',
+  },
+  sidebarPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: '#F3E8FF',
+    paddingHorizontal: 5,
+    paddingVertical: 1.5,
+    borderRadius: 6,
+  },
+  sidebarPillText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#7E22CE',
     textTransform: 'uppercase',
   },
   stepCounterText: {
@@ -469,9 +613,12 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   closeBtn: {
-    padding: 6,
+    width: 28,
+    height: 28,
     borderRadius: 8,
     backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   cardBody: {
     paddingHorizontal: 16,
@@ -482,6 +629,21 @@ const styles = StyleSheet.create({
     color: '#334155',
     lineHeight: 18,
     fontWeight: '400',
+  },
+  sidebarHintBox: {
+    marginTop: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: '#FAF5FF',
+    borderWidth: 1,
+    borderColor: '#E9D5FF',
+  },
+  sidebarHintText: {
+    fontSize: 11,
+    color: '#7E22CE',
+    fontWeight: '500',
+    lineHeight: 16,
   },
   cardFooter: {
     borderTopWidth: 1,
@@ -497,18 +659,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
+    gap: 4,
+    flexWrap: 'wrap',
   },
   dot: {
-    height: 7,
-    borderRadius: 3.5,
+    height: 5,
+    borderRadius: 2.5,
   },
   dotActive: {
-    width: 22,
+    width: 14,
     backgroundColor: '#9333EA',
   },
   dotInactive: {
-    width: 7,
+    width: 5,
     backgroundColor: '#CBD5E1',
   },
   actionsRow: {

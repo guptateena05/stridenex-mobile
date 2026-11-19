@@ -20,7 +20,13 @@ import {
   ChevronRight,
   X,
   Compass,
-  Sparkles
+  Sparkles,
+  Users,
+  CreditCard,
+  TrendingUp,
+  Award,
+  HelpCircle,
+  Menu
 } from 'lucide-react-native';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -32,16 +38,19 @@ export interface MobileTabTourStep {
   badge: string;
   icon: React.ElementType;
   description: string;
+  isSidebar?: boolean;
 }
 
 export const MOBILE_MENTOR_TABS: MobileTabTourStep[] = [
+  // --- BOTTOM TABS ---
   {
     id: 'overview',
     name: 'Overview',
     title: 'Overview Dashboard',
     badge: 'Mentor Hub',
     icon: LayoutDashboard,
-    description: 'Central mentorship control center tracking upcoming 1-on-1 sessions, active mentees, ratings, and revenue.'
+    description: 'Central mentorship control center tracking upcoming 1-on-1 sessions, active mentees, ratings, and revenue.',
+    isSidebar: false
   },
   {
     id: 'schedule',
@@ -49,7 +58,8 @@ export const MOBILE_MENTOR_TABS: MobileTabTourStep[] = [
     title: 'Availability Schedule',
     badge: 'Calendar',
     icon: Calendar,
-    description: 'Set your weekly availability time slots, block dates, and manage upcoming student booking slots.'
+    description: 'Set your weekly availability time slots, block dates, and manage upcoming student booking slots.',
+    isSidebar: false
   },
   {
     id: 'offerings',
@@ -57,7 +67,8 @@ export const MOBILE_MENTOR_TABS: MobileTabTourStep[] = [
     title: 'Mentorship Offerings',
     badge: 'Services',
     icon: Video,
-    description: 'Create and customize session offerings including mock technical interviews, resume audits, and portfolio reviews.'
+    description: 'Create and customize session offerings including mock technical interviews, resume audits, and portfolio reviews.',
+    isSidebar: false
   },
   {
     id: 'requests',
@@ -65,7 +76,8 @@ export const MOBILE_MENTOR_TABS: MobileTabTourStep[] = [
     title: 'Booking Requests',
     badge: 'Inquiries',
     icon: Calendar,
-    description: 'Review, accept, or reschedule incoming session booking requests and student guidance inquiry applications.'
+    description: 'Review, accept, or reschedule incoming session booking requests and student guidance inquiry applications.',
+    isSidebar: false
   },
   {
     id: 'history',
@@ -73,7 +85,63 @@ export const MOBILE_MENTOR_TABS: MobileTabTourStep[] = [
     title: 'Past Sessions',
     badge: 'Records',
     icon: BookOpen,
-    description: 'Access past completed mentorship sessions, attendee notes, guidance logs, and mentee ratings.'
+    description: 'Access past completed mentorship sessions, attendee notes, guidance logs, and mentee ratings.',
+    isSidebar: false
+  },
+  // --- SIDEBAR ITEMS ---
+  {
+    id: 'community',
+    name: 'Community',
+    title: 'Mentor Community',
+    badge: 'Network',
+    icon: Users,
+    description: 'Engage with fellow industry mentors, share coaching practices, and collaborate on student workshops.',
+    isSidebar: true
+  },
+  {
+    id: 'payouts',
+    name: 'Payouts',
+    title: 'Payouts & Commission',
+    badge: 'Earnings',
+    icon: CreditCard,
+    description: 'Track completed session revenues, processing payouts, platform commission splits, and bank receipts.',
+    isSidebar: true
+  },
+  {
+    id: 'profile',
+    name: 'My Profile',
+    title: 'Mentor Profile',
+    badge: 'Bio & Skills',
+    icon: TrendingUp,
+    description: 'Showcase your industry expertise, years of experience, current employer, and student testimonials.',
+    isSidebar: true
+  },
+  {
+    id: 'plans',
+    name: 'Plans',
+    title: 'Membership Plans',
+    badge: 'Membership',
+    icon: Award,
+    description: 'Review your mentor membership tier, platform privileges, and featured listing benefits.',
+    isSidebar: true
+  },
+  {
+    id: 'support',
+    name: 'Support & Helpdesk',
+    title: 'Support & Helpdesk',
+    badge: 'Assistance',
+    icon: HelpCircle,
+    description: 'Reach platform support for mentee payment inquiries, session connection troubleshooting, and assistance.',
+    isSidebar: true
+  },
+  {
+    id: 'lms-studio',
+    name: 'LMS Studio',
+    title: 'Mentor LMS Studio',
+    badge: 'LMS Studio',
+    icon: BookOpen,
+    description: 'Author and distribute exclusive masterclasses, curriculum modules, and interactive workshops for students.',
+    isSidebar: true
   }
 ];
 
@@ -196,11 +264,17 @@ export default function MentorGuidelineTour({
   const currentTab = MOBILE_MENTOR_TABS[currentIndex] || MOBILE_MENTOR_TABS[0];
   const totalTabs = MOBILE_MENTOR_TABS.length;
   const StepIcon = currentTab.icon;
+  const isSidebarStep = currentTab.isSidebar === true;
 
-  const tabWidth = SCREEN_WIDTH / totalTabs;
-  const tabCenterX = (currentIndex + 0.5) * tabWidth;
+  // Geometry calculations for bottom tab bar
+  const bottomTabs = MOBILE_MENTOR_TABS.filter((t) => !t.isSidebar);
+  const totalBottomTabs = bottomTabs.length || 5;
+  const bottomTabIndex = bottomTabs.findIndex((t) => t.id === currentTab.id);
+  const tabWidth = SCREEN_WIDTH / totalBottomTabs;
+  const tabCenterX = ((bottomTabIndex >= 0 ? bottomTabIndex : 0) + 0.5) * tabWidth;
   const bottomBarHeight = Platform.OS === 'ios' ? 85 : 70;
 
+  // Popup positioning
   const popupWidth = Math.min(340, SCREEN_WIDTH - 32);
   const halfPopup = popupWidth / 2;
   let popupLeft = tabCenterX - halfPopup;
@@ -208,7 +282,12 @@ export default function MentorGuidelineTour({
   if (popupLeft + popupWidth > SCREEN_WIDTH - 16) {
     popupLeft = SCREEN_WIDTH - popupWidth - 16;
   }
-  const arrowLeft = Math.max(16, Math.min(popupWidth - 16, tabCenterX - popupLeft));
+  let arrowLeft = Math.max(16, Math.min(popupWidth - 16, tabCenterX - popupLeft));
+
+  if (isSidebarStep) {
+    popupLeft = 16;
+    arrowLeft = 44;
+  }
 
   return (
     <Modal
@@ -221,51 +300,80 @@ export default function MentorGuidelineTour({
       <View style={styles.overlay}>
         <Pressable style={styles.backdropPressable} onPress={finishTour} />
 
-        <View
-          style={[
-            styles.tabSpotlight,
-            {
-              left: tabCenterX - 28,
-              bottom: Platform.OS === 'ios' ? 28 : 12,
-            }
-          ]}
-          pointerEvents="none"
-        >
-          <View style={styles.tabSpotlightInner}>
-            <StepIcon size={24} color="#7C3AED" strokeWidth={2.5} />
+        {/* Highlight spotlight */}
+        {isSidebarStep ? (
+          <View
+            style={[
+              styles.tabSpotlight,
+              {
+                left: 18,
+                top: Platform.OS === 'ios' ? 52 : 36,
+              }
+            ]}
+            pointerEvents="none"
+          >
+            <View style={styles.tabSpotlightInner}>
+              <Menu size={24} color="#7C3AED" strokeWidth={2.5} />
+            </View>
           </View>
-        </View>
+        ) : (
+          <View
+            style={[
+              styles.tabSpotlight,
+              {
+                left: tabCenterX - 28,
+                bottom: Platform.OS === 'ios' ? 28 : 12,
+              }
+            ]}
+            pointerEvents="none"
+          >
+            <View style={styles.tabSpotlightInner}>
+              <StepIcon size={24} color="#7C3AED" strokeWidth={2.5} />
+            </View>
+          </View>
+        )}
 
         <View
           style={[
             styles.popupCard,
-            {
-              left: popupLeft,
-              width: popupWidth,
-              bottom: bottomBarHeight + 20,
-            }
+            isSidebarStep
+              ? {
+                  left: popupLeft,
+                  width: popupWidth,
+                  top: Platform.OS === 'ios' ? 126 : 108,
+                }
+              : {
+                  left: popupLeft,
+                  width: popupWidth,
+                  bottom: bottomBarHeight + 20,
+                }
           ]}
         >
-          <View
-            style={[
-              styles.downArrow,
-              { left: arrowLeft - 8 }
-            ]}
-          />
+          {isSidebarStep ? (
+            <View style={[styles.upArrow, { left: arrowLeft - 8 }]} />
+          ) : (
+            <View style={[styles.downArrow, { left: arrowLeft - 8 }]} />
+          )}
 
           <View style={styles.cardHeader}>
             <View style={styles.headerLeft}>
               <View style={styles.iconContainer}>
                 <StepIcon size={18} color="#7C3AED" strokeWidth={2.5} />
               </View>
-              <View>
+              <View style={{ flex: 1 }}>
                 <View style={styles.badgeRow}>
                   <Text style={styles.badgeText}>{currentTab.badge}</Text>
+                  {isSidebarStep && (
+                    <View style={styles.sidebarPill}>
+                      <Menu size={10} color="#7C3AED" />
+                      <Text style={styles.sidebarPillText}>Sidebar</Text>
+                    </View>
+                  )}
                   <Text style={styles.stepCounterText}>
                     {currentIndex + 1} of {totalTabs}
                   </Text>
                 </View>
-                <Text style={styles.tabTitle}>{currentTab.name}</Text>
+                <Text style={styles.tabTitle} numberOfLines={1}>{currentTab.name}</Text>
               </View>
             </View>
 
@@ -280,6 +388,13 @@ export default function MentorGuidelineTour({
 
           <View style={styles.cardBody}>
             <Text style={styles.descriptionText}>{currentTab.description}</Text>
+            {isSidebarStep && (
+              <View style={styles.sidebarHintBox}>
+                <Text style={styles.sidebarHintText}>
+                  📍 Open the ☰ Sidebar Menu at the top-left to access {currentTab.name}.
+                </Text>
+              </View>
+            )}
           </View>
 
           <View style={styles.cardFooter}>
@@ -414,6 +529,18 @@ const styles = StyleSheet.create({
     transform: [{ rotate: '45deg' }],
     zIndex: 10001,
   },
+  upArrow: {
+    position: 'absolute',
+    top: -8,
+    width: 16,
+    height: 16,
+    backgroundColor: '#FAFAFA',
+    borderTopWidth: 1,
+    borderLeftWidth: 1,
+    borderColor: '#E2E8F0',
+    transform: [{ rotate: '45deg' }],
+    zIndex: 10001,
+  },
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -430,6 +557,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
     flex: 1,
+    marginRight: 8,
   },
   iconContainer: {
     width: 36,
@@ -444,7 +572,7 @@ const styles = StyleSheet.create({
   badgeRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
   },
   badgeText: {
     fontSize: 10,
@@ -454,6 +582,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     paddingVertical: 1.5,
     borderRadius: 8,
+    textTransform: 'uppercase',
+  },
+  sidebarPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: '#EDE9FE',
+    paddingHorizontal: 5,
+    paddingVertical: 1.5,
+    borderRadius: 6,
+  },
+  sidebarPillText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#6D28D9',
     textTransform: 'uppercase',
   },
   stepCounterText: {
@@ -468,9 +611,12 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   closeBtn: {
-    padding: 6,
+    width: 28,
+    height: 28,
     borderRadius: 8,
     backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   cardBody: {
     paddingHorizontal: 16,
@@ -481,6 +627,21 @@ const styles = StyleSheet.create({
     color: '#334155',
     lineHeight: 18,
     fontWeight: '400',
+  },
+  sidebarHintBox: {
+    marginTop: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: '#F5F3FF',
+    borderWidth: 1,
+    borderColor: '#DDD6FE',
+  },
+  sidebarHintText: {
+    fontSize: 11,
+    color: '#6D28D9',
+    fontWeight: '500',
+    lineHeight: 16,
   },
   cardFooter: {
     borderTopWidth: 1,
@@ -496,18 +657,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
+    gap: 4,
+    flexWrap: 'wrap',
   },
   dot: {
-    height: 7,
-    borderRadius: 3.5,
+    height: 5,
+    borderRadius: 2.5,
   },
   dotActive: {
-    width: 22,
+    width: 14,
     backgroundColor: '#7C3AED',
   },
   dotInactive: {
-    width: 7,
+    width: 5,
     backgroundColor: '#CBD5E1',
   },
   actionsRow: {

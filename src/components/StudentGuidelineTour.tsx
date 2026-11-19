@@ -22,7 +22,17 @@ import {
   ChevronRight,
   X,
   Compass,
-  Sparkles
+  Sparkles,
+  BookOpen,
+  Navigation,
+  Building2,
+  UserSquare2,
+  Video,
+  Users,
+  Calendar,
+  CreditCard,
+  HelpCircle,
+  Menu
 } from 'lucide-react-native';
 import { colors } from '@/theme/colors';
 
@@ -35,16 +45,19 @@ export interface MobileTabTourStep {
   badge: string;
   icon: React.ElementType;
   description: string;
+  isSidebar?: boolean;
 }
 
 export const MOBILE_STUDENT_TABS: MobileTabTourStep[] = [
+  // --- BOTTOM TABS ---
   {
     id: 'overview',
     name: 'Overview',
     title: 'Overview Dashboard',
     badge: 'Home Base',
     icon: LayoutDashboard,
-    description: 'Your central hub for tracking your skill readiness score, weekly habit heatmaps, recent opportunity alerts, and quick profile actions.'
+    description: 'Your central hub for tracking your skill readiness score, weekly habit heatmaps, recent opportunity alerts, and quick profile actions.',
+    isSidebar: false
   },
   {
     id: 'skill-ledger',
@@ -52,7 +65,8 @@ export const MOBILE_STUDENT_TABS: MobileTabTourStep[] = [
     title: 'Verified Skill Ledger',
     badge: 'Competencies',
     icon: Zap,
-    description: 'Your digital competency passport. Track and verify your technical, problem-solving, and soft skills with verified badges.'
+    description: 'Your digital competency passport. Track and verify your technical, problem-solving, and soft skills with verified badges.',
+    isSidebar: false
   },
   {
     id: 'projects',
@@ -60,7 +74,8 @@ export const MOBILE_STUDENT_TABS: MobileTabTourStep[] = [
     title: 'Project Portfolio',
     badge: 'Proof of Work',
     icon: FolderGit2,
-    description: 'Showcase capstone, academic, and open-source projects with live demo URLs, GitHub repositories, and tech stacks for recruiters.'
+    description: 'Showcase capstone, academic, and open-source projects with live demo URLs, GitHub repositories, and tech stacks for recruiters.',
+    isSidebar: false
   },
   {
     id: 'internships',
@@ -68,7 +83,8 @@ export const MOBILE_STUDENT_TABS: MobileTabTourStep[] = [
     title: 'Industry Internships',
     badge: 'Hands-on',
     icon: Briefcase,
-    description: 'Discover and apply for verified corporate internships tailored to your branch, academic year, and verified skill set.'
+    description: 'Discover and apply for verified corporate internships tailored to your branch, academic year, and verified skill set.',
+    isSidebar: false
   },
   {
     id: 'jobs',
@@ -76,7 +92,8 @@ export const MOBILE_STUDENT_TABS: MobileTabTourStep[] = [
     title: 'Full-Time Jobs',
     badge: 'Placements',
     icon: Award,
-    description: 'Explore entry-level jobs and placement opportunities from verified hiring partners, with real-time application tracking.'
+    description: 'Explore entry-level jobs and placement opportunities from verified hiring partners, with real-time application tracking.',
+    isSidebar: false
   },
   {
     id: 'habits',
@@ -84,7 +101,90 @@ export const MOBILE_STUDENT_TABS: MobileTabTourStep[] = [
     title: 'Learning Habits',
     badge: 'Consistency',
     icon: PieChart,
-    description: 'Build daily study discipline. Monitor coding practice streaks, problem-solving goals, and weekly activity consistency.'
+    description: 'Build daily study discipline. Monitor coding practice streaks, problem-solving goals, and weekly activity consistency.',
+    isSidebar: false
+  },
+  // --- SIDEBAR ITEMS ---
+  {
+    id: 'courses',
+    name: 'Courses',
+    title: 'Learning Courses (LMS)',
+    badge: 'LMS Studio',
+    icon: BookOpen,
+    description: 'Access interactive learning modules, enrolled video courses, and practical coding exercises in LMS Studio.',
+    isSidebar: true
+  },
+  {
+    id: 'skill-path',
+    name: 'Skill Path',
+    title: 'Personalized Skill Path',
+    badge: 'Roadmaps',
+    icon: Navigation,
+    description: 'Follow tailored roadmaps designed to bridge your skill gaps and guide you step-by-step toward your target career role.',
+    isSidebar: true
+  },
+  {
+    id: 'campus-drives',
+    name: 'Campus Drives',
+    title: 'On-Campus Drives',
+    badge: 'Recruitment',
+    icon: Building2,
+    description: 'Stay updated on visiting companies, eligibility criteria, interview rounds, and live drive schedules on campus.',
+    isSidebar: true
+  },
+  {
+    id: 'mentors',
+    name: 'Mentors',
+    title: '1-on-1 Mentorship',
+    badge: 'Mentorship',
+    icon: UserSquare2,
+    description: 'Book one-on-one sessions with industry mentors and alumni for career advice, resume reviews, and mock technical interviews.',
+    isSidebar: true
+  },
+  {
+    id: 'shorts',
+    name: 'Shorts',
+    title: 'Learning Shorts',
+    badge: 'Video Tips',
+    icon: Video,
+    description: 'Watch bite-sized educational video reels highlighting tech concepts, interview preparation tricks, and career insights.',
+    isSidebar: true
+  },
+  {
+    id: 'community',
+    name: 'Community',
+    title: 'Student Community',
+    badge: 'Discussions',
+    icon: Users,
+    description: 'Connect with fellow students, discuss technical problems, ask questions, and collaborate on shared initiatives.',
+    isSidebar: true
+  },
+  {
+    id: 'events',
+    name: 'Events',
+    title: 'Hackathons & Events',
+    badge: 'Workshops',
+    icon: Calendar,
+    description: 'Register for live webinars, coding hackathons, technical symposiums, and guest lectures to elevate your profile.',
+    isSidebar: true
+  },
+  {
+    id: 'plans',
+    name: 'Plans',
+    title: 'Subscription Plans',
+    badge: 'Membership',
+    icon: CreditCard,
+    description: 'Choose and activate subscription plans to unlock unrestricted access to verified learning paths, drives, and features.',
+    isSidebar: true
+  },
+  {
+    id: 'support',
+    name: 'Support & Helpdesk',
+    title: 'Support & Helpdesk',
+    badge: 'Assistance',
+    icon: HelpCircle,
+    description: 'Raise support tickets with image or video attachments, check resolution status, and contact the StrideNex support team.',
+    isSidebar: true
   }
 ];
 
@@ -210,10 +310,14 @@ export default function StudentGuidelineTour({
   const currentTab = activeTabs[currentIndex] || activeTabs[0];
   const totalTabs = activeTabs.length;
   const StepIcon = currentTab.icon;
+  const isSidebarStep = currentTab.isSidebar === true;
 
   // Geometry calculations for bottom tab bar
-  const tabWidth = SCREEN_WIDTH / totalTabs;
-  const tabCenterX = (currentIndex + 0.5) * tabWidth;
+  const bottomTabs = activeTabs.filter((t) => !t.isSidebar);
+  const totalBottomTabs = bottomTabs.length || 6;
+  const bottomTabIndex = bottomTabs.findIndex((t) => t.id === currentTab.id);
+  const tabWidth = SCREEN_WIDTH / totalBottomTabs;
+  const tabCenterX = ((bottomTabIndex >= 0 ? bottomTabIndex : 0) + 0.5) * tabWidth;
   const bottomBarHeight = Platform.OS === 'ios' ? 85 : 70;
 
   // Popup positioning
@@ -224,7 +328,12 @@ export default function StudentGuidelineTour({
   if (popupLeft + popupWidth > SCREEN_WIDTH - 16) {
     popupLeft = SCREEN_WIDTH - popupWidth - 16;
   }
-  const arrowLeft = Math.max(16, Math.min(popupWidth - 16, tabCenterX - popupLeft));
+  let arrowLeft = Math.max(16, Math.min(popupWidth - 16, tabCenterX - popupLeft));
+
+  if (isSidebarStep) {
+    popupLeft = 16;
+    arrowLeft = 44;
+  }
 
   return (
     <Modal
@@ -238,40 +347,72 @@ export default function StudentGuidelineTour({
         {/* Semi-transparent backdrop */}
         <Pressable style={styles.backdropPressable} onPress={finishTour} />
 
-        {/* Highlight spotlight over the active bottom tab */}
-        <View
-          style={[
-            styles.tabSpotlight,
-            {
-              left: tabCenterX - 28,
-              bottom: (Platform.OS === 'ios' ? 28 : 12),
-            }
-          ]}
-          pointerEvents="none"
-        >
-          <View style={styles.tabSpotlightInner}>
-            <StepIcon size={24} color="#EA580C" strokeWidth={2.5} />
+        {/* Highlight spotlight over the active element */}
+        {isSidebarStep ? (
+          <View
+            style={[
+              styles.tabSpotlight,
+              {
+                left: 18,
+                top: Platform.OS === 'ios' ? 52 : 36,
+              }
+            ]}
+            pointerEvents="none"
+          >
+            <View style={styles.tabSpotlightInner}>
+              <Menu size={24} color="#EA580C" strokeWidth={2.5} />
+            </View>
           </View>
-        </View>
+        ) : (
+          <View
+            style={[
+              styles.tabSpotlight,
+              {
+                left: tabCenterX - 28,
+                bottom: (Platform.OS === 'ios' ? 28 : 12),
+              }
+            ]}
+            pointerEvents="none"
+          >
+            <View style={styles.tabSpotlightInner}>
+              <StepIcon size={24} color="#EA580C" strokeWidth={2.5} />
+            </View>
+          </View>
+        )}
 
-        {/* Small Tour Popup anchored directly above the highlighted tab */}
+        {/* Small Tour Popup anchored directly next to the highlighted element */}
         <View
           style={[
             styles.popupCard,
-            {
-              left: popupLeft,
-              width: popupWidth,
-              bottom: bottomBarHeight + 20,
-            }
+            isSidebarStep
+              ? {
+                  left: popupLeft,
+                  width: popupWidth,
+                  top: Platform.OS === 'ios' ? 126 : 108,
+                }
+              : {
+                  left: popupLeft,
+                  width: popupWidth,
+                  bottom: bottomBarHeight + 20,
+                }
           ]}
         >
-          {/* Downward-pointing arrow caret */}
-          <View
-            style={[
-              styles.downArrow,
-              { left: arrowLeft - 8 }
-            ]}
-          />
+          {/* Arrow caret pointing to target */}
+          {isSidebarStep ? (
+            <View
+              style={[
+                styles.upArrow,
+                { left: arrowLeft - 8 }
+              ]}
+            />
+          ) : (
+            <View
+              style={[
+                styles.downArrow,
+                { left: arrowLeft - 8 }
+              ]}
+            />
+          )}
 
           {/* Header */}
           <View style={styles.cardHeader}>
@@ -279,14 +420,20 @@ export default function StudentGuidelineTour({
               <View style={styles.iconContainer}>
                 <StepIcon size={18} color="#EA580C" strokeWidth={2.5} />
               </View>
-              <View>
+              <View style={{ flex: 1 }}>
                 <View style={styles.badgeRow}>
                   <Text style={styles.badgeText}>{currentTab.badge}</Text>
+                  {isSidebarStep && (
+                    <View style={styles.sidebarPill}>
+                      <Menu size={10} color="#EA580C" />
+                      <Text style={styles.sidebarPillText}>Sidebar</Text>
+                    </View>
+                  )}
                   <Text style={styles.stepCounterText}>
                     {currentIndex + 1} of {totalTabs}
                   </Text>
                 </View>
-                <Text style={styles.tabTitle}>{currentTab.name}</Text>
+                <Text style={styles.tabTitle} numberOfLines={1}>{currentTab.name}</Text>
               </View>
             </View>
 
@@ -302,6 +449,13 @@ export default function StudentGuidelineTour({
           {/* Description */}
           <View style={styles.cardBody}>
             <Text style={styles.descriptionText}>{currentTab.description}</Text>
+            {isSidebarStep && (
+              <View style={styles.sidebarHintBox}>
+                <Text style={styles.sidebarHintText}>
+                  📍 Open the ☰ Sidebar Menu at the top-left to access {currentTab.name}.
+                </Text>
+              </View>
+            )}
           </View>
 
           {/* Carousel Dots & Controls Footer */}
@@ -439,6 +593,18 @@ const styles = StyleSheet.create({
     transform: [{ rotate: '45deg' }],
     zIndex: 10001,
   },
+  upArrow: {
+    position: 'absolute',
+    top: -8,
+    width: 16,
+    height: 16,
+    backgroundColor: '#FAFAFA',
+    borderTopWidth: 1,
+    borderLeftWidth: 1,
+    borderColor: '#E2E8F0',
+    transform: [{ rotate: '45deg' }],
+    zIndex: 10001,
+  },
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -456,6 +622,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
+    flex: 1,
+    marginRight: 8,
   },
   iconContainer: {
     width: 38,
@@ -468,7 +636,7 @@ const styles = StyleSheet.create({
   badgeRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
   },
   badgeText: {
     fontSize: 10,
@@ -479,6 +647,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 6,
+  },
+  sidebarPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: '#FFEDD5',
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  sidebarPillText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#EA580C',
+    textTransform: 'uppercase',
   },
   stepCounterText: {
     fontSize: 11,
@@ -492,19 +675,37 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   closeBtn: {
-    padding: 6,
+    width: 28,
+    height: 28,
     borderRadius: 8,
     backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   cardBody: {
     paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingVertical: 12,
   },
   descriptionText: {
     fontSize: 13,
     lineHeight: 19,
     color: '#475569',
     fontWeight: '400',
+  },
+  sidebarHintBox: {
+    marginTop: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: '#FFF7ED',
+    borderWidth: 1,
+    borderColor: '#FED7AA',
+  },
+  sidebarHintText: {
+    fontSize: 11,
+    color: '#C2410C',
+    fontWeight: '500',
+    lineHeight: 16,
   },
   cardFooter: {
     paddingHorizontal: 16,
@@ -520,20 +721,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 6,
+    gap: 4,
+    paddingVertical: 4,
     marginBottom: 6,
+    flexWrap: 'wrap',
   },
   dot: {
-    height: 6,
-    borderRadius: 3,
+    height: 5,
+    borderRadius: 2.5,
   },
   dotActive: {
-    width: 20,
+    width: 14,
     backgroundColor: '#EA580C',
   },
   dotInactive: {
-    width: 6,
+    width: 5,
     backgroundColor: '#CBD5E1',
   },
   actionsRow: {
