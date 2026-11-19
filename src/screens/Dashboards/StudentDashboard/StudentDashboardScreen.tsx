@@ -71,14 +71,24 @@ export const StudentDashboardScreen = () => {
   useEffect(() => {
     if (isFirstLogin || isTourActive || hasActivePlan === null) return;
     if (hasActivePlan === false) {
-      navigation.navigate('Plans');
+      const parent = navigation.getParent?.();
+      if (parent) {
+        parent.navigate('Plans');
+      } else {
+        navigation.navigate('Plans');
+      }
     }
   }, [isFirstLogin, isTourActive, hasActivePlan, navigation]);
 
   const handleTourClose = async () => {
     const active = await fetchAndCacheStudentPlanStatus();
     if (!active) {
-      navigation.navigate('Plans');
+      const parent = navigation.getParent?.();
+      if (parent) {
+        parent.navigate('Plans');
+      } else {
+        navigation.navigate('Plans');
+      }
     }
   };
 
@@ -197,7 +207,7 @@ export const StudentDashboardScreen = () => {
       const data = res?.data || res?.message || res;
       if (data) {
         setStatsData(data);
-        if (Number(data.profile_completeness) < 90) {
+        if (Number(data.profile_completeness) < 90 && hasActivePlan !== false) {
           setIsIncompletePopupVisible(true);
         } else {
           setIsIncompletePopupVisible(false);

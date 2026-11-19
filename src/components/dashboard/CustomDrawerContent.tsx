@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, Alert, Modal, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, Alert, Modal, ActivityIndicator, DeviceEventEmitter } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DrawerContentComponentProps, DrawerItemList, DrawerItem } from '@react-navigation/drawer';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -9,6 +9,7 @@ import { spacing, borderRadius } from '@/theme/spacing';
 import { useAuth } from '@/context/AuthContext';
 import { useLmsAccess } from '@/utils/lmsAccess';
 import { LmsUpgradeModal } from '@/components/modals/LmsUpgradeModal';
+import { getCachedStudentPlanStatus } from '@/api/studentPlan';
 import circularLogo from '@/assets/images/circularLogo.jpg';
 import { 
   BarChart2, 
@@ -42,6 +43,31 @@ export const CustomDrawerContent = (props: DrawerContentComponentProps & { isInc
   const insets = useSafeAreaInsets();
   const { userFullName, role, logout } = useAuth();
   const { checkingLms, showUpgradeModal, setShowUpgradeModal, handleOpenLmsStudio } = useLmsAccess();
+
+  const [studentPlanActive, setStudentPlanActive] = useState<boolean | null>(props.hasActivePlan ?? null);
+
+  useEffect(() => {
+    if (props.hasActivePlan !== undefined && props.hasActivePlan !== null) {
+      setStudentPlanActive(props.hasActivePlan);
+    }
+  }, [props.hasActivePlan]);
+
+  useEffect(() => {
+    if (role !== 'Student') return;
+    let isMounted = true;
+    getCachedStudentPlanStatus().then((cached) => {
+      if (isMounted && cached !== null) setStudentPlanActive(cached);
+    });
+    const sub = DeviceEventEmitter.addListener('PLAN_UPDATED', (data) => {
+      if (isMounted && data?.isActive !== undefined) {
+        setStudentPlanActive(data.isActive);
+      }
+    });
+    return () => {
+      isMounted = false;
+      sub.remove();
+    };
+  }, [role]);
 
   const [displayName, setDisplayName] = useState<string>(userFullName && userFullName !== 'Test User' ? userFullName : '');
 
@@ -312,7 +338,7 @@ export const CustomDrawerContent = (props: DrawerContentComponentProps & { isInc
                 ];
               }
 
-              const isStudentWithoutPlan = role === 'Student' && props.hasActivePlan === false;
+              const isStudentWithoutPlan = role === 'Student' && (props.hasActivePlan === false || studentPlanActive === false);
 
               return manualTabs.map((tab) => {
                 if (tab.hide) return null;
@@ -339,14 +365,7 @@ export const CustomDrawerContent = (props: DrawerContentComponentProps & { isInc
                       onPress={() => {
                         if (isLocked) {
                           props.navigation.closeDrawer();
-                          Alert.alert(
-                            "Subscription Required",
-                            "All features are locked until an active plan is purchased. Please select a plan to unlock full access.",
-                            [
-                              { text: "View Plans", onPress: () => props.navigation.navigate("Plans") },
-                              { text: "Cancel", style: "cancel" }
-                            ]
-                          );
+                          props.navigation.navigate("Plans");
                           return;
                         }
                         if (tab.isLms) {
@@ -364,8 +383,8 @@ export const CustomDrawerContent = (props: DrawerContentComponentProps & { isInc
               });
             }
 
-            const isStudentWithoutPlan = role === 'Student' && props.hasActivePlan === false;
-            const isRouteLocked = isStudentWithoutPlan && route.name !== 'Plans';
+            const isStudentWithoutPlan = role === 'Student' && (props.hasActivePlan === false || studentPlanActive === false);
+            const isRouteLocked = isStudentWithoutPlan && route.name !== 'Plans' && route.name !== 'Support';
 
             return (
               <View key={route.key} pointerEvents={isDisabled ? 'none' : 'auto'} style={{ opacity: isRouteLocked ? 0.65 : isDisabled ? 0.4 : 1 }}>
@@ -387,14 +406,7 @@ export const CustomDrawerContent = (props: DrawerContentComponentProps & { isInc
                   onPress={() => {
                     if (isRouteLocked) {
                       props.navigation.closeDrawer();
-                      Alert.alert(
-                        "Subscription Required",
-                        "All features are locked until an active plan is purchased. Please select a plan to unlock full access.",
-                        [
-                          { text: "View Plans", onPress: () => props.navigation.navigate("Plans") },
-                          { text: "Cancel", style: "cancel" }
-                        ]
-                      );
+                      props.navigation.navigate("Plans");
                       return;
                     }
                     props.navigation.navigate(route.name);

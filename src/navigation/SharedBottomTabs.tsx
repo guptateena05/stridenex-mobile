@@ -69,14 +69,12 @@ export const SharedBottomTabs = ({
               tabPress: (e) => {
                 if (isLocked) {
                   e.preventDefault();
-                  Alert.alert(
-                    "Subscription Required",
-                    "All tabs are locked until an active plan is purchased. Please select a plan to unlock full access.",
-                    [
-                      { text: "View Plans", onPress: () => navigation.navigate("Plans") },
-                      { text: "Cancel", style: "cancel" }
-                    ]
-                  );
+                  const parent = navigation?.getParent?.();
+                  if (parent) {
+                    parent.navigate('Plans');
+                  } else {
+                    navigation.navigate('Plans');
+                  }
                 }
               }
             })}

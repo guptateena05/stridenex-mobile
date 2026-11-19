@@ -62,7 +62,7 @@ const styles = StyleSheet.create({
   dummyText: { fontSize: 16, color: colors.text.secondary },
 });
 
-const StudentTabs = () => {
+const StudentTabs = ({ navigation }: any) => {
   const [hasActivePlan, setHasActivePlan] = useState<boolean | null>(null);
 
   useEffect(() => {
@@ -71,10 +71,16 @@ const StudentTabs = () => {
       const cached = await getCachedStudentPlanStatus();
       if (isMounted && cached !== null) {
         setHasActivePlan(cached);
+        if (cached === false) {
+          navigation.navigate('Plans');
+        }
       }
       const fresh = await fetchAndCacheStudentPlanStatus();
       if (isMounted) {
         setHasActivePlan(fresh);
+        if (fresh === false) {
+          navigation.navigate('Plans');
+        }
       }
     };
     check();
@@ -82,6 +88,9 @@ const StudentTabs = () => {
     const sub = DeviceEventEmitter.addListener('PLAN_UPDATED', (data) => {
       if (isMounted && data?.isActive !== undefined) {
         setHasActivePlan(data.isActive);
+        if (data.isActive === false) {
+          navigation.navigate('Plans');
+        }
       }
     });
 
@@ -89,7 +98,7 @@ const StudentTabs = () => {
       isMounted = false;
       sub.remove();
     };
-  }, []);
+  }, [navigation]);
 
   const studentTabs: TabConfig[] = [
     { name: "Overview", component: StudentDashboardScreen, icon: LayoutDashboard },
@@ -163,6 +172,14 @@ export const StudentDrawerNavigator = () => {
 
   return (
     <Drawer.Navigator
+      initialRouteName={hasActivePlan === false ? "Plans" : "ModuleTabs"}
+      screenListeners={({ navigation, route }) => ({
+        focus: () => {
+          if (hasActivePlan === false && route.name !== 'Plans' && route.name !== 'Support') {
+            navigation.navigate('Plans');
+          }
+        }
+      })}
       drawerContent={(props) => (
         <CustomDrawerContent
           {...props}

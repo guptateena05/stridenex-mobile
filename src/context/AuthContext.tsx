@@ -73,6 +73,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const login = async (newRole: Role, token: string, userDetails?: { full_name?: string; username?: string; user_image?: string }) => {
     try {
+      await AsyncStorage.removeItem('has_active_student_plan');
       await AsyncStorage.setItem('token', token);
       if (newRole) {
         await AsyncStorage.setItem('role', newRole);
@@ -167,6 +168,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       await AsyncStorage.removeItem('userImage');
       await AsyncStorage.removeItem('userEmail');
       await AsyncStorage.removeItem('currentUser');
+      await AsyncStorage.removeItem('has_active_student_plan');
       setRole(null);
       setUserFullName(null);
       setUserName(null);

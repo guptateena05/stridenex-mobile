@@ -51,13 +51,9 @@ export const fetchAndCacheStudentPlanStatus = async (): Promise<boolean> => {
     DeviceEventEmitter.emit('PLAN_UPDATED', { isActive });
     return isActive;
   } catch (err) {
-    console.log('Error fetching student plan status on mobile:', err);
-    try {
-      const cached = await AsyncStorage.getItem('has_active_student_plan');
-      if (cached !== null) {
-        return cached === 'true';
-      }
-    } catch (_) {}
+    console.log('Error fetching student plan status on mobile, defaulting to inactive:', err);
+    await AsyncStorage.setItem('has_active_student_plan', 'false');
+    DeviceEventEmitter.emit('PLAN_UPDATED', { isActive: false });
     return false;
   }
 };
