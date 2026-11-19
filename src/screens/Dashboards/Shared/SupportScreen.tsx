@@ -587,15 +587,7 @@ export const SupportScreen: React.FC = () => {
         : 'START_STUDENT_TAB_TOUR';
 
     // Navigate to the module dashboard overview screen
-    if (normalizedRole === 'student') {
-      navigation.navigate('DashboardMain', { screen: 'Overview' });
-    } else if (normalizedRole === 'college') {
-      navigation.navigate('CollegeOverview');
-    } else if (normalizedRole === 'industry') {
-      navigation.navigate('IndustryOverview');
-    } else if (normalizedRole === 'mentor') {
-      navigation.navigate('MentorOverview');
-    }
+    navigation.navigate('ModuleTabs', { screen: 'Overview' });
 
     // Trigger the guided tour immediately upon landing on the overview
     setTimeout(() => {
