@@ -42,12 +42,21 @@ import {
   AlertCircle,
   X,
   ExternalLink,
+  Paperclip,
+  FileText,
+  Film,
+  Image as ImageIcon,
+  Download,
+  UploadCloud,
 } from 'lucide-react-native';
+import * as DocumentPicker from '@react-native-documents/picker';
 import {
   ticketService,
   TicketSummary,
   TicketDetail,
   TicketComment,
+  TicketAttachment,
+  MobileFileAttachment,
 } from '@/api/ticket.services';
 
 interface FaqItem {
@@ -235,7 +244,7 @@ const RichChatMessage: React.FC<RichChatMessageProps> = ({
               <Image
                 source={{ uri: part.src }}
                 style={styles.chatInlineImage}
-                resizeMode="cover"
+                resizeMode="contain"
               />
             </TouchableOpacity>
           );
@@ -251,6 +260,220 @@ const RichChatMessage: React.FC<RichChatMessageProps> = ({
           >
             {part.content}
           </Text>
+        );
+      })}
+    </View>
+  );
+};
+
+const MAX_FILE_SIZE_BYTES = 25 * 1024 * 1024; // 25 MB
+
+const formatFileSize = (bytes?: number): string => {
+  if (!bytes || bytes <= 0) return '';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+};
+
+const getFileCategory = (fileName: string): 'image' | 'video' | 'doc' => {
+  const ext = (fileName || '').split('.').pop()?.toLowerCase() || '';
+  if (['png', 'jpg', 'jpeg', 'webp', 'gif', 'svg'].includes(ext)) return 'image';
+  if (['mp4', 'webm', 'mov', 'mkv', 'avi', '3gp'].includes(ext)) return 'video';
+  return 'doc';
+};
+
+const getFullMediaUrl = (url?: string): string => {
+  if (!url) return '';
+  if (
+    url.startsWith('http://') ||
+    url.startsWith('https://') ||
+    url.startsWith('file://') ||
+    url.startsWith('content://')
+  ) {
+    return url;
+  }
+  return `${BASE_DOMAIN.replace(/\/+$/, '')}/${url.replace(/^\/+/, '')}`;
+};
+
+const MobileSelectedFilesPreview: React.FC<{
+  files: MobileFileAttachment[];
+  onRemove: (index: number) => void;
+}> = ({ files, onRemove }) => {
+  if (!files || files.length === 0) return null;
+
+  return (
+    <View style={styles.selectedFilesList}>
+      {files.map((file, idx) => {
+        const cat = getFileCategory(file.name);
+        return (
+          <View key={`file-${idx}`} style={styles.selectedFilePill}>
+            {cat === 'image' ? (
+              <ImageIcon size={13} color="#ea580c" />
+            ) : cat === 'video' ? (
+              <Film size={13} color="#0284c7" />
+            ) : (
+              <FileText size={13} color="#d97706" />
+            )}
+            <Text style={styles.selectedFileName} numberOfLines={1}>
+              {file.name}
+            </Text>
+            {file.size ? (
+              <Text style={styles.selectedFileSize}>
+                ({formatFileSize(file.size)})
+              </Text>
+            ) : null}
+            <TouchableOpacity
+              onPress={() => onRemove(idx)}
+              style={styles.selectedFileRemoveBtn}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <X size={12} color="#64748b" />
+            </TouchableOpacity>
+          </View>
+        );
+      })}
+    </View>
+  );
+};
+
+const MobileAttachmentList: React.FC<{
+  attachments?: TicketAttachment[];
+  isUser?: boolean;
+  onImagePress: (url: string) => void;
+}> = ({ attachments, isUser = false, onImagePress }) => {
+  if (!attachments || attachments.length === 0) return null;
+
+  return (
+    <View style={styles.attachmentsContainer}>
+      {attachments.map((att, i) => {
+        const fullUrl = getFullMediaUrl(att.file_url);
+        const cat = getFileCategory(att.file_name);
+        const sizeText = formatFileSize(att.file_size);
+
+        if (cat === 'image') {
+          return (
+            <TouchableOpacity
+              key={`att-img-${i}`}
+              onPress={() => onImagePress(fullUrl)}
+              activeOpacity={0.85}
+              style={styles.attImageWrap}
+            >
+              <Image
+                source={{ uri: fullUrl }}
+                style={styles.attImage}
+                resizeMode="contain"
+              />
+              <View style={styles.attImageFooter}>
+                <Text style={styles.attImageName} numberOfLines={1}>
+                  {att.file_name}
+                </Text>
+                {sizeText ? (
+                  <Text style={styles.attImageSize}>{sizeText}</Text>
+                ) : null}
+              </View>
+            </TouchableOpacity>
+          );
+        }
+
+        if (cat === 'video') {
+          return (
+            <TouchableOpacity
+              key={`att-vid-${i}`}
+              onPress={() => {
+                Linking.openURL(fullUrl).catch(() => {
+                  Alert.alert('Cannot open video', 'Unable to play video on this device.');
+                });
+              }}
+              activeOpacity={0.8}
+              style={[
+                styles.attCard,
+                isUser ? styles.attCardUser : styles.attCardAgent,
+              ]}
+            >
+              <View
+                style={[
+                  styles.attIconWrap,
+                  {
+                    backgroundColor: isUser
+                      ? 'rgba(255,255,255,0.2)'
+                      : '#e0f2fe',
+                  },
+                ]}
+              >
+                <Film size={16} color={isUser ? '#ffffff' : '#0284c7'} />
+              </View>
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text
+                  style={[
+                    styles.attCardTitle,
+                    { color: isUser ? '#ffffff' : '#0f172a' },
+                  ]}
+                  numberOfLines={1}
+                >
+                  {att.file_name}
+                </Text>
+                <Text
+                  style={[
+                    styles.attCardSub,
+                    { color: isUser ? 'rgba(255,255,255,0.8)' : '#64748b' },
+                  ]}
+                >
+                  {sizeText ? `${sizeText} • Video` : 'Tap to play video'}
+                </Text>
+              </View>
+              <ExternalLink size={14} color={isUser ? '#ffffff' : '#64748b'} />
+            </TouchableOpacity>
+          );
+        }
+
+        // Documents, PDFs, etc.
+        return (
+          <TouchableOpacity
+            key={`att-doc-${i}`}
+            onPress={() => {
+              Linking.openURL(fullUrl).catch(() => {
+                Alert.alert('Cannot open document', 'Unable to open file on this device.');
+              });
+            }}
+            activeOpacity={0.8}
+            style={[
+              styles.attCard,
+              isUser ? styles.attCardUser : styles.attCardAgent,
+            ]}
+          >
+            <View
+              style={[
+                styles.attIconWrap,
+                {
+                  backgroundColor: isUser
+                    ? 'rgba(255,255,255,0.2)'
+                    : '#fef3c7',
+                },
+              ]}
+            >
+              <FileText size={16} color={isUser ? '#ffffff' : '#d97706'} />
+            </View>
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text
+                style={[
+                  styles.attCardTitle,
+                  { color: isUser ? '#ffffff' : '#0f172a' },
+                ]}
+                numberOfLines={1}
+              >
+                {att.file_name}
+              </Text>
+              <Text
+                style={[
+                  styles.attCardSub,
+                  { color: isUser ? 'rgba(255,255,255,0.8)' : '#64748b' },
+                ]}
+              >
+                {sizeText ? `${sizeText} • Document` : 'Tap to open document'}
+              </Text>
+            </View>
+            <Download size={14} color={isUser ? '#ffffff' : '#64748b'} />
+          </TouchableOpacity>
         );
       })}
     </View>
@@ -279,6 +502,7 @@ export const SupportScreen: React.FC = () => {
   const [ticketDetail, setTicketDetail] = useState<TicketDetail | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [replyMessage, setReplyMessage] = useState('');
+  const [replyFiles, setReplyFiles] = useState<MobileFileAttachment[]>([]);
   const [submittingReply, setSubmittingReply] = useState(false);
   const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
 
@@ -286,6 +510,7 @@ export const SupportScreen: React.FC = () => {
   const [ticketSubject, setTicketSubject] = useState('');
   const [ticketPriority, setTicketPriority] = useState<'Low' | 'Medium' | 'High' | 'Urgent'>('Medium');
   const [ticketDescription, setTicketDescription] = useState('');
+  const [ticketFiles, setTicketFiles] = useState<MobileFileAttachment[]>([]);
   const [submittingTicket, setSubmittingTicket] = useState(false);
 
   const normalizedRole = useMemo(() => {
@@ -393,6 +618,65 @@ export const SupportScreen: React.FC = () => {
     );
   };
 
+  // Document / File Picker Utility
+  const pickFiles = async (): Promise<MobileFileAttachment[]> => {
+    try {
+      const results = await DocumentPicker.pick({
+        type: [DocumentPicker.types.allFiles],
+        allowMultiSelection: true,
+      });
+
+      const pickedList = Array.isArray(results) ? results : [results];
+      const validFiles: MobileFileAttachment[] = [];
+
+      for (const f of pickedList) {
+        if (f.size && f.size > MAX_FILE_SIZE_BYTES) {
+          Alert.alert('File Too Large', `"${f.name || 'File'}" exceeds the 25MB limit.`);
+          continue;
+        }
+        validFiles.push({
+          uri: f.uri,
+          name: f.name || `file_${Date.now()}`,
+          type: f.type || 'application/octet-stream',
+          size: f.size ?? undefined,
+        });
+      }
+      return validFiles;
+    } catch (err: any) {
+      if (
+        DocumentPicker.isErrorWithCode(err) &&
+        err.code === DocumentPicker.errorCodes.OPERATION_CANCELED
+      ) {
+        return [];
+      }
+      console.error('Error picking document:', err);
+      Alert.alert('File Selection Failed', err?.message || 'Unable to pick files.');
+      return [];
+    }
+  };
+
+  const handlePickTicketFiles = async () => {
+    const picked = await pickFiles();
+    if (picked.length > 0) {
+      setTicketFiles((prev) => [...prev, ...picked]);
+    }
+  };
+
+  const handleRemoveTicketFile = (index: number) => {
+    setTicketFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handlePickReplyFiles = async () => {
+    const picked = await pickFiles();
+    if (picked.length > 0) {
+      setReplyFiles((prev) => [...prev, ...picked]);
+    }
+  };
+
+  const handleRemoveReplyFile = (index: number) => {
+    setReplyFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
   // Handle Create Ticket
   const handleCreateTicket = async () => {
     if (!ticketSubject.trim()) {
@@ -410,6 +694,7 @@ export const SupportScreen: React.FC = () => {
         subject: ticketSubject.trim(),
         description: ticketDescription.trim(),
         priority: ticketPriority,
+        attachments: ticketFiles,
       });
 
       const newId =
@@ -428,6 +713,7 @@ export const SupportScreen: React.FC = () => {
       setTicketSubject('');
       setTicketDescription('');
       setTicketPriority('Medium');
+      setTicketFiles([]);
       setActiveTab('my-tickets');
       fetchMyTickets();
     } catch (err: any) {
@@ -440,15 +726,19 @@ export const SupportScreen: React.FC = () => {
 
   // Handle Reply to Ticket
   const handleSendReply = async () => {
-    if (!selectedTicketId || !replyMessage.trim()) return;
+    const hasText = !!replyMessage.trim();
+    const hasFiles = replyFiles.length > 0;
+    if (!selectedTicketId || (!hasText && !hasFiles)) return;
 
     setSubmittingReply(true);
     try {
       await ticketService.addTicketComment({
         ticket_id: selectedTicketId,
-        message: replyMessage.trim(),
+        message: replyMessage.trim() || 'Attached file(s)',
+        attachments: replyFiles,
       });
       setReplyMessage('');
+      setReplyFiles([]);
       await fetchTicketDetails(selectedTicketId);
     } catch (err: any) {
       console.error('Error posting reply:', err);
@@ -593,6 +883,15 @@ export const SupportScreen: React.FC = () => {
                     isUser={false}
                     onImagePress={setPreviewImageUrl}
                   />
+                  {ticketDetail.attachments && ticketDetail.attachments.length > 0 && (
+                    <View style={styles.attDivider}>
+                      <MobileAttachmentList
+                        attachments={ticketDetail.attachments}
+                        isUser={false}
+                        onImagePress={setPreviewImageUrl}
+                      />
+                    </View>
+                  )}
                 </View>
 
                 {/* Conversation Comments */}
@@ -634,6 +933,24 @@ export const SupportScreen: React.FC = () => {
                             isUser={isUser}
                             onImagePress={setPreviewImageUrl}
                           />
+                          {comment.attachments && comment.attachments.length > 0 && (
+                            <View
+                              style={[
+                                styles.attDivider,
+                                {
+                                  borderTopColor: isUser
+                                    ? 'rgba(255,255,255,0.25)'
+                                    : '#e2e8f0',
+                                },
+                              ]}
+                            >
+                              <MobileAttachmentList
+                                attachments={comment.attachments}
+                                isUser={isUser}
+                                onImagePress={setPreviewImageUrl}
+                              />
+                            </View>
+                          )}
                         </View>
                       </View>
                     );
@@ -649,29 +966,47 @@ export const SupportScreen: React.FC = () => {
             ) : null}
           </ScrollView>
 
-          {/* Reply Input Bar */}
-          <View style={styles.chatInputBar}>
-            <TextInput
-              style={styles.chatInput}
-              placeholder="Type your reply message..."
-              placeholderTextColor="#94a3b8"
-              value={replyMessage}
-              onChangeText={setReplyMessage}
+          {/* Reply Input Bar with Attachments */}
+          <View style={styles.chatInputContainer}>
+            <MobileSelectedFilesPreview
+              files={replyFiles}
+              onRemove={handleRemoveReplyFile}
             />
-            <TouchableOpacity
-              style={[
-                styles.chatSendBtn,
-                { backgroundColor: replyMessage.trim() ? '#ea580c' : '#cbd5e1' },
-              ]}
-              onPress={handleSendReply}
-              disabled={submittingReply || !replyMessage.trim()}
-            >
-              {submittingReply ? (
-                <ActivityIndicator size="small" color="#ffffff" />
-              ) : (
-                <Send size={16} color="#ffffff" />
-              )}
-            </TouchableOpacity>
+            <View style={styles.chatInputBar}>
+              <TouchableOpacity
+                style={styles.chatAttachBtn}
+                onPress={handlePickReplyFiles}
+                activeOpacity={0.7}
+              >
+                <Paperclip size={18} color="#64748b" />
+              </TouchableOpacity>
+              <TextInput
+                style={styles.chatInput}
+                placeholder="Type your reply message..."
+                placeholderTextColor="#94a3b8"
+                value={replyMessage}
+                onChangeText={setReplyMessage}
+              />
+              <TouchableOpacity
+                style={[
+                  styles.chatSendBtn,
+                  {
+                    backgroundColor:
+                      replyMessage.trim() || replyFiles.length > 0
+                        ? '#ea580c'
+                        : '#cbd5e1',
+                  },
+                ]}
+                onPress={handleSendReply}
+                disabled={submittingReply || (!replyMessage.trim() && replyFiles.length === 0)}
+              >
+                {submittingReply ? (
+                  <ActivityIndicator size="small" color="#ffffff" />
+                ) : (
+                  <Send size={16} color="#ffffff" />
+                )}
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       ) : (
@@ -950,6 +1285,40 @@ export const SupportScreen: React.FC = () => {
                   onChangeText={setTicketDescription}
                   multiline
                   numberOfLines={4}
+                />
+              </View>
+
+              {/* Media & Document Attachments */}
+              <View style={styles.inputGroup}>
+                <View style={styles.attHeaderRow}>
+                  <Text style={styles.inputLabel}>Attachments (Optional)</Text>
+                  <Text style={styles.attLimitHint}>Max 25MB each</Text>
+                </View>
+
+                <TouchableOpacity
+                  style={styles.attachmentDropzone}
+                  onPress={handlePickTicketFiles}
+                  activeOpacity={0.7}
+                >
+                  <View
+                    style={[
+                      styles.attachIconCircle,
+                      { backgroundColor: `${roleAccentColor}18` },
+                    ]}
+                  >
+                    <UploadCloud size={20} color={roleAccentColor} />
+                  </View>
+                  <Text style={styles.attachmentDropzoneTitle}>
+                    Tap to attach media or documents
+                  </Text>
+                  <Text style={styles.attachmentDropzoneSub}>
+                    Images, Videos, PDFs, DOCX, TXT (up to 25MB)
+                  </Text>
+                </TouchableOpacity>
+
+                <MobileSelectedFilesPreview
+                  files={ticketFiles}
+                  onRemove={handleRemoveTicketFile}
                 />
               </View>
 
@@ -1692,6 +2061,168 @@ const styles = StyleSheet.create({
     color: '#64748b',
     textAlign: 'center',
   },
+  chatInputContainer: {
+    backgroundColor: '#ffffff',
+    borderTopWidth: 1,
+    borderTopColor: '#e2e8f0',
+  },
+  chatAttachBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#f8fafc',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  selectedFilesList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingTop: 8,
+    paddingBottom: 4,
+  },
+  selectedFilePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#fff7ed',
+    borderWidth: 1,
+    borderColor: '#fed7aa',
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+  },
+  selectedFileName: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#1e293b',
+    maxWidth: 130,
+  },
+  selectedFileSize: {
+    fontSize: 10,
+    color: '#64748b',
+  },
+  selectedFileRemoveBtn: {
+    padding: 2,
+    marginLeft: 2,
+  },
+  attHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
+  attLimitHint: {
+    fontSize: 10,
+    color: '#94a3b8',
+  },
+  attachmentDropzone: {
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    borderColor: '#cbd5e1',
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#f8fafc',
+  },
+  attachIconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 6,
+  },
+  attachmentDropzoneTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#1e293b',
+    marginBottom: 2,
+  },
+  attachmentDropzoneSub: {
+    fontSize: 10,
+    color: '#64748b',
+  },
+  attachmentsContainer: {
+    marginTop: 6,
+    gap: 6,
+  },
+  attImageWrap: {
+    width: '100%',
+    borderRadius: 12,
+    overflow: 'hidden',
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  attImage: {
+    width: '100%',
+    height: 200,
+    backgroundColor: '#f8fafc',
+  },
+  attImageFooter: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    backgroundColor: '#f8fafc',
+    borderTopWidth: 1,
+    borderTopColor: '#e2e8f0',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  attImageName: {
+    fontSize: 11,
+    color: '#334155',
+    fontWeight: '600',
+    flex: 1,
+  },
+  attImageSize: {
+    fontSize: 10,
+    color: '#64748b',
+    marginLeft: 8,
+  },
+  attCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    padding: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  attCardUser: {
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderColor: 'rgba(255,255,255,0.25)',
+  },
+  attCardAgent: {
+    backgroundColor: '#f8fafc',
+    borderColor: '#e2e8f0',
+  },
+  attIconWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  attCardTitle: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  attCardSub: {
+    fontSize: 10,
+    marginTop: 1,
+  },
+  attDivider: {
+    marginTop: 6,
+    paddingTop: 6,
+    borderTopWidth: 1,
+    borderTopColor: '#e2e8f0',
+  },
   chatInputBar: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1723,14 +2254,16 @@ const styles = StyleSheet.create({
   chatImageWrap: {
     width: '100%',
     marginVertical: 4,
-    borderRadius: 10,
+    borderRadius: 12,
     overflow: 'hidden',
-    backgroundColor: '#f1f5f9',
+    backgroundColor: '#f8fafc',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
   },
   chatInlineImage: {
     width: '100%',
-    height: 180,
-    borderRadius: 10,
+    height: 200,
+    backgroundColor: '#f8fafc',
   },
   modalBackdrop: {
     flex: 1,
