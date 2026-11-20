@@ -3,7 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { api, BASE_URL, getProfilePicture } from '@/api/api.services';
 import { handlePostLoginFcmToken, handleLogoutPushCleanup } from '@/services/pushNotification.service';
 
-type Role = 'Student' | 'Mentor' | 'College' | 'Industry' | null;
+type Role = 'Student' | 'Mentor' | 'College' | 'Industry' | 'Partner' | null;
 
 interface AuthContextType {
   role: Role;

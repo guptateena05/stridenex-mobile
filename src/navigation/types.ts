@@ -38,4 +38,5 @@ export type DashboardStackParamList = {
   MentorDashboard: undefined;
   CollegeDashboard: undefined;
   IndustryDashboard: undefined;
+  PartnerDashboard: undefined;
 };

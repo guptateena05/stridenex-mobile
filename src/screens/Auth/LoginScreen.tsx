@@ -232,9 +232,16 @@ export const LoginScreen = () => {
         let userRole = 'Student';
         if (data.roles && Array.isArray(data.roles)) {
           const lowerRoles = data.roles.map((r: string) => r.toLowerCase());
-          if (lowerRoles.some((r: string) => r.includes('college'))) userRole = 'College';
+          if (lowerRoles.some((r: string) => r.includes('partner'))) userRole = 'Partner';
+          else if (lowerRoles.some((r: string) => r.includes('college'))) userRole = 'College';
           else if (lowerRoles.some((r: string) => r.includes('industry'))) userRole = 'Industry';
           else if (lowerRoles.some((r: string) => r.includes('mentor'))) userRole = 'Mentor';
+        } else if (data.role) {
+          const r = String(data.role).toLowerCase();
+          if (r.includes('partner')) userRole = 'Partner';
+          else if (r.includes('college')) userRole = 'College';
+          else if (r.includes('industry')) userRole = 'Industry';
+          else if (r.includes('mentor')) userRole = 'Mentor';
         }
 
         const userEmail = data.user || username;

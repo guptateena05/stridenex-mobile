@@ -32,6 +32,11 @@ export const DashboardNavigator = ({ role = 'Student' }: { role?: string }) => {
     return <CollegeDrawerNavigator />;
   }
 
+  if (role === 'Partner') {
+    const { PartnerWebScreen } = require('@/screens/Dashboards/PartnerDashboard/PartnerWebScreen');
+    return <PartnerWebScreen />;
+  }
+
   // Theme coloring for active tabs based on module
   let activeColor = colors.accent.DEFAULT;
 
