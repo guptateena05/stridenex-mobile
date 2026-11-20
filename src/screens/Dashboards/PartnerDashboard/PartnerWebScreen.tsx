@@ -120,6 +120,55 @@ export const PartnerWebScreen: React.FC = () => {
               style.innerHTML = 'input, select, textarea { font-size: 16px !important; }';
               document.head && document.head.appendChild(style);
             }
+
+            if (!document.getElementById('partner-mobile-theme-fix')) {
+              var themeStyle = document.createElement('style');
+              themeStyle.id = 'partner-mobile-theme-fix';
+              themeStyle.type = 'text/css';
+              themeStyle.innerHTML = \`
+                html, body, .min-h-screen {
+                  background: #ffffff !important;
+                  background-color: #ffffff !important;
+                }
+                .fixed.inset-0.z-0,
+                div[class*="radial-gradient"],
+                div[class*="blur-3xl"] {
+                  display: none !important;
+                  opacity: 0 !important;
+                  visibility: hidden !important;
+                }
+                main > div:first-child {
+                  background-color: #ffffff !important;
+                }
+                main h1, h1 {
+                  color: #0f172a !important;
+                  font-weight: 800 !important;
+                }
+                main p, h1 + p {
+                  color: #334155 !important;
+                  font-weight: 500 !important;
+                }
+                header > div:first-child {
+                  padding-left: 12px !important;
+                  padding-right: 12px !important;
+                  gap: 12px !important;
+                  justify-content: space-between !important;
+                }
+                header img {
+                  max-width: 105px !important;
+                  width: 105px !important;
+                  height: auto !important;
+                  object-fit: contain !important;
+                }
+                div:has(> svg.lucide-mail) + div,
+                div:has(> svg.lucide-mail) + div p {
+                  min-width: 0 !important;
+                  word-break: break-all !important;
+                  overflow-wrap: anywhere !important;
+                }
+              \`;
+              (document.head || document.documentElement).appendChild(themeStyle);
+            }
           })();
           true;
         `;
@@ -208,6 +257,55 @@ export const PartnerWebScreen: React.FC = () => {
         style.type = 'text/css';
         style.innerHTML = 'input, select, textarea { font-size: 16px !important; }';
         document.head && document.head.appendChild(style);
+      }
+
+      if (!document.getElementById('partner-mobile-theme-fix')) {
+        var themeStyle = document.createElement('style');
+        themeStyle.id = 'partner-mobile-theme-fix';
+        themeStyle.type = 'text/css';
+        themeStyle.innerHTML = \`
+          html, body, .min-h-screen {
+            background: #ffffff !important;
+            background-color: #ffffff !important;
+          }
+          .fixed.inset-0.z-0,
+          div[class*="radial-gradient"],
+          div[class*="blur-3xl"] {
+            display: none !important;
+            opacity: 0 !important;
+            visibility: hidden !important;
+          }
+          main > div:first-child {
+            background-color: #ffffff !important;
+          }
+          main h1, h1 {
+            color: #0f172a !important;
+            font-weight: 800 !important;
+          }
+          main p, h1 + p {
+            color: #334155 !important;
+            font-weight: 500 !important;
+          }
+          header > div:first-child {
+            padding-left: 12px !important;
+            padding-right: 12px !important;
+            gap: 12px !important;
+            justify-content: space-between !important;
+          }
+          header img {
+            max-width: 105px !important;
+            width: 105px !important;
+            height: auto !important;
+            object-fit: contain !important;
+          }
+          div:has(> svg.lucide-mail) + div,
+          div:has(> svg.lucide-mail) + div p {
+            min-width: 0 !important;
+            word-break: break-all !important;
+            overflow-wrap: anywhere !important;
+          }
+        \`;
+        (document.head || document.documentElement).appendChild(themeStyle);
       }
     })();
     true;
